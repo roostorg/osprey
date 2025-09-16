@@ -1,6 +1,6 @@
 # ROOST - Osprey
 
-<img width="36" height="46" alt="Copy of ROOST-Mark-Yellow" src="/images/ROOST-Horizontal-Yellow .png" />
+<img width="150" height="191" alt="Copy of ROOST-Mark-Yellow" src="/images/ROOST-Horizontal-Yellow .png" />
 
 # Welcome to Osprey
 

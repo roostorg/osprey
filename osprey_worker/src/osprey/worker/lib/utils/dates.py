@@ -4,7 +4,6 @@ from typing import Union
 
 import pytz
 from dateutil import parser
-from osprey.worker.lib.singletons import CONFIG
 from pytz import UTC
 
 OSPREY_EPOCH = 1420070400000
