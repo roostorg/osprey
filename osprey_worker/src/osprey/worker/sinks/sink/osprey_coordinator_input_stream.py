@@ -17,8 +17,8 @@ from osprey.rpc.osprey_coordinator.bidirectional_stream.v1.service_pb2 import (
     ClientDetails,
     Disconnect,
     Nack,
-    Request,
     OspreyCoordinatorAction,
+    Request,
 )
 from osprey.rpc.osprey_coordinator.bidirectional_stream.v1.service_pb2_grpc import (
     OspreyCoordinatorServiceStub,

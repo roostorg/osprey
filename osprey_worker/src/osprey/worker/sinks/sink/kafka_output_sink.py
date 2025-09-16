@@ -2,7 +2,6 @@ from typing import Any
 
 import sentry_sdk
 from kafka import KafkaProducer
-
 from osprey.engine.executor.execution_context import ExecutionResult
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.sinks.sink.output_sink import BaseOutputSink
