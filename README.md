@@ -87,7 +87,7 @@ _ROOST (Robust Open Online Safety Tools), a non-profit organization that brings 
    # Test pre-commit hooks
    uv run pre-commit run --all-files
 
-5. ** Start Services: **
+5. **Start Services:**
    ```bash
    docker compose up -d
    ```
@@ -101,4 +101,4 @@ _ROOST (Robust Open Online Safety Tools), a non-profit organization that brings 
 
 
 ## Recognition
-Discord uses Osprey to quickly detect and remove new types of harm that put users at risk. Rather than leaving other platforms to build similar tools from scratch, ROOST and Discord have open-sourced this powerful rule engine making it available for anyone who needs it.
+Discord uses Osprey to quickly detect and remove new types of harm that put users at risk. Rather than leaving other platforms to build similar tools from scratch, ROOST and Discord have open-sourced this powerful rule engine in collaboration with [internet.dev](https://internet.dev/) to make it available for anyone who needs it.
