@@ -6,7 +6,7 @@
 
 ## Overview
 
-This repository is home to one of ROOST’s many safety tools; Osprey rules engine. Osprey is [Discord's](https://discord.com/) open-source event stream decisions engine and analysis UI designed to investigate and take automatic action on events and their properties as they happen in real-time. Originally developed internally at [Discord](https://discord.com/) to combat spam, abuse, botting, and scripting across our platform, Osprey has now been open-sourced to help other platforms facing similar challenges.
+This repository is home to one of ROOST’s safety tools, the Osprey rules engine. Osprey is an open-source event stream decisions engine and analysis UI designed to investigate and take automatic action on events and their properties as they happen in real-time. Originally developed internally at [Discord](https://discord.com/) to combat spam, abuse, botting, and scripting across its platform, Osprey has now been open-sourced to help other platforms facing similar challenges.
 
 Osprey is a library for processing actions through human written rules and outputting labels, webhooks back to an API and other sinks. It evaluates events using structured logic (SML), user-defined functions (UDFs), and external signals to assign labels, verdicts, and actions.
 
