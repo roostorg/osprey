@@ -1,0 +1,17 @@
+[project]
+name = "example_plugins"
+version = "0.1.0"
+description = "Example plugins for Osprey"
+requires-python = ">=3.11"
+dependencies = [
+    "pluggy==1.5.0"
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.entry-points.osprey_plugin]
+register_plugins = "register_plugins"

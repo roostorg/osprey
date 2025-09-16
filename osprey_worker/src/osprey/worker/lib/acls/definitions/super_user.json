@@ -1,0 +1,45 @@
+{
+  "description": "Grants super user permissions.",
+  "acl": [
+    {
+      "name": "CAN_VIEW_LABELS_FOR_ENTITY",
+      "allow_all": true
+    },
+    {
+      "name": "CAN_VIEW_LABELS",
+      "allow_all": true
+    },
+    {
+      "name": "CAN_VIEW_DOCS",
+      "allow_all": true
+    },
+    {
+      "name": "CAN_VIEW_EVENTS_BY_ENTITY",
+      "allow_all": true
+    },
+    {
+      "name": "CAN_MUTATE_ENTITIES",
+      "allow_all": true
+    },
+    {
+      "name": "CAN_MUTATE_LABELS",
+      "allow_all": true
+    },
+    {
+      "name": "CAN_BULK_LABEL",
+      "allow_all": true
+    },
+    {
+      "name": "CAN_VIEW_SAVED_QUERIES",
+      "allow_all": true
+    },
+    {
+      "name": "CAN_CREATE_AND_EDIT_SAVED_QUERIES",
+      "allow_all": true
+    },
+    {
+      "name": "CAN_VIEW_EVENTS_BY_ACTION",
+      "allow_all": true
+    }
+  ]
+}

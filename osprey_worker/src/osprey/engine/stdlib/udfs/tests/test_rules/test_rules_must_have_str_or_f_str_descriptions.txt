@@ -1,0 +1,5 @@
+error: argument `description` to `Rule` requires either a string literal or an f-string
+--> main.sml:3:38
+     |
+   3 | R = Rule(when_all=[True], description=description)
+     |                                       ^ got `Name` node, expected `String` or `FormatString` literal

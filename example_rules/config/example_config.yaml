@@ -1,0 +1,3 @@
+example:
+  some_str: "test"
+  some_int: 42

@@ -1,0 +1,6 @@
+.menu {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 2px 0;
+}

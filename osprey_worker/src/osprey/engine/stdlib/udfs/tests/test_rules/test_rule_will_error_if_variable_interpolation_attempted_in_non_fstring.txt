@@ -1,0 +1,7 @@
+error: variable interpolation attempted in non-format string
+--> main.sml:3:39
+     |
+   3 | R1 = Rule(when_all=[True], description='Interpolated: {X}')
+     |                                        ^ this string contains what looks like variable interpolation, but is not an f-string
+                                              | found: `X`
+                                              | consider prefixing with `f`

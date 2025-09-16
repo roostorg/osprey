@@ -1,0 +1,5 @@
+error: `JsonData(...)` returns a dynamic result, and the assignment must have a type annotation
+--> main.sml:1:0
+     |
+   1 | Foo = JsonData(path='$.foo')
+     | ^ add a type annotation, like: `Foo: str = JsonData(...)`

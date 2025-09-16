@@ -1,0 +1,32 @@
+.collapsableList {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.exclamationIcon {
+  color: var(--warning-primary);
+  height: 20px;
+  width: 20px;
+  margin: 0 4px;
+}
+
+.listHeader {
+  height: 40px;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  border-left: 4px solid var(--divider);
+  background-color: var(--background-secondary);
+  border-radius: 2px 2px 0 0;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.listHeaderClosed {
+  border-radius: 2px;
+}
+
+.listWrapper > div {
+  height: auto !important;
+}

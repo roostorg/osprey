@@ -1,0 +1,49 @@
+.card {
+  width: 100%;
+}
+
+.description {
+  width: 100%;
+  height: 100%;
+}
+
+.description :global(table) {
+  table-layout: fixed !important;
+}
+
+.contentTable {
+  margin-left: -8px;
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 6px 0;
+}
+
+.actionName {
+  text-transform: lowercase;
+  font-weight: 600;
+}
+
+.timestamp {
+  margin: 0 6px;
+}
+
+:global(.ant-descriptions-item-label),
+:global(.ant-descriptions-item-content) {
+  padding: 2px 4px !important;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.eventStreamCard :global(.ant-descriptions):nth-child(n + 2) :global(.ant-descriptions-view) {
+  border-top: none !important;
+}

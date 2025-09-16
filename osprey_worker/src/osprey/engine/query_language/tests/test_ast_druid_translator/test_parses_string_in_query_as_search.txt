@@ -1,0 +1,10 @@
+{
+    "filter": {
+        "dimension": "UserEmail",
+        "query": {
+            "type": "insensitive_contains",
+            "value": "gmail.com"
+        },
+        "type": "search"
+    }
+}

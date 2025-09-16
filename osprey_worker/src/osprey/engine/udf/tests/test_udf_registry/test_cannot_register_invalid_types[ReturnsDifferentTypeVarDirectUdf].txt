@@ -1,0 +1,1 @@
+Osprey generics must have exactly one parameter: generic UDF type `ReturnsDifferentTypeVarDirectUdf` has 2 parameters

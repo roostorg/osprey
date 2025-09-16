@@ -1,0 +1,5 @@
+error: functions with non-keyword arguments are not supported
+--> main.sml:1:0
+     |
+   1 | Foo(1)
+     | ^

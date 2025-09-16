@@ -1,0 +1,5 @@
+error: invalid argument type: `Number`
+--> main.sml:1:14
+     |
+   1 | Import(rules=[11, 12, 13])
+     |               ^ expected type `String`

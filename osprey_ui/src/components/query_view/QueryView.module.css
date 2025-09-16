@@ -1,0 +1,72 @@
+.queryView {
+  width: 100%;
+  background-color: var(--background-secondary);
+  display: flex;
+  flex-direction: row;
+  margin: 0 auto;
+  flex-grow: 1;
+}
+
+.datePickerBar {
+  display: flex;
+  align-items: center;
+  background-color: var(--background-secondary);
+  overflow: hidden;
+  transition: 0.2s ease all;
+}
+
+.datePickerBarShown {
+  composes: datePickerBar;
+  height: 42px;
+  padding: 8px 16px;
+  border-bottom: 2px solid var(--divider);
+}
+
+.datePickerBarHidden {
+  composes: datePickerBar;
+  height: 0;
+}
+
+.charts {
+  display: flex;
+  flex-grow: 1;
+}
+
+.pageContentLeft {
+  width: 420px;
+  max-width: 420px;
+  min-width: 420px;
+  max-height: calc(100vh - 42px);
+  border-right: 2px solid var(--divider);
+  flex-grow: 1;
+  position: sticky;
+  top: 42px;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--background-secondary-alt);
+}
+
+.pageContentRight {
+  width: 80%;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.chartsLeft {
+  min-width: 500px;
+  width: 40%;
+  display: flex;
+  flex-direction: column;
+  border-right: 2px solid var(--divider);
+}
+
+.chartsRight {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.pageContentLeft > :global(.ant-menu) {
+  background-color: inherit;
+}

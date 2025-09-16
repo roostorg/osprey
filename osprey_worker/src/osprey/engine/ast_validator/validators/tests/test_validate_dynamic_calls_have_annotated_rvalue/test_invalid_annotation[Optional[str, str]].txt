@@ -1,0 +1,5 @@
+error: `Optional` must have exactly one argument
+--> main.sml:1:5
+     |
+   1 | Foo: Optional[str, str] = JsonData(path='$.foo')
+     |      ^ got 2 arguments

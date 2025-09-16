@@ -1,0 +1,5 @@
+error: unknown label
+--> main.sml:1:47
+     |
+   1 | DidAddLabel(entity_type='MyEntity', label_name='invalid_label')
+     |                                                ^ there is no `invalid_label` label in the config

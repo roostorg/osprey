@@ -1,0 +1,135 @@
+/* Headers */
+
+.header {
+  color: var(--text-light-headings-primary);
+  font-weight: 700;
+}
+
+.h1 {
+  composes: header;
+  font-size: 38px;
+  line-height: 46px;
+}
+
+.h2 {
+  composes: header;
+  font-size: 30px;
+  line-height: 40px;
+}
+
+.h3 {
+  composes: header;
+  font-size: 24px;
+  line-height: 32px;
+}
+
+.h4 {
+  composes: header;
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.h5 {
+  composes: header;
+  font-size: 16px;
+  line-height: 26px;
+}
+
+.h6 {
+  composes: header;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.h7 {
+  color: var(--text-light-headings-secondary);
+  text-transform: uppercase;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+}
+
+/* Body Text Sizes */
+
+.large {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.small {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.xsmall {
+  font-size: 10px;
+  line-height: 16px;
+}
+
+/* Styles and Weights */
+
+.italic {
+  font-style: italic;
+}
+
+.light {
+  font-weight: 400;
+}
+
+.normal {
+  font-weight: 500;
+}
+
+.semibold {
+  font-weight: 600;
+}
+
+.bold {
+  font-weight: 700;
+}
+
+/* Colors */
+
+.primary {
+  color: var(--text-light-primary);
+}
+
+.secondary {
+  color: var(--text-light-secondary);
+}
+
+.lightHeadingsSecondary {
+  color: var(--text-light-headings-secondary);
+}
+
+.lightHeadingsPrimary {
+  color: var(--text-light-headings-primary);
+}
+
+.small {
+  font-size: 12px;
+}
+
+.semibold {
+  font-weight: 600;
+}
+
+.bold {
+  font-weight: 700;
+}
+
+.lightPrimary {
+  color: var(--text-light-primary);
+}
+
+.lightSecondary {
+  color: var(--text-light-secondary);
+}
+
+.lightDisabled {
+  color: var(--text-light-disabled);
+}
+
+.linkBlue {
+  color: var(--link-primary);
+}

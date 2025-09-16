@@ -1,0 +1,65 @@
+.appWrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.navBar {
+  background-color: var(--background-primary);
+  height: 42px;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  border-bottom: 2px solid var(--divider);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.menuOutlinedIcon {
+  font-size: 18px;
+  margin-left: 16px;
+  margin-right: 12px;
+  color: var(--icon-primary);
+}
+
+.isRecording :global(.ant-btn.ant-btn-link) {
+  user-select: none !important;
+}
+
+.navMenuContainer {
+  position: absolute;
+  width: 250px;
+  z-index: 1;
+  pointer-events: none;
+  height: 100%;
+}
+
+.expanded {
+  pointer-events: all;
+}
+
+.navMenuContainer :global(.ant-menu-inline-collapsed) {
+  width: 0 !important;
+}
+
+.navMenuContainer :global(.ant-menu-inline-collapsed-noicon) {
+  display: none;
+}
+
+.navMenuContainer :global(.ant-menu-inline-collapsed) > li {
+  padding: 0 !important;
+}
+
+.navMenu {
+  height: 100%;
+}
+
+.contentWrapper {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  position: relative;
+  flex-grow: 1;
+}

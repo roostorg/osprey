@@ -1,0 +1,5 @@
+error: invalid `granularity_seconds`
+--> main.sml:1:68
+     |
+   1 | GetSnowflakeBucket(snowflake=119144447702335491,granularity_seconds=0)
+     |                                                                     ^ granularity_seconds can not be less than 3600 (1 hour)

@@ -1,0 +1,7 @@
+error: you cannot store the result of this function call because it has no return value
+--> main.sml:1:6
+     |
+   1 | Qux = HasNoResult()
+     |       ^ this cannot appear to the right of a `=`, e.g.:
+             | - `HasNoResult(...)` is OK
+             | - `Qux = HasNoResult(...)` is not OK

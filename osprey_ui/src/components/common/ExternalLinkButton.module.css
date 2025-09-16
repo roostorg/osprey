@@ -1,0 +1,10 @@
+.icon {
+  transform: rotateY(180deg);
+  font-size: 12px;
+}
+
+.iconWrapper {
+  height: 14px;
+  width: 14px;
+  display: flex;
+}

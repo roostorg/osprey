@@ -1,0 +1,10 @@
+error: local variables must be unique in their file
+--> main.sml:2:0
+     |
+   2 | _Foo = 1
+     | ^ this local variable is defined in multiple locations in this file
+~~~ such as:
+--> (1) main.sml:3:0
+     |
+   3 | _Foo = 2
+     | ^

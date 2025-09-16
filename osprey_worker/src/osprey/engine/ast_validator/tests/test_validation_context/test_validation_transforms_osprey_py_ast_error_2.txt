@@ -1,0 +1,6 @@
+error: unexpected node type `FunctionDef`
+--> main.sml:2:0
+     |
+   2 | def foo():
+     | ^ the Osprey rule language is a simplified subset of python
+       | not all Python is valid osprey rule syntax

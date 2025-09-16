@@ -1,0 +1,5 @@
+error: argument `unexpected` to `ValidatingUnexpectedArgsUdf` has incompatible type
+--> main.sml:1:60
+     |
+   1 | Ret = ValidatingUnexpectedArgsUdf(required='hi', unexpected=None)
+     |                                                             ^ has type `None`, expected `str`

@@ -1,0 +1,106 @@
+.viewContainer {
+  height: 100%;
+  width: 100%;
+  background-color: var(--background-primary);
+  display: flex;
+  overflow: hidden;
+}
+
+.bulkJobHistoryCard {
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px var(--divider) solid;
+}
+
+.cardTitle {
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  background-color: var(--background-secondary);
+  align-items: flex-start;
+  border-radius: 8px;
+}
+
+.margin {
+  display: flex;
+  flex-direction: column;
+  margin-left: 4px;
+  margin-bottom: 4px;
+}
+
+.content {
+  width: 100%;
+  max-width: 1300px;
+  display: flex;
+  margin: 0 auto;
+}
+
+.header {
+  padding: 16px;
+  border-bottom: 1px var(--divider) solid;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bulkHistoryContainer {
+  max-height: 100%;
+  max-width: 900px;
+  width: 100%;
+  flex-grow: 1;
+  background-color: var(--background-primary);
+  border-left: 1px solid var(--divider);
+  border-right: 1px solid var(--divider);
+  display: flex;
+  flex-direction: column;
+}
+
+.compactBulkHistoryContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 500px;
+  min-height: 255px;
+  max-height: 450px;
+  width: 70%;
+  margin: 12px;
+  border: 1px solid var(--divider);
+  border-radius: 8px;
+}
+
+.compactHeader {
+  height: 40px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  background-color: var(--background-secondary);
+  border-bottom: 1px solid var(--divider);
+}
+
+.cardHeaderBase {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.searchBar {
+  width: 40%;
+  margin-bottom: 2px;
+  justify-content: right;
+  display: flex;
+  flex-direction: column;
+}
+
+.listContainer {
+  overflow-y: auto;
+  overflow-anchor: none;
+}
+
+.contentTable {
+  width: auto;
+  display: flex;
+  flex-direction: column;
+}

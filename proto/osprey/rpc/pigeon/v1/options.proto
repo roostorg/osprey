@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package osprey.rpc.pigeon.v1;
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.ServiceOptions {
+    RoutingConfig default_routing_config = 53001;
+}
+
+extend google.protobuf.MethodOptions {
+    RoutingConfig routing_config = 53002;
+}
+
+enum RoutingType {
+    ROUTING_TYPE_UNSPECIFIED = 0;
+    ROUTING_TYPE_ROUND_ROBIN = 1;
+    ROUTING_TYPE_SCALAR = 2;
+    ROUTING_TYPE_CHUNKED = 3;
+}
+
+enum KeyExtractorType {
+    // Extract keys from the request field
+    // buf:lint:ignore ENUM_ZERO_VALUE_SUFFIX
+    KEY_EXTRACTOR_TYPE_VALUE = 0;
+    // Extract keys from a map
+    KEY_EXTRACTOR_TYPE_MAP_KEY = 1;
+}
+
+message RoutingConfig {
+    string request_key = 1;
+    RoutingType type = 2;
+    // For chunked
+    string response_key = 3;
+    // Indicates how we chunk the request from the request_key field
+    KeyExtractorType key_extractor_type = 4;
+}

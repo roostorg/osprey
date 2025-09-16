@@ -1,0 +1,101 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Osprey ACL",
+    "description": "Schema for JSON definitions of Osprey ACLs.",
+    "type": "object",
+    "properties": {
+        "description": {
+            "description": "A description of what the ACL does and how it's used.",
+            "type": "string",
+            "minLength": 1
+        },
+        "acl": {
+            "description": "A list of abilities the ACL grants access to.",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "allow_all": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "allow_all"
+                        ]
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "allow_all_except": {
+                                "type": "array",
+                                "uniqueItems": true,
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "allow_all_except"
+                        ]
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                             "allow_specific": {
+                                "type": "array",
+                                "uniqueItems": true,
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "allow_specific"
+                        ]
+                    }
+                ]
+            }
+        },
+        "ability_groups": {
+            "description": "An optional list of ability group names to inherit additional ACLs from.",
+            "type": "array",
+            "items": {
+                "type": "string",
+                "minLength": 1
+            }
+        }
+    },
+    "anyOf": [
+        {
+            "required": [
+                "acl"
+            ]
+        },
+        {
+            "required": [
+                "ability_groups"
+            ]
+        }
+    ],
+    "required": [
+        "description"
+    ]
+}

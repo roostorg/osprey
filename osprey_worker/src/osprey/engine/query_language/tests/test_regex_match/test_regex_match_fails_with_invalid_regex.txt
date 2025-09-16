@@ -1,0 +1,5 @@
+error: failed to validate argument `regex` for `RegexMatch(...)`
+--> main.sml:1:25
+     |
+   1 | RegexMatch(item=A, regex='[')
+     |                          ^ error: unterminated character set at position 0

@@ -1,0 +1,5 @@
+error: invalid `percentage`
+--> main.sml:1:26
+     |
+   1 | r = RandomBool(percentage=1.0)
+     |                           ^ this will always be `True`

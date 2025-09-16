@@ -1,0 +1,19 @@
+2 errors occurred while validating:
+[1/2] error: `not` only works on `bool` types
+--> main.sml:1:26
+     |
+   1 | Query = UserName == 1 and not 2
+     |                           ^ `not` should be used on `bool` types like `not (X == Y)`
+--> (1) main.sml:1:30
+     |
+   1 | Query = UserName == 1 and not 2
+     |                               ^ has type `int`
+[2/2] error: the operand must not be a literal
+--> main.sml:1:26
+     |
+   1 | Query = UserName == 1 and not 2
+     |                           ^ the right side of the `Number(value=2)` must be a non-literal (non-constant) value
+--> (1) main.sml:1:30
+     |
+   1 | Query = UserName == 1 and not 2
+     |                               ^ this is a literal value

@@ -1,0 +1,5 @@
+error: invalid argument type: `String`
+--> main.sml:1:13
+     |
+   1 | Import(rules='foo.sml')
+     |              ^ expected type `List`

@@ -1,0 +1,5 @@
+error: failed to validate argument `path` for `JsonData(...)`
+--> main.sml:1:25
+     |
+   1 | Foo: str = JsonData(path='$..')
+     |                          ^ error: invalid json-path supplied

@@ -1,0 +1,10 @@
+{
+    "filter": {
+        "field": {
+            "dimension": "A",
+            "type": "selector",
+            "value": 1
+        },
+        "type": "not"
+    }
+}

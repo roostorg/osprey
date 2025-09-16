@@ -1,0 +1,13 @@
+{
+    "filter": {
+        "field": {
+            "dimension": "UserEmail",
+            "query": {
+                "type": "insensitive_contains",
+                "value": "boop"
+            },
+            "type": "search"
+        },
+        "type": "not"
+    }
+}

@@ -1,0 +1,5 @@
+error: can only check dynamic return values of simple types or `Entity`, `ExtractLiteral`, `ExtractSecret`, `List`, `Optional`, `Secret`, `Union` generics
+--> main.sml:1:5
+     |
+   1 | Foo: Optional = JsonData(path='$.foo')
+     |      ^ `Optional` is generic, try `Optional[T]` where `T` is a type like `str` or `int`

@@ -1,0 +1,5 @@
+error: required rule: `actions/{ActionName}.sml` would never match any rule files
+--> main.sml:3:13
+     |
+   3 | Require(rule=f'actions/{ActionName}.sml')
+     |              ^ require attempted here, glob: `actions/*.sml` matches no sources

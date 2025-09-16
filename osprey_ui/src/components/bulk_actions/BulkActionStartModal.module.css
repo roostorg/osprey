@@ -1,0 +1,17 @@
+.modal {
+  :global(.ant-modal-content) {
+    padding: 24px;
+  }
+
+  :global(.ant-form-item) {
+    margin-bottom: 24px;
+  }
+
+  :global(.ant-upload-list) {
+    margin-top: 12px;
+  }
+}
+
+:global(.ant-upload-drag-container .ant-btn) {
+  height: 60px;
+}

@@ -1,0 +1,13 @@
+error: cannot compare a literal to another literal
+--> main.sml:1:8
+     |
+   1 | Query = True == False
+     |         ^ one side of the `==` comparison must be a non-literal (non-constant) value
+--> (1) main.sml:1:8
+     |
+   1 | Query = True == False
+     |         ^ this is a literal value
+--> (2) main.sml:1:16
+     |
+   1 | Query = True == False
+     |                 ^ this is a literal value

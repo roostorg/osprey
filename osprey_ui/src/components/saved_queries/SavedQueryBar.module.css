@@ -1,0 +1,21 @@
+.savedQueryBar {
+  height: 40px;
+  width: 100%;
+  background-color: var(--background-primary);
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--divider);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.editIcon {
+  opacity: 0;
+  margin-left: 6px;
+  transition: 0.25s ease all;
+}
+
+.savedQueryName:hover .editIcon {
+  opacity: 1;
+  cursor: pointer;
+}

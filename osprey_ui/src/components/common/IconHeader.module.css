@@ -1,0 +1,10 @@
+.header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.iconWrapper {
+  margin-right: 8px;
+  display: inline-flex;
+}

@@ -1,0 +1,39 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Sequence, Type
+
+import pluggy
+from osprey.engine.ast_validator.base_validator import BaseValidator
+from osprey.engine.udf.base import UDFBase
+from osprey.worker.adaptor.constants import OSPREY_ADAPTOR
+from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
+
+if TYPE_CHECKING:
+    from osprey.worker.lib.config import Config
+    from osprey.worker.sinks.sink.output_sink import BaseOutputSink
+
+hookspec: pluggy.HookspecMarker = pluggy.HookspecMarker(OSPREY_ADAPTOR)
+
+
+@hookspec
+def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
+    """Register a new UDF to the UDFRegistry."""
+    raise NotImplementedError('register_udfs must be implemented by the plugin')
+
+
+@hookspec
+def register_output_sinks(config: Config) -> Sequence[BaseOutputSink]:
+    """Returns output sink instances to use with the engine."""
+    raise NotImplementedError('register_output_sinks must be implemented by the plugin')
+
+
+@hookspec
+def register_ast_validators() -> Sequence[Type[BaseValidator]]:
+    """Register a new AST validator."""
+    raise NotImplementedError('register_ast_validators must be implemented by the plugin')
+
+
+@hookspec
+def register_action_proto_deserializer() -> ActionProtoDeserializer | None:
+    """Register a custom deserializer to convert custom Action proto into JSON."""
+    raise NotImplementedError('register_action_proto_deserializers must be implemented by the plugin')

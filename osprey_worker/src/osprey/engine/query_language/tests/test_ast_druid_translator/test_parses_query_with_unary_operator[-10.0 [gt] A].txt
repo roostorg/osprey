@@ -1,0 +1,22 @@
+{
+    "filter": {
+        "fields": [
+            {
+                "field": {
+                    "dimension": "A",
+                    "type": "selector",
+                    "value": null
+                },
+                "type": "not"
+            },
+            {
+                "dimension": "A",
+                "lower": -10.0,
+                "lowerStrict": true,
+                "ordering": "numeric",
+                "type": "bound"
+            }
+        ],
+        "type": "and"
+    }
+}

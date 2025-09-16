@@ -1,0 +1,20 @@
+.featureNameButton {
+  padding: 0;
+  transition: 0.25s ease all;
+}
+
+.featureName {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.disabled {
+  pointer-events: none;
+  cursor: default;
+}
+
+.disabled:hover {
+  color: var(--link-primary);
+}

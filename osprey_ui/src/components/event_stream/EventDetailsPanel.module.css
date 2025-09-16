@@ -1,0 +1,61 @@
+.panel {
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 100vh;
+  position: relative;
+}
+
+.eventContents {
+  padding: 20px;
+}
+
+.timestampContainer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.timestamp {
+  margin-left: 6px;
+}
+
+.eventName {
+  text-transform: uppercase;
+}
+
+.tableFilters {
+  margin-top: 1rem;
+  display: flex;
+  border: rgba(0, 0, 0, 0.06) 1px solid;
+  background-color: var(--background-primary);
+}
+
+.filterSearch {
+  margin-right: 1rem;
+  border: none;
+}
+
+.switchContainer {
+  display: flex;
+  border-left: rgba(0, 0, 0, 0.06) 1px solid;
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+}
+
+.switchText {
+  display: block;
+  width: max-content;
+  margin-left: 0.5rem;
+}
+
+.jsonWrap {
+  overflow-wrap: break-word;
+}
+
+.json {
+  white-space: pre-wrap;
+}
+
+.errorTrace {
+  overflow-x: auto;
+}

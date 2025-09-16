@@ -1,0 +1,10 @@
+error: features must be unique across all rule files
+--> main.sml:1:0
+     |
+   1 | Foo = 1
+     | ^ this feature is defined in multiple locations
+~~~ such as:
+--> (1) foo.sml:1:0
+     |
+   1 | Foo = 1
+     | ^

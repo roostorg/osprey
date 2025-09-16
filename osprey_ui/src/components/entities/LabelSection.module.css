@@ -1,0 +1,25 @@
+.labelSection {
+  padding-bottom: 8px;
+}
+
+.labelConnotationContainer {
+  position: relative;
+  padding: 4px 16px;
+  width: 100%;
+  background-color: var(--background-secondary-alt);
+  height: 30px;
+  display: flex;
+  align-items: center;
+}
+
+.labelConnotation {
+  text-transform: capitalize;
+  color: var(--text-light-headings-primary);
+  display: flex;
+  align-items: center;
+}
+
+.connotationIcon {
+  margin-right: 4px;
+  display: flex;
+}

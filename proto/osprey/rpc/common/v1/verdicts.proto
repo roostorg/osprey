@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package osprey.rpc.common.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// ~ osprey sync verdicts ~
+message Verdicts {
+    uint64 action_id = 1;
+    string action_name = 2;
+    repeated string verdicts = 3;
+    google.protobuf.Timestamp timestamp = 4;
+}

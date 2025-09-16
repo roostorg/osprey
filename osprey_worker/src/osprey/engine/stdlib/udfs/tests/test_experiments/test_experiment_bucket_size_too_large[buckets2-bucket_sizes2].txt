@@ -1,0 +1,49 @@
+4 errors occurred while validating:
+[1/4] error:
+                    16.67 is over the
+                    current max of 16.66.
+                    Either reduce the bucket size or reduce the number of buckets
+
+--> main.sml:4:74
+     |
+   4 |     entity=E1, buckets=['control', 'b', 'c', 'd', 'e', 'f'], bucket_sizes=[16.66, 16.67, 16.67, 16.67, 16.66, 16.67], version=1,
+     |                                                                           ^
+                                                                                 |                     max percentage size of each bucket is 100/(# of buckets) rounded
+                                                                                 |                     down to the nearest hundreth decimal place
+                                                                                 |
+[2/4] error:
+                    16.67 is over the
+                    current max of 16.66.
+                    Either reduce the bucket size or reduce the number of buckets
+
+--> main.sml:4:74
+     |
+   4 |     entity=E1, buckets=['control', 'b', 'c', 'd', 'e', 'f'], bucket_sizes=[16.66, 16.67, 16.67, 16.67, 16.66, 16.67], version=1,
+     |                                                                           ^
+                                                                                 |                     max percentage size of each bucket is 100/(# of buckets) rounded
+                                                                                 |                     down to the nearest hundreth decimal place
+                                                                                 |
+[3/4] error:
+                    16.67 is over the
+                    current max of 16.66.
+                    Either reduce the bucket size or reduce the number of buckets
+
+--> main.sml:4:74
+     |
+   4 |     entity=E1, buckets=['control', 'b', 'c', 'd', 'e', 'f'], bucket_sizes=[16.66, 16.67, 16.67, 16.67, 16.66, 16.67], version=1,
+     |                                                                           ^
+                                                                                 |                     max percentage size of each bucket is 100/(# of buckets) rounded
+                                                                                 |                     down to the nearest hundreth decimal place
+                                                                                 |
+[4/4] error:
+                    16.67 is over the
+                    current max of 16.66.
+                    Either reduce the bucket size or reduce the number of buckets
+
+--> main.sml:4:74
+     |
+   4 |     entity=E1, buckets=['control', 'b', 'c', 'd', 'e', 'f'], bucket_sizes=[16.66, 16.67, 16.67, 16.67, 16.66, 16.67], version=1,
+     |                                                                           ^
+                                                                                 |                     max percentage size of each bucket is 100/(# of buckets) rounded
+                                                                                 |                     down to the nearest hundreth decimal place
+                                                                                 |

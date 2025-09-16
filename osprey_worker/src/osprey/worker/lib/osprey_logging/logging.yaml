@@ -1,0 +1,59 @@
+# Schema: https://docs.python.org/3.9/library/logging.config.html#logging-config-dictschema
+version: 1
+
+# Setting this to False (the default) means that we will clear all existing
+# filters, formatters and handlers. Therefore whis will re-configure to match
+# the configuration specified here. If this is True, the handlers etc. will
+# be added to the existing configuration (effectively layering on top)
+incremental: false
+
+# Setting True will disable the actual Logger objects returned by `getLogger`
+# until the end of this application. Alternatively, specifying a logger for
+# `osprey` (and all other packages which want logging) would
+# cause those loggers to not be disabled. It is easiest to just leave this as
+# False, and specifically set levels on annoying loggers in the loggers: section
+# below.
+disable_existing_loggers: false
+
+formatters:
+  json:
+    # logs formatted as a json dictionary, datetime with microseconds
+    (): osprey.worker.lib.osprey_logging.JsonLogFormatter
+    format: "%(asctime)s,%(name)s,%(module)s,%(levelname)s,%(message)s"
+    datefmt: "%Y-%m-%dT%H:%M:%S.%f%z"
+    rename_fields:
+      levelname: severity # for use by gcloud logging
+
+  pretty:
+    (): osprey.worker.lib.osprey_logging.PrettyLogFormatter
+
+handlers:
+  json_stderr:
+    class: logging.StreamHandler
+    formatter: json
+    stream: ext://sys.stderr
+
+  pretty_stderr:
+    class: logging.StreamHandler
+    formatter: pretty
+    stream: ext://sys.stderr
+
+loggers:
+  # There is a warning spam that happens that isn't useful from this library
+  # related to file_cache being unavailable.
+  # https://github.com/googleapis/google-api-python-client/issues/299
+  googleapiclient.discovery_cache:
+    level: WARN
+
+  pandas_gbq:
+    level: WARN
+
+  urllib3:
+    level: WARN
+
+root:
+  level: INFO
+  # All custom handlers are included here to create references to them. Remove unnecessary handlers from this logger at
+  # runtime.
+  # See https://docs.python.org/3/library/logging.config.html#object-connections (formatter/handler ids are "transient")
+  handlers: [pretty_stderr, json_stderr]

@@ -1,0 +1,1 @@
+generic arguments item can only be the exact TypeVar: in generic UDF `ArgumentUsesTypeIndirectlyUdf` arguments type `ArgumentUsesTypeIndirectlyArgs` expected generic item `foo` type to be `A`, got `Optional[~A]`

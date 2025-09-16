@@ -1,0 +1,8 @@
+error: you must use the result of this function call
+--> main.sml:1:0
+     |
+   1 | HasResult()
+     | ^ this must must not be used as a statement within the source root, e.g.:
+       | - `Foo = HasResult(...)` is OK
+       | - `SomeOtherFunction(argument=HasResult(...))` is OK
+       | - `HasResult(...)` is not OK

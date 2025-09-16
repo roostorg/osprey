@@ -1,0 +1,1 @@
+Osprey generics must inherit from `OspreyInvariantGeneric`: generic arguments type `ArgumentInheritsWrongGenericArgs` does not inherit from `OspreyInvariantGeneric`

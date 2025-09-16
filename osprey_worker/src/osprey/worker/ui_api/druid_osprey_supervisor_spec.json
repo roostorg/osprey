@@ -1,0 +1,94 @@
+{
+  "type": "kafka",
+  "dataSchema": {
+    "dataSource": "osprey.execution_results",
+    "parser": {
+      "type": "string",
+      "parseSpec": {
+        "format": "json",
+        "timestampSpec": {
+          "column": "__timestamp",
+          "format": "iso"
+        },
+        "dimensionsSpec": {
+          "dimensions": []
+        }
+      }
+    },
+    "metricsSpec": [],
+    "granularitySpec": {
+      "type": "uniform",
+      "segmentGranularity": "HOUR",
+      "queryGranularity": {
+        "type": "none"
+      },
+      "rollup": false,
+      "intervals": null
+    },
+    "transformSpec": {
+      "filter": null,
+      "transforms": []
+    }
+  },
+  "tuningConfig": {
+    "type": "kafka",
+    "maxRowsInMemory": 500000,
+    "maxBytesInMemory": 0,
+    "maxRowsPerSegment": 310000,
+    "intermediatePersistPeriod": "PT10M",
+    "basePersistDirectory": "/tmp/1576903736668-0",
+    "maxPendingPersists": 0,
+    "indexSpec": {
+      "bitmap": {
+        "type": "concise"
+      },
+      "dimensionCompression": "lz4",
+      "metricCompression": "lz4",
+      "longEncoding": "longs"
+    },
+    "indexSpecForIntermediatePersists": {
+      "bitmap": {
+        "type": "concise"
+      },
+      "dimensionCompression": "lz4",
+      "metricCompression": "lz4",
+      "longEncoding": "longs"
+    },
+    "buildV9Directly": true,
+    "reportParseExceptions": false,
+    "handoffConditionTimeout": 0,
+    "resetOffsetAutomatically": false,
+    "segmentWriteOutMediumFactory": null,
+    "workerThreads": null,
+    "chatThreads": null,
+    "chatRetries": 8,
+    "httpTimeout": "PT10S",
+    "shutdownTimeout": "PT80S",
+    "offsetFetchPeriod": "PT30S",
+    "intermediateHandoffPeriod": "P2147483647D",
+    "logParseExceptions": false,
+    "maxParseExceptions": 2147483647,
+    "maxSavedParseExceptions": 0,
+    "skipSequenceNumberAvailabilityCheck": false
+  },
+  "ioConfig": {
+    "topic": "osprey.execution_results",
+    "replicas": 2,
+    "taskCount": 32,
+    "taskDuration": "PT3600S",
+    "consumerProperties": {
+      "bootstrap.servers": "<PUT_HOSTNAME_HERE>:9092"
+    },
+    "pollTimeout": 100,
+    "startDelay": "PT5S",
+    "period": "PT30S",
+    "useEarliestOffset": false,
+    "completionTimeout": "PT1800S",
+    "lateMessageRejectionPeriod": null,
+    "earlyMessageRejectionPeriod": null,
+    "stream": "osprey.execution_results",
+    "useEarliestSequenceNumber": false
+  },
+  "context": null,
+  "suspended": false
+}

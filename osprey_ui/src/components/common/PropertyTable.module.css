@@ -1,0 +1,55 @@
+.propertyTable {
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  height: 100%;
+  border-radius: 8px;
+}
+
+.darkRow {
+  composes: row;
+  background-color: var(--background-secondary);
+}
+
+.keyValuePair {
+  flex-grow: 1;
+  max-width: 33.3%;
+  text-align: left;
+  padding: 4px;
+}
+
+.keyValuePair:first-child {
+  padding-left: 8px;
+}
+
+.highlightedCell {
+  background-color: var(--link-light-hover);
+  border-radius: 8px;
+}
+
+.key {
+  height: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.highlightDot {
+  margin-left: 4px;
+}
+
+.value {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding-right: 2px;
+}
+
+.value_wrapped {
+  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: break-word;
+  padding-right: 2px;
+}

@@ -1,0 +1,11 @@
+2 errors occurred while validating:
+[1/2] error: invalid config value at `test1.str_field`
+--> config.yaml:2:15
+     |
+   2 |     str_field: []
+     |                ^ str type expected (type=type_error.str)
+[2/2] error: invalid config value at `test2.int_field`
+--> config.yaml:4:15
+     |
+   4 |     int_field: hello
+     |                ^ value is not a valid integer (type=type_error.integer)

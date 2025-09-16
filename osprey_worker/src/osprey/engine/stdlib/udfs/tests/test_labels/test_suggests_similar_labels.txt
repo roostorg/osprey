@@ -1,0 +1,9 @@
+error: unknown label
+--> main.sml:7:33
+     |
+   7 |         LabelAdd(entity=E, label='my_lable'),
+     |                                  ^ there is no `my_lable` label in the config, did you mean `my_label`?
+--> (1) config.yaml:1:1
+     |
+   1 | {"labels": {"my_label": {"valid_for": ["MyEntity"]}}}
+     |  ^ add the label to the config here

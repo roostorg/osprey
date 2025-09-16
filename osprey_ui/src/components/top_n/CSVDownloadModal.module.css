@@ -1,0 +1,20 @@
+.csvButton {
+  margin-left: 6px;
+}
+
+.warning {
+  white-space: pre-line;
+}
+
+.radioOption {
+  margin-bottom: 6px;
+}
+
+.limitInput {
+  margin-top: 8px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+}

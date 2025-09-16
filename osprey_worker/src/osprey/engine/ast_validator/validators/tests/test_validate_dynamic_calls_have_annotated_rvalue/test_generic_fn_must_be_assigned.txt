@@ -1,0 +1,7 @@
+error: `EntityJson(...)` returns a dynamic result, and thus must be assigned to a variable with a type annotation
+--> main.sml:1:7
+     |
+   1 | Foo = [EntityJson(type='User', path='$.foo')]
+     |        ^ assign it to a variable before using it:
+              | `SomeVariable: Entity[str] = EntityJson(type='User', path='$.foo')`
+              | `Foo = [SomeVariable]`

@@ -1,0 +1,5 @@
+error: invalid `granularity_seconds`
+--> main.sml:1:76
+     |
+   1 | GetTimedeltaBucket(timedelta=TimeDelta(seconds=1136715),granularity_seconds=0)
+     |                                                                             ^ granularity_seconds can not be less than 3600 (1 hour)

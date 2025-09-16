@@ -1,0 +1,51 @@
+.menuWrapper {
+  background-color: var(--background-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-right: 16px;
+}
+
+.filterSelect {
+  width: 120px;
+}
+
+.menuWrapper :global(.ant-menu) {
+  line-height: 38px;
+}
+
+.menuWrapper :global(.ant-menu) :global(.ant-menu-item) {
+  font-weight: 600;
+}
+
+.menuWrapper :global(.ant-menu) :global(.ant-menu-item):hover {
+  color: var(--brand-primary);
+  border-bottom: 2px solid var(--brand-primary);
+}
+
+.menuWrapper :global(.ant-menu) :global(.ant-menu-item.ant-menu-item-selected) {
+  color: var(--brand-primary);
+  border-bottom: 2px solid var(--brand-primary);
+}
+
+.regexButton {
+  --color: black;
+  margin: 0;
+  padding: 0 6px;
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--color), transparent 80%);
+  color: color-mix(in srgb, var(--color), transparent 60%);
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  &:hover {
+    background: color-mix(in srgb, var(--color), transparent 95%);
+    border: 1px solid color-mix(in srgb, var(--color), transparent 75%);
+    color: color-mix(in srgb, var(--color), transparent 50%);
+  }
+  &[data-enabled='true'] {
+    border: 1px solid color-mix(in srgb, var(--brand-primary), transparent 30%);
+    &:hover {
+      border: 1px solid color-mix(in srgb, var(--brand-primary), transparent 60%);
+    }
+  }
+}

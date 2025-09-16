@@ -1,0 +1,6 @@
+error: a literal string or format string is required here
+--> main.sml:3:13
+     |
+   3 | Require(rule=Foo)
+     |              ^ you can only use literal strings, for example:
+                    | `Require(rule="hello.sml")` or `Require(rule=f"actions/{ActionName}.sml")`

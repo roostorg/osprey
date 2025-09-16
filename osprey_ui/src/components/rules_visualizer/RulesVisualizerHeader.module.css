@@ -1,0 +1,29 @@
+.autocomplete {
+  width: 510px;
+}
+
+.header {
+  padding: 1rem;
+  border-bottom: 1px var(--divider) solid;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+}
+
+.leftHeaderContainer {
+  flex: 3;
+}
+
+.rightHeaderContainer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex: 2;
+}
+
+.drawerBody {
+  padding: 1rem;
+  text-align: center;
+}

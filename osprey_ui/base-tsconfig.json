@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "react": [
+        "./node_modules/@types/react"
+      ],
+      "react-router": [
+        "./node_modules/@types/react-router"
+      ]
+    }
+  }
+}

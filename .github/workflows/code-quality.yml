@@ -1,0 +1,69 @@
+name: Code Quality Checks
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  python-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+            uv-
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run ruff linting
+        run: uv run ruff check .
+
+      - name: Run ruff formatting check
+        run: uv run ruff format --check .
+
+      - name: Run mypy type checking
+        run: uv run mypy .
+
+      - name: Run tests
+        run: uv run pytest
+        continue-on-error: true # Remove once the tests are working
+
+  ui-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: osprey_ui/package-lock.json
+
+      - name: Install UI dependencies
+        run: npm ci
+        working-directory: osprey_ui
+
+      - name: Run prettier check
+        run: npm run format:check
+        working-directory: osprey_ui

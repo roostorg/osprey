@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package osprey.rpc.pigeon.tests.v1;
+
+message ScalarRoutingValueRequest {
+    uint64 routing_value = 1;
+}
+
+message ListRoutingValueRequest {
+    repeated uint64 routing_values = 1;
+}
+
+message MapRoutingValueRequest {
+    map<uint64, string> routing_values = 1;
+}
+
+message Foo {
+    uint64 bar = 1;
+}
+
+message MapMessageRoutingValueRequest {
+    map<uint64, Foo> routing_values = 1;
+}
+
+message ScalarRoutingValueResponse {
+    uint64 routing_value = 1;
+}
+
+message ListRoutingValueResponse {
+    repeated uint64 routing_values = 1;
+}
+
+message MapRoutingValueResponse {
+    map<uint64, string> routing_values = 1;
+}
+
+message MapMessageRoutingValueResponse {
+    map<uint64, Foo> routing_values = 1;
+}
+
+service TestService {
+    rpc ScalarRoutingValue(ScalarRoutingValueRequest) returns (ScalarRoutingValueResponse);
+    rpc ListRoutingValue(ListRoutingValueRequest) returns (ListRoutingValueResponse);
+    rpc MapRoutingValue(MapRoutingValueRequest) returns (MapRoutingValueResponse);
+    rpc MapMessageRoutingValue(MapMessageRoutingValueRequest) returns (MapMessageRoutingValueResponse);
+}

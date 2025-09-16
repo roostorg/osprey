@@ -1,0 +1,39 @@
+.eventStreamPanel {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.listWrapper {
+  position: relative;
+  flex-grow: 1;
+  display: flex;
+}
+
+.eventStreamList {
+  width: 100%;
+}
+
+.virtualizedList {
+  outline: none;
+}
+
+.iconText {
+  margin-right: 8px;
+}
+
+.listItemWrapper {
+  padding: 0 16px;
+}
+
+.listView:hover {
+  background-color: var(--background-secondary);
+}
+
+.buttonContainer {
+  display: flex;
+}
+
+.viewSwitchButton {
+  margin-right: 6px;
+}

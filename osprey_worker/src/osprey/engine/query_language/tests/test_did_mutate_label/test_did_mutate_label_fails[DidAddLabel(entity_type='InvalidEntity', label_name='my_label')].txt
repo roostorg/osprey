@@ -1,0 +1,5 @@
+error: label is not valid for this entity type
+--> main.sml:1:24
+     |
+   1 | DidAddLabel(entity_type='InvalidEntity', label_name='my_label')
+     |                         ^ entity has type `InvalidEntity`, this label is valid for `MyEntity`

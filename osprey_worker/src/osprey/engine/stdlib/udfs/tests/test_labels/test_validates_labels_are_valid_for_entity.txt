@@ -1,0 +1,73 @@
+8 errors occurred while validating:
+[1/8] error: label is not valid for this entity type
+--> main.sml:14:24
+     |
+  14 |         LabelAdd(entity=E2, label='for_a'),
+     |                         ^ entity has type `TypeB`, this label is valid for `TypeA`, `Other`
+--> (1) config.yaml:1:35
+     |
+   1 | {"labels": {"for_a": {"valid_for": ["TypeA", "Other"]}, "for_b": {"valid_for": ["TypeB", "Other"]}, "for_both": {"valid_for": ["TypeA", "TypeB"]}}}
+     |                                    ^ valid types for this label are set here
+[2/8] error: label is not valid for this entity type
+--> main.sml:15:27
+     |
+  15 |         LabelRemove(entity=E2, label='for_a'),
+     |                            ^ entity has type `TypeB`, this label is valid for `TypeA`, `Other`
+--> (1) config.yaml:1:35
+     |
+   1 | {"labels": {"for_a": {"valid_for": ["TypeA", "Other"]}, "for_b": {"valid_for": ["TypeB", "Other"]}, "for_both": {"valid_for": ["TypeA", "TypeB"]}}}
+     |                                    ^ valid types for this label are set here
+[3/8] error: label is not valid for this entity type
+--> main.sml:16:24
+     |
+  16 |         LabelAdd(entity=E1, label='for_b'),
+     |                         ^ entity has type `TypeA`, this label is valid for `TypeB`, `Other`
+--> (1) config.yaml:1:79
+     |
+   1 | {"labels": {"for_a": {"valid_for": ["TypeA", "Other"]}, "for_b": {"valid_for": ["TypeB", "Other"]}, "for_both": {"valid_for": ["TypeA", "TypeB"]}}}
+     |                                                                                ^ valid types for this label are set here
+[4/8] error: label is not valid for this entity type
+--> main.sml:17:27
+     |
+  17 |         LabelRemove(entity=E1, label='for_b'),
+     |                            ^ entity has type `TypeA`, this label is valid for `TypeB`, `Other`
+--> (1) config.yaml:1:79
+     |
+   1 | {"labels": {"for_a": {"valid_for": ["TypeA", "Other"]}, "for_b": {"valid_for": ["TypeB", "Other"]}, "for_both": {"valid_for": ["TypeA", "TypeB"]}}}
+     |                                                                                ^ valid types for this label are set here
+[5/8] error: unknown label
+--> main.sml:20:34
+     |
+  20 |         LabelAdd(entity=E1, label='fake_label'),
+     |                                   ^ there is no `fake_label` label in the config
+--> (1) config.yaml:1:1
+     |
+   1 | {"labels": {"for_a": {"valid_for": ["TypeA", "Other"]}, "for_b": {"valid_for": ["TypeB", "Other"]}, "for_both": {"valid_for": ["TypeA", "TypeB"]}}}
+     |  ^ add the label to the config here
+[6/8] error: unknown label
+--> main.sml:21:37
+     |
+  21 |         LabelRemove(entity=E1, label='fake_label'),
+     |                                      ^ there is no `fake_label` label in the config
+--> (1) config.yaml:1:1
+     |
+   1 | {"labels": {"for_a": {"valid_for": ["TypeA", "Other"]}, "for_b": {"valid_for": ["TypeB", "Other"]}, "for_both": {"valid_for": ["TypeA", "TypeB"]}}}
+     |  ^ add the label to the config here
+[7/8] error: unknown label
+--> main.sml:22:34
+     |
+  22 |         LabelAdd(entity=E2, label='fake_label'),
+     |                                   ^ there is no `fake_label` label in the config
+--> (1) config.yaml:1:1
+     |
+   1 | {"labels": {"for_a": {"valid_for": ["TypeA", "Other"]}, "for_b": {"valid_for": ["TypeB", "Other"]}, "for_both": {"valid_for": ["TypeA", "TypeB"]}}}
+     |  ^ add the label to the config here
+[8/8] error: unknown label
+--> main.sml:23:37
+     |
+  23 |         LabelRemove(entity=E2, label='fake_label'),
+     |                                      ^ there is no `fake_label` label in the config
+--> (1) config.yaml:1:1
+     |
+   1 | {"labels": {"for_a": {"valid_for": ["TypeA", "Other"]}, "for_b": {"valid_for": ["TypeB", "Other"]}, "for_both": {"valid_for": ["TypeA", "TypeB"]}}}
+     |  ^ add the label to the config here

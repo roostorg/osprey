@@ -1,0 +1,21 @@
+2 errors occurred while validating:
+[1/2] error: conflicting generic types
+--> main.sml:3:70
+     |
+   3 | FooUnwrapped: str = ResolveOptional(optional_value=Foo, default_value=1)
+     |                                                                       ^ has type `int`, expected `str`
+~~~ argument `optional_value` has type `str`
+--> (1) main.sml:3:51
+     |
+   3 | FooUnwrapped: str = ResolveOptional(optional_value=Foo, default_value=1)
+     |                                                    ^
+[2/2] error: conflicting generic types
+--> main.sml:5:70
+     |
+   5 | BarUnwrapper: int = ResolveOptional(optional_value=Bar, default_value='test')
+     |                                                                       ^ has type `str`, expected `int`
+~~~ argument `optional_value` has type `int`
+--> (1) main.sml:5:51
+     |
+   5 | BarUnwrapper: int = ResolveOptional(optional_value=Bar, default_value='test')
+     |                                                    ^

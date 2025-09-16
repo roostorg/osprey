@@ -1,0 +1,9 @@
+error: incompatible types in assignment
+--> main.sml:3:20
+     |
+   3 | FooUnwrapped: str = ResolveOptional(optional_value=Foo)
+     |                     ^ has type `int`, expected `str`
+--> (1) main.sml:3:14
+     |
+   3 | FooUnwrapped: str = ResolveOptional(optional_value=Foo)
+     |               ^ expected `str` due to this

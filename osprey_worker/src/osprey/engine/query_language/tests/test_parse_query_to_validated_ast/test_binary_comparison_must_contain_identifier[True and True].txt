@@ -1,0 +1,13 @@
+error: one value must be a literal
+--> main.sml:1:8
+     |
+   1 | Query = True and True
+     |         ^ one side of the `and` must be a non-literal (non-constant) value
+--> (1) main.sml:1:8
+     |
+   1 | Query = True and True
+     |         ^ this is a literal value
+--> (2) main.sml:1:17
+     |
+   1 | Query = True and True
+     |                  ^ this is a literal value

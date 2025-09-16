@@ -1,0 +1,47 @@
+.viewContainer {
+  width: 100%;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+.udfDocsContainer {
+  max-height: 100%;
+  background-color: var(--background-primary);
+  border-left: 1px solid var(--divider);
+  border-right: 1px solid var(--divider);
+  padding: 16px;
+}
+
+.udfCategoryName {
+  margin-bottom: 16px;
+}
+
+.udfCategoryContainer {
+  margin-bottom: 40px;
+}
+
+.udfDetails {
+  margin-bottom: 32px;
+  padding-right: 128px;
+}
+
+.udfDetails > * {
+  margin-top: 8px;
+}
+
+.udfParamName {
+  border-radius: 4px;
+  background-color: var(--background-secondary-alt);
+  padding: 0 4px;
+}
+
+.methodSignatureHighlightedWrap {
+  overflow-wrap: break-word;
+}
+
+.methodSignatureDisplayArea {
+  white-space: pre-wrap;
+  background-color: var(--background-secondary-alt);
+  border-radius: 8px;
+  padding: 8px 80px 8px 8px;
+}

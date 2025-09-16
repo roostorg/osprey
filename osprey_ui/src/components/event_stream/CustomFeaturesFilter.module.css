@@ -1,0 +1,45 @@
+.featureFilter {
+  border-radius: 4px;
+  background-color: var(--link-light-hover);
+  margin-top: 8px;
+  margin-bottom: 16px;
+}
+
+.arrowIconWrapper {
+  left: unset;
+  right: 6px;
+}
+
+.arrowIconWrapperHidden {
+  display: none;
+}
+
+.collapseHeader {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  max-height: 32px;
+}
+
+.clearFilterButton {
+  height: unset;
+  font-size: 12px;
+  padding: 0 0 0 8px;
+}
+
+.contentWrapper {
+  display: flex;
+  flex-wrap: wrap;
+  max-height: 72px;
+  overflow: scroll;
+  padding: 8px 8px 2px;
+}
+
+.contentWrapperActive {
+  composes: contentWrapper;
+  border-top: 1px solid var(--link-muted);
+}
+
+.filterPill {
+  margin: 0 4px 6px 0;
+}

@@ -1,0 +1,10 @@
+.optionLabelWithInfo {
+  display: flex;
+  align-items: center;
+}
+
+.optionLabelWithInfo .feature {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

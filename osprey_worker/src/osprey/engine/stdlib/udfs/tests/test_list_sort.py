@@ -1,0 +1,22 @@
+from typing import Any, List, Optional
+
+import pytest
+
+from ....conftest import ExecuteFunction
+from ....osprey_udf.registry import UDFRegistry
+from ..list_sort import ListSort
+
+pytestmark = [pytest.mark.use_udf_registry(UDFRegistry.with_udfs(ListSort))]
+
+
+@pytest.mark.parametrize(
+    'input,expected_sorted_list',
+    [(['world', 'hello'], ['hello', 'world']), ([1, 3, 4, 2], [1, 2, 3, 4]), ([], []), ([None], [None])],
+)
+def test_list_length(execute: ExecuteFunction, input: Optional[List[Any]], expected_sorted_list: List[Any]) -> None:
+    data = execute(
+        f"""
+        Result = ListSort(list={input})
+        """
+    )
+    assert data == {'Result': expected_sorted_list}

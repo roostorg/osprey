@@ -1,0 +1,5 @@
+error: 1 missing keyword argument(s)
+--> main.sml:1:11
+     |
+   1 | Foo: str = JsonData()
+     |            ^ the following keyword arguments were not provided: [`path`]

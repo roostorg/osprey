@@ -1,0 +1,18 @@
+.datePickerWrapper {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+.interval {
+  cursor: default;
+  display: flex;
+  align-items: center;
+}
+
+.editIcon {
+  margin-left: 6px;
+  transition: 0.25s ease all;
+  cursor: pointer;
+}

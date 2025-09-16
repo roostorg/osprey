@@ -1,0 +1,11 @@
+2 errors occurred while validating:
+[1/2] error: failed to validate argument `path` for `EntityJson(...)`
+--> main.sml:5:37
+     |
+   5 | EntityJson(type='ExampleType2', path="invalid path")
+     |                                      ^ error: Parse error at 1:8 near token path (ID)
+[2/2] error: failed to validate argument `path` for `EntityJson(...)`
+--> main.sml:7:37
+     |
+   7 | EntityJson(type='ExampleType2', path="invalid path")
+     |                                      ^ error: Parse error at 1:8 near token path (ID)

@@ -1,0 +1,13 @@
+2 errors occurred while validating:
+[1/2] error: `USub()` not supported
+or String(value='s') is incorrect type
+--> main.sml:2:30
+     |
+   2 | UserId: str = UDFWithUSub(foo=-'s')
+     |                               ^ currently only the USub UnaryOperation is supported in arguments
+                                     | the operand must be of type `int` or `float`
+[2/2] error: invalid argument type: `UnaryOperation`
+--> main.sml:2:30
+     |
+   2 | UserId: str = UDFWithUSub(foo=-'s')
+     |                               ^ expected type `Number`

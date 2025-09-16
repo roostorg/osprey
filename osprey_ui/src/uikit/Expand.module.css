@@ -1,0 +1,36 @@
+.expandContainer {
+  position: relative;
+  transition: max-height 0.25s;
+}
+
+.expandable {
+  display: block;
+  height: 50%;
+  width: 100%;
+  position: absolute;
+  bottom: 0;
+  pointer-events: none;
+  opacity: 1;
+  transition: 0.2s ease-in-out opacity;
+}
+
+.expanded.expandable {
+  opacity: 0;
+}
+
+.expandButton {
+  padding: 0;
+  height: auto;
+  margin: 4px 0;
+}
+
+.expandButton:hover {
+  background-color: transparent;
+}
+
+.remainingRowsPill {
+  background-color: var(--background-tertiary);
+  border-radius: 4px;
+  text-transform: uppercase;
+  padding: 2px;
+}

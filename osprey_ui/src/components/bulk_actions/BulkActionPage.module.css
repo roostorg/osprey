@@ -1,0 +1,22 @@
+.viewContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.content {
+  padding: 25px;
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 25%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+}

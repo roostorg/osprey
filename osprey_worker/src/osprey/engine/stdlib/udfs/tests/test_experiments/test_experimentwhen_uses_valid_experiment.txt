@@ -1,0 +1,5 @@
+error: experiment 'A' not defined
+--> main.sml:4:78
+     |
+   4 | EW = ExperimentWhen(control=[True, True], branch_b=[False, False], experiment=A)
+     |                                                                               ^

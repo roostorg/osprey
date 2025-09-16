@@ -1,0 +1,11 @@
+2 errors occurred while validating:
+[1/2] error: unknown label
+--> main.sml:6:30
+     |
+   6 | L3 = HasLabel(entity=E, label='my_lable', status='added')
+     |                               ^ unknown label `my_lable`, did you mean `my_label`?
+[2/2] error: unknown label
+--> main.sml:8:30
+     |
+   8 | L4 = HasLabel(entity=E, label='not_a_label_aoeuaouaoeu', status='added')
+     |                               ^ unknown label `not_a_label_aoeuaouaoeu`

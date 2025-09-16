@@ -1,0 +1,6 @@
+error: import rules are not sorted
+--> main.sml:1:13
+     |
+   1 | Import(rules=['c.sml', 'b.sml', 'a.sml'])
+     |              ^ sort imports lexicographically:
+                    | `Import(rules=['a.sml', 'b.sml', 'c.sml'])`

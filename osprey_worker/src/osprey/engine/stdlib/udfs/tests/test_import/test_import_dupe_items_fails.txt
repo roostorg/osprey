@@ -1,0 +1,14 @@
+error: import has a duplicated items for rule: a.sml
+--> main.sml:1:14
+     |
+   1 | Import(rules=['a.sml', 'a.sml', 'a.sml'])
+     |               ^ first import attempted here
+~~~ 2 duplicate(s) found here
+--> (1) main.sml:1:23
+     |
+   1 | Import(rules=['a.sml', 'a.sml', 'a.sml'])
+     |                        ^
+--> (2) main.sml:1:32
+     |
+   1 | Import(rules=['a.sml', 'a.sml', 'a.sml'])
+     |                                 ^

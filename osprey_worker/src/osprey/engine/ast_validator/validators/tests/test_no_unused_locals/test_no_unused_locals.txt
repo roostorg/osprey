@@ -1,0 +1,11 @@
+2 errors occurred while validating:
+[1/2] error: unused local variable: `_Foo`
+--> main.sml:2:0
+     |
+   2 | _Foo = 1
+     | ^ this variable is not used anywhere, and thus has no effect. either delete or comment it out
+[2/2] error: unused local variable: `_Bar`
+--> main.sml:3:0
+     |
+   3 | _Bar = 2
+     | ^ this variable is not used anywhere, and thus has no effect. either delete or comment it out

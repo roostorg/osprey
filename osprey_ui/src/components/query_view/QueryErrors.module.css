@@ -1,0 +1,18 @@
+.errorAlertWrapper {
+  padding: 10px;
+  max-height: 250px;
+  overflow: hidden;
+}
+
+.errorTooltip {
+  width: auto;
+}
+
+.errorCount {
+  cursor: pointer;
+}
+
+.error {
+  white-space: pre;
+  font-family: monospace;
+}

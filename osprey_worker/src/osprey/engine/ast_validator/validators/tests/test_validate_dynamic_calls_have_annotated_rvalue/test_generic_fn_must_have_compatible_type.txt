@@ -1,0 +1,5 @@
+error: annotation is incompatible with generic return type
+--> main.sml:1:3
+     |
+   1 | A: str = EntityJson(type='User', path='$.foo')
+     |    ^ annotation is incompatible with `EntityJson` return type `Entity[~_T]`

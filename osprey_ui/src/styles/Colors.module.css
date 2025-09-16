@@ -1,0 +1,49 @@
+:root {
+  /* Backgrounds */
+  --background-primary: #ffffff;
+  --background-secondary: #f7f8f9;
+  --background-secondary-alt: #f2f3f5;
+  --background-tertiary: #dbdcdf;
+
+  /* Text for Light Backgrounds */
+  --text-light-headings-primary: #252527;
+  --text-light-headings-secondary: #5f626d;
+  --text-light-primary: #3c3c40;
+  --text-light-secondary: #656e7b;
+  --text-light-disabled: #a8aeb8;
+
+  /* Text for Dark Backgrounds */
+  --text-dark-headings: #ffffff;
+  --text-dark-primary: #ebebeb;
+  --text-dark-secondary: #cdd0d6;
+  --text-dark-disabled: #858e9b;
+
+  /* Brand */
+  --brand-primary: #1227ce;
+  --brand-dark: #0c1b8d;
+
+  /* Links */
+  --link-primary: #0075e0;
+  --link-dark: #1153a6;
+  --link-muted: #cae0f9;
+  --link-white: #ffffff;
+  --link-grey: #252527;
+  --link-light-hover: #e4effc;
+
+  /* Status */
+  --success-primary: #3e7025;
+  --success-muted: #e6f2df;
+  --error-primary: #b23a32;
+  --error-muted: #f5dedc;
+  --warning-primary: #faad14;
+  --warning-muted: #feefd2;
+
+  /* Icons */
+  --icon-primary: #535a65;
+  --icon-active: #25282d;
+  --icon-hover: #3c4149;
+  --icon-muted: #9aa1ac;
+
+  /* Dividers */
+  --divider: #dbdcdf;
+}

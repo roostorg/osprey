@@ -1,0 +1,5 @@
+error: invalid `granularity_seconds`
+--> main.sml:1:60
+     |
+   1 | GetTimestampBucket(timestamp=1448476649,granularity_seconds=0)
+     |                                                             ^ granularity_seconds can not be less than 3600 (1 hour)

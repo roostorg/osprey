@@ -1,0 +1,11 @@
+2 errors occurred while validating:
+[1/2] error: invalid argument type: `Name`
+--> main.sml:4:8
+     |
+   4 | Path2 = Path
+     |         ^ expected type `String`
+[2/2] error: invalid argument type: `Name`
+--> main.sml:5:8
+     |
+   5 | Type2 = Type
+     |         ^ expected type `String`

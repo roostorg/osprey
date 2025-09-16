@@ -1,0 +1,87 @@
+.queryPanel {
+  padding: 8px 16px;
+  z-index: 2;
+  border-bottom: 2px solid var(--divider);
+  background-color: var(--background-primary);
+}
+
+.textareaWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 8px;
+  position: relative;
+}
+
+.textareaWrapper :global(.ant-input.ant-select-selection-search-input) {
+  background-color: var(--background-secondary);
+  border-color: var(--divider);
+}
+
+.textareaWrapper :global(.ant-input) {
+  box-shadow: none !important;
+  min-height: 80px !important;
+}
+
+.autoComplete {
+  width: 100%;
+}
+
+.autoComplete textarea {
+  overflow-x: hidden;
+  font-size: 12px;
+  line-height: 20px;
+  font-weight: 500;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+  color: transparent;
+  caret-color: var(--text-light-primary);
+}
+
+.submitButton {
+  width: 100%;
+  border: 0;
+}
+
+.overlay {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  top: 0;
+  pointer-events: none;
+  font-size: 12px;
+  padding: 4px 11px;
+  border: 1px solid transparent;
+}
+
+.highlightedWrap {
+  overflow-wrap: break-word;
+}
+
+.displayArea {
+  white-space: pre-wrap;
+}
+
+.intervalSelect :global(.ant-select) {
+  width: 100% !important;
+}
+
+.intervalSelect :global(.ant-select-selector) {
+  color: var(--text-light-secondary);
+  height: 26px !important;
+  --antd-wave-shadow-color: none !important;
+  box-shadow: none !important;
+  margin-bottom: 8px;
+  border-top: none !important;
+  border-color: var(--divider) !important;
+  border-radius: 0 0 4px 4px !important;
+  background-color: var(--background-secondary) !important;
+  font-weight: 700 !important;
+}
+
+.intervalSelect :global(.ant-select-selection-item) {
+  line-height: 26px !important;
+}
+
+.intervalSelect :global(.ant-select-arrow) {
+  margin-top: -10px !important;
+}

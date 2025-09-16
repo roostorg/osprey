@@ -1,0 +1,23 @@
+4 errors occurred while validating:
+[1/4] error: unknown label status
+--> main.sml:3:49
+     |
+   3 | L1 = HasLabel(entity=E, label='my_label', status='manually_added')
+     |                                                  ^ expected `added` or `removed`, got `manually_added`
+                                                        | to specify a manually set label, set `manual=True`
+[2/4] error: unknown label status
+--> main.sml:4:49
+     |
+   4 | L2 = HasLabel(entity=E, label='my_label', status='manually_removed')
+     |                                                  ^ expected `added` or `removed`, got `manually_removed`
+                                                        | to specify a manually set label, set `manual=True`
+[3/4] error: unknown label status
+--> main.sml:5:49
+     |
+   5 | L3 = HasLabel(entity=E, label='my_label', status='gibberish_status')
+     |                                                  ^ expected `added` or `removed`, got `gibberish_status`
+[4/4] error: unknown label status
+--> main.sml:6:49
+     |
+   6 | L4 = HasLabel(entity=E, label='my_label', status='ADDED')
+     |                                                  ^ expected `added` or `removed`, got `ADDED`

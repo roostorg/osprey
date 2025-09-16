@@ -1,0 +1,9 @@
+error: unexpected bucket 'c', this bucket must match a bucket defined in experiment 'A'
+--> main.sml:7:66
+     |
+   7 | EW = ExperimentWhen(control=[True, True, True], b=[True, True], c=[True], experiment=A)
+     |                                                                   ^
+--> (1) main.sml:4:23
+     |
+   4 |     entity=E1, buckets=['control', 'b'], bucket_sizes=[5, 5], version=1,
+     |                        ^

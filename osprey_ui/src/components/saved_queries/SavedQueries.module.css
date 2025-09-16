@@ -1,0 +1,27 @@
+.viewContainer {
+  height: 100%;
+  width: 100%;
+  max-height: calc(100vh - 42px);
+  background-color: var(--background-primary);
+  display: flex;
+  overflow: hidden;
+}
+
+.header {
+  padding: 14px;
+  border-bottom: 1px var(--divider) solid;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.savedQueriesContainer {
+  width: 900px;
+  height: 100%;
+  margin: 0 auto;
+  border-left: 1px solid var(--divider);
+  border-right: 1px solid var(--divider);
+  display: flex;
+  flex-direction: column;
+}

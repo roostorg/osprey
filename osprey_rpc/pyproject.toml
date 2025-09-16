@@ -1,0 +1,7 @@
+[project]
+name = "osprey-rpc"
+version = "0.1.0"
+description = "RPC/protobuf pythong bindings for Osprey"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []

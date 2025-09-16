@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package osprey.rpc.common.v1;
+
+// The following are protos for TakeData operations for Osprey data services.
+// Please note that these are redefined in each service file. This is because
+// prost/pigeon-build were not properly generating the `osprey.rpc.commom.v1.rs`
+// file, causing the objects to not be visible. I spent an *unholy* amount of time
+// trying to fix this tooling issue and decided it was not worth the effort.
+//
+// I'm leaving the protos here and comments in the respective build.rs files
+// for a later date when someone (probably myself) wants to revisit this in the future.
+
+message TakeDataRequest {
+  string key = 1;
+}
+
+message Data {
+  bytes bytes = 1;
+}
+
+message TakeDataResponse {
+  Data data = 2;
+}

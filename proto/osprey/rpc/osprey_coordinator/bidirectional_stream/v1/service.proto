@@ -1,0 +1,70 @@
+syntax = "proto3";
+package osprey.rpc.osprey_coordinator.bidirectional_stream.v1;
+
+
+import "osprey/rpc/common/v1/execution_result.proto";
+import "osprey/rpc/common/v1/verdicts.proto";
+import "google/protobuf/timestamp.proto";
+
+service OspreyCoordinatorService {
+  rpc OspreyBidirectionalStream (stream Request) returns (stream OspreyCoordinatorAction);
+}
+
+
+
+message OspreyCoordinatorAction {
+  uint64 ack_id = 1;
+  uint64 action_id = 2;
+  string action_name = 3;
+
+  oneof action_data {
+    bytes json_action_data = 4;
+    bytes proto_action_data = 5;
+  }
+
+  oneof secret_data {
+    bytes json_secret_data = 7;  // this will soon be replaced by proto refactors
+  }
+
+  google.protobuf.Timestamp timestamp = 6;
+}
+
+
+message Request {
+  oneof request {
+    ActionRequest action_request = 1;
+    Disconnect disconnect = 2;
+
+  }
+}
+
+message ClientDetails {
+  string id = 1;
+}
+
+message Disconnect {
+  AckOrNack ack_or_nack = 1;
+}
+
+message ActionRequest {
+  oneof action_request {
+    ClientDetails initial = 1;
+    AckOrNack ack_or_nack = 2;
+  }
+}
+
+message Ack {
+  osprey.rpc.common.v1.ExecutionResult execution_result = 1;
+  osprey.rpc.common.v1.Verdicts verdicts = 2;
+}
+
+message Nack{}
+
+message AckOrNack {
+  uint64 ack_id = 1;
+  oneof ack_or_nack{
+    Ack ack = 2;
+    Nack nack = 3;
+  }
+
+}

@@ -1,0 +1,43 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.trigger {
+  color: var(--text-light-secondary);
+  font-family: monospace;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.content {
+  padding: 8px;
+  display: flex;
+  gap: 12px;
+  flex-direction: column;
+  max-width: 480px;
+}
+
+.title {
+  display: flex;
+  flex-direction: column;
+}
+
+.name {
+  font-weight: bold;
+}
+
+.origin {
+  font-style: italic;
+}
+
+.snippet {
+  font-family: monospace;
+  font-size: 11px;
+  background: var(--background-secondary-alt);
+  padding: 8px;
+  white-space: pre;
+  overflow-x: auto;
+}

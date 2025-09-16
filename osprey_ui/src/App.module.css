@@ -1,0 +1,77 @@
+@import './styles/Colors.module.css';
+
+.spinner {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:global(body) {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text-light-primary);
+  line-height: 20px;
+}
+
+/* Global Ant Style Overrides, Use Sparingly! */
+
+:global(:last-child.ant-collapse-item) {
+  border-bottom: none;
+}
+
+:global(.ant-drawer-body) {
+  padding: 0;
+}
+
+:global(textarea) {
+  resize: none;
+}
+
+:global(.ant-modal-content) {
+  border-radius: 8px;
+}
+
+:global(.ant-modal-header) {
+  border-radius: 8px 8px 0 0;
+}
+
+:global(.ant-modal-footer) {
+  border-radius: 0 0 8px 8px;
+}
+
+:global(.ant-btn) > span {
+  display: flex;
+  align-items: center;
+}
+
+:global(.ant-btn.ant-btn-link) {
+  user-select: text !important;
+}
+
+:global(.ant-row.ant-form-item) {
+  margin-bottom: 4px !important;
+}
+
+:global(.ant-col.ant-form-item-label) {
+  padding-bottom: 4px;
+}
+
+:global(.ant-form-item-label) > label {
+  text-transform: uppercase;
+  font-weight: 600;
+  font-size: 12px !important;
+  color: var(--text-light-headings-primary);
+}
+
+:global(.ant-btn-link) {
+  color: var(--link-primary);
+}
+
+:global(.ant-btn) > span {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  display: block;
+}

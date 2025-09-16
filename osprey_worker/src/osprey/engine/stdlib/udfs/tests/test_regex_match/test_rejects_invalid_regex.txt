@@ -1,0 +1,5 @@
+error: invalid regex pattern
+--> main.sml:1:25
+     |
+   1 | Foo = RegexMatch(pattern="(", target="")
+     |                          ^ error: missing ), unterminated subpattern at position 0

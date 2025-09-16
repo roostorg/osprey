@@ -1,0 +1,60 @@
+.inlineFilter {
+  margin-right: 8px;
+}
+
+.featureFiltersContainer {
+  display: flex;
+  flex-wrap: nowrap;
+  background-color: var(--background-secondary);
+  align-items: center;
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.divider {
+  height: 12px;
+  width: 2px;
+  background-color: var(--text-light-headings-secondary);
+  margin: 0 16px;
+}
+
+.closeCircleIcon {
+  margin-left: 4px;
+}
+
+.featureFilters {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  flex: 1 1 auto;
+}
+
+.featureFilterMenu {
+  height: 20px;
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-size: 12px;
+  border: 2px solid var(--divider);
+  background-color: var(--background-primary);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.menuArrow {
+  transform: rotate(90deg);
+  margin-left: 2px;
+}
+
+.dropdownMenu {
+  padding: 16px;
+}
+
+.menuFeatureFilter {
+  margin-bottom: 16px;
+}
+
+.menuFeatureFilter:last-child {
+  margin-bottom: 0;
+}

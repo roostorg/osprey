@@ -1,0 +1,45 @@
+.tableWrapper {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--divider);
+  border-radius: 4px;
+  margin: 8px;
+}
+
+.tableWrapper:first-child {
+  margin-top: 0;
+}
+
+.tableWrapper :global(.ant-table-cell) {
+  padding: 6px !important;
+}
+
+.tableWrapper :global(.ant-table-column-sorters) {
+  padding: 0 !important;
+}
+
+.countColumn {
+  background-color: var(--background-secondary) !important;
+  text-align: right !important;
+  color: var(--text-light-primary);
+  width: 30%;
+}
+
+.selectHeaderCell {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 4px !important;
+}
+
+.countHeaderCell {
+  background-color: var(--background-tertiary) !important;
+}
+
+.countColumnTitle {
+  font-weight: 600;
+}
+
+.countColumnTitleWithTooltip {
+  gap: 8px;
+}

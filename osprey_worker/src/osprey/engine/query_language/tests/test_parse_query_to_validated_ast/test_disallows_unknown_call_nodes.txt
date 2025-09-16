@@ -1,0 +1,5 @@
+error: unknown function: `Foo`
+--> main.sml:1:8
+     |
+   1 | Query = Foo()
+     |         ^ called here

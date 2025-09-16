@@ -1,0 +1,34 @@
+.filterPillBase {
+  height: 20px;
+  border-radius: 8px;
+  padding: 2px 8px;
+  border: none;
+  font-size: 12px;
+}
+
+.filterPill {
+  composes: filterPillBase;
+  border: 2px solid var(--divider);
+}
+
+.filterPill:hover {
+  color: var(--brand-primary);
+  border: 2px solid var(--divider);
+}
+
+.filterPillSelected {
+  composes: filterPillBase;
+  background-color: var(--link-muted);
+  color: var(--brand-primary);
+  border: 2px solid transparent;
+}
+
+.filterPillSelected:hover {
+  background-color: var(--link-muted);
+  color: var(--brand-primary);
+  border: 2px solid transparent;
+}
+
+.closeCircleIcon {
+  margin-left: 8px;
+}

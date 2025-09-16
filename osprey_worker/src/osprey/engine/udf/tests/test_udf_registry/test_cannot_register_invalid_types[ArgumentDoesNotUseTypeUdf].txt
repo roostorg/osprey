@@ -1,0 +1,1 @@
+generic arguments type must have at least one generic item: UDF `ArgumentDoesNotUseTypeUdf` generic arguments type `ArgumentDoesNotUseTypeArgs[~A]` has no generic items

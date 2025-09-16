@@ -1,0 +1,5 @@
+error: the query must be a `BooleanOperation`, `BinaryComparison`, `UnaryOperation`, or a `Call`
+--> main.sml:1:8
+     |
+   1 | Query = 1
+     |         ^ you have provided a `Number`, try something like `ActionName != True`

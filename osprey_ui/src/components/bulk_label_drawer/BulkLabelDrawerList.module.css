@@ -1,0 +1,10 @@
+.virtualizedList {
+  border-top: 1px solid var(--divider);
+}
+
+.listItem {
+  background-color: var(--background-secondary);
+  border-bottom: 1px solid var(--divider);
+  padding-left: 16px;
+  justify-content: flex-start;
+}

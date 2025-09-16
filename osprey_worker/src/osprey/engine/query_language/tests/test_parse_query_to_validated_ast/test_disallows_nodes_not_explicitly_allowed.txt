@@ -1,0 +1,5 @@
+error: unexpected node type: `FormatString`
+--> main.sml:1:13
+     |
+   1 | Query = A == f'{B}'
+     |              ^

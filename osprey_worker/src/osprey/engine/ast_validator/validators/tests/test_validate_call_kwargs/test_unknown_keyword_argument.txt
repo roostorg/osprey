@@ -1,0 +1,11 @@
+2 errors occurred while validating:
+[1/2] error: invalid argument type: `Number`
+--> main.sml:1:25
+     |
+   1 | Foo: str = JsonData(path=1, bad=1)
+     |                          ^ expected type `String`
+[2/2] error: unknown keyword argument: `bad`
+--> main.sml:1:32
+     |
+   1 | Foo: str = JsonData(path=1, bad=1)
+     |                                 ^ valid keyword arguments are: [`coerce_type`, `path`, `required`]

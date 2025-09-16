@@ -1,0 +1,8 @@
+error: you cannot use the result of this function call because it has no return value
+--> main.sml:1:21
+     |
+   1 | Boz = Baz(qux=[1, 2, HasNoResult()])
+     |                      ^ this function has no result, and thus its result cannot be used:
+                            | - `HasNoResult(...)` is OK, however:
+                            | - `Foo = Bar + HasNoResult(...)` and
+                            | - `Bar(qux=HasNoResult(...))` are not OK

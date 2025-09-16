@@ -1,0 +1,5 @@
+error: unknown identifier
+--> main.sml:1:8
+     |
+   1 | Query = KLJHaflLasfkL == 'jake'
+     |         ^ `KLJHaflLasfkL` does not exist in any rule files. typo, perhaps?

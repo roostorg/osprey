@@ -1,0 +1,25 @@
+.tooltipContent {
+  color: inherit;
+  background-color: inherit;
+  position: relative;
+  z-index: 2;
+}
+
+.large {
+  padding: 16px;
+  width: 350px;
+  max-height: 500px;
+}
+
+.small {
+  padding: 8px;
+}
+
+.default {
+  background-color: var(--background-primary);
+}
+
+.brand {
+  background-color: var(--brand-primary);
+  color: var(--text-dark-headings);
+}

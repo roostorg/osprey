@@ -1,0 +1,5 @@
+error: unknown identifier
+--> main.sml:1:8
+     |
+   1 | Query = UserNaem == 'jake'
+     |         ^ unknown name `UserNaem`, did you mean `UserName`?

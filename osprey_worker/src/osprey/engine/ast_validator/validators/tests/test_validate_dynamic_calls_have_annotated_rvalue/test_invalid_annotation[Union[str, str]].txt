@@ -1,0 +1,10 @@
+error: duplicated type `str` seen in `Union[...]`
+--> main.sml:1:16
+     |
+   1 | Foo: Union[str, str] = JsonData(path='$.foo')
+     |                 ^
+~~~ union variant already specified here:
+--> (1) main.sml:1:11
+     |
+   1 | Foo: Union[str, str] = JsonData(path='$.foo')
+     |            ^

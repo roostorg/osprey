@@ -1,0 +1,12 @@
+{
+    "filter": {
+        "field": {
+            "dimensions": [
+                "A",
+                "B"
+            ],
+            "type": "columnComparison"
+        },
+        "type": "not"
+    }
+}

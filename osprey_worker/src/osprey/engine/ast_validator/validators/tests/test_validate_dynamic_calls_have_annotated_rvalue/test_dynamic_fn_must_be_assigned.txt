@@ -1,0 +1,7 @@
+error: `JsonData(...)` returns a dynamic result, and thus must be assigned to a variable with a type annotation
+--> main.sml:1:29
+     |
+   1 | Foo = Entity(type='User', id=JsonData(path='$.foo'))
+     |                              ^ assign it to a variable before using it:
+                                    | `SomeVariable: str = JsonData(path='$.foo')`
+                                    | `Foo = Entity(type='User', id=SomeVariable)`

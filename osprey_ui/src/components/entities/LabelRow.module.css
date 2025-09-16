@@ -1,0 +1,94 @@
+.label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 6px 0 28px;
+}
+
+.labelInfo {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  padding-left: 0;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+.header {
+  margin-top: 8px;
+}
+
+.labelTag {
+  margin-right: 6px;
+}
+
+.labelDescription {
+  padding: 0 1px 12px 28px;
+}
+
+.removeButton {
+  opacity: 0;
+  transition: 0.2s ease-in-out opacity;
+  color: var(--text-light-secondary);
+  position: relative;
+}
+
+.label:hover .removeButton {
+  opacity: 1;
+}
+
+.removeButton:hover {
+  color: var(--error-primary);
+  background-color: transparent;
+}
+
+.buttonContainer {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.iconSidebar {
+  position: relative;
+  width: 28px;
+  height: auto;
+}
+
+.iconWrapper {
+  position: relative;
+  left: -8px;
+  width: 32px;
+  height: 24px;
+  border-radius: 8px;
+  border: 1px solid var(--divider);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 4px;
+}
+
+.verticalLine {
+  width: 1px;
+  height: calc(100% - 24px);
+  background-color: var(--divider);
+  margin-left: 11px;
+}
+
+.cancelButton {
+  margin-right: 6px;
+}
+
+.historyCard {
+  display: flex;
+}
+
+.historyCardText {
+  padding-top: 4px;
+}
+
+.content {
+  margin-top: 8px;
+}

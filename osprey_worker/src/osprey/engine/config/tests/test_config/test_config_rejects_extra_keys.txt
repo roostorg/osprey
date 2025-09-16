@@ -1,0 +1,11 @@
+2 errors occurred while validating:
+[1/2] error: invalid config value at `test1.unknown_inner_key`
+--> config.yaml:2:4
+     |
+   2 |     unknown_inner_key: "hey"
+     |     ^ extra fields not permitted (type=value_error.extra)
+[2/2] error: invalid top-level config key `unknown_top_level_key`
+--> config.yaml:4:0
+     |
+   4 | unknown_top_level_key: "hello"
+     | ^ make sure there is a config model registered for the `unknown_top_level_key` key

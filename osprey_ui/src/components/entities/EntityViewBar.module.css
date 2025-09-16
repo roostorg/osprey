@@ -1,0 +1,15 @@
+.entityViewBar {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 2px solid var(--divider);
+}
+
+.entityType {
+  margin-right: 4px;
+}
+
+.entityId {
+  margin-right: 4px;
+}

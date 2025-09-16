@@ -1,0 +1,5 @@
+error: experiment revision must be zero or greater
+--> main.sml:5:14
+     |
+   5 |     revision=-1, local_bucketing=True
+     |               ^

@@ -1,0 +1,45 @@
+{
+    "filter": {
+        "fields": [
+            {
+                "dimensions": [
+                    "A",
+                    "B"
+                ],
+                "type": "columnComparison"
+            },
+            {
+                "fields": [
+                    {
+                        "dimensions": [
+                            "C",
+                            "D"
+                        ],
+                        "type": "columnComparison"
+                    },
+                    {
+                        "fields": [
+                            {
+                                "field": {
+                                    "dimension": "F",
+                                    "type": "selector",
+                                    "value": null
+                                },
+                                "type": "not"
+                            },
+                            {
+                                "dimension": "F",
+                                "lower": 2,
+                                "ordering": "numeric",
+                                "type": "bound"
+                            }
+                        ],
+                        "type": "and"
+                    }
+                ],
+                "type": "and"
+            }
+        ],
+        "type": "or"
+    }
+}

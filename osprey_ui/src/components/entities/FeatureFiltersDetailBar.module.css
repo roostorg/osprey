@@ -1,0 +1,30 @@
+.detailBar {
+  width: 100%;
+  background-color: var(--link-light-hover);
+  transition: 0.2s ease all;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.detailBarShown {
+  composes: detailBar;
+  padding: 2px 16px;
+  border-bottom: 2px solid var(--divider);
+  height: 24px;
+}
+
+.detailBarHidden {
+  composes: detailBar;
+  height: 0;
+  border-bottom: 0;
+}
+
+.filtersApplied {
+  margin-right: 8px;
+}
+
+.clearFilterButton {
+  font-size: 12px;
+  margin-left: 4px;
+}

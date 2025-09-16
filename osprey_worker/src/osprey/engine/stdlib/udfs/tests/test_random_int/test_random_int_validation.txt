@@ -1,0 +1,5 @@
+error: invalid `start`
+--> main.sml:1:20
+     |
+   1 | r = RandomInt(start=10,end=0)
+     |                     ^ the `start` value must be less than the `end` value

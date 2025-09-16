@@ -1,0 +1,73 @@
+.viewContainer {
+  height: 100%;
+  width: 100%;
+  max-height: calc(100vh - 42px);
+  background-color: var(--background-primary);
+  display: flex;
+  overflow: hidden;
+}
+
+.content {
+  width: 100%;
+  max-width: 1300px;
+  display: flex;
+  margin: 0 auto;
+}
+
+.header {
+  padding: 14px;
+  border-bottom: 1px var(--divider) solid;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.queryHistoryContainer {
+  max-height: 100%;
+  width: 70%;
+  flex-grow: 1;
+  background-color: var(--background-primary);
+  border-left: 1px solid var(--divider);
+  border-right: 1px solid var(--divider);
+  display: flex;
+  flex-direction: column;
+}
+
+.compactSavedQueriesContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 500px;
+  width: 30%;
+  margin: 16px;
+  border: 1px solid var(--divider);
+  border-radius: 8px;
+}
+
+.compactHeader {
+  height: 40px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  background-color: var(--background-secondary);
+  border-bottom: 1px solid var(--divider);
+}
+
+.footer {
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--background-secondary-alt);
+  border-top: 1px solid var(--divider);
+}
+
+.viewDetailButton:hover {
+  background-color: transparent;
+}
+
+.viewDetailButton:hover {
+  background-color: transparent;
+}

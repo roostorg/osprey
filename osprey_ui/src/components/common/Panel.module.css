@@ -1,0 +1,21 @@
+.panel {
+  background-color: var(--background-primary);
+  position: relative;
+}
+
+.panelHeader {
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--divider);
+}
+
+.title {
+  margin-left: 8px;
+}
+
+.titleLeft {
+  display: flex;
+  align-items: center;
+}

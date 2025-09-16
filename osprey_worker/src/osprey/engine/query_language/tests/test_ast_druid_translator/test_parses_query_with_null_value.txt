@@ -1,0 +1,19 @@
+{
+    "filter": {
+        "fields": [
+            {
+                "dimensions": [
+                    "A",
+                    "B"
+                ],
+                "type": "columnComparison"
+            },
+            {
+                "dimension": "C",
+                "type": "selector",
+                "value": null
+            }
+        ],
+        "type": "and"
+    }
+}

@@ -1,0 +1,58 @@
+5 errors occurred while validating:
+[1/5] error: unsupported operand types for `in`
+--> main.sml:1:8
+     |
+   1 | Query = (Foo > Bar) in (1 or 2)
+     |         ^ no implementation for `Any in bool`
+--> (1) main.sml:1:9
+     |
+   1 | Query = (Foo > Bar) in (1 or 2)
+     |          ^ has type `Any`
+--> (2) main.sml:1:24
+     |
+   1 | Query = (Foo > Bar) in (1 or 2)
+     |                         ^ has type `bool`
+[2/5] error: unsupported operand types for `>`
+--> main.sml:1:9
+     |
+   1 | Query = (Foo > Bar) in (1 or 2)
+     |          ^ no implementation for `int > str`
+--> (1) main.sml:1:9
+     |
+   1 | Query = (Foo > Bar) in (1 or 2)
+     |          ^ has type `int`
+--> (2) main.sml:2:0
+     |
+   2 | Foo = 1
+     | ^ variable `Foo` with incompatible type `int` originally defined here
+--> (3) main.sml:1:15
+     |
+   1 | Query = (Foo > Bar) in (1 or 2)
+     |                ^ has type `str`
+--> (4) main.sml:3:0
+     |
+   3 | Bar = 'hello'
+     | ^ variable `Bar` with incompatible type `str` originally defined here
+[3/5] error: one value must be a literal
+--> main.sml:1:24
+     |
+   1 | Query = (Foo > Bar) in (1 or 2)
+     |                         ^ one side of the `or` must be a non-literal (non-constant) value
+--> (1) main.sml:1:24
+     |
+   1 | Query = (Foo > Bar) in (1 or 2)
+     |                         ^ this is a literal value
+--> (2) main.sml:1:29
+     |
+   1 | Query = (Foo > Bar) in (1 or 2)
+     |                              ^ this is a literal value
+[4/5] error: unsupported operand type for `or`
+--> main.sml:1:24
+     |
+   1 | Query = (Foo > Bar) in (1 or 2)
+     |                         ^ has type `int`, expected `bool`
+[5/5] error: unsupported operand type for `or`
+--> main.sml:1:29
+     |
+   1 | Query = (Foo > Bar) in (1 or 2)
+     |                              ^ has type `int`, expected `bool`

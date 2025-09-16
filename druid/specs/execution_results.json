@@ -1,0 +1,35 @@
+{
+  "type": "kafka",
+  "spec": {
+    "ioConfig": {
+      "type": "kafka",
+      "consumerProperties": {
+        "bootstrap.servers": "kafka:29092"
+      },
+      "topic": "osprey.execution_results",
+      "inputFormat": {
+        "type": "json",
+        "useJsonNodeReader": false
+      }
+    },
+    "tuningConfig": {
+      "type": "kafka"
+    },
+    "dataSchema": {
+      "dataSource": "osprey.execution_results",
+      "timestampSpec": {
+        "column": "__timestamp",
+        "format": "iso"
+      },
+      "granularitySpec": {
+        "queryGranularity": "none",
+        "rollup": false,
+        "segmentGranularity": "hour"
+      },
+      "dimensionsSpec": {
+        "useSchemaDiscovery": true,
+        "dimensionExclusions": []
+      }
+    }
+  }
+}

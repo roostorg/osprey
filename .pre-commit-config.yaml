@@ -1,0 +1,57 @@
+fail_fast: true
+
+default_language_version:
+  python: python3.11
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: check-json
+      - id: check-toml
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.9
+    hooks:
+      - id: ruff
+        args: ["--fix", "--exit-non-zero-on-fix"]
+      - id: ruff-format
+
+  # Python type checking - mostly from https://github.com/astral-sh/uv-pre-commit/issues/14.
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: uv run mypy
+        types_or: [python, pyi]
+        language: system
+        pass_filenames: true
+        exclude: |
+          (?x)^(
+              .*/venv/.*$|
+              .*/setup\.py$|
+              .*_pb2\.py$|
+              .*_pb2\.pyi$|
+              .*_pb2_grpc\.py$|
+              .*/tests/.*|
+              .*/test_.*\.py$
+          )$
+
+  # React/TypeScript formatting for osprey_ui
+  - repo: local
+    hooks:
+      - id: prettier-osprey-ui
+        name: prettier (osprey_ui)
+        entry: npx prettier --config osprey_ui/.prettierrc --write
+        files: ^osprey_ui/
+        types_or: [javascript, jsx, ts, tsx, json, css, scss, markdown]
+        language: system
+        pass_filenames: true

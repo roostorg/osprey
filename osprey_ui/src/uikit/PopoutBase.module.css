@@ -1,0 +1,16 @@
+.popoutBase {
+  position: fixed;
+  color: inherit;
+  background-color: inherit;
+  box-shadow: 0 0 6px 2px var(--background-tertiary);
+  border-radius: 4px;
+}
+
+.arrow {
+  display: block;
+  position: absolute;
+  background-color: inherit;
+  height: 12px;
+  width: 12px;
+  transform: rotate(225deg);
+}

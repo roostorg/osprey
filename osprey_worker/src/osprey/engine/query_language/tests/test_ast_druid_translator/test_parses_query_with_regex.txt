@@ -1,0 +1,19 @@
+{
+    "filter": {
+        "fields": [
+            {
+                "dimension": "A",
+                "pattern": "^foo$",
+                "type": "regex"
+            },
+            {
+                "dimensions": [
+                    "C",
+                    "D"
+                ],
+                "type": "columnComparison"
+            }
+        ],
+        "type": "and"
+    }
+}

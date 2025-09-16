@@ -1,0 +1,1 @@
+generic arguments type must have exactly one generic item: UDF `ArgumentUsesTypeMultipleTimesUdf` generic arguments type `ArgumentUsesTypeMultipleTimesArgs` has 2 generic items: `foo`, `bar`

@@ -1,0 +1,40 @@
+.chartWrapper {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--divider);
+  border-radius: 4px;
+  margin: 8px;
+}
+
+.chartWrapper:first-child {
+  padding-top: 6px;
+}
+
+.chartWrapper :global(.ant-table-cell) {
+  padding: 6px !important;
+}
+
+.chartWrapper :global(.ant-table-column-sorters) {
+  padding: 0 !important;
+}
+
+.buttonWrapper {
+  display: flex;
+  flex-direction: column;
+  margin-right: 8px;
+}
+
+.buttonWrapper button {
+  margin: 2px;
+  height: 24px;
+}
+
+.inputWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.textArea {
+  flex: 1;
+  margin: 8px;
+}

@@ -1,0 +1,1 @@
+generic UDF return type must have exactly one type parameter: UDF `DoesNotReturnGenericUdf` return type `None` is not generic

@@ -1,0 +1,14 @@
+error: import cycle detected here
+--> bar.sml:2:14
+     |
+   2 | Import(rules=["baz.sml"])
+     |               ^ this import results in a cyclic dependency
+~~~ the import chain is displayed below:
+--> (1) baz.sml:2:14
+     |
+   2 | Import(rules=["foo.sml"])
+     |               ^
+--> (2) foo.sml:2:14
+     |
+   2 | Import(rules=["bar.sml"])
+     |               ^

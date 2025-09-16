@@ -1,0 +1,44 @@
+from typing import Any, List, Optional
+
+import pytest
+
+from ....conftest import ExecuteFunction
+from ....osprey_udf.registry import UDFRegistry
+from ..list_read import ListRead
+
+pytestmark = [pytest.mark.use_udf_registry(UDFRegistry.with_udfs(ListRead))]
+
+
+@pytest.mark.parametrize(
+    'input,expected_str,index',
+    [
+        (['118', '2', '5', '30'], '118', 0),
+        (['world', 'hello'], 'world', 0),
+        ([1, 2, 3, 4], '1', 0),
+        ([1, 2, 3, 4], '3', 2),
+        (['118', '2', '5', '30'], '2', 1),
+    ],
+)
+def test_list_read(execute: ExecuteFunction, input: Optional[List[Any]], expected_str: str, index: int) -> None:
+    data = execute(
+        f"""
+        Result = ListRead(list={input}, index={index})
+        """
+    )
+    assert data == {'Result': expected_str}
+
+
+@pytest.mark.parametrize(
+    'input_fail,index_fail',
+    [
+        (['118', '2'], 3),
+        ([], 3),
+    ],
+)
+def test_list_read_failures(execute: ExecuteFunction, input_fail: Optional[List[Any]], index_fail: int) -> None:
+    data = execute(
+        f"""
+        Result = ListRead(list={input_fail}, index={index_fail})
+        """
+    )
+    assert data == {'Result': None}

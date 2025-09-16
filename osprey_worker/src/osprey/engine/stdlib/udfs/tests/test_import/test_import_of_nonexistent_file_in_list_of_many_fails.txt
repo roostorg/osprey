@@ -1,0 +1,5 @@
+error: imported file: bar.sml not found
+--> main.sml:1:14
+     |
+   1 | Import(rules=['bar.sml', 'foo.sml'])
+     |               ^ import attempted here

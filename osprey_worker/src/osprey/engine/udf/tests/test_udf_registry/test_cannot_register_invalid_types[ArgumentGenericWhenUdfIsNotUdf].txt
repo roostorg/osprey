@@ -1,0 +1,1 @@
+Osprey generics must inherit from `OspreyInvariantGeneric`: generic UDF type `ArgumentGenericWhenUdfIsNotUdf` does not inherit from `OspreyInvariantGeneric`

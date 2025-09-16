@@ -1,0 +1,12 @@
+error:
+                    75 is over the
+                    current max of 50.
+                    Either reduce the bucket size or reduce the number of buckets
+
+--> main.sml:4:54
+     |
+   4 |     entity=E1, buckets=['control', 'b'], bucket_sizes=[75, 25], version=1,
+     |                                                       ^
+                                                             |                     max percentage size of each bucket is 100/(# of buckets) rounded
+                                                             |                     down to the nearest hundreth decimal place
+                                                             |

@@ -1,0 +1,9 @@
+error: missing bucket 'b' required from experiment 'A'
+--> main.sml:7:5
+     |
+   7 | EW = ExperimentWhen(control=[True, True, True], experiment=A)
+     |      ^
+--> (1) main.sml:4:23
+     |
+   4 |     entity=E1, buckets=['control', 'b'], bucket_sizes=[5, 5], version=1,
+     |                        ^

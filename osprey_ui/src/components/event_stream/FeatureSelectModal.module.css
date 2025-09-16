@@ -1,0 +1,154 @@
+.checkboxGrid {
+  display: grid !important;
+  grid-row-gap: 8px;
+}
+
+.innerCheckboxGrid {
+  display: flex;
+  flex-direction: column;
+}
+
+.category {
+  text-transform: capitalize;
+}
+
+.featureCheckboxRow {
+  padding: 10px 0;
+  color: var(--text-light-primary);
+}
+
+.featureSpan {
+  padding-left: 2px;
+  word-break: break-all;
+}
+
+.switchSpan {
+  display: flex;
+  margin-top: 16px;
+  padding: 8px 0;
+}
+
+.switch {
+  margin-right: 8px;
+}
+
+.disabled {
+  color: var(--text-light-disabled);
+}
+
+.featureModal :global(.ant-modal-content) {
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.featureModal :global(.ant-modal-header) {
+  padding: 16px;
+  margin-bottom: 16px;
+  border-bottom: unset;
+}
+
+.featureModal :global(.ant-modal-body) {
+  overflow: scroll;
+}
+
+.featureModal :global(.ant-input-group) {
+  position: absolute;
+  border-top: 1px solid var(--divider);
+  border-bottom: 1px solid var(--divider);
+  margin: 0 -16px;
+}
+
+.featureModal :global(.ant-input-group-addon) {
+  background: unset;
+  border: unset;
+  padding: unset;
+  padding-left: 18px;
+  padding-right: 12px;
+}
+
+.featureModal :global(.ant-input-affix-wrapper) {
+  display: flex;
+  border: unset;
+  padding: 6px 18px 6px 0;
+}
+
+.featureModal :global(.ant-input-affix-wrapper-focused) {
+  box-shadow: none;
+}
+
+.featureModal :global(.ant-input-affix-wrapper-disabled) {
+  background-color: unset;
+}
+
+.featureModal :global(.ant-input) {
+  font-weight: 500;
+  color: var(--text-light-primary);
+}
+
+.featureModal :global(.ant-input-search-icon:before) {
+  border-left: unset;
+}
+
+.featureModal :global(.ant-input-suffix) {
+  margin-left: unset;
+  margin-right: 12px;
+}
+
+.featureModal :global(.ant-input-search-icon) {
+  padding: unset;
+  margin-left: unset;
+}
+
+.featureModal :global(.ant-input-clear-icon) {
+  position: absolute;
+  right: 16px;
+}
+
+.featureModal :global(.ant-checkbox-wrapper + .ant-checkbox-wrapper) {
+  margin-left: 0;
+}
+
+.featureModal :global(.ant-checkbox-checked .ant-checkbox-inner) {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
+.featureModal :global(.ant-checkbox-inner) {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: none;
+  background-color: var(--background-tertiary);
+}
+
+.featureModal :global(.ant-checkbox-inner:after) {
+  left: 30%;
+}
+
+.featureModal :global(.ant-switch-checked) {
+  background-color: var(--brand-primary);
+}
+
+.featureModal :global(.ant-switch-handle:before) {
+  background-image: url('../../assets/CloseIcon.svg');
+  background-size: 12px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.featureModal :global(.ant-switch-checked .ant-switch-handle:before) {
+  background-image: url('../../assets/CheckIcon.svg');
+  background-size: 12px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.featureModal :global(.ant-modal-body) {
+  padding: 0 16px 16px;
+}
+
+.featureModal :global(.ant-modal-footer) {
+  background-color: var(--background-secondary-alt);
+  padding: 16px 16px 18px;
+}

@@ -1,0 +1,8 @@
+error:
+                    experiment bucket size precision is too high,
+                    the precision can be at most to the hundredth decimal place
+
+--> main.sml:4:54
+     |
+   4 |     entity=E1, buckets=['control', 'b'], bucket_sizes=[10, 2.512], version=2,
+     |                                                       ^

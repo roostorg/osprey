@@ -1,0 +1,21 @@
+error: unsupported operand types for `>`
+--> main.sml:1:8
+     |
+   1 | Query = Foo > Bar
+     |         ^ no implementation for `str > int`
+--> (1) main.sml:1:8
+     |
+   1 | Query = Foo > Bar
+     |         ^ has type `str`
+--> (2) main.sml:2:0
+     |
+   2 | Foo = Entity(type="Name", id="some name")
+     | ^ variable `Foo` with incompatible type `str` originally defined here
+--> (3) main.sml:1:14
+     |
+   1 | Query = Foo > Bar
+     |               ^ has type `int`
+--> (4) main.sml:3:0
+     |
+   3 | Bar = Entity(type="User", id=123)
+     | ^ variable `Bar` with incompatible type `int` originally defined here

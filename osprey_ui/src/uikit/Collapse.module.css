@@ -1,0 +1,34 @@
+.header {
+  position: relative;
+}
+
+.arrowIconWrapper {
+  position: absolute;
+  height: 100%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.arrowIconWrapperLeft {
+  composes: arrowIconWrapper;
+  left: 6px;
+}
+
+.arrowIconWrapperRight {
+  composes: arrowIconWrapper;
+  right: 6px;
+}
+
+.arrowIcon {
+  transition: all 0.2s ease-in-out;
+}
+
+.arrowIconActive {
+  transform: rotate(90deg);
+}
+
+.contentWrapper {
+  overflow: hidden;
+  transition: all 0.2s ease-in-out;
+}

@@ -1,0 +1,5 @@
+warning: this string contains jake - which is suspect. Jakes are never suspicious
+--> main.sml:1:6
+     |
+   1 | Foo = 'jake is suspicious'
+     |       ^

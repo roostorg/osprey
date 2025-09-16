@@ -1,0 +1,8 @@
+.tableWrapper {
+  padding-top: 8px;
+}
+
+.topNPanel {
+  flex-grow: 1;
+  border-top: 2px solid var(--divider);
+}

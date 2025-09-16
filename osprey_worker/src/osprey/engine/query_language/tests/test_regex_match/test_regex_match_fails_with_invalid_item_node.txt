@@ -1,0 +1,5 @@
+error: expected variable
+--> main.sml:1:16
+     |
+   1 | RegexMatch(item='Jake', regex='^foo$')
+     |                 ^ argument `item` must be a variable

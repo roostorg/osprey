@@ -1,0 +1,21 @@
+.labelForm {
+  margin: 0 16px 16px;
+}
+
+.buttonWrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.submitButton {
+  margin-left: 8px;
+}
+
+.permanentAlert {
+  margin-top: 8px;
+}
+
+.permanentDescription {
+  margin-bottom: 8px;
+}

@@ -1,0 +1,54 @@
+.drawerHeader {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  color: var(--text-light-headings-primary);
+}
+
+.entityTypeButtonWrapper {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+}
+
+.entityId {
+  width: 100%;
+  overflow-wrap: break-word;
+}
+
+.iconButtons {
+  display: flex;
+  align-items: center;
+}
+
+.labelsHeader {
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  word-wrap: anywhere;
+}
+
+.successAlert {
+  margin: 0 16px 16px;
+}
+
+.buttonContainer {
+  margin-top: 6px;
+  display: flex;
+}
+
+.externalLinkButton {
+  border-radius: 4px;
+}
+
+.addLabelButton {
+  border-radius: 4px;
+  margin-right: 6px;
+}
+
+.emptyLabelList {
+  margin: 8px 16px;
+}

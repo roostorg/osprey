@@ -1,0 +1,5 @@
+error: required rule: `actions/foo.sml` not found
+--> main.sml:2:13
+     |
+   2 | Require(rule='actions/foo.sml')
+     |              ^ require attempted here

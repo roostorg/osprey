@@ -1,0 +1,85 @@
+.popoverContent {
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.popoverTitleWrapper {
+  max-width: 100%;
+  align-self: flex-start;
+  padding: 16px;
+}
+
+.entityInfo {
+  color: var(--text-light-primary);
+  overflow-wrap: break-word;
+}
+
+.entityId {
+  font-weight: 600;
+  user-select: text;
+}
+
+.routeEntityId {
+  color: var(--brand-primary);
+}
+
+.routeEntityId:hover {
+  color: var(--brand-dark);
+}
+
+.entityIdWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.tooltip {
+  width: 350px;
+  padding: 0;
+}
+
+.tooltipOrigin {
+  max-width: 100%;
+}
+
+.labelPopover {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.labelSectionsContainer {
+  overflow-y: auto;
+  max-height: 250px;
+}
+
+.labelContainer {
+  padding: 0 16px;
+}
+
+.labelTag {
+  margin-top: 8px;
+  margin-right: 8px;
+}
+
+.popoverInfo {
+  background-color: var(--background-secondary-alt);
+  color: var(--text-light-secondary);
+  width: 100%;
+  padding: 8px 16px;
+  font-weight: 600;
+  border-top: 1px solid var(--divider);
+}
+
+.buttonsContainer {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  padding: 16px;
+  border-top: 1px solid var(--divider);
+}
+
+.clickInfoPoint {
+  margin-top: 4px;
+}

@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package osprey.rpc.request_caching.v1;
+
+// Message to represent a URL scan request
+message ScanURLRequest {
+  string url = 1; // The URL to be scanned
+}
+
+// Fields can be added later to this message to provide more information about the scan if needed
+message SuccessDetails {
+    bool is_malicious = 1;
+}
+
+message FailureDetails {
+    string error_message = 1;
+}
+
+// Currently empty, but we can add fields later as needed
+message SubmittedDetails {
+}
+
+// Message to represent a progress update or final result of a URL scan
+message ScanURLResponse {
+  oneof status_details {
+
+      SubmittedDetails submitted = 1; // The scan request was successfully submitted
+      SuccessDetails success = 2; // The scan was completed successfully
+      FailureDetails failure = 3; // The scan encountered an error
+  }
+}
+
+// Service definition for request caching
+service RequestCachingService {
+  // RPC method to submit a URL for scanning with a direct response
+  rpc ScanURL(ScanURLRequest) returns (ScanURLResponse);
+}

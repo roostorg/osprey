@@ -1,0 +1,1 @@
+{"send_time": "$timestamp","data": {"action_id": "$action_id","action_name": "create_post","data": {"user_id": "$user_id","ip_address": "$ip_address","event_type": "create_post","post": {"text": "$text"}}}}

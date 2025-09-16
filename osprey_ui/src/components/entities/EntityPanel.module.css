@@ -1,0 +1,11 @@
+.entityPanel {
+  width: 100%;
+  border-top: 1px solid var(--divider);
+  position: relative;
+  z-index: 2;
+  overflow-y: auto;
+}
+
+.entityPanel :global(.ant-collapse) {
+  background-color: transparent !important;
+}

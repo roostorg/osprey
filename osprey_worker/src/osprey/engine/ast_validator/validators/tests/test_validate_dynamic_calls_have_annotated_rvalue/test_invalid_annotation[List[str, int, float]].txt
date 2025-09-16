@@ -1,0 +1,10 @@
+error: unexpected additional variants to `List[...]`
+--> main.sml:1:15
+     |
+   1 | Foo: List[str, int, float] = JsonData(path='$.foo')
+     |                ^
+~~~ also:
+--> (1) main.sml:1:20
+     |
+   1 | Foo: List[str, int, float] = JsonData(path='$.foo')
+     |                     ^

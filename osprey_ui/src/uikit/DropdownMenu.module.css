@@ -1,0 +1,24 @@
+.dropdownMenu {
+  background-color: var(--background-primary);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdownMenuItem {
+  padding: 6px 8px;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+  text-align: left;
+  border-bottom: 1px solid var(--divider);
+}
+
+.dropdownMenuItem:last-child {
+  border-bottom: none;
+}
+
+.dropdownMenuItem:hover {
+  background-color: var(--link-light-hover);
+}
