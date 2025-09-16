@@ -1,6 +1,13 @@
 # **Osprey User Interface Guide**
 
 
+## Getting Started
+
+```bash
+cd osprey_ui
+npm install
+npm start
+```
 
 The Osprey UI has several pages accessible by a left-hand menu:
 
