@@ -31,11 +31,9 @@
 
 The Osprey UI has several pages accessible by a left-hand menu:
 
-### ![][image1]
 
 Home will bring you to the default page of Osprey, with three main columns. **NOTE: The Event Stream in the right column is not yet in v0, and will be available before or in v1.**
 
-![][image2]
 
 ### Left Column: Query {#left-column:-query}
 
@@ -43,40 +41,34 @@ Home will bring you to the default page of Osprey, with three main columns. **NO
 
 The Osprey Query UI uses the same SML syntax as rules, but for searching and filtering near-real-time and historical data rather than creating new rules. Using the test data generator, you can try writing a query to look for an action called “create\_post” specifically from a given User ID.
 
-![][image3]
 You can also use a UDF in your query. If you ever forget what a UDF does, you can hover on the information symbol for a tip:
 
-![][image4]
 A query can be run against a time window ranging from the last second to the last 3 months (and also a custom range):
-![][image5]![][image6]
+
 
 The Osprey UI is designed to be dynamic and update in real-time. If any other component in the other two columns is interacted with, the query will automatically update and vice versa. The query also automatically populates the URL. This can be handy for sharing a specific query with someone on a team, but may present privacy risks.
-![][image7]
 
 #### **History** {#history}
 
 Every query is logged in the Query History view, and there is a dropdown filter to only show queries that you have run.
 
-#### **![][image8]**
 
 When you hover over the query, it will also show the Top N Charts used during the query session (more on that below).
 
-#### **![][image9]**
 
 The Query History can also be accessed and seen in a different format via the left-side menu.
-![][image10]
 
 #### **Saved Queries** {#saved-queries}
 
 If there are specific queries that are used often, Osprey provides the ability to save a query:
-![][image11]
+
 The user who initiated the query and when the query was first run is logged as part of the Saved Query. Saved Queries can also be accessed via the left-side menu. The user who saved the query and what time it was saved is logged and visible. There is a drop-down menu at the top to filter saved queries by users.
-![][image12]
+
 
 ### Middle Column: Charts {#middle-column:-charts}
 
 The middle column in Osprey shows two types of charts: **Time Series** and **Top N Results**. Both sections provide the ability to add extra charts to see different slices of time or types of top results.
-![][image13]
+
 
 #### **Time Series Chart** {#time-series-chart}
 
@@ -91,16 +83,16 @@ The Time Series chart shows a visualization of the results in the query over a p
 * Month
 
 Hovering over a bar in the time series chart shows how many events took place during that time.
-![][image14]
+
 There is also a time and date picker above the time series chart where you can set a custom range:
-![][image15]
+
 An extra table can be added for another view of a different unit of time. To get rid of the table, you can “[yeet](https://www.urbandictionary.com/define.php?term=Yeet) it”.
-![][image16]
+
 
 #### **Top N Results** {#top-n-results}
 
 Adding a Top N Results table populates a table with the top results for the results of the query. You can view and assign labels to a specific entity by hovering over it and clicking “Edit Labels”
-![][image17]
+
 
 ### Right Column: Event Stream {#right-column:-event-stream}
 
@@ -114,11 +106,11 @@ The Event Stream is essentially Osprey's "live feed" and investigation dashboard
 * Drill down into specific users/entities
 
 It provides a more detailed view of each event that matches the query. The Event Stream can show metadata related to accounts that can link to other internal tools that provide detailed information about an account and/or further enforcement actions.
-![][image18]
+
 The event stream is also viewable in a card format vs a list format (list format shown in the screenshot).
 
 Osprey users may have personal preferences on how to do investigations and what information is most helpful for them. Osprey makes it easy to customize the types of information shown in the Event Stream by clicking “Summary Features”
-![][image19]
+
 
 ### Labeling
 
@@ -139,12 +131,11 @@ Any unique entity can be labeled in the Osprey UI. This manual labeling tool is 
 
 Below are examples of a new label interface from v0, and an example from Discord’s usage of labels (coming in v1).
 
-![][image20]![][image21]
 
 ### UDF Documentation
 
 The UDF Documentation page can be accessed via the left-side menu. It dynamically updates based on the code, so any new UDFs added will show up on this page. This page essentially serves as the "API reference" for the SML language, making it easy for users to discover and properly use all available functions when writing rules and queries.
- ![][image22]
+
 This page can be used as a manual for writing SML rules or queries, guide for understanding parameter types and requirements, and act as a plugin discovery portal to explore what custom UDFs are loaded.
 
 ### Bulk Labeling
@@ -152,11 +143,11 @@ This page can be used as a manual for writing SML rules or queries, guide for un
 **Note: Since Bulk Labeling relies on Labels, it does not yet work in v0.**
 
 There are two ways to bulk label items in Osprey: the left-side menu and via the chart column. In this example, you can bulk label all the users that have posted a message that is not empty:
-![][image23]
+
 Bulk labels can be dangerous if there’s a false positive\! Osprey provides a counter of how many unique entities are about to be bulk labeled at the top. Labels can be positive, negative, or neutral. A reason must be provided when labeling anything. Each bulk job will create a unique task ID and log the user who initiated the bulk job, the status of the bulk labeling, and a link to the query that the bulk job originated from.
 
 To view all bulk labeling jobs that have been done, click into “Bulk Job History” from the left-side menu. You’ll need the unique task ID to look up a bulk job.
-![][image24]
+
 
 ### Rule Visualizer
 
