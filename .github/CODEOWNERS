@@ -1,0 +1,6 @@
+#CODEOWNERS for the ROOST Osprey repo
+
+# Format: path-pattern @username @team-name
+
+# Default owners for all files - team OR any individual can approve
+* @roostorg/roosters @EXBreder @ayubun @haileyok @jaredmiller13 @BinaryFiddler
