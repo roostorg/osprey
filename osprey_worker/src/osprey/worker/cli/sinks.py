@@ -1,6 +1,7 @@
 # mypy: ignore-errors
 # ruff: noqa: E402, E501
 from osprey.worker.lib.patcher import patch_all
+from osprey.worker.sinks.input_stream_chooser import get_rules_sink_input_stream
 from osprey.worker.sinks.sink.output_sink import EventEffectsOutputSink
 
 patch_all(ddtrace_args={'cassandra': True, 'psycopg': True})
@@ -49,7 +50,6 @@ from osprey.worker.lib.storage.bulk_label_task import BulkLabelTask
 from osprey.worker.lib.utils.input_stream_ready_signaler import InputStreamReadySignaler
 from osprey.worker.sinks import (
     InputStreamSource,
-    get_rules_sink_input_stream,
 )
 from osprey.worker.sinks.sink.base_sink import BaseSink, PooledSink
 from osprey.worker.sinks.sink.bulk_label_sink import BulkLabelSink
@@ -152,7 +152,7 @@ def run_rules_sink(
 
     input_stream_source_string = config.get_str('OSPREY_INPUT_STREAM_SOURCE', 'plugin')
     try:
-        input_stream_source = InputStreamSource(input_stream_source_string)
+        input_stream_source = InputStreamSource(input_stream_source_string.lower())
     except ValueError:
         raise NotImplementedError(f'{input_stream_source_string} is not a valid input stream source.')
 
