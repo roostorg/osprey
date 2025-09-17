@@ -1,3 +1,4 @@
+import platform
 import random
 from datetime import datetime, timedelta
 
@@ -98,7 +99,7 @@ def get_rules_sink_input_stream(
         return StaticInputStream(random_actions)
     elif input_stream_source == InputStreamSource.KAFKA:
         config = CONFIG.instance()
-        client_id = config.get_str('OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID', 'localhost')
+        client_id = config.get_str('OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID', platform.node())
         client_id_suffix = config.get_optional_str('OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID_SUFFIX')
         input_topic: str = config.get_str('OSPREY_KAFKA_INPUT_STREAM_TOPIC', 'osprey.actions_input')
         input_bootstrap_servers: list[str] = config.get_str_list('OSPREY_KAFKA_BOOTSTRAP_SERVERS', ['localhost'])
