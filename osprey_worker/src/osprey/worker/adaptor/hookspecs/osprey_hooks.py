@@ -4,9 +4,11 @@ from typing import TYPE_CHECKING, Any, Sequence, Type
 
 import pluggy
 from osprey.engine.ast_validator.base_validator import BaseValidator
+from osprey.engine.executor.execution_context import Action
 from osprey.engine.udf.base import UDFBase
 from osprey.worker.adaptor.constants import OSPREY_ADAPTOR
 from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
+from osprey.worker.sinks import BaseInputStream, BaseAckingContext
 
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
@@ -37,3 +39,7 @@ def register_ast_validators() -> Sequence[Type[BaseValidator]]:
 def register_action_proto_deserializer() -> ActionProtoDeserializer | None:
     """Register a custom deserializer to convert custom Action proto into JSON."""
     raise NotImplementedError('register_action_proto_deserializers must be implemented by the plugin')
+
+@hookspec(firstresult=True)
+def register_input_stream() -> BaseInputStream[BaseAckingContext[Action]]:
+    raise NotImplementedError('register_input_stream must be implemented by the plugin')

@@ -7,7 +7,7 @@ so it's dangerous to import other modules here, potentially prior to gevent patc
 Therefore we patch at the top of this file -- it's generally fine to double patch
 but not ideal as clients should be responsible for patching
 """
-
+from osprey.worker.adaptor.plugin_manager import plugin_manager, bootstrap_input_stream
 from osprey.worker.lib.patcher import patch_all
 
 patch_all()
@@ -48,6 +48,9 @@ class InputStreamSource(Enum):
 
     KAFKA = auto()
     """Sources events from kafka."""
+
+    PLUGIN = auto()
+    """Sources events from whatever a plugin defines via register_input_stream."""
 
 
 class OutputSinkDestination(Enum):
@@ -159,5 +162,8 @@ def get_rules_sink_input_stream(
         return KafkaInputStream(
             kafka_consumer=consumer,
         )
-    else:
-        raise AssertionError(f'Unknown rules sink input source: {input_stream_source}')
+    elif input_stream_source == InputStreamSource.PLUGIN:
+        stream = bootstrap_input_stream()
+        if stream is None:
+            raise AssertionError('No input stream plugin registered')
+        return stream
