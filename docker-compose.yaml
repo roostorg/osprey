@@ -77,6 +77,7 @@ services:
       - OSPREY_STDOUT_OUTPUT_SINK=True
       - OSPREY_KAFKA_BOOTSTRAP_SERVERS=["kafka:29092"]
       - OSPREY_KAFKA_INPUT_STREAM_TOPIC=osprey.actions_input
+      # Client ID will default to the machine hostname if it isn't defined
       - OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID=localhost
       - OSPREY_KAFKA_OUTPUT_SINK=True
       - OSPREY_KAFKA_OUTPUT_TOPIC=osprey.execution_results
