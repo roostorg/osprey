@@ -8,6 +8,8 @@ Therefore we patch at the top of this file -- it's generally fine to double patc
 but not ideal as clients should be responsible for patching
 """
 
+import platform
+
 from osprey.worker.lib.patcher import patch_all
 
 patch_all()
@@ -143,9 +145,15 @@ def get_rules_sink_input_stream(
     elif input_stream_source == InputStreamSource.KAFKA:
         config = CONFIG.instance()
         client_id = config.get_str('OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID', 'localhost')
+        client_id_suffix = config.get_optional_str('OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID_SUFFIX')
         input_topic: str = config.get_str('OSPREY_KAFKA_INPUT_STREAM_TOPIC', 'osprey.actions_input')
         input_bootstrap_servers: list[str] = config.get_str_list('OSPREY_KAFKA_BOOTSTRAP_SERVERS', ['localhost'])
         group_id = config.get_optional_str('OSPREY_KAFKA_GROUP_ID')
+
+        # If a suffix isn't provided, make sure that client IDs are unique by hostname
+        if client_id_suffix is None:
+            client_hostname = platform.node()
+            client_id = f'{client_id}-{client_hostname}'
 
         consumer: PatchedKafkaConsumer = PatchedKafkaConsumer(
             input_topic,
