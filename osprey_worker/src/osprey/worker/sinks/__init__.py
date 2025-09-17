@@ -150,7 +150,6 @@ def get_rules_sink_input_stream(
         input_bootstrap_servers: list[str] = config.get_str_list('OSPREY_KAFKA_BOOTSTRAP_SERVERS', ['localhost'])
         group_id = config.get_optional_str('OSPREY_KAFKA_GROUP_ID')
 
-        # If a suffix isn't provided, make sure that client IDs are unique by hostname
         if client_id_suffix:
             client_id = f'{client_id}-{client_id_suffix}'
 
