@@ -156,7 +156,7 @@ def run_rules_sink(
     try:
         input_stream_source = InputStreamSource(input_stream_source_string)
     except ValueError:
-        raise NotImplementedError(f"{input_stream_source_string} is not a valid input stream source.")
+        raise NotImplementedError(f'{input_stream_source_string} is not a valid input stream source.')
 
     input_stream = get_rules_sink_input_stream(input_stream_source)
     output_sink = bootstrap_output_sinks(config=config)

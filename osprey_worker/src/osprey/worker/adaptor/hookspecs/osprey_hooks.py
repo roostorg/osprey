@@ -40,6 +40,7 @@ def register_action_proto_deserializer() -> ActionProtoDeserializer | None:
     """Register a custom deserializer to convert custom Action proto into JSON."""
     raise NotImplementedError('register_action_proto_deserializers must be implemented by the plugin')
 
+
 @hookspec(firstresult=True)
 def register_input_stream() -> BaseInputStream[BaseAckingContext[Action]]:
     raise NotImplementedError('register_input_stream must be implemented by the plugin')

@@ -7,6 +7,7 @@ so it's dangerous to import other modules here, potentially prior to gevent patc
 Therefore we patch at the top of this file -- it's generally fine to double patch
 but not ideal as clients should be responsible for patching
 """
+
 from osprey.worker.adaptor.plugin_manager import plugin_manager, bootstrap_input_stream
 from osprey.worker.lib.patcher import patch_all
 

@@ -80,6 +80,7 @@ def bootstrap_action_proto_deserializer() -> ActionProtoDeserializer | None:
     except Exception:
         return None
 
+
 def bootstrap_input_stream() -> BaseInputStream[BaseAckingContext[Action]] | None:
     load_all_osprey_plugins()
 
@@ -89,4 +90,3 @@ def bootstrap_input_stream() -> BaseInputStream[BaseAckingContext[Action]] | Non
         return streams[0]
     else:
         return None
-
