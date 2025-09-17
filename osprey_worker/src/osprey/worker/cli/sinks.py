@@ -12,7 +12,11 @@ from uuid import uuid1
 
 # this is required to avoid memory leaks with gRPC
 from gevent import config as gevent_config
-from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators, bootstrap_output_sinks, bootstrap_udfs
+from osprey.worker.adaptor.plugin_manager import (
+    bootstrap_ast_validators,
+    bootstrap_output_sinks,
+    bootstrap_udfs,
+)
 
 gevent_config.track_greenlet_tree = False
 
@@ -167,7 +171,7 @@ def run_rules_sink(
     bootstrap_ast_validators()
 
     engine = OspreyEngine(sources_provider=sources_provider, udf_registry=udf_registry)
-    input_stream = get_rules_sink_input_stream(input_stream_source)
+    input_stream = get_rules_sink_input_stream(config=config, input_stream_source=input_stream_source)
     output_sink = bootstrap_output_sinks(config=config)
 
     def factory() -> BaseSink:

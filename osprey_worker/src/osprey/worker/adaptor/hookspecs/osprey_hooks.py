@@ -4,12 +4,14 @@ from typing import TYPE_CHECKING, Any, Sequence, Type
 
 import pluggy
 from osprey.engine.ast_validator.base_validator import BaseValidator
+from osprey.engine.executor.execution_context import Action
 from osprey.engine.udf.base import UDFBase
 from osprey.worker.adaptor.constants import OSPREY_ADAPTOR
 from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
 
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
+    from osprey.worker.sinks.sink.input_stream import BaseInputStream
     from osprey.worker.sinks.sink.output_sink import BaseOutputSink
 
 hookspec: pluggy.HookspecMarker = pluggy.HookspecMarker(OSPREY_ADAPTOR)
@@ -19,6 +21,12 @@ hookspec: pluggy.HookspecMarker = pluggy.HookspecMarker(OSPREY_ADAPTOR)
 def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
     """Register a new UDF to the UDFRegistry."""
     raise NotImplementedError('register_udfs must be implemented by the plugin')
+
+
+@hookspec
+def register_input_sink(config: Config) -> BaseInputStream[Action]:
+    """Returns input sink instances to use with the engine."""
+    raise NotImplementedError('register_input_sink must be implemented by the plugin')
 
 
 @hookspec

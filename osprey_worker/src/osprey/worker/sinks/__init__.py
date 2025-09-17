@@ -8,6 +8,8 @@ Therefore we patch at the top of this file -- it's generally fine to double patc
 but not ideal as clients should be responsible for patching
 """
 
+from osprey.worker.adaptor.plugin_manager import bootstrap_input_sink
+from osprey.worker.lib.config import Config
 from osprey.worker.lib.patcher import patch_all
 
 patch_all()
@@ -49,6 +51,9 @@ class InputStreamSource(Enum):
     KAFKA = auto()
     """Sources events from kafka."""
 
+    CUSTOM = auto()
+    """Sources events from registered input sink from register_input_sink()"""
+
 
 class OutputSinkDestination(Enum):
     """Where the data of a classified event should be sent."""
@@ -62,6 +67,7 @@ class OutputSinkDestination(Enum):
 
 
 def get_rules_sink_input_stream(
+    config: Config,
     input_stream_source: InputStreamSource,
 ) -> BaseInputStream[BaseAckingContext[Action]]:
     """Based on the `input_stream_source` constructs a configured input stream that can be used to source events to
@@ -159,5 +165,7 @@ def get_rules_sink_input_stream(
         return KafkaInputStream(
             kafka_consumer=consumer,
         )
+    elif input_stream_source == InputStreamSource.CUSTOM:
+        return bootstrap_input_sink(config=config)
     else:
         raise AssertionError(f'Unknown rules sink input source: {input_stream_source}')
