@@ -144,17 +144,14 @@ def get_rules_sink_input_stream(
         return StaticInputStream(random_actions)
     elif input_stream_source == InputStreamSource.KAFKA:
         config = CONFIG.instance()
-        client_id = config.get_str('OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID', 'localhost')
+        client_id = config.get_str('OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID', platform.node())
         client_id_suffix = config.get_optional_str('OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID_SUFFIX')
         input_topic: str = config.get_str('OSPREY_KAFKA_INPUT_STREAM_TOPIC', 'osprey.actions_input')
         input_bootstrap_servers: list[str] = config.get_str_list('OSPREY_KAFKA_BOOTSTRAP_SERVERS', ['localhost'])
         group_id = config.get_optional_str('OSPREY_KAFKA_GROUP_ID')
 
         # If a suffix isn't provided, make sure that client IDs are unique by hostname
-        if client_id_suffix is None:
-            client_hostname = platform.node()
-            client_id = f'{client_id}-{client_hostname}'
-        elif client_id_suffix != '':
+        if client_id_suffix:
             client_id = f'{client_id}-{client_id_suffix}'
 
         consumer: PatchedKafkaConsumer = PatchedKafkaConsumer(
