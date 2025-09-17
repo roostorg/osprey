@@ -15,7 +15,7 @@ pytestmark: List[Callable[[Any], Any]] = [
 
 @pytest.mark.parametrize(
     'phone_number,country',
-    [('+13467025665', 'US'), ('+61455275206', 'AU'), ('+5541991152762', 'BR')],
+    [('+15555555555', 'US'), ('+65555555555', 'AU'), ('+5545555555555', 'BR')],
 )
 def test_accepts_valid_country_code(execute: ExecuteFunction, phone_number: str, country: str) -> None:
     result = execute(f'PhoneCountryStr = PhoneCountry(phone_number="{phone_number}")')
@@ -24,7 +24,7 @@ def test_accepts_valid_country_code(execute: ExecuteFunction, phone_number: str,
 
 @pytest.mark.parametrize(
     'phone_number',
-    ['not a number', '132953762988', '1398456789001'],
+    ['not a number', '135555555555', '1395555555555'],
 )
 def test_invalid_country_code_failure(execute: ExecuteFunction, phone_number: str) -> None:
     result = execute(f'PhoneCountryStr = PhoneCountry(phone_number="{phone_number}")')
