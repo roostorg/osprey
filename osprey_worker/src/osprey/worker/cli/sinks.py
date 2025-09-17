@@ -115,20 +115,6 @@ def tail_kafka_input_sink() -> None:
 
 @cli.command()
 @click.option(
-    '--input',
-    'input_stream_source',
-    default=InputStreamSource.PUBSUB,
-    type=EnumChoice(InputStreamSource),
-    help='Where to ingest data from.',
-)
-@click.option(
-    '--output',
-    'output_sink_destination',
-    default=OutputSinkDestination.OSPREY,
-    type=EnumChoice(OutputSinkDestination),
-    help='Where to send the processed events to.',
-)
-@click.option(
     '--rules-path',
     type=click.Path(dir_okay=True, file_okay=False, exists=True),
     help='Which rules to use. If not provided uses the rules in etcd.',
@@ -147,8 +133,6 @@ def tail_kafka_input_sink() -> None:
     help='Create base tables',
 )
 def run_rules_sink(
-    input_stream_source: InputStreamSource,
-    output_sink_destination: OutputSinkDestination,
     rules_path: Optional[str],
     pooled: bool,
     bootstrap_pubsub: bool,
@@ -167,6 +151,13 @@ def run_rules_sink(
     bootstrap_ast_validators()
 
     engine = OspreyEngine(sources_provider=sources_provider, udf_registry=udf_registry)
+
+    input_stream_source_string = config.get_str('OSPREY_INPUT_STREAM_SOURCE', 'plugin')
+    try:
+        input_stream_source = InputStreamSource(input_stream_source_string)
+    except ValueError:
+        raise NotImplementedError(f"{input_stream_source_string} is not a valid input stream source.")
+
     input_stream = get_rules_sink_input_stream(input_stream_source)
     output_sink = bootstrap_output_sinks(config=config)
 

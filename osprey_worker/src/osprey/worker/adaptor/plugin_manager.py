@@ -85,6 +85,7 @@ def bootstrap_input_stream() -> BaseInputStream[BaseAckingContext[Action]] | Non
 
     streams = plugin_manager.hook.register_input_stream()
     if streams:
+        # spec has firstresult=True set, so at most it will be one.
         return streams[0]
     else:
         return None
