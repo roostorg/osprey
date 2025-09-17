@@ -154,6 +154,8 @@ def get_rules_sink_input_stream(
         if client_id_suffix is None:
             client_hostname = platform.node()
             client_id = f'{client_id}-{client_hostname}'
+        elif client_id_suffix != '':
+            client_id = f'{client_id}-{client_id_suffix}'
 
         consumer: PatchedKafkaConsumer = PatchedKafkaConsumer(
             input_topic,
