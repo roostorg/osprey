@@ -8,7 +8,8 @@ from osprey.engine.executor.execution_context import Action
 from osprey.engine.udf.base import UDFBase
 from osprey.worker.adaptor.constants import OSPREY_ADAPTOR
 from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
-from osprey.worker.sinks import BaseAckingContext, BaseInputStream
+from osprey.worker.sinks.sink.input_stream import BaseInputStream
+from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
