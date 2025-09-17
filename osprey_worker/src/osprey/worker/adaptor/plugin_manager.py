@@ -13,7 +13,7 @@ from osprey.worker.adaptor.constants import OSPREY_ADAPTOR
 from osprey.worker.adaptor.hookspecs import osprey_hooks
 from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
 from osprey.worker.lib.storage.labels import HasLabelProvider
-from osprey.worker.sinks import BaseInputStream, BaseAckingContext
+from osprey.worker.sinks import BaseAckingContext, BaseInputStream
 from osprey.worker.sinks.sink.output_sink import BaseOutputSink, MultiOutputSink
 
 if TYPE_CHECKING:

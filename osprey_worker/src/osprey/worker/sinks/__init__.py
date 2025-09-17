@@ -8,7 +8,7 @@ Therefore we patch at the top of this file -- it's generally fine to double patc
 but not ideal as clients should be responsible for patching
 """
 
-from osprey.worker.adaptor.plugin_manager import plugin_manager, bootstrap_input_stream
+from osprey.worker.adaptor.plugin_manager import bootstrap_input_stream
 from osprey.worker.lib.patcher import patch_all
 
 patch_all()

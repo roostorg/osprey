@@ -46,11 +46,9 @@ from osprey.worker.lib.sources_provider import EtcdSourcesProvider
 from osprey.worker.lib.storage import postgres
 from osprey.worker.lib.storage.bigtable import osprey_bigtable
 from osprey.worker.lib.storage.bulk_label_task import BulkLabelTask
-from osprey.worker.lib.utils.click_utils import EnumChoice
 from osprey.worker.lib.utils.input_stream_ready_signaler import InputStreamReadySignaler
 from osprey.worker.sinks import (
     InputStreamSource,
-    OutputSinkDestination,
     get_rules_sink_input_stream,
 )
 from osprey.worker.sinks.sink.base_sink import BaseSink, PooledSink
