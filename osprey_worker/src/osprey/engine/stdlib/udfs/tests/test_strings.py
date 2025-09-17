@@ -173,27 +173,27 @@ def test_string_to_upper(execute: ExecuteFunction) -> None:
 @dataclass
 class Scenario:
     s: str
-    expects: Union[str, Iterable[str]] = ('teen',)
+    expects: Union[str, Iterable[str]] = ('text',)
     not_expects: Iterable[str] = ('|',)
 
 
 @pytest.mark.parametrize(
     's',
     [
-        Scenario('🔞t33n leaks🔞'),
-        Scenario('TEEΠ 17-', ['teen', '17']),
-        Scenario('Te.en'),
-        Scenario('tee∏'),
-        Scenario('gir|s 2334', ['girls', '2334']),
-        Scenario('t33n gir |s |7-', ['17']),
-        Scenario('𝐓𝐄𝐄𝐍'),
-        Scenario('𝚃𝙴𝙴𝙽'),
-        Scenario('tee刀'),
-        Scenario('te3ns'),
-        Scenario('tee∏'),
-        Scenario('tee∩'),
-        Scenario('t33∩'),
-        Scenario('teeη'),
+        Scenario('🔞t3xt'),
+        Scenario('ΠOPQ 100-', ['nop', '100']),
+        Scenario('Te.xt'),
+        Scenario('∏opq'),
+        Scenario('dat@ 2334', ['data', '2334']),
+        Scenario('t3xt |00-', ['100']),
+        Scenario('𝐓𝐄𝐗𝐓'),
+        Scenario('𝚃𝙴𝚇𝚃'),
+        Scenario('tex刀'),
+        Scenario('te×ts'),
+        Scenario('∏opq'),
+        Scenario('nopq'),
+        Scenario('t3x∩'),
+        Scenario('texη'),
         Scenario('Ç', ['c']),
         Scenario('⒜,⒝,⒞,⒟,⒠,⒡,⒢,⒣,⒤,⒥,⒦,⒧,⒨,⒩,⒪,⒫,⒬,⒭,⒮,⒯,⒰,⒱,⒲,⒳,⒴,⒵', string.ascii_lowercase),
         Scenario('Ⓐ,Ⓑ,Ⓒ,Ⓓ,Ⓔ,Ⓕ,Ⓖ,Ⓗ,Ⓘ,Ⓙ,Ⓚ,Ⓛ,Ⓜ,Ⓝ,Ⓞ,Ⓟ,Ⓠ,Ⓡ,Ⓢ,Ⓣ,Ⓤ,Ⓥ,Ⓦ,Ⓧ,Ⓨ,Ⓩ', string.ascii_lowercase),
@@ -202,7 +202,7 @@ class Scenario:
         Scenario('🅐,🅑,🅒,🅓,🅔,🅕,🅖,🅗,🅘,🅙,🅚,🅛,🅜,🅝,🅞,🅟,🅠,🅡,🅢,🅣,🅤,🅥,🅦,🅧,🅨,🅩', string.ascii_lowercase),
         Scenario('🅰,🅱,🅲,🅳,🅴,🅵,🅶,🅷,🅸,🅹,🅺,🅻,🅼,🅽,🅾,🅿,🆀,🆁,🆂,🆃,🆄,🆅,🆆,🆇,🆈,🆉', string.ascii_lowercase),
         Scenario('🇦,🇧,🇨,🇩,🇪,🇫,🇬,🇭,🇮,🇯,🇰,🇱,🇲,🇳,🇴,🇵,🇶,🇷,🇸,🇹,🇺,🇻,🇼,🇽,🇾,🇿', string.ascii_lowercase),
-        Scenario('test plaϲeholder', 'test placeholder'),  # the 'ϲ' is irregular
+        Scenario('plaϲeholder', 'placeholder'),  # the 'ϲ' is irregular
         Scenario('EXAMΡLE', 'example'),  # the 'P' is irregular
         Scenario('ｄｒｏｉｄ', 'droid'),  # the whole thing is irregular
         Scenario('🅳🆁🅾🅸🅳', 'droid'),
@@ -239,11 +239,11 @@ def test_string_normalization(s: Scenario, execute: ExecuteFunction) -> None:
         (f'https://{QUICK_BROWN_FOX_DOMAIN_1}', [QUICK_BROWN_FOX_DOMAIN_1]),  # simple domain
         (f'http://{QUICK_BROWN_FOX_DOMAIN_1}', [QUICK_BROWN_FOX_DOMAIN_1]),  # simple domain
         (
-            f'http://{QUICK_BROWN_FOX_DOMAIN_1}/for/nintendo_switch?six=picturesque#locations',
+            f'http://{QUICK_BROWN_FOX_DOMAIN_1}/for/device?six=picturesque#locations',
             [QUICK_BROWN_FOX_DOMAIN_1],
         ),  # complex domain
         (
-            f'http://{QUICK_BROWN_FOX_DOMAIN_1}/for/nintendo_switch?six=picturesque#locations and then a markdown [hello.com](http://{QUICK_BROWN_FOX_DOMAIN_2}/for/this).',
+            f'http://{QUICK_BROWN_FOX_DOMAIN_1}/for/device?six=picturesque#locations and then a markdown [hello.com](http://{QUICK_BROWN_FOX_DOMAIN_2}/for/this).',
             [QUICK_BROWN_FOX_DOMAIN_1, QUICK_BROWN_FOX_DOMAIN_2],
         ),  # complex domain and markdown domain
         (
@@ -282,13 +282,13 @@ def test_extract_domains(execute: ExecuteFunction, text: str, expected_result: L
         (QUICK_BROWN_FOX_URL_1, [QUICK_BROWN_FOX_URL_1]),  # simple url
         (f'http://{QUICK_BROWN_FOX_DOMAIN_1}', [f'http://{QUICK_BROWN_FOX_DOMAIN_1}']),  # simple url
         (
-            f'http://{QUICK_BROWN_FOX_DOMAIN_1}/for/nintendo_switch?six=picturesque#locations',
-            [f'http://{QUICK_BROWN_FOX_DOMAIN_1}/for/nintendo_switch?six=picturesque#locations'],
+            f'http://{QUICK_BROWN_FOX_DOMAIN_1}/for/device?six=picturesque#locations',
+            [f'http://{QUICK_BROWN_FOX_DOMAIN_1}/for/device?six=picturesque#locations'],
         ),  # complex url
         (
-            f'http://{QUICK_BROWN_FOX_DOMAIN_1}/for/nintendo_switch?six=picturesque#locations and then a markdown [hello.com](http://{QUICK_BROWN_FOX_DOMAIN_2}/for/this).',
+            f'http://{QUICK_BROWN_FOX_DOMAIN_1}/for/device?six=picturesque#locations and then a markdown [hello.com](http://{QUICK_BROWN_FOX_DOMAIN_2}/for/this).',
             [
-                f'http://{QUICK_BROWN_FOX_DOMAIN_1}/for/nintendo_switch?six=picturesque#locations',
+                f'http://{QUICK_BROWN_FOX_DOMAIN_1}/for/device?six=picturesque#locations',
                 f'http://{QUICK_BROWN_FOX_DOMAIN_2}/for/this',
             ],
         ),  # complex domain and markdown domain
