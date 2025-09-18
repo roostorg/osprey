@@ -73,6 +73,7 @@ services:
     environment:
       - PYTHONPATH=/osprey
       - PORT=5000
+      - OSPREY_INPUT_STREAM_SOURCE=kafka
       - OSPREY_STDOUT_OUTPUT_SINK=True
       - OSPREY_KAFKA_BOOTSTRAP_SERVERS=["kafka:29092"]
       - OSPREY_KAFKA_INPUT_STREAM_TOPIC=osprey.actions_input

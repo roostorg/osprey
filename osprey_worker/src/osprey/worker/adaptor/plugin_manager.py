@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, List, Type, TypeVar
 
 import pluggy
 from osprey.engine.ast_validator import ValidatorRegistry
+from osprey.engine.executor.execution_context import Action
 from osprey.engine.executor.udf_execution_helpers import HasHelper, UDFHelpers
 from osprey.engine.udf.base import UDFBase
 from osprey.engine.udf.registry import UDFRegistry
@@ -12,7 +13,9 @@ from osprey.worker.adaptor.constants import OSPREY_ADAPTOR
 from osprey.worker.adaptor.hookspecs import osprey_hooks
 from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
 from osprey.worker.lib.storage.labels import HasLabelProvider
+from osprey.worker.sinks.sink.input_stream import BaseInputStream
 from osprey.worker.sinks.sink.output_sink import BaseOutputSink, MultiOutputSink
+from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
@@ -76,4 +79,15 @@ def bootstrap_action_proto_deserializer() -> ActionProtoDeserializer | None:
         [deserializer] = plugin_manager.hook.register_action_proto_deserializer()
         return deserializer
     except Exception:
+        return None
+
+
+def bootstrap_input_stream() -> BaseInputStream[BaseAckingContext[Action]] | None:
+    load_all_osprey_plugins()
+
+    streams = plugin_manager.hook.register_input_stream()
+    if streams:
+        # spec has firstresult=True set, so at most it will be one.
+        return streams[0]
+    else:
         return None
