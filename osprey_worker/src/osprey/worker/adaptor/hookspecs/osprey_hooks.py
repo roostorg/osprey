@@ -43,5 +43,5 @@ def register_action_proto_deserializer() -> ActionProtoDeserializer | None:
 
 
 @hookspec(firstresult=True)
-def register_input_stream() -> BaseInputStream[BaseAckingContext[Action]]:
+def register_input_stream(config: Config) -> BaseInputStream[BaseAckingContext[Action]]:
     raise NotImplementedError('register_input_stream must be implemented by the plugin')
