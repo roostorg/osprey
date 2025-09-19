@@ -13,6 +13,7 @@ from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
+    from osprey.worker.lib.storage.stored_execution_result import ExecutionResultStore
     from osprey.worker.sinks.sink.output_sink import BaseOutputSink
 
 hookspec: pluggy.HookspecMarker = pluggy.HookspecMarker(OSPREY_ADAPTOR)
@@ -45,3 +46,8 @@ def register_action_proto_deserializer() -> ActionProtoDeserializer | None:
 @hookspec(firstresult=True)
 def register_input_stream(config: Config) -> BaseInputStream[BaseAckingContext[Action]]:
     raise NotImplementedError('register_input_stream must be implemented by the plugin')
+
+@hookspec
+def register_execution_result_store(config: Config) -> ExecutionResultStore:
+    """Register an execution result storage backend instance."""
+    raise NotImplementedError('register_execution_result_store must be implemented by the plugin')

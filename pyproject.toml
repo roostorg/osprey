@@ -78,6 +78,7 @@ common = [
     "mdit-py-plugins==0.4.2",
     "mdurl==0.1.2",
     "memray==1.17.2",
+    "minio>=7.2.16",
     "mmh3==3.0.0",
     "msgpack==1.0.8",
     "mypy==1.13.0",
