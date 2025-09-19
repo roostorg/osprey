@@ -7,6 +7,7 @@ volumes:
   coordinator_var: {}
   router_var: {}
   druid_shared: {}
+  minio_data: {}
 
 services:
   kafka:
@@ -41,6 +42,34 @@ services:
       timeout: 5s
       retries: 5
 
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000" # minio API
+      - "9001:9001" # minio Console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio_data:/data
+    command: server --console-address ":9001" /data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  minio-bucket-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "/init-minio-bucket.sh"]
+    volumes:
+      - ./init-minio-bucket.sh:/init-minio-bucket.sh
+    restart: "no"
+
   kafka-topic-creator:
     image: confluentinc/cp-kafka:7.4.0
     depends_on:
@@ -67,6 +96,8 @@ services:
         condition: service_healthy
       bigtable_initializer:
         condition: service_completed_successfully
+      minio:
+        condition: service_healthy
     ports:
       - "5001:5000"
     command: ["osprey-worker"]
@@ -164,13 +195,7 @@ services:
         gcloud beta emulators bigtable start --host-port=0.0.0.0:8361 --project=osprey-dev
       "
     healthcheck:
-      test:
-        [
-          "CMD",
-          "bash",
-          "-c",
-          "pgrep -f cbtemulator > /dev/null || exit 1"
-        ]
+      test: ["CMD", "bash", "-c", "pgrep -f cbtemulator > /dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
