@@ -85,9 +85,9 @@ def bootstrap_action_proto_deserializer() -> ActionProtoDeserializer | None:
 def bootstrap_input_stream() -> BaseInputStream[BaseAckingContext[Action]] | None:
     load_all_osprey_plugins()
 
-    streams = plugin_manager.hook.register_input_stream()
-    if streams:
-        # spec has firstresult=True set, so at most it will be one.
-        return streams[0]
+    # spec has firstresult=True set, so it will return the first registered stream if one is registered
+    stream = plugin_manager.hook.register_input_stream()
+    if stream:
+        return stream
     else:
         return None
