@@ -91,3 +91,13 @@ def bootstrap_input_stream(config: Config) -> BaseInputStream[BaseAckingContext[
         return stream
     else:
         return None
+
+def bootstrap_execution_result_store(config: Config):
+    """Get the execution result storage backend from plugins."""
+    load_all_osprey_plugins()
+    
+    try:
+        [store] = plugin_manager.hook.register_execution_result_store(config=config)
+        return store
+    except Exception as e:
+        raise RuntimeError(f"No storage backend plugin found: {e}")
