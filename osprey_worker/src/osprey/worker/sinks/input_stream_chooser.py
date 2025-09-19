@@ -24,8 +24,9 @@ def get_rules_sink_input_stream(
     """Based on the `input_stream_source` constructs a configured input stream that can be used to source events to
     classify. For more details, see `InputStreamSource`."""
 
+    config = CONFIG.instance()
+
     if input_stream_source == InputStreamSource.PUBSUB:
-        config = CONFIG.instance()
         gcloud_project = config.get_str('PUBSUB_OSPREY_PROJECT_ID', 'osprey-dev')
         pubsub_subscription = config.get_str('PUBSUB_OSPREY_RULES_SINK_SUBSCRIPTION', 'rules-sink')
         subscriber = pubsub_v1.SubscriberClient()
@@ -121,7 +122,7 @@ def get_rules_sink_input_stream(
             kafka_consumer=consumer,
         )
     elif input_stream_source == InputStreamSource.PLUGIN:
-        stream = bootstrap_input_stream()
+        stream = bootstrap_input_stream(config=config)
         if stream is None:
             raise AssertionError('No input stream plugin registered')
         return stream
