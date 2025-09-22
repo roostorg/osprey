@@ -12,16 +12,14 @@ from osprey.engine.executor.execution_context import (
 from osprey.engine.language_types.entities import EntityT
 from osprey.engine.language_types.labels import LabelEffect
 from osprey.engine.stdlib.udfs.rules import RuleT
-from osprey.engine.utils.proto_utils import optional_datetime_to_timestamp
 from osprey.worker.lib.ddtrace_utils import trace
 from osprey.worker.lib.instruments import metrics
-from osprey.worker.lib.osprey_shared.labels import EntityMutation, ApplyEntityMutationReply
+from osprey.worker.lib.osprey_shared.labels import ApplyEntityMutationReply, EntityMutation
 from osprey.worker.lib.osprey_shared.logging import DynamicLogSampler, get_logger
 from osprey.worker.lib.storage.labels import LabelProvider
 from osprey.worker.sinks.sink.output_sink_utils.constants import MutationEventType
-from tenacity import retry, stop_after_attempt, wait_exponential
-
 from osprey.worker.ui_api.osprey.validators.entities import EntityKey
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 logger = get_logger()
 
@@ -114,7 +112,7 @@ def _create_entity_mutation(
             status=label_effect.status,
             description=rule.description,
             features=rule.features,
-            expires_at=optional_datetime_to_timestamp(expires_at),
+            expires_at=expires_at,
         ),
         delay_action_by=label_effect.delay_action_by,
     )

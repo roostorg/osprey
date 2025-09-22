@@ -3,8 +3,9 @@ from datetime import datetime
 from typing import List, Optional, Type
 
 from flask import Request
-from osprey.rpc.labels.v1 import service_pb2
+from osprey.engine.language_types.entities import EntityT
 from osprey.engine.language_types.labels import LabelStatus
+from osprey.rpc.labels.v1 import service_pb2
 from osprey.worker.ui_api.osprey.lib.druid import TimeseriesDruidQuery
 from osprey.worker.ui_api.osprey.lib.marshal import FlaskRequestMarshaller, T
 from pydantic import BaseModel
@@ -12,8 +13,8 @@ from pydantic import BaseModel
 
 # This type exists in addition to the pb2 one because pb2 EntityKey cannot be
 # used in pydantic models
-@dataclass
-class EntityKey:
+@dataclass(frozen=True)
+class EntityKey(EntityT[str]):
     id: str
     type: str
 

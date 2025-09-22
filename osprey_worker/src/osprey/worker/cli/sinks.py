@@ -2,7 +2,6 @@
 # ruff: noqa: E402, E501
 from osprey.worker.lib.patcher import patch_all
 from osprey.worker.sinks.input_stream_chooser import get_rules_sink_input_stream
-from osprey.worker.sinks.sink.output_sink import LabelEffectsOutputSink
 
 patch_all(ddtrace_args={'cassandra': True, 'psycopg': True})
 
@@ -12,7 +11,7 @@ from uuid import uuid1
 
 # this is required to avoid memory leaks with gRPC
 from gevent import config as gevent_config
-from osprey.worker.adaptor.plugin_manager import bootstrap_output_sinks
+from osprey.worker.adaptor.plugin_manager import bootstrap_label_provider, bootstrap_output_sinks
 
 gevent_config.track_greenlet_tree = False
 
@@ -250,18 +249,14 @@ def run_bulk_label_sink(pooled: bool, send_status_webhook: bool) -> None:
     analytics_pubsub_topic_id = config.get_str('PUBSUB_ANALYTICS_EVENT_TOPIC_ID', 'osprey-analytics')
     analytics_publisher = PubSubPublisher(analytics_pubsub_project_id, analytics_pubsub_topic_id)
 
-    osprey_webhook_pubsub_project = config.get_str('PUBSUB_OSPREY_WEBHOOKS_PROJECT_ID', 'osprey-dev')
-    osprey_webhook_pubsub_topic = config.get_str('PUBSUB_OSPREY_WEBHOOKS_TOPIC_ID', 'osprey-webhooks')
-    webhooks_publisher = PubSubPublisher(osprey_webhook_pubsub_project, osprey_webhook_pubsub_topic)
-
-    event_effects_output_sink = LabelEffectsOutputSink(engine, analytics_publisher, webhooks_publisher)
+    label_provider = bootstrap_label_provider()
 
     def factory() -> BulkLabelSink:
         # NOTE: It's very important the input stream is created per-webhook sink
         postgres_source = PostgresInputStream(BulkLabelTask, tags=['sink:bulklabelsink'])
         return BulkLabelSink(
             input_stream=postgres_source,
-            event_effects_output_sink=event_effects_output_sink,
+            label_provider=label_provider,
             engine=engine,
             analytics_publisher=analytics_publisher,
             send_status_webhook=send_status_webhook,

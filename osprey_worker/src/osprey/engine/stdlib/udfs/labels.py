@@ -169,7 +169,8 @@ class HasLabel(HasHelperInternal[LabelProvider], BatchableUDFBase[HasLabelArgume
             all_reasons_expired = all(
                 reason.expires_at.second > 0  # Check if timestamp is not default/epoch
                 and reason.expires_at <= now
-                for reason in label_state.reasons.values() if reason.expires_at
+                for reason in label_state.reasons.values()
+                if reason.expires_at
             )
             if all_reasons_expired:
                 label_state = None

@@ -6,8 +6,8 @@ from datetime import datetime
 from random import random
 from typing import Any, Dict, Iterator, List, Optional
 
-from osprey.rpc.labels.v1 import service_pb2
 from osprey.engine.language_types.labels import LabelStatus
+from osprey.rpc.labels.v1 import service_pb2
 from osprey.worker.lib.storage.types import Enum
 from sqlalchemy import BigInteger, Boolean, Column, DateTime, Integer, Text, and_, func, or_
 from sqlalchemy.dialects.postgresql import ARRAY, INTERVAL, JSONB

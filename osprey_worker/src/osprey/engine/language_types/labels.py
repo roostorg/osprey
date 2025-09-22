@@ -13,6 +13,7 @@ from osprey.engine.shared_constants import (
 from .entities import EntityT
 from .rules import RuleT, add_slots
 
+
 class LabelStatus(IntEnum):
     ADDED = 0
     REMOVED = 1
@@ -30,6 +31,7 @@ class LabelStatus(IntEnum):
                 return LabelStatus.ADDED
             case LabelStatus.REMOVED | LabelStatus.MANUALLY_REMOVED:
                 return LabelStatus.REMOVED
+
 
 @add_slots
 @dataclass

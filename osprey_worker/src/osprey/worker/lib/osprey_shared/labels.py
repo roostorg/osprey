@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum, IntEnum
+from enum import Enum
 from typing import TYPE_CHECKING, Dict, List, Mapping, Optional, cast
 
 from osprey.engine.language_types.labels import LabelStatus
@@ -27,6 +27,7 @@ class LabelConnotation(Enum):
     POSITIVE = 'positive'
     NEGATIVE = 'negative'
     NEUTRAL = 'neutral'
+
 
 # Pydantic-compatible versions of pb2 types
 @dataclass
