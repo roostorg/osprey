@@ -8,7 +8,6 @@ patch_all(ddtrace_args={'cassandra': True, 'psycopg': True})
 
 
 import signal
-import time
 from uuid import uuid1
 
 # this is required to avoid memory leaks with gRPC
@@ -21,12 +20,11 @@ import multiprocessing
 import os
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, Optional, Set, TextIO, cast
+from typing import Optional, Set, TextIO, cast
 
 import click
 import gevent
 import kafka
-import msgpack
 import sentry_sdk
 from google.api_core.exceptions import AlreadyExists
 from google.cloud import pubsub_v1
@@ -38,7 +36,6 @@ configure_logging()
 
 from osprey.worker.lib.bulk_label import TaskStatus
 from osprey.worker.lib.config import Config
-from osprey.worker.lib.encryption.envelope import Envelope
 from osprey.worker.lib.osprey_engine import OspreyEngine, get_sources_provider
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.publisher import PubSubPublisher
@@ -384,86 +381,6 @@ def _bootstrap_pubsub() -> None:
     subscriber = pubsub_v1.SubscriberClient()
 
     create_pubsub_topic_and_subscription('osprey-dev', 'osprey-actions', 'osprey-dev', 'rules-sink')
-    create_pubsub_topic_and_subscription('osprey-dev', 'osprey-actions', 'osprey-dev', 'attachments-sent')
-    create_pubsub_topic_and_subscription('osprey-dev', 'media-hasher-output', 'osprey-dev', 'media-match-sink')
-    create_pubsub_topic_and_subscription('osprey-dev', 'osprey-analytics', 'osprey-dev', 'osprey-analytics-sub')
-    create_pubsub_topic_and_subscription('osprey-dev', 'media-uploaded', 'osprey-dev', 'media-uploaded')
-    create_pubsub_topic_and_subscription('osprey-dev', 'osprey-safety-signals', 'osprey-dev', 'safety-dispatch')
-    create_pubsub_topic_and_subscription('osprey-dev', 'ihd-agent-decisions', 'osprey-dev', 'ihd-agent-decisions-sub')
-    create_pubsub_topic_and_subscription('osprey-dev', 'osprey-evidence', 'osprey-dev', 'osprey-evidence-subscription')
-    create_pubsub_topic_and_subscription('osprey-dev', 'osprey-webhooks', 'osprey-dev', 'osprey-webhooks-subscription')
-    create_pubsub_topic_and_subscription('osprey-dev', 'panther-osprey-events', 'osprey-dev', 'panther-osprey-events')
-
-
-# NOTE(austin) in reality this shouldn't live in the osprey cli but the infrastructure already exists
-def _bootstrap_safety_record_pubsub() -> None:
-    os.environ['PUBSUB_EMULATOR_HOST'] = '127.0.0.1:8085'
-
-    def create_pubsub_topic_and_subscription(
-        topic_project_id: str, topic_id: str, subscription_project_id: str, subscription_id: str
-    ) -> None:
-        _create_pubsub_topic_and_subscription(
-            publisher, subscriber, topic_project_id, topic_id, subscription_project_id, subscription_id
-        )
-
-    publisher = pubsub_v1.PublisherClient()
-    subscriber = pubsub_v1.SubscriberClient()
-
-    create_pubsub_topic_and_subscription(
-        'osprey-dev', 'safety-record-write-topic', 'osprey-dev', 'safety-record-write-topic-subscription'
-    )
-    create_pubsub_topic_and_subscription(
-        'osprey-dev', 'safety-classification-emit-topic', 'osprey-dev', 'safety-classification-emit-subscription'
-    )
-    create_pubsub_topic_and_subscription(
-        'osprey-dev',
-        'safety-classification-removal-emit-topic',
-        'osprey-dev',
-        'safety-classification-removal-emit-subscription',
-    )
-
-    create_pubsub_topic_and_subscription(
-        'osprey-dev', 'interventions-request', 'osprey-dev', 'interventions-request-subscription'
-    )
-    create_pubsub_topic_and_subscription(
-        'osprey-dev',
-        'safety-record-evidence-write-topic',
-        'osprey-dev',
-        'safety-record-evidence-write-topic-subscription',
-    )
-    create_pubsub_topic_and_subscription(
-        'osprey-dev',
-        'safety-record-evidence-write-dead-letter-topic',
-        'osprey-dev',
-        'safety-record-evidence-write-dead-letter-topic-subscription',
-    )
-    create_pubsub_topic_and_subscription('osprey-dev', 'generic-events', 'osprey-dev', 'generic-events-subscription')
-
-    create_pubsub_topic_and_subscription(
-        'osprey-dev',
-        'safety-classification-removal-requests',
-        'osprey-dev',
-        'safety-classification-removal-requests-subscriber',
-    )
-
-    create_pubsub_topic_and_subscription(
-        'osprey-dev',
-        'interventions-request',
-        'osprey-dev',
-        'interventions-request-subscription',
-    )
-    create_pubsub_topic_and_subscription(
-        'osprey-dev',
-        'interventions-flush',
-        'osprey-dev',
-        'interventions-flush-subscription',
-    )
-    create_pubsub_topic_and_subscription(
-        'osprey-dev',
-        'safety-classification-blast-radius-review',
-        'osprey-dev',
-        'safety-classification-blast-radius-review-subscription',
-    )
 
 
 def _create_pubsub_topic_and_subscription(
@@ -504,263 +421,6 @@ def _bootstrap_bigtable() -> None:
 def bootstrap_pubsub() -> None:
     init_config()
     _bootstrap_pubsub()
-
-
-@cli.command()
-@click.option(
-    '--sleep-forever/--no-sleep-forever',
-    default=False,
-    help='Whether to sleep forever after bootstrapping the pubsub topics/subscriptions. '
-    'Intended for clyde service start so that we can do one clean deployment.',
-)
-def bootstrap_safety_record_pubsub(sleep_forever: bool) -> None:
-    _bootstrap_safety_record_pubsub()
-    if sleep_forever:
-        while True:
-            time.sleep(1)
-
-
-unencrypted_action_example_json = {
-    'name': 'guild_joined',
-    'data': {
-        'user': {
-            'id': '1',
-            'username': 'RyanWeinstein',
-            'avatar': 'a_9e573467f84ae50d47ffb69f4b11e4cb',
-            'avatar_decoration': None,
-            'discriminator': '0001',
-            'public_flags': 129,
-            'mfa_enabled': True,
-            'bot': False,
-            'flags': 10857677324417,
-            'email_verified': True,
-            'required_action': None,
-            'premium_type': 2,
-            'premium_until': '2022-05-03T21:49:26.832000+00:00',
-            'phone': '+14045528784',
-            'email': 'rnw144@gmail.com',
-            'ip': '76.21.5.241',
-            'ip_is_whitelisted': False,
-        },
-        'invite': {
-            'code': '4ucRCcAV',
-            'max_age': 604800,
-            'created_at': '2022-04-28T19:55:05.704694+00:00',
-            'temporary': False,
-            'max_uses': 0,
-            'custom': False,
-        },
-        'guild': {
-            'id': '1',
-            'name': 'SF Go Club',
-            'description': None,
-            'owner': {'id': '1'},
-            'member_count': 113,
-            'features': ['EXPOSED_TO_ACTIVITIES_WTP_EXPERIMENT'],
-            'premium_subscription_count': 0,
-            'verification_level': 1,
-            'is_nsfw': False,
-            'nsfw_level': 0,
-            'has_public_stage': False,
-            'channel_names': [],
-        },
-        'channel': {'id': '1', 'name': 'general', 'type': 0, 'is_nsfw': False},
-        'inviter': {
-            'id': '1',
-            'username': 'RyanWeinstein',
-            'avatar': 'a_9e573467f84ae50d47ffb69f4b11e4cb',
-            'avatar_decoration': None,
-            'discriminator': '0001',
-            'public_flags': 129,
-            'mfa_enabled': True,
-            'bot': False,
-            'flags': 10857677324417,
-            'email_verified': True,
-            'required_action': None,
-            'premium_type': 2,
-            'premium_until': '2022-05-03T21:49:26.832000+00:00',
-            'phone': '+14045528784',
-            'email': 'rnw144@gmail.com',
-            'ip': '76.21.5.241',
-            'ip_is_whitelisted': False,
-        },
-        'properties': {
-            'os': 'Mac OS X',
-            'browser': 'Osprey Client',
-            'release_channel': 'canary',
-            'client_version': '0.0.284',
-            'os_version': '20.6.0',
-            'os_arch': 'x64',
-            'system_locale': 'en-US',
-            'client_build_number': 124425,
-            'client_event_source': None,
-            'location': 'Guild Events',
-            'cfduid': 'bb13eb5bf3ea11ebb95442010a0a0015',
-            'cfduid_signed': True,
-        },
-        'http_request': {
-            'headers': {
-                'Host': 'test.example.com',
-                'X-Forwarded-For': '76.21.5.241',
-                'X-Forwarded-Proto': 'https',
-                'Content-Length': '84',
-                'Accept-Encoding': 'gzip',
-                'Cf-Ipcountry': 'US',
-                'Cf-Ray': '70325a8013769858-SJC',
-                'Cf-Visitor': '{"scheme":"https"}',
-                'Content-Type': 'application/json',
-                'Cf-Ew-Via': '15',
-                'Cdn-Loop': 'cloudflare; subreqs=1',
-                'Accept-Language': 'en-US',
-                'Accept': '*/*',
-                'Referer': 'https://text.example.com/channels/1/1',
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) osprey/0.0.284 Chrome/91.0.4472.164 Electron/13.6.6 Safari/537.36',
-                'Cf-Connecting-Ip': '76.21.5.241',
-                'Origin': 'https://test.example.com',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'same-origin',
-                'X-Context-Properties': 'eyJsb2NhdGlvbiI6Ikd1aWxkIEV2ZW50cyJ9',
-                'X-Debug-Options': 'bugReporterEnabled',
-                'X-Super-Properties': 'eyJvcyI6Ik1hYyBPUyBYIiwiYnJvd3NlciI6IkRpc2NvcmQgQ2xpZW50IiwicmVsZWFzZV9jaGFubmVsIjoiY2FuYXJ5IiwiY2xpZW50X3ZlcnNpb24iOiIwLjAuMjg0Iiwib3NfdmVyc2lvbiI6IjIwLjYuMCIsIm9zX2FyY2giOiJ4NjQiLCJzeXN0ZW1fbG9jYWxlIjoiZW4tVVMiLCJjbGllbnRfYnVpbGRfbnVtYmVyIjoxMjQ0MjUsImNsaWVudF9ldmVudF9zb3VyY2UiOm51bGx9',
-                'Cf-Worker': 'example.com',
-                'X-Cloud-Trace-Context': '26c610f0ab9788509722bd55f34e480c/4736332299159169251',
-                'Cookie': '__dcfduid=5ad2d58a06e14efa95adb3ff566ae6d5; __sdcfduid=bb13eb5bf3ea11ebb95442010a0a00151f59c766ecd2e78b5037913f45cf34e462ebde0db80fdcceb2e479c04e633b3a; __stripe_mid=d0fa98c9-ea86-43c0-93d9-e65470664ea24b054b; __cfruid=85af4fba395350750926aa70ffe390723c78fccc-1650303703',
-                'Via': '1.1 google',
-                'X-Envoy-External-Address': '10.10.3.166',
-                'X-Request-Id': 'cd8d1e03-0763-42c7-83b2-d1f42d6a70a0',
-                'X-Datadog-Trace-Id': '5264020418323037859',
-                'X-Datadog-Parent-Id': '7050569386306678149',
-                'X-Datadog-Sampling-Priority': '-1',
-            },
-            'endpoint': 'invites.create_channel_invite',
-            'url': 'https://test.example.com/api/channels/900896022295871500/invites',
-            'query_string': '',
-            'method': 'POST',
-            'api_version': 9,
-            'remote_addr': '76.21.5.241',
-            'remote_addr_is_whitelisted': False,
-        },
-        'did_solve_captcha': False,
-    },
-}
-
-encrypted_action_example_json = {
-    'name': 'message_sent',
-    'secret_data': {
-        'message': {
-            'content': 'This should be encrypted message content!',
-        },
-    },
-    'data': {
-        'channel': {
-            'id': '1',
-            'name': None,
-            'type': 1,
-            'is_nsfw': False,
-            'message_count': 9,
-            'recipients': [{'id': '1'}],
-        },
-        'message': {
-            'id': '1/1',
-            'message_id': '1',
-            'channel_id': '1',
-            'edited_timestamp': None,
-            'flags': 0,
-            'mention_ids': [],
-            'mention_channel_ids': [],
-            'mention_everyone': None,
-            'mention_everyone_online_only': None,
-            'author': {
-                'id': '1',
-                'username': 'person_a',
-                'global_name': 'person_a',
-                'avatar': '393729487298e9e7b98739287923d927',
-                'discriminator': '0',
-                'public_flags': 64,
-                'bio': 'owo',
-                'mfa_enabled': True,
-                'avatar_decoration': None,
-                'bot': False,
-                'flags': 10445360463936,
-                'suspicious_activity_flags': 0,
-                'email_verified': True,
-                'required_action': None,
-                'premium_type': None,
-                'premium_until': None,
-                'is_unique_username': True,
-                'phone': '+1112223333',
-                'email': 'person_a@example.com',
-                'ip': '127.0.0.1',
-                'ip_is_whitelisted': False,
-            },
-        },
-        'user': {
-            'id': '1',
-            'username': 'person_a',
-            'global_name': 'person_a',
-            'avatar': '393729487298e9e7b98739287923d927',
-            'discriminator': '0',
-            'public_flags': 64,
-            'bio': 'owo',
-            'mfa_enabled': True,
-            'avatar_decoration': None,
-            'bot': False,
-            'flags': 10445360463936,
-            'suspicious_activity_flags': 0,
-            'email_verified': True,
-            'required_action': None,
-            'premium_type': None,
-            'premium_until': None,
-            'is_unique_username': True,
-            'phone': '+1112223333',
-            'email': 'person_a@example.com',
-            'ip': '127.0.0.1',
-            'ip_is_whitelisted': False,
-        },
-    },
-}
-
-
-@cli.command()
-@click.argument('count', type=int, default=1)
-@click.argument('delay', type=float, default=0.0)
-@click.option('--encrypted/--unencrypted', 'encrypted', default=False, help='Whether to encrypt the action')
-def publish_action(count: int, delay: float, encrypted: bool) -> None:
-    os.environ['PUBSUB_EMULATOR_HOST'] = 'localhost:8085'
-    import json
-    import time
-
-    _bootstrap_pubsub()
-    publisher = pubsub_v1.PublisherClient()
-    envelope: Optional[Envelope] = None
-
-    if encrypted:
-        config = init_config()
-        envelope = Envelope(
-            kek_uri=config.get_str('PUBSUB_ENCRYPTION_KEY_URI', ''),
-            gcp_credential_path='',
-        )
-
-    topic_path = publisher.topic_path('osprey-dev', 'osprey-actions')
-    for i in range(count):
-        # coordinator should generate the snowflake id
-        action: Dict[str, Any] = {}
-        # action: Dict[str, Any] = {'id': str(round(datetime.now().timestamp()) + i)}
-        if encrypted:
-            action.update({**encrypted_action_example_json})
-        else:
-            action.update({**unencrypted_action_example_json})
-        attributes = {}
-        data = msgpack.dumps(json.dumps(action))
-        if encrypted and envelope is not None:
-            attributes['encrypted'] = 'true'
-            data = envelope.encrypt(data)
-        else:
-            attributes['encrypted'] = 'false'
-        future = publisher.publish(topic_path, data, **attributes)
-        print('Published message with id:', future.result())
-        time.sleep(delay)
 
 
 @cli.command()
