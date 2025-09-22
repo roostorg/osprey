@@ -123,7 +123,7 @@ services:
       - ./osprey_worker:/osprey/osprey_worker
       - ./osprey_rpc:/osprey/osprey_rpc
       - ./example_rules:/osprey/example_rules
-
+      - ./entrypoint.sh:/osprey/entrypoint.sh
   osprey_ui_api:
     container_name: osprey_ui_api
     build:

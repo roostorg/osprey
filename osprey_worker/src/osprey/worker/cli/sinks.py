@@ -107,6 +107,7 @@ def tail_kafka_input_sink() -> None:
         print(event)
 
 
+@cli.command()
 @click.option('--pooled/--no-pooled', default=True, help='Whether to run multiple sinks simultaneously in a pool.')
 @click.option(
     '--bootstrap-pubsub/--no-bootstrap-pubsub',

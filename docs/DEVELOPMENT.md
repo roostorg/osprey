@@ -155,11 +155,10 @@ def register_ast_validators() -> None:
 
 #### Rules
 
-Rules are written in SML, some examples are provided in `example_rules/` with YAML config, the rules are mounted to the worker processes when the containers start via:
+Rules are written in SML, some examples are provided in `example_rules/` with YAML config, the rules are mounted to the worker processes when the containers start via environment variables. ex:
 
 ```bash
-uv run python3.11 osprey_worker/src/osprey/worker/sinks/cli.py run-rules-sink \
-  --input kafka --output stdout --rules-path ./example_rules
+OSPREY_RULES= uv run python3.11 osprey_worker/src/osprey/worker/sinks/cli.py run-rules-sink
 ```
 
 #### Test Data
