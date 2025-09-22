@@ -8,6 +8,7 @@ from osprey.engine.executor.execution_context import Action
 from osprey.engine.udf.base import UDFBase
 from osprey.worker.adaptor.constants import OSPREY_ADAPTOR
 from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
+from osprey.worker.lib.storage.labels import LabelProvider
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 
@@ -45,3 +46,12 @@ def register_action_proto_deserializer() -> ActionProtoDeserializer | None:
 @hookspec(firstresult=True)
 def register_input_stream(config: Config) -> BaseInputStream[BaseAckingContext[Action]]:
     raise NotImplementedError('register_input_stream must be implemented by the plugin')
+
+
+@hookspec(firstresult=True)
+def register_labels_provider() -> LabelProvider:
+    """Register a provider for the labels service enabling Label related UDFs.
+    If this hook is implemented, the UDFs HasLabel, LabelAdd, and LabelRemove will be available.
+    Similarly, the LabelsEffectSink output sink will be enabled.
+    """
+    raise NotImplementedError('register_action_proto_deserializers must be implemented by the plugin')

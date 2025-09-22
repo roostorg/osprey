@@ -3,6 +3,7 @@ from datetime import datetime
 from enum import Enum, IntEnum
 from typing import TYPE_CHECKING, Dict, List, Mapping, Optional, cast
 
+from osprey.engine.language_types.labels import LabelStatus
 from osprey.rpc.labels.v1 import service_pb2
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.utils.request_utils import SessionWithRetries
@@ -26,14 +27,6 @@ class LabelConnotation(Enum):
     POSITIVE = 'positive'
     NEGATIVE = 'negative'
     NEUTRAL = 'neutral'
-
-
-class LabelStatus(IntEnum):
-    ADDED = service_pb2.LabelStatus.ADDED
-    REMOVED = service_pb2.LabelStatus.REMOVED
-    MANUALLY_ADDED = service_pb2.LabelStatus.MANUALLY_ADDED
-    MANUALLY_REMOVED = service_pb2.LabelStatus.MANUALLY_REMOVED
-
 
 # Pydantic-compatible versions of pb2 types
 @dataclass
@@ -84,21 +77,6 @@ class LabelStateInner:
     status: LabelStatus
     reasons: Dict[str, LabelReason]
 
-    @classmethod
-    def from_pb2(cls, pb2_state: service_pb2.LabelStateInner) -> 'LabelStateInner':
-        """Convert from pb2 LabelStateInner to dataclass."""
-        return cls(
-            status=LabelStatus(pb2_state.status),
-            reasons={key: LabelReason.from_pb2(pb2_state.reasons[key]) for key in pb2_state.reasons},
-        )
-
-    def to_pb2(self) -> service_pb2.LabelStateInner:
-        """Convert to pb2 LabelStateInner."""
-        pb2_state = service_pb2.LabelStateInner(status=self.status.value)
-        for key, reason in self.reasons.items():
-            pb2_state.reasons[key].CopyFrom(reason.to_pb2())
-        return pb2_state
-
 
 @dataclass
 class LabelState:
@@ -106,50 +84,11 @@ class LabelState:
     reasons: Dict[str, LabelReason]
     previous_states: List[LabelStateInner] = field(default_factory=list)
 
-    @classmethod
-    def from_pb2(cls, pb2_state: service_pb2.LabelState) -> 'LabelState':
-        """Convert from pb2 LabelState to dataclass."""
-        return cls(
-            status=LabelStatus(pb2_state.status),
-            reasons={key: LabelReason.from_pb2(pb2_state.reasons[key]) for key in pb2_state.reasons},
-            previous_states=[LabelStateInner.from_pb2(state) for state in pb2_state.previous_states],
-        )
-
-    def to_pb2(self) -> service_pb2.LabelState:
-        """Convert to pb2 LabelState."""
-        pb2_state = service_pb2.LabelState(status=self.status.value)
-        for key, reason in self.reasons.items():
-            pb2_state.reasons[key].CopyFrom(reason.to_pb2())
-        for prev_state in self.previous_states:
-            pb2_state.previous_states.append(prev_state.to_pb2())
-        return pb2_state
-
 
 @dataclass
 class Labels:
     labels: Dict[str, LabelState] = field(default_factory=dict)
     expires_at: Optional[datetime] = None
-
-    @classmethod
-    def from_pb2(cls, pb2_labels: service_pb2.Labels) -> 'Labels':
-        """Convert from pb2 Labels to dataclass."""
-        expires_at = None
-        if pb2_labels.HasField('expires_at'):
-            expires_at = pb2_labels.expires_at.ToDatetime()
-
-        return cls(
-            labels={key: LabelState.from_pb2(pb2_labels.labels[key]) for key in pb2_labels.labels},
-            expires_at=expires_at,
-        )
-
-    def to_pb2(self) -> service_pb2.Labels:
-        """Convert to pb2 Labels."""
-        pb2_labels = service_pb2.Labels()
-        for key, label_state in self.labels.items():
-            pb2_labels.labels[key].CopyFrom(label_state.to_pb2())
-        if self.expires_at is not None:
-            pb2_labels.expires_at.FromDatetime(self.expires_at)
-        return pb2_labels
 
 
 class LabelsAndConnotationsResponse(BaseModel):

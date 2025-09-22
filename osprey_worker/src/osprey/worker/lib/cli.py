@@ -31,11 +31,9 @@ from osprey.rpc.labels.v1.service_pb2 import (  # noqa: E402
     EntityMutation,
     LabelStatus,
 )
-from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators, bootstrap_udfs  # noqa: E402
-from osprey.worker.lib.osprey_engine import OspreyEngine  # noqa: E402
+from osprey.worker.lib.osprey_engine import bootstrap_engine  # noqa: E402
 from osprey.worker.lib.publisher import PubSubPublisher  # noqa: E402
 from osprey.worker.lib.singletons import CONFIG  # noqa: E402
-from osprey.worker.lib.sources_provider import EtcdSourcesProvider  # noqa: E402
 from osprey.worker.lib.sources_publisher import (  # noqa: E402
     upload_dependencies_mapping,
     validate_and_push,
@@ -48,7 +46,7 @@ from osprey.worker.lib.storage import (  # noqa: E402
     stored_execution_result,
 )
 from osprey.worker.lib.utils.click_utils import EnumChoicePb2  # noqa: E402
-from osprey.worker.sinks.sink.output_sink import EventEffectsOutputSink  # noqa: E402
+from osprey.worker.sinks.sink.output_sink import LabelEffectsOutputSink  # noqa: E402
 from osprey.worker.sinks.sink.output_sink_utils.constants import MutationEventType  # noqa: E402
 
 if TYPE_CHECKING:
@@ -268,17 +266,12 @@ def apply_label_without_effects(
     print(result)
 
 
-def get_event_effects_output_sink() -> EventEffectsOutputSink:
+def get_event_effects_output_sink() -> LabelEffectsOutputSink:
     config = CONFIG.instance()
     config.configure_from_env()
 
     postgres.init_from_config('osprey_db')
-    sources_provider = EtcdSourcesProvider(
-        etcd_key=config.get_str('OSPREY_ETCD_SOURCES_PROVIDER_KEY', '/config/osprey/rules-sink-sources')
-    )
-    udf_registery, _ = bootstrap_udfs()
-    bootstrap_ast_validators()
-    engine = OspreyEngine(sources_provider, udf_registery)
+    engine, _ = bootstrap_engine()
     analytics_pubsub_project_id = config.get_str('PUBSUB_DATA_PROJECT_ID', 'osprey-dev')
     analytics_pubsub_topic_id = config.get_str('PUBSUB_ANALYTICS_EVENT_TOPIC_ID', 'osprey-analytics')
     analytics_publisher = PubSubPublisher(analytics_pubsub_project_id, analytics_pubsub_topic_id)
@@ -286,7 +279,7 @@ def get_event_effects_output_sink() -> EventEffectsOutputSink:
     osprey_webhook_pubsub_project = config.get_str('PUBSUB_OSPREY_WEBHOOKS_PROJECT_ID', 'osprey-dev')
     osprey_webhook_pubsub_topic = config.get_str('PUBSUB_OSPREY_WEBHOOKS_TOPIC_ID', 'osprey-webhooks')
     webhooks_publisher = PubSubPublisher(osprey_webhook_pubsub_project, osprey_webhook_pubsub_topic)
-    return EventEffectsOutputSink(engine, analytics_publisher, webhooks_publisher)
+    return LabelEffectsOutputSink(engine, analytics_publisher, webhooks_publisher)
 
 
 @cli.command()

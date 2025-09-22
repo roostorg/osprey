@@ -6,9 +6,8 @@ from unittest.mock import MagicMock, call
 import pytest
 from osprey.engine.ast.sources import Sources
 from osprey.rpc.labels.v1.service_pb2 import EntityKey, LabelStatus
-from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators, bootstrap_udfs
 from osprey.worker.lib.bulk_label import TaskStatus
-from osprey.worker.lib.osprey_engine import OspreyEngine
+from osprey.worker.lib.osprey_engine import bootstrap_engine
 from osprey.worker.lib.sources_provider import StaticSourcesProvider
 from osprey.worker.lib.storage.bulk_label_task import MAX_ATTEMPTS, BulkLabelTask
 from osprey.worker.sinks.sink.bulk_label_sink import (
@@ -90,11 +89,11 @@ def create_bulk_label_sink_with_single_task(
     setattr(task, 'release', release_mock)
     setattr(BulkLabelSink, '_send_bulk_job_analytics', analytics_mock)
 
-    provider = StaticSourcesProvider(sources=Sources.from_dict({'main.sml': "UserId = Entity(type='User', id='1')"}))
-    udf_registry, _ = bootstrap_udfs()
-    bootstrap_ast_validators()
+    sources_provider = StaticSourcesProvider(
+        sources=Sources.from_dict({'main.sml': "UserId = Entity(type='User', id='1')"})
+    )
 
-    engine = OspreyEngine(sources_provider=provider, udf_registry=udf_registry)
+    engine = bootstrap_engine(sources_provider=sources_provider)
 
     event_effects_output_sink_mock = MagicMock()
     bulk_label_sink = BulkLabelSink(

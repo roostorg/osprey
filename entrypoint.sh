@@ -32,7 +32,7 @@ cli-osprey-ui-api() {
 }
 
 cli-osprey-worker() {
-    exec uv run python3.11 osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink --rules-path ./example_rules
+    exec uv run python3.11 osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink
 }
 
 cli-run-tests() {

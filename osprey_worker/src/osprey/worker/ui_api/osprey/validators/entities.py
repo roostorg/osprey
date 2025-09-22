@@ -4,7 +4,7 @@ from typing import List, Optional, Type
 
 from flask import Request
 from osprey.rpc.labels.v1 import service_pb2
-from osprey.worker.lib.osprey_shared.labels import LabelStatus
+from osprey.engine.language_types.labels import LabelStatus
 from osprey.worker.ui_api.osprey.lib.druid import TimeseriesDruidQuery
 from osprey.worker.ui_api.osprey.lib.marshal import FlaskRequestMarshaller, T
 from pydantic import BaseModel

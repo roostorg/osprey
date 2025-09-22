@@ -16,7 +16,7 @@ from osprey.worker.lib.publisher import BasePublisher
 from osprey.worker.lib.storage.bulk_label_task import BASE_DELAY_SECONDS, MAX_ATTEMPTS, BulkLabelTask
 from osprey.worker.lib.storage.labels import get_for_entity
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
-from osprey.worker.sinks.sink.output_sink import EventEffectsOutputSink
+from osprey.worker.sinks.sink.output_sink import LabelEffectsOutputSink
 from osprey.worker.sinks.sink.output_sink_utils.constants import MutationEventType
 from osprey.worker.sinks.sink.output_sink_utils.models import OspreyBulkJobAnalyticsEvent
 from osprey.worker.ui_api.osprey.lib.druid import PeriodData, TopNDruidQuery, TopNPoPResponse
@@ -67,7 +67,7 @@ class BulkLabelSink(BaseSink):
     def __init__(
         self,
         input_stream: BaseInputStream[BulkLabelTask],
-        event_effects_output_sink: EventEffectsOutputSink,
+        event_effects_output_sink: LabelEffectsOutputSink,
         engine: OspreyEngine,
         analytics_publisher: BasePublisher,
         send_status_webhook: bool = True,
@@ -430,7 +430,7 @@ class BulkLabelSink(BaseSink):
         rows_rolled_back = 0
 
         feature_name_to_entity_type_mapping = engine.get_feature_name_to_entity_type_mapping()
-        event_effects_output_sink = EventEffectsOutputSink(
+        event_effects_output_sink = LabelEffectsOutputSink(
             engine=engine, analytics_publisher=analytics_publisher, webhooks_publisher=webhooks_publisher
         )
         feature_name = task.dimension
