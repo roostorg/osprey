@@ -20,7 +20,8 @@ gevent_config.track_greenlet_tree = False
 import multiprocessing
 import os
 from concurrent.futures import ProcessPoolExecutor
-from typing import Optional, TextIO
+from typing import Optional, Set, TextIO, cast
+
 import click
 import gevent
 import kafka
@@ -35,7 +36,6 @@ configure_logging()
 
 from osprey.worker.lib.bulk_label import TaskStatus
 from osprey.worker.lib.config import Config
-
 from osprey.worker.lib.osprey_engine import bootstrap_engine, bootstrap_engine_with_helpers, get_sources_provider
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.publisher import PubSubPublisher
