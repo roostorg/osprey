@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from osprey.worker.lib.osprey_shared.labels import LabelStatus
+from osprey.engine.language_types.labels import LabelStatus
 from pydantic import BaseModel
 
 from .constants import MutationEventType, OspreyAnalyticsEvents

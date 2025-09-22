@@ -34,9 +34,9 @@ from osprey.engine.language_types.post_execution_convertible import PostExecutio
 from osprey.engine.language_types.verdicts import VerdictEffect
 from osprey.engine.utils.types import add_slots, cached_property
 from osprey.rpc.common.v1.verdicts_pb2 import Verdicts
-from osprey.rpc.labels.v1.service_pb2 import EntityMutation
 from result import Result, UnwrapError
 
+from ...worker.lib.osprey_shared.labels import EntityMutation
 from .dependency_chain import DependencyChain
 from .execution_graph import ExecutionGraph
 from .external_service_utils import ExternalService, ExternalServiceAccessor, KeyT, ValueT

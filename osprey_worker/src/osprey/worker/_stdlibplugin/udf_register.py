@@ -15,7 +15,6 @@ from osprey.engine.stdlib.udfs.get_action_name import GetActionName
 from osprey.engine.stdlib.udfs.import_ import Import
 from osprey.engine.stdlib.udfs.ip_network import IpNetwork
 from osprey.engine.stdlib.udfs.json_data import JsonData
-from osprey.engine.stdlib.udfs.labels import HasLabel, LabelAdd, LabelRemove
 from osprey.engine.stdlib.udfs.list_length import ListLength
 from osprey.engine.stdlib.udfs.list_read import ListRead
 from osprey.engine.stdlib.udfs.list_sort import ListSort
@@ -83,12 +82,9 @@ def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
         ExperimentsBucketAssignment,
         ExtractCookie,
         GetActionName,
-        HasLabel,
         Import,
         IpNetwork,
         JsonData,
-        LabelAdd,
-        LabelRemove,
         ListLength,
         ListRead,
         ListSort,

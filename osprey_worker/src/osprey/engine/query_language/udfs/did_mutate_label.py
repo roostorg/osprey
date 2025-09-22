@@ -3,9 +3,9 @@ from typing import Dict
 from osprey.engine.ast_validator.validation_context import ValidationContext
 from osprey.engine.udf.arguments import ArgumentsBase, ConstExpr
 from osprey.engine.udf.base import QueryUdfBase
-from osprey.rpc.labels.v1.service_pb2 import LabelStatus
 
 from ... import shared_constants
+from ...language_types.labels import LabelStatus
 from .registry import register
 
 

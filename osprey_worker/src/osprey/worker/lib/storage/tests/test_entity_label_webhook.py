@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from typing import Iterator
 
 import pytest
-from osprey.worker.lib.osprey_shared.labels import LabelStatus
+from osprey.engine.language_types.labels import LabelStatus
 from sqlalchemy import func
 from sqlalchemy.orm.session import Session
 
