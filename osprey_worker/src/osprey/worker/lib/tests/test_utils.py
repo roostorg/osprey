@@ -5,8 +5,7 @@ from typing import TYPE_CHECKING, Callable, Iterator
 import pytest
 from flask import Flask
 from osprey.engine.ast.sources import Sources
-from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators, bootstrap_udfs
-from osprey.worker.lib.osprey_engine import OspreyEngine
+from osprey.worker.lib.osprey_engine import bootstrap_engine
 from osprey.worker.lib.singletons import CONFIG, ENGINE
 from osprey.worker.lib.sources_provider import StaticSourcesProvider
 from osprey.worker.lib.sources_publisher import validate_and_push
@@ -86,9 +85,7 @@ def make_app_with_rules_sources_fixture(app_creator: Callable[[], Flask], name: 
         sources = Sources.from_dict(sources_to_use)
         assert validate_and_push(sources, quiet=True, dry_run=True)
         sources_provider = StaticSourcesProvider(sources)
-        udf_registry, _ = bootstrap_udfs()
-        bootstrap_ast_validators()
-        engine = OspreyEngine(sources_provider, udf_registry)
+        engine = bootstrap_engine(sources_provider=sources_provider)
 
         with ENGINE.override_instance_for_test(engine):
             CONFIG.instance().unconfigure_for_tests()

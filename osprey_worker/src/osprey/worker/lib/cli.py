@@ -31,11 +31,9 @@ from osprey.rpc.labels.v1.service_pb2 import (  # noqa: E402
     EntityMutation,
     LabelStatus,
 )
-from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators, bootstrap_udfs  # noqa: E402
-from osprey.worker.lib.osprey_engine import OspreyEngine  # noqa: E402
+from osprey.worker.lib.osprey_engine import bootstrap_engine  # noqa: E402
 from osprey.worker.lib.publisher import PubSubPublisher  # noqa: E402
 from osprey.worker.lib.singletons import CONFIG  # noqa: E402
-from osprey.worker.lib.sources_provider import EtcdSourcesProvider  # noqa: E402
 from osprey.worker.lib.sources_publisher import (  # noqa: E402
     upload_dependencies_mapping,
     validate_and_push,
@@ -273,12 +271,7 @@ def get_event_effects_output_sink() -> EventEffectsOutputSink:
     config.configure_from_env()
 
     postgres.init_from_config('osprey_db')
-    sources_provider = EtcdSourcesProvider(
-        etcd_key=config.get_str('OSPREY_ETCD_SOURCES_PROVIDER_KEY', '/config/osprey/rules-sink-sources')
-    )
-    udf_registery, _ = bootstrap_udfs()
-    bootstrap_ast_validators()
-    engine = OspreyEngine(sources_provider, udf_registery)
+    engine = bootstrap_engine()
     analytics_pubsub_project_id = config.get_str('PUBSUB_DATA_PROJECT_ID', 'osprey-dev')
     analytics_pubsub_topic_id = config.get_str('PUBSUB_ANALYTICS_EVENT_TOPIC_ID', 'osprey-analytics')
     analytics_publisher = PubSubPublisher(analytics_pubsub_project_id, analytics_pubsub_topic_id)
