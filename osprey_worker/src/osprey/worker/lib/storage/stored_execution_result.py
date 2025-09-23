@@ -104,12 +104,9 @@ class StoredExecutionResult(BaseModel):
         """Get execution results from the configured storage backend."""
         backend = cls._get_storage_backend()
         results = backend.select_many(action_ids)
-        
+
         return sorted(
-            [
-                StoredExecutionResult.parse_from_query_result(result, data_censor_abilities)
-                for result in results
-            ],
+            [StoredExecutionResult.parse_from_query_result(result, data_censor_abilities) for result in results],
             key=lambda r: pytz.utc.localize(r.timestamp) if r.timestamp.tzinfo is None else r.timestamp,
             reverse=True,
         )
@@ -119,7 +116,7 @@ class StoredExecutionResult(BaseModel):
         """Get the storage backend from plugins."""
         from osprey.worker.adaptor.plugin_manager import bootstrap_execution_result_store
         from osprey.worker.lib.singletons import CONFIG
-        
+
         config = CONFIG.instance()
         return bootstrap_execution_result_store(config)
 
@@ -361,31 +358,27 @@ class StoredExecutionResultGCS(ExecutionResultStore):
 
         return execution_result_dict
 
+
 class StoredExecutionResultMinIO(ExecutionResultStore):
     def __init__(self, endpoint: str, access_key: str, secret_key: str, secure: bool, bucket_name: str):
-        self._minio_client = Minio(
-                endpoint,
-                access_key=access_key,
-                secret_key=secret_key,
-                secure=secure
-        )
+        self._minio_client = Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=secure)
         self._bucket_name = bucket_name
 
     def select_one(self, action_id: int) -> Optional[Dict[str, Any]]:
         try:
             with metrics.timed('minio_stored_execution_result.get_one'):
                 object_name = self._encode_action_id(action_id)
-                
+
                 try:
                     response = self._minio_client.get_object(self._bucket_name, object_name)
                     raw_data = response.read()
                     response.close()
                     response.release_conn()
-                    
+
                     data = json.loads(raw_data.decode('utf-8'))
                     result = self._execution_result_dict_from_minio_data(data)
                     return result
-                    
+
                 except S3Error as e:
                     if e.code == 'NoSuchKey':
                         metrics.increment(
@@ -393,7 +386,7 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
                         )
                         return None
                     raise
-                    
+
         except Exception as e:
             logger.error(f'Failed to retrieve execution result from MinIO for action_id {action_id}: {e}')
             return None
@@ -426,8 +419,9 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
                 }
 
                 json_data = json.dumps(data)
-                
+
                 from io import BytesIO
+
                 data_stream = BytesIO(json_data.encode('utf-8'))
 
                 self._minio_client.put_object(
@@ -435,7 +429,7 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
                     object_name,
                     data_stream,
                     length=len(json_data.encode('utf-8')),
-                    content_type='application/json'
+                    content_type='application/json',
                 )
 
         except Exception as e:

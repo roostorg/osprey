@@ -9,3 +9,6 @@ EventType: Entity[str] = EntityJson(
   path='$.event_type',
   coerce_type=True
 )
+
+ActionName=GetActionName()
+

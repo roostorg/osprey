@@ -7,6 +7,7 @@ from osprey.worker.sinks.sink.kafka_output_sink import KafkaOutputSink
 from osprey.worker.sinks.sink.output_sink import BaseOutputSink, StdoutOutputSink
 from osprey.worker.sinks.sink.stored_execution_result_output_sink import StoredExecutionResultOutputSink
 
+
 @hookimpl_osprey
 def register_output_sinks(config: Config) -> Sequence[BaseOutputSink]:
     sinks: List[BaseOutputSink] = []

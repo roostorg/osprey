@@ -12,9 +12,5 @@ def register_execution_result_store(config: Config) -> ExecutionResultStore:
     bucket_name = config.get_str('OSPREY_MINIO_EXECUTION_RESULTS_BUCKET', 'execution-output')
 
     return StoredExecutionResultMinIO(
-        endpoint=endpoint,
-        access_key=access_key,
-        secret_key=secret_key,
-        secure=secure,
-        bucket_name=bucket_name
+        endpoint=endpoint, access_key=access_key, secret_key=secret_key, secure=secure, bucket_name=bucket_name
     )

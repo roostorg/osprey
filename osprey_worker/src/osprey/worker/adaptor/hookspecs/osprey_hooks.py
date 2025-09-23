@@ -47,6 +47,7 @@ def register_action_proto_deserializer() -> ActionProtoDeserializer | None:
 def register_input_stream(config: Config) -> BaseInputStream[BaseAckingContext[Action]]:
     raise NotImplementedError('register_input_stream must be implemented by the plugin')
 
+
 @hookspec
 def register_execution_result_store(config: Config) -> ExecutionResultStore:
     """Register an execution result storage backend instance."""
