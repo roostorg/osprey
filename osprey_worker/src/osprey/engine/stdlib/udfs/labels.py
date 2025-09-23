@@ -217,9 +217,8 @@ class HasLabel(HasHelperInternal[LabelProvider], BatchableUDFBase[HasLabelArgume
     def execute(self, execution_context: ExecutionContext, arguments: HasLabelArguments) -> bool:
         label_provider = execution_context.get_udf_helper(self)
         accessor = execution_context.get_external_service_accessor(label_provider)
-        entity_labels_pb2_internal = accessor.get(arguments.entity)
-        entity_labels_pb2 = entity_labels_pb2_internal
-        return self._execute(execution_context, self.get_batchable_arguments(arguments), entity_labels_pb2)
+        entity_labels = accessor.get(arguments.entity)
+        return self._execute(execution_context, self.get_batchable_arguments(arguments), entity_labels)
 
     def get_batchable_arguments(self, arguments: HasLabelArguments) -> BatchableHasLabelArguments:
         return BatchableHasLabelArguments(
