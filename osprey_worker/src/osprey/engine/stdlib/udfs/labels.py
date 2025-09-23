@@ -8,7 +8,7 @@ from osprey.engine.language_types.effects import (
     EffectBase,
 )
 from osprey.engine.language_types.entities import EntityT
-from osprey.engine.language_types.labels import LabelEffect
+from osprey.engine.language_types.labels import LabelEffect, LabelStatus
 from osprey.engine.language_types.rules import RuleT
 from osprey.engine.language_types.time_delta import TimeDeltaT
 from osprey.engine.stdlib.configs.labels_config import LabelsConfig
@@ -24,8 +24,8 @@ from osprey.engine.udf.base import BatchableUDFBase
 from osprey.engine.utils.get_closest_string_within_threshold import (
     get_closest_string_within_threshold,
 )
-from osprey.rpc.labels.v1.service_pb2 import Labels, LabelStatus
-from osprey.worker.lib.storage.labels import LabelProvider, get_label_routing_key
+from osprey.worker.lib.osprey_shared.labels import Labels
+from osprey.worker.lib.storage.labels import LabelProvider
 from result import Err, Ok, Result
 
 
@@ -43,7 +43,7 @@ class LabelArguments(ArgumentsBase):
     """Optional: Automatically expire the mutation after a specified `TimeDeltaT` time."""
 
 
-def synthesize_effect(status: 'LabelStatus.ValueType', arguments: LabelArguments) -> LabelEffect:
+def synthesize_effect(status: LabelStatus, arguments: LabelArguments) -> LabelEffect:
     return LabelEffect(
         entity=arguments.entity,
         status=status,
@@ -138,8 +138,8 @@ class HasLabel(HasHelperInternal[LabelProvider], BatchableUDFBase[HasLabelArgume
 
             hint = f'expected `{_SimpleStatus.ADDED.value}` or `{_SimpleStatus.REMOVED.value}`, got `{status_name}`'
             if status_name.upper() in (
-                LabelStatus.Name(LabelStatus.MANUALLY_ADDED),
-                LabelStatus.Name(LabelStatus.MANUALLY_REMOVED),
+                LabelStatus.MANUALLY_ADDED.name,
+                LabelStatus.MANUALLY_REMOVED.name,
             ):
                 hint += '\nto specify a manually set label, set `manual=True`'
 
@@ -162,14 +162,15 @@ class HasLabel(HasHelperInternal[LabelProvider], BatchableUDFBase[HasLabelArgume
         desired_manual = _ManualType.get(arguments.manual)
         desired_delay = TimeDeltaT.inner_from_optional(arguments.min_label_age)
         label_state = entity_labels.labels.get(arguments.label)
+        now = datetime.now()
+
         if label_state is not None:
-            now = datetime.now()
             # Check to see if all reasons have expired, if so, the label should be considered as expired.
             # Only consider a reason expired if it has a meaningful expires_at timestamp (not default/epoch)
             all_reasons_expired = all(
-                reason.HasField('expires_at')
-                and reason.expires_at.seconds > 0  # Check if timestamp is not default/epoch
-                and reason.expires_at.ToDatetime() <= now
+                reason.expires_at
+                and reason.expires_at.second > 0  # Check if timestamp is not default/epoch
+                and reason.expires_at <= now
                 for reason in label_state.reasons.values()
             )
             if all_reasons_expired:
@@ -196,13 +197,13 @@ class HasLabel(HasHelperInternal[LabelProvider], BatchableUDFBase[HasLabelArgume
         if desired_delay is not None:
             # Get the oldest non-expired label
             oldest_non_expired = min(
-                reason.created_at.ToDatetime()
+                reason.created_at
                 for reason in label_state.reasons.values()
-                if reason.HasField('created_at')
+                if reason.created_at
                 and (
-                    not reason.HasField('expires_at')
-                    or reason.expires_at.seconds == 0  # No meaningful expiration set
-                    or reason.expires_at.ToDatetime() > now
+                    not reason.expires_at
+                    or reason.expires_at.second == 0  # No meaningful expiration set
+                    or reason.expires_at > now
                 )
             )
             actual_delay = now - oldest_non_expired
@@ -229,9 +230,6 @@ class HasLabel(HasHelperInternal[LabelProvider], BatchableUDFBase[HasLabelArgume
             min_label_age=arguments.min_label_age,
             desired_status=self.desired_status,
         )
-
-    def get_batch_routing_key(self, arguments: BatchableHasLabelArguments) -> str:
-        return get_label_routing_key(arguments.entity)
 
     def execute_batch(
         self,
