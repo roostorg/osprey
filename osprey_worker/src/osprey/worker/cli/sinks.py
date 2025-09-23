@@ -2,7 +2,7 @@
 # ruff: noqa: E402, E501
 from osprey.worker.lib.patcher import patch_all
 from osprey.worker.sinks.input_stream_chooser import get_rules_sink_input_stream
-from osprey.worker.sinks.sink.output_sink import EventEffectsOutputSink
+from osprey.worker.sinks.sink.output_sink import LabelOutputSink
 
 patch_all(ddtrace_args={'cassandra': True, 'psycopg': True})
 
@@ -290,7 +290,7 @@ def run_bulk_label_sink(pooled: bool, send_status_webhook: bool) -> None:
     osprey_webhook_pubsub_topic = config.get_str('PUBSUB_OSPREY_WEBHOOKS_TOPIC_ID', 'osprey-webhooks')
     webhooks_publisher = PubSubPublisher(osprey_webhook_pubsub_project, osprey_webhook_pubsub_topic)
 
-    event_effects_output_sink = EventEffectsOutputSink(engine, analytics_publisher, webhooks_publisher)
+    event_effects_output_sink = LabelOutputSink(engine, analytics_publisher, webhooks_publisher)
 
     def factory() -> BulkLabelSink:
         # NOTE: It's very important the input stream is created per-webhook sink

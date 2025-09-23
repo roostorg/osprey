@@ -48,7 +48,7 @@ from osprey.worker.lib.storage import (  # noqa: E402
     stored_execution_result,
 )
 from osprey.worker.lib.utils.click_utils import EnumChoicePb2  # noqa: E402
-from osprey.worker.sinks.sink.output_sink import EventEffectsOutputSink  # noqa: E402
+from osprey.worker.sinks.sink.output_sink import LabelOutputSink  # noqa: E402
 from osprey.worker.sinks.sink.output_sink_utils.constants import MutationEventType  # noqa: E402
 
 if TYPE_CHECKING:
@@ -268,7 +268,7 @@ def apply_label_without_effects(
     print(result)
 
 
-def get_event_effects_output_sink() -> EventEffectsOutputSink:
+def get_event_effects_output_sink() -> LabelOutputSink:
     config = CONFIG.instance()
     config.configure_from_env()
 
@@ -286,7 +286,7 @@ def get_event_effects_output_sink() -> EventEffectsOutputSink:
     osprey_webhook_pubsub_project = config.get_str('PUBSUB_OSPREY_WEBHOOKS_PROJECT_ID', 'osprey-dev')
     osprey_webhook_pubsub_topic = config.get_str('PUBSUB_OSPREY_WEBHOOKS_TOPIC_ID', 'osprey-webhooks')
     webhooks_publisher = PubSubPublisher(osprey_webhook_pubsub_project, osprey_webhook_pubsub_topic)
-    return EventEffectsOutputSink(engine, analytics_publisher, webhooks_publisher)
+    return LabelOutputSink(engine, analytics_publisher, webhooks_publisher)
 
 
 @cli.command()
