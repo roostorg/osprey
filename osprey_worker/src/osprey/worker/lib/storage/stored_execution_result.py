@@ -382,11 +382,6 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
                     response.close()
                     response.release_conn()
                     
-                    try:
-                        raw_data = gzip.decompress(raw_data)
-                    except gzip.BadGzipFile:
-                        pass
-                    
                     data = json.loads(raw_data.decode('utf-8'))
                     result = self._execution_result_dict_from_minio_data(data)
                     return result
@@ -431,18 +426,16 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
                 }
 
                 json_data = json.dumps(data)
-                compressed_data = gzip.compress(json_data.encode('utf-8'))
-
+                
                 from io import BytesIO
-                data_stream = BytesIO(compressed_data)
+                data_stream = BytesIO(json_data.encode('utf-8'))
 
                 self._minio_client.put_object(
                     self._bucket_name,
                     object_name,
                     data_stream,
-                    length=len(compressed_data),
-                    content_type='application/json',
-                    metadata={'Content-Encoding': 'gzip'}
+                    length=len(json_data.encode('utf-8')),
+                    content_type='application/json'
                 )
 
         except Exception as e:
