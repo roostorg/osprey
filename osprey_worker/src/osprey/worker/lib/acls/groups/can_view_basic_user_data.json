@@ -1,0 +1,13 @@
+{
+  "description": "Grants ability to view basic user data.",
+  "acl": [
+    {
+      "name": "CAN_VIEW_ACTION_DATA",
+      "allow_all": true
+    },
+    {
+      "name": "CAN_VIEW_FEATURE_DATA",
+      "allow_all": true
+    }
+  ]
+}
