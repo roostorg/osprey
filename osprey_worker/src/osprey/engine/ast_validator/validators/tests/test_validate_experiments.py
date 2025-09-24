@@ -1,9 +1,9 @@
 from typing import cast
 
 import pytest
+from osprey.engine.stdlib.udfs.experiments import CONTROL_BUCKET
 
 from ....conftest import ExecuteWithResultFunction
-from ....osprey_stdlib.udfs.experiments import CONTROL_BUCKET
 from ..unique_stored_names import UniqueStoredNames
 from ..validate_call_kwargs import ValidateCallKwargs
 from ..validate_experiments import ExperimentValidationResult, ValidateExperiments, ValidateExperimentsResult
