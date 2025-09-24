@@ -1,10 +1,10 @@
 from typing import Any, Callable, Dict, List, Optional
 
 import pytest
+from osprey.engine.udf.registry import UDFRegistry
 from typing_extensions import TypedDict
 
 from ....conftest import CheckFailureFunction, ExecuteFunction, RunValidationFunction
-from ....osprey_udf.registry import UDFRegistry
 from ..json_data import JsonData
 from ..string import StringClean, StringLength
 
