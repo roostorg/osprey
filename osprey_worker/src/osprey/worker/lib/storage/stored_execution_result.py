@@ -76,10 +76,11 @@ class StoredExecutionResult(BaseModel):
     action_data: Optional[Dict[str, Any]] = None
 
     @classmethod
-    def persist_from_execution_result(cls, execution_result: ExecutionResult) -> None:
-        """Persist execution result using the configured storage backend."""
-        backend = cls._get_storage_backend()
-        backend.insert(
+    def persist_from_execution_result(
+        cls, execution_result: ExecutionResult, storage_backend: ExecutionResultStore
+    ) -> None:
+        """Persist execution result using the provided storage backend."""
+        storage_backend.insert(
             action_id=execution_result.action.action_id,
             extracted_features_json=execution_result.extracted_features_json,
             error_traces_json=execution_result.error_traces_json,
@@ -89,37 +90,32 @@ class StoredExecutionResult(BaseModel):
 
     @classmethod
     def get_one_with_action_data(
-        cls, event_record_id: int, data_censor_abilities: Sequence[Optional[DataCensorAbility[Any, Any]]] = ()
+        cls,
+        event_record_id: int,
+        storage_backend: ExecutionResultStore,
+        data_censor_abilities: Sequence[Optional[DataCensorAbility[Any, Any]]] = (),
     ) -> Optional['StoredExecutionResult']:
-        """Get execution result from the configured storage backend."""
-        backend = cls._get_storage_backend()
-        result = backend.select_one(event_record_id)
+        """Get execution result from the provided storage backend."""
+        result = storage_backend.select_one(event_record_id)
         if result:
             return StoredExecutionResult.parse_from_query_result(result, data_censor_abilities)
         return None
 
     @classmethod
     def get_many(
-        cls, action_ids: List[int], data_censor_abilities: Sequence[Optional[DataCensorAbility[Any, Any]]] = ()
+        cls,
+        action_ids: List[int],
+        storage_backend: ExecutionResultStore,
+        data_censor_abilities: Sequence[Optional[DataCensorAbility[Any, Any]]] = (),
     ) -> List['StoredExecutionResult']:
-        """Get execution results from the configured storage backend."""
-        backend = cls._get_storage_backend()
-        results = backend.select_many(action_ids)
+        """Get execution results from the provided storage backend."""
+        results = storage_backend.select_many(action_ids)
 
         return sorted(
             [StoredExecutionResult.parse_from_query_result(result, data_censor_abilities) for result in results],
             key=lambda r: pytz.utc.localize(r.timestamp) if r.timestamp.tzinfo is None else r.timestamp,
             reverse=True,
         )
-
-    @classmethod
-    def _get_storage_backend(cls) -> ExecutionResultStore:
-        """Get the storage backend from plugins."""
-        from osprey.worker.adaptor.plugin_manager import bootstrap_execution_result_store
-        from osprey.worker.lib.singletons import CONFIG
-
-        config = CONFIG.instance()
-        return bootstrap_execution_result_store(config)
 
     @classmethod
     def parse_from_query_result(
@@ -456,3 +452,38 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
             execution_result_dict['action_data'] = action_data
 
         return execution_result_dict
+
+
+class ExecutionResultStorageService:
+    """Service class that provides execution result operations with a configured backend."""
+
+    def __init__(self, storage_backend: ExecutionResultStore):
+        self._storage_backend = storage_backend
+
+    def persist_from_execution_result(self, execution_result: ExecutionResult) -> None:
+        """Persist execution result using the configured storage backend."""
+        StoredExecutionResult.persist_from_execution_result(execution_result, self._storage_backend)
+
+    def get_one_with_action_data(
+        self, event_record_id: int, data_censor_abilities: Sequence[Optional[DataCensorAbility[Any, Any]]] = ()
+    ) -> Optional[StoredExecutionResult]:
+        """Get execution result from the configured storage backend."""
+        return StoredExecutionResult.get_one_with_action_data(
+            event_record_id, self._storage_backend, data_censor_abilities
+        )
+
+    def get_many(
+        self, action_ids: List[int], data_censor_abilities: Sequence[Optional[DataCensorAbility[Any, Any]]] = ()
+    ) -> List[StoredExecutionResult]:
+        """Get execution results from the configured storage backend."""
+        return StoredExecutionResult.get_many(action_ids, self._storage_backend, data_censor_abilities)
+
+
+def bootstrap_execution_result_storage_service() -> ExecutionResultStorageService:
+    """Create an ExecutionResultStorageService with the configured storage backend."""
+    from osprey.worker.adaptor.plugin_manager import bootstrap_execution_result_store
+    from osprey.worker.lib.singletons import CONFIG
+
+    config = CONFIG.instance()
+    storage_backend = bootstrap_execution_result_store(config)
+    return ExecutionResultStorageService(storage_backend)

@@ -5,7 +5,9 @@ from http.client import NOT_FOUND
 from typing import Any, Dict, List, Optional, Set
 
 from flask import Blueprint, Response, abort, jsonify
-from osprey.worker.lib.storage.stored_execution_result import StoredExecutionResult
+from osprey.worker.lib.storage.stored_execution_result import (
+    bootstrap_execution_result_storage_service,
+)
 from osprey.worker.ui_api.osprey.lib.abilities import (
     CanBulkLabel,
     CanBulkLabelWithNoLimit,
@@ -19,6 +21,8 @@ from osprey.worker.ui_api.osprey.lib.abilities import (
 from pydantic.main import BaseModel
 
 from ..lib.auth import get_current_user
+
+
 from ..lib.druid import (
     DimensionData,
     GroupByApproximateCountDruidQuery,
@@ -128,9 +132,10 @@ def scan_query(request_model: PaginatedScanDruidQuery) -> Any:
 
     action_data_censor_ability = get_current_user().get_ability(CanViewActionData)
     feature_data_censor_ability = get_current_user().get_ability(CanViewFeatureData)
-    events = StoredExecutionResult.get_many(
-        data_censor_abilities=[action_data_censor_ability, feature_data_censor_ability],
+    storage_service = bootstrap_execution_result_storage_service()
+    events = storage_service.get_many(
         action_ids=paginated_scan_results.action_ids,
+        data_censor_abilities=[action_data_censor_ability, feature_data_censor_ability],
     )
 
     return ScanQueryResult(
@@ -226,8 +231,9 @@ def topn_query_csv(topn_druid_query: TopNDruidQuery) -> Any:
 def get_event_data(event_id: int) -> Any:
     action_data_censor_ability = get_current_user().get_ability(CanViewActionData)
     feature_data_censor_ability = get_current_user().get_ability(CanViewFeatureData)
-    execution_result = StoredExecutionResult.get_one_with_action_data(
-        event_id, data_censor_abilities=[action_data_censor_ability, feature_data_censor_ability]
+    storage_service = bootstrap_execution_result_storage_service()
+    execution_result = storage_service.get_one_with_action_data(
+        event_id, [action_data_censor_ability, feature_data_censor_ability]
     )
     if not execution_result:
         return abort(Response(response='Unknown action id', status=NOT_FOUND, mimetype='application/json'))
