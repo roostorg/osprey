@@ -289,7 +289,7 @@ module = "pydantic.main"
 implicit_reexport = true
 
 [[tool.mypy.overrides]]
-module = "jsonpath_rw"
+module = ["jsonpath_rw", "minio.*"]
 ignore_missing_imports = true
 
 # third party packages we don't care about

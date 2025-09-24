@@ -12,6 +12,7 @@ import pytz
 from google.api_core import retry
 from google.cloud.bigtable import row_filters
 from google.cloud.bigtable.row import Row
+from io import BytesIO
 from minio import Minio
 from minio.error import S3Error
 from osprey.engine.executor.execution_context import ExecutionResult
@@ -26,9 +27,9 @@ logger = get_logger()
 if TYPE_CHECKING:
     from osprey.worker.ui_api.osprey.lib.abilities import DataCensorAbility
 
-SCYLLA_CONCURRENCY_LIMIT = 100
 BIGTABLE_CONCURRENCY_LIMIT = 100
 GCS_CONCURRENCY_LIMIT = 100
+MINIO_CONCURRENCY_LIMIT = 100
 
 
 class ExecutionResultStore(ABC):
@@ -64,7 +65,7 @@ class ErrorTrace(BaseModel):
 
 class StoredExecutionResult(BaseModel):
     """
-    Stores the execution result in GCS and BigTable, reads result from GCS with BigTable fallback.
+    Represents a stored execution result with methods to persist and retrieve it using a storage backend.
     """
 
     # NOTE: These fields must match the database column names exactly.
@@ -394,7 +395,7 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
     def select_many(self, action_ids: List[int]) -> List[Dict[str, Any]]:
         results = [
             result
-            for result in gevent.pool.Pool(GCS_CONCURRENCY_LIMIT).imap(self.select_one, action_ids)
+            for result in gevent.pool.Pool(MINIO_CONCURRENCY_LIMIT).imap(self.select_one, action_ids)
             if result is not None
         ]
         return results
@@ -419,8 +420,6 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
                 }
 
                 json_data = json.dumps(data)
-
-                from io import BytesIO
 
                 data_stream = BytesIO(json_data.encode('utf-8'))
 
