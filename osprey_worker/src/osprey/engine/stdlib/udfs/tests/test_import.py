@@ -7,9 +7,9 @@ from osprey.engine.ast_validator.validators.validate_call_kwargs import Validate
 from osprey.engine.ast_validator.validators.validate_dynamic_calls_have_annotated_rvalue import (
     ValidateDynamicCallsHaveAnnotatedRValue,
 )
+from osprey.engine.udf.registry import UDFRegistry
 
 from ....conftest import CheckFailureFunction, ExecuteFunction, RunValidationFunction
-from ....osprey_udf.registry import UDFRegistry
 from ..import_ import Import
 
 pytestmark: List[Callable[[Any], Any]] = [

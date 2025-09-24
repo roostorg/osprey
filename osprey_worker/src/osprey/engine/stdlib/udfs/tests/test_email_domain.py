@@ -2,9 +2,9 @@ from typing import Dict, Optional
 
 import pytest
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
+from osprey.engine.udf.registry import UDFRegistry
 
 from ....conftest import ExecuteFunction
-from ....osprey_udf.registry import UDFRegistry
 from ..email_domain import EmailDomain, EmailSubdomain
 from ..json_data import JsonData
 

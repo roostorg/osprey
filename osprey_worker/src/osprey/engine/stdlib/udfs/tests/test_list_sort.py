@@ -1,9 +1,9 @@
 from typing import Any, List, Optional
 
 import pytest
+from osprey.engine.udf.registry import UDFRegistry
 
 from ....conftest import ExecuteFunction
-from ....osprey_udf.registry import UDFRegistry
 from ..list_sort import ListSort
 
 pytestmark = [pytest.mark.use_udf_registry(UDFRegistry.with_udfs(ListSort))]

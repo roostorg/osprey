@@ -3,9 +3,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
+from osprey.engine.udf.registry import UDFRegistry
 
 from ....conftest import ExecuteFunction
-from ....osprey_udf.registry import UDFRegistry
 from ..mx_lookup import MXLookup
 
 pytestmark: List[Callable[[Any], Any]] = [

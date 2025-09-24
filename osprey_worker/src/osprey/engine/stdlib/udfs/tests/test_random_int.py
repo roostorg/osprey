@@ -3,9 +3,9 @@ from typing import Any, Callable, List
 import pytest
 from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
+from osprey.engine.udf.registry import UDFRegistry
 
 from ....conftest import CheckFailureFunction, ExecuteFunction, RunValidationFunction
-from ....osprey_udf.registry import UDFRegistry
 from ..random_int import RandomInt
 
 pytestmark: List[Callable[[Any], Any]] = [

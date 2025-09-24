@@ -6,9 +6,9 @@ from osprey.engine.ast_validator.validators.unique_stored_names import UniqueSto
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.language_types.experiments import NOT_IN_EXPERIMENT_BUCKET, NOT_IN_EXPERIMENT_BUCKET_INDEX
+from osprey.engine.udf.registry import UDFRegistry
 
 from ....conftest import CheckFailureFunction, ExecuteFunction, RunValidationFunction
-from ....osprey_udf.registry import UDFRegistry
 from ..entity import Entity
 from ..experiments import CONTROL_BUCKET, EXPERIMENT_GRANULARITY, Experiment, ExperimentsProvider, ExperimentWhen
 from ..rules import Rule
