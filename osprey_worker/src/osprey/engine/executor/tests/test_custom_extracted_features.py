@@ -140,7 +140,7 @@ def test_execution_context_effect_processing_with_invalid_types():
                 # we mismatch the type here (this should never happen but just in case)
                 context._effects[TestEffect] = effect_list
 
-                with patch('osprey.engine.osprey_executor.execution_context.logger') as mock_logger:
+                with patch('osprey.engine.executor.execution_context.logger') as mock_logger:
                     context.get_extracted_features()
 
                     mock_logger.error.assert_called_once()
@@ -171,7 +171,7 @@ def test_execution_context_effect_processing_with_non_extractable_feature_base()
                 valid_effect = TestEffect(value='valid')
                 context._effects[TestEffect] = [valid_effect]
 
-                with patch('osprey.engine.osprey_executor.execution_context.logger') as mock_logger:
+                with patch('osprey.engine.executor.execution_context.logger') as mock_logger:
                     context.get_extracted_features()
 
                     assert context.add_custom_extracted_feature.call_count == 1

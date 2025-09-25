@@ -1,10 +1,10 @@
 from typing import Any, Callable, List
 
 import pytest
+from osprey.engine.stdlib.udfs.import_ import Import
+from osprey.engine.udf.registry import UDFRegistry
 
 from ....conftest import CheckFailureFunction, RunValidationFunction
-from ....osprey_stdlib.udfs.import_ import Import
-from ....osprey_udf.registry import UDFRegistry
 from ..imports_must_not_have_cycles import ImportsMustNotHaveCycles
 from ..unique_stored_names import UniqueStoredNames
 from ..validate_call_kwargs import ValidateCallKwargs

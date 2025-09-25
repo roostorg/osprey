@@ -1,7 +1,7 @@
 import pytest
+from osprey.engine.udf.registry import UDFRegistry
 
 from ....conftest import ExecuteFunction
-from ....osprey_udf.registry import UDFRegistry
 from ..string_base64 import Base64Decode, Base64Encode
 
 pytestmark = [

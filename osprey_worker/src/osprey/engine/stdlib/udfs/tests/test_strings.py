@@ -3,9 +3,9 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union, cast
 
 import pytest
+from osprey.engine.udf.registry import UDFRegistry
 
 from ....conftest import ExecuteFunction
-from ....osprey_udf.registry import UDFRegistry
 from ..string import (
     StringClean,
     StringEndsWith,

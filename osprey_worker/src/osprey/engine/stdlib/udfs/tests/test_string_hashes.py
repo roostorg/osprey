@@ -1,7 +1,7 @@
 import pytest
+from osprey.engine.udf.registry import UDFRegistry
 
 from ....conftest import ExecuteFunction
-from ....osprey_udf.registry import UDFRegistry
 from ..string_hashes import HashMd5, HashSha1, HashSha256, HashSha512
 
 pytestmark = [

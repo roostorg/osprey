@@ -3,12 +3,12 @@ from __future__ import annotations
 from typing import Any, Callable, Dict, List, Type
 
 import pytest
+from osprey.engine.executor.execution_context import ExecutionContext
+from osprey.engine.udf.arguments import ArgumentsBase, ConstExpr
+from osprey.engine.udf.base import UDFBase
+from osprey.engine.udf.registry import UDFRegistry
 
 from ....conftest import CheckFailureFunction, ExecuteFunction, RunValidationFunction
-from ....osprey_executor.execution_context import ExecutionContext
-from ....osprey_udf.arguments import ArgumentsBase, ConstExpr
-from ....osprey_udf.base import UDFBase
-from ....osprey_udf.registry import UDFRegistry
 from ...validation_context import ValidationContext
 from ..unique_stored_names import UniqueStoredNames
 from ..validate_call_kwargs import ValidateCallKwargs

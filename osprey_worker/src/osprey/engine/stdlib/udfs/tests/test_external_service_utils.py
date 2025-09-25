@@ -2,8 +2,7 @@ from typing import List
 
 import gevent
 from gevent.event import Event
-
-from ....osprey_executor.external_service_utils import ExternalService, ExternalServiceAccessor
+from osprey.engine.executor.external_service_utils import ExternalService, ExternalServiceAccessor
 
 
 class CountingService(ExternalService[str, int]):

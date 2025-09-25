@@ -2,9 +2,9 @@ from typing import Any, Callable, List
 
 import pytest
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
+from osprey.engine.udf.registry import UDFRegistry
 
 from ....conftest import ExecuteFunction
-from ....osprey_udf.registry import UDFRegistry
 from ..domain_tld import DomainTld
 
 pytestmark: List[Callable[[Any], Any]] = [

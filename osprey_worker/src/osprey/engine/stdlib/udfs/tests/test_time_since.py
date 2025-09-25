@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
 
 import pytest
+from osprey.engine.udf.registry import UDFRegistry
 
 from ....conftest import ExecuteFunction
-from ....osprey_udf.registry import UDFRegistry
 from ..time_since import TimeSince
 
 pytestmark = [
