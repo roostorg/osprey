@@ -101,4 +101,4 @@ def bootstrap_execution_result_store(config: Config):
         [store] = plugin_manager.hook.register_execution_result_store(config=config)
         return store
     except Exception as e:
-        raise RuntimeError(f'No storage backend plugin found: {e}')
+        raise RuntimeError(f'Storage backend plugin could not be loaded: {e}')

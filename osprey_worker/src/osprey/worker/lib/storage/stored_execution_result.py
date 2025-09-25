@@ -57,6 +57,26 @@ class ExecutionResultStore(ABC):
         """Insert an execution result."""
         pass
 
+    @staticmethod
+    def _generate_key_prefix_from_snowflake(action_id_snowflake: int) -> str:
+        """
+        Generate a uniformly distributed key prefix from a snowflake ID.
+
+        Extracts the timestamp portion from the snowflake and reverses the last 4 characters
+        to create a uniformly distributed prefix space for better key distribution.
+
+        Args:
+            action_id_snowflake: The snowflake ID to generate a prefix from
+
+        Returns:
+            A string prefix for key distribution
+        """
+        timestamp_portion = action_id_snowflake >> 22
+        # reverse the last 4 characters of the timestamp to create a
+        # uniformly distributed prefix space.
+        key_prefix = str(timestamp_portion)[:-5:-1]
+        return key_prefix
+
 
 class ErrorTrace(BaseModel):
     rules_source_location: str
@@ -182,12 +202,12 @@ class StoredExecutionResultBigTable(ExecutionResultStore):
 
     def select_one(self, action_id: int) -> Optional[Dict[str, Any]]:
         row = osprey_bigtable.table('stored_execution_result').read_row(
-            self._encode_action_id(action_id), row_filters.CellsColumnLimitFilter(1)
+            StoredExecutionResultBigTable._encode_action_id(action_id), row_filters.CellsColumnLimitFilter(1)
         )
         if not row:
             return None
 
-        return self._execution_result_dict_from_row(row)
+        return StoredExecutionResultBigTable._execution_result_dict_from_row(row)
 
     # TODO: Add `select_*_minimal` methods
 
@@ -206,27 +226,29 @@ class StoredExecutionResultBigTable(ExecutionResultStore):
         timestamp: datetime,
         action_data_json: str,
     ) -> None:
-        row = osprey_bigtable.table('stored_execution_result').row(self._encode_action_id(action_id))
+        row = osprey_bigtable.table('stored_execution_result').row(
+            StoredExecutionResultBigTable._encode_action_id(action_id)
+        )
         row.set_cell('execution_result', b'extracted_features', extracted_features_json.encode(), timestamp=timestamp)
         row.set_cell('execution_result', b'error_traces', error_traces_json.encode(), timestamp=timestamp)
         row.set_cell('execution_result', b'timestamp', timestamp.isoformat().encode(), timestamp=timestamp)
         row.set_cell('execution_result', b'action_data', action_data_json.encode(), timestamp=timestamp)
         osprey_bigtable.table('stored_execution_result').mutate_rows([row], retry=self.retry_policy)
 
-    def _encode_action_id(self, action_id_snowflake: int) -> bytes:
+    @staticmethod
+    def _encode_action_id(action_id_snowflake: int) -> bytes:
         """Constructs a bigtable key for a given snowflake."""
-        timestamp_portion = action_id_snowflake >> 22
-        # reverse the last 4 characters of the timestamp to create a
-        # uniformly distributed prefix space.
-        key_prefix = str(timestamp_portion)[:-5:-1]
+        key_prefix = ExecutionResultStore._generate_key_prefix_from_snowflake(action_id_snowflake)
         return f'{key_prefix}:{action_id_snowflake}'.encode()
 
-    def _decode_action_id(self, bigtable_key: bytes) -> int:
+    @staticmethod
+    def _decode_action_id(bigtable_key: bytes) -> int:
         """Extracts the snowflake portion of a bigtable key produced by `to_bigtable_key`"""
         _prefix, _, snowflake = bigtable_key.decode('utf-8').partition(':')
         return int(snowflake)
 
-    def _execution_result_dict_from_row(self, row: Row) -> Dict[str, Any]:
+    @staticmethod
+    def _execution_result_dict_from_row(row: Row) -> Dict[str, Any]:
         # row.cells doesn't have the right type information setup (at least in this version of bt), so its ignored here.
         extracted_features = row.cells['execution_result'][b'extracted_features'][0].value.decode('utf-8')  # type: ignore[attr-defined]
         error_traces = row.cells['execution_result'][b'error_traces'][0].value.decode('utf-8')  # type: ignore[attr-defined]
@@ -234,7 +256,7 @@ class StoredExecutionResultBigTable(ExecutionResultStore):
         timestamp = row.cells['execution_result'][b'timestamp'][0].timestamp  # type: ignore[attr-defined]
 
         execution_result_dict = {
-            'id': self._decode_action_id(row.row_key),
+            'id': StoredExecutionResultBigTable._decode_action_id(row.row_key),
             'extracted_features': extracted_features,
             'error_traces': error_traces,
             'timestamp': timestamp,
@@ -273,7 +295,7 @@ class StoredExecutionResultGCS(ExecutionResultStore):
     def select_one(self, action_id: int) -> Optional[Dict[str, Any]]:
         try:
             with metrics.timed('gcs_stored_execution_result.get_one'):
-                object_name = self._encode_action_id(action_id)
+                object_name = StoredExecutionResultGCS._encode_action_id(action_id)
                 bucket = self._get_gcs_client().bucket(self._get_bucket_name())
                 blob = bucket.get_blob(object_name)
                 if not blob:
@@ -285,7 +307,7 @@ class StoredExecutionResultGCS(ExecutionResultStore):
                 raw_data = blob.download_as_bytes()
                 data = json.loads(raw_data.decode('utf-8'))
 
-                result = self._execution_result_dict_from_gcs_data(data)
+                result = StoredExecutionResultGCS._execution_result_dict_from_gcs_data(data)
                 return result
         except Exception as e:
             logger.error(f'Failed to retrieve execution result from GCS for action_id {action_id}: {e}')
@@ -310,7 +332,7 @@ class StoredExecutionResultGCS(ExecutionResultStore):
     ) -> None:
         try:
             with metrics.timed('gcs_stored_execution_result.insert'):
-                object_name = self._encode_action_id(action_id)
+                object_name = StoredExecutionResultGCS._encode_action_id(action_id)
                 data = {
                     'id': action_id,
                     'extracted_features': extracted_features_json,
@@ -332,15 +354,14 @@ class StoredExecutionResultGCS(ExecutionResultStore):
         except Exception as e:
             logger.error(f'Failed to insert execution result into GCS for action_id {action_id}: {e}')
 
-    def _encode_action_id(self, action_id_snowflake: int) -> str:
+    @staticmethod
+    def _encode_action_id(action_id_snowflake: int) -> str:
         """Constructs a GCS object key for a given snowflake using the same distribution logic as BigTable."""
-        timestamp_portion = action_id_snowflake >> 22
-        # reverse the last 4 characters of the timestamp to create a
-        # uniformly distributed prefix space.
-        key_prefix = str(timestamp_portion)[:-5:-1]
+        key_prefix = ExecutionResultStore._generate_key_prefix_from_snowflake(action_id_snowflake)
         return f'{key_prefix}:{action_id_snowflake}.json'
 
-    def _execution_result_dict_from_gcs_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    @staticmethod
+    def _execution_result_dict_from_gcs_data(data: Dict[str, Any]) -> Dict[str, Any]:
         execution_result_dict = {
             'id': data['id'],
             'extracted_features': data['extracted_features'],
@@ -364,7 +385,7 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
     def select_one(self, action_id: int) -> Optional[Dict[str, Any]]:
         try:
             with metrics.timed('minio_stored_execution_result.get_one'):
-                object_name = self._encode_action_id(action_id)
+                object_name = StoredExecutionResultMinIO._encode_action_id(action_id)
 
                 try:
                     response = self._minio_client.get_object(self._bucket_name, object_name)
@@ -373,7 +394,7 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
                     response.release_conn()
 
                     data = json.loads(raw_data.decode('utf-8'))
-                    result = self._execution_result_dict_from_minio_data(data)
+                    result = StoredExecutionResultMinIO._execution_result_dict_from_minio_data(data)
                     return result
 
                 except S3Error as e:
@@ -406,7 +427,7 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
     ) -> None:
         try:
             with metrics.timed('minio_stored_execution_result.insert'):
-                object_name = self._encode_action_id(action_id)
+                object_name = StoredExecutionResultMinIO._encode_action_id(action_id)
                 data = {
                     'id': action_id,
                     'extracted_features': extracted_features_json,
@@ -430,15 +451,14 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
         except Exception as e:
             logger.error(f'Failed to insert execution result into MinIO for action_id {action_id}: {e}')
 
-    def _encode_action_id(self, action_id_snowflake: int) -> str:
+    @staticmethod
+    def _encode_action_id(action_id_snowflake: int) -> str:
         """Constructs a MinIO object key for a given snowflake using the same distribution logic as BigTable."""
-        timestamp_portion = action_id_snowflake >> 22
-        # reverse the last 4 characters of the timestamp to create a
-        # uniformly distributed prefix space.
-        key_prefix = str(timestamp_portion)[:-5:-1]
+        key_prefix = ExecutionResultStore._generate_key_prefix_from_snowflake(action_id_snowflake)
         return f'{key_prefix}:{action_id_snowflake}.json'
 
-    def _execution_result_dict_from_minio_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    @staticmethod
+    def _execution_result_dict_from_minio_data(data: Dict[str, Any]) -> Dict[str, Any]:
         execution_result_dict = {
             'id': data['id'],
             'extracted_features': data['extracted_features'],

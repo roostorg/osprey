@@ -21,8 +21,6 @@ from osprey.worker.ui_api.osprey.lib.abilities import (
 from pydantic.main import BaseModel
 
 from ..lib.auth import get_current_user
-
-
 from ..lib.druid import (
     DimensionData,
     GroupByApproximateCountDruidQuery,
