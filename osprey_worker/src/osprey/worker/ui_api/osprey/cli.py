@@ -10,7 +10,10 @@ from typing import Dict, Optional, TextIO
 import click  # noqa: E402
 import simplejson as json
 from osprey.worker.lib.osprey_shared.logging import get_logger
-from osprey.worker.lib.storage.stored_execution_result import StoredExecutionResult
+from osprey.worker.lib.storage.stored_execution_result import (
+    StoredExecutionResult,
+    bootstrap_execution_result_storage_service,
+)
 from osprey.worker.lib.utils.json import CustomJSONEncoder
 from osprey.worker.ui_api.osprey.app import create_app
 from osprey.worker.ui_api.osprey.lib.druid import PaginatedScanDruidQuery, PaginatedScanResult
@@ -79,9 +82,10 @@ def export_all_actions(
         d = event.dict()
         return {'id': d['id'], 'timestamp': d['timestamp'], 'action_data': d['action_data']}
 
+    storage_service = bootstrap_execution_result_storage_service()
     druid_result = query_druid()
     while druid_result.action_ids:
-        events = StoredExecutionResult.get_many(action_ids=druid_result.action_ids)
+        events = storage_service.get_many(action_ids=druid_result.action_ids)
 
         for event in events:
             output.writelines([json.dumps(row(event), cls=CustomJSONEncoder), '\n'])

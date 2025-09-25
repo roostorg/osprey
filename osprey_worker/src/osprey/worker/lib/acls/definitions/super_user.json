@@ -41,5 +41,6 @@
       "name": "CAN_VIEW_EVENTS_BY_ACTION",
       "allow_all": true
     }
-  ]
+  ],
+  "ability_groups": ["CAN_VIEW_BASIC_USER_DATA"]
 }
