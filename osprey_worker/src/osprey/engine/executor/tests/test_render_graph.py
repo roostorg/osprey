@@ -11,10 +11,9 @@ from osprey.engine.ast_validator.validators.validate_dynamic_calls_have_annotate
     ValidateDynamicCallsHaveAnnotatedRValue,
 )
 from osprey.engine.conftest import RunValidationFunction
+from osprey.engine.executor.execution_graph import ExecutionGraph, compile_execution_graph
+from osprey.engine.executor.execution_visualizer import _render_graph
 from osprey.engine.stdlib import get_config_registry
-
-from ..execution_graph import ExecutionGraph, compile_execution_graph
-from ..execution_visualizer import _render_graph
 
 pytestmark = [
     pytest.mark.use_validators([ValidateCallKwargs, ValidateDynamicCallsHaveAnnotatedRValue, UniqueStoredNames]),

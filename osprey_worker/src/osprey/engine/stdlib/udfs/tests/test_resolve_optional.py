@@ -9,11 +9,10 @@ from osprey.engine.ast_validator.validators.validate_dynamic_calls_have_annotate
 )
 from osprey.engine.ast_validator.validators.validate_static_types import ValidateStaticTypes
 from osprey.engine.ast_validator.validators.variables_must_be_defined import VariablesMustBeDefined
+from osprey.engine.conftest import CheckFailureFunction, ExecuteFunction, RunValidationFunction
+from osprey.engine.stdlib.udfs.json_data import JsonData
+from osprey.engine.stdlib.udfs.resolve_optional import ResolveOptional
 from osprey.engine.udf.registry import UDFRegistry
-
-from ....conftest import CheckFailureFunction, ExecuteFunction, RunValidationFunction
-from ..json_data import JsonData
-from ..resolve_optional import ResolveOptional
 
 pytestmark: List[Callable[[Any], Any]] = [
     pytest.mark.use_udf_registry(UDFRegistry.with_udfs(JsonData, ResolveOptional)),

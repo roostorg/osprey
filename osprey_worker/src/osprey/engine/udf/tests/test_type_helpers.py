@@ -2,9 +2,8 @@ from typing import Any, Dict, List, Optional, TypeVar, Union
 
 import pytest
 from osprey.engine.language_types.entities import EntityT
-
-from ..arguments import ConstExpr
-from ..type_helpers import UnsupportedTypeError, get_typevar_substitution, to_display_str
+from osprey.engine.udf.arguments import ConstExpr
+from osprey.engine.udf.type_helpers import UnsupportedTypeError, get_typevar_substitution, to_display_str
 
 
 @pytest.mark.parametrize(

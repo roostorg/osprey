@@ -1,8 +1,7 @@
 from typing import List, Optional
 
 import pytest
-
-from ..get_closest_string_within_threshold import get_closest_string_within_threshold
+from osprey.engine.utils.get_closest_string_within_threshold import get_closest_string_within_threshold
 
 
 @pytest.mark.parametrize(

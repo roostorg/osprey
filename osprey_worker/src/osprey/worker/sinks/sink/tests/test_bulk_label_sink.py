@@ -16,12 +16,12 @@ from osprey.worker.sinks.sink.bulk_label_sink import (
     DEFAULT_BULK_LABEL_COLLECTING_HEARTBEAT,
     NO_LIMIT_BULK_LABEL_COLLECTING_HEARTBEAT,
     NO_LIMIT_TOP_N_QUERY_TIME_DELTA_MAX,
+    BulkLabelSink,
+    UnretryableTaskException,
 )
+from osprey.worker.sinks.sink.input_stream import StaticInputStream
 from osprey.worker.ui_api.osprey.lib.druid import TopNDruidQuery
 from pytest_mock import MockFixture
-
-from ..bulk_label_sink import BulkLabelSink, UnretryableTaskException
-from ..input_stream import StaticInputStream
 
 # Druid might also return null/empty values, we need to make sure we handle those in our sink.
 _TASK_NULLISH_ENTITIES: List[Dict[str, Optional[str]]] = [{'UserId': None}, {'UserId': ''}]

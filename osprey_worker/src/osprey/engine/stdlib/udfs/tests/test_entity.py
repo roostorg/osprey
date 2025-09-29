@@ -3,12 +3,16 @@ from typing import Any, Callable, List
 import pytest
 from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
+from osprey.engine.conftest import (
+    CheckFailureFunction,
+    ExecuteFunction,
+    ExecuteWithResultFunction,
+    RunValidationFunction,
+)
+from osprey.engine.stdlib.udfs.email_domain import EmailDomain
+from osprey.engine.stdlib.udfs.entity import Entity, EntityJson
+from osprey.engine.stdlib.udfs.import_ import Import
 from osprey.engine.udf.registry import UDFRegistry
-
-from ....conftest import CheckFailureFunction, ExecuteFunction, ExecuteWithResultFunction, RunValidationFunction
-from ..email_domain import EmailDomain
-from ..entity import Entity, EntityJson
-from ..import_ import Import
 
 pytestmark: List[Callable[[Any], Any]] = [
     pytest.mark.use_validators([ValidateCallKwargs, UniqueStoredNames]),

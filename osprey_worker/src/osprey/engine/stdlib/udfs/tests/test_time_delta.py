@@ -1,8 +1,7 @@
 import pytest
+from osprey.engine.conftest import ExecuteFunction
+from osprey.engine.stdlib.udfs.time_delta import TimeDelta
 from osprey.engine.udf.registry import UDFRegistry
-
-from ....conftest import ExecuteFunction
-from ..time_delta import TimeDelta
 
 pytestmark = [
     pytest.mark.use_udf_registry(UDFRegistry.with_udfs(TimeDelta)),

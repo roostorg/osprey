@@ -1,14 +1,13 @@
 from typing import Any, Generic, List, Optional, Sequence, Tuple, Type, TypeVar, cast
 
 import pytest
+from osprey.engine.conftest import CheckOutputFunction
 from osprey.engine.executor.execution_context import ExecutionContext
 from osprey.engine.language_types.osprey_invariant_generic import OspreyInvariantGeneric
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import UDFBase
 from osprey.engine.udf.registry import UDFRegistry
 from osprey.engine.udf.type_helpers import UnsupportedTypeError
-
-from ...conftest import CheckOutputFunction
 
 
 class Arguments(ArgumentsBase):

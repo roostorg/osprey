@@ -2,10 +2,9 @@ from typing import Any, Callable, List
 
 import pytest
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
+from osprey.engine.conftest import ExecuteFunction
+from osprey.engine.stdlib.udfs.phone_country import PhoneCountry
 from osprey.engine.udf.registry import UDFRegistry
-
-from ....conftest import ExecuteFunction
-from ..phone_country import PhoneCountry
 
 pytestmark: List[Callable[[Any], Any]] = [
     pytest.mark.use_validators([ValidateCallKwargs]),

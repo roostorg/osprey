@@ -2,8 +2,7 @@ from typing import List, Type, TypeVar
 
 import pytest
 from osprey.engine.ast import grammar
-
-from ..arguments import ConstExpr
+from osprey.engine.udf.arguments import ConstExpr
 
 _T = TypeVar('_T')
 

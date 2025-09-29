@@ -2,9 +2,8 @@ from typing import Sequence, Tuple, Union
 
 import pytest
 from osprey.engine.ast_validator.validation_context import ValidatedSources
+from osprey.engine.conftest import RunValidationFunction
 from typing_extensions import Protocol
-
-from ...conftest import RunValidationFunction
 
 
 class MakeRulesSourcesFunction(Protocol):

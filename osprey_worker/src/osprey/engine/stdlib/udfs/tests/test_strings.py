@@ -3,10 +3,8 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union, cast
 
 import pytest
-from osprey.engine.udf.registry import UDFRegistry
-
-from ....conftest import ExecuteFunction
-from ..string import (
+from osprey.engine.conftest import ExecuteFunction
+from osprey.engine.stdlib.udfs.string import (
     StringClean,
     StringEndsWith,
     StringExtractDomains,
@@ -22,6 +20,7 @@ from ..string import (
     StringToLower,
     StringToUpper,
 )
+from osprey.engine.udf.registry import UDFRegistry
 
 pytestmark = [
     pytest.mark.use_udf_registry(

@@ -1,8 +1,7 @@
 import pytest
+from osprey.engine.conftest import ExecuteFunction
+from osprey.engine.stdlib.udfs.string_hashes import HashMd5, HashSha1, HashSha256, HashSha512
 from osprey.engine.udf.registry import UDFRegistry
-
-from ....conftest import ExecuteFunction
-from ..string_hashes import HashMd5, HashSha1, HashSha256, HashSha512
 
 pytestmark = [
     pytest.mark.use_udf_registry(UDFRegistry.with_udfs(HashMd5, HashSha1, HashSha256, HashSha512)),

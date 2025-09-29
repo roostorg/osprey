@@ -1,6 +1,6 @@
 import time
 
-from ..periodic_execution_yielder import PeriodicExecutionYielder
+from osprey.engine.utils.periodic_execution_yielder import PeriodicExecutionYielder
 
 
 # possibly need to mock out sleep calls if we run into unit test issues

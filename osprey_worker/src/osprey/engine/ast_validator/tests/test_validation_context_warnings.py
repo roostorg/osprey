@@ -1,9 +1,8 @@
 import pytest
 from osprey.engine.ast.ast_utils import filter_nodes
 from osprey.engine.ast.grammar import Source, String
-
-from ...conftest import CheckFailureFunction, CheckOutputFunction, RunValidationFunction
-from ..base_validator import SourceValidator
+from osprey.engine.ast_validator.base_validator import SourceValidator
+from osprey.engine.conftest import CheckFailureFunction, CheckOutputFunction, RunValidationFunction
 
 
 class WarnOnStringLiteralsThatContainJake(SourceValidator):

@@ -4,12 +4,11 @@ from typing import Iterator
 
 import pytest
 from osprey.worker.lib.osprey_shared.labels import LabelStatus
+from osprey.worker.lib.storage.entity_label_webhook import EntityLabelWebhook
+from osprey.worker.lib.storage.postgres import scoped_session
+from osprey.worker.lib.webhooks import WebhookStatus
 from sqlalchemy import func
 from sqlalchemy.orm.session import Session
-
-from ...webhooks import WebhookStatus
-from ..entity_label_webhook import EntityLabelWebhook
-from ..postgres import scoped_session
 
 
 @pytest.fixture(autouse=True)

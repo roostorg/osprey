@@ -1,9 +1,8 @@
 import pytest
-
-from ....conftest import RunValidationFunction
-from ..feature_name_to_entity_type_mapping import FeatureNameToEntityTypeMapping
-from ..unique_stored_names import UniqueStoredNames
-from ..validate_call_kwargs import ValidateCallKwargs
+from osprey.engine.ast_validator.validators.feature_name_to_entity_type_mapping import FeatureNameToEntityTypeMapping
+from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
+from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
+from osprey.engine.conftest import RunValidationFunction
 
 pytestmark = [
     pytest.mark.use_validators([FeatureNameToEntityTypeMapping, ValidateCallKwargs, UniqueStoredNames]),

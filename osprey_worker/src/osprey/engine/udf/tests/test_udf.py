@@ -2,11 +2,8 @@ import textwrap
 from typing import Any
 
 from osprey.engine.executor.execution_context import ExecutionContext
-from osprey.engine.udf.arguments import ArgumentsBase
-from osprey.engine.udf.base import UDFBase
-
-from ..arguments import ArgumentSpec, ConstExpr
-from ..base import MethodSpec
+from osprey.engine.udf.arguments import ArgumentsBase, ArgumentSpec, ConstExpr
+from osprey.engine.udf.base import MethodSpec, UDFBase
 
 
 def test_udf_annotations_result() -> None:

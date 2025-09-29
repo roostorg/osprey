@@ -1,12 +1,11 @@
 from typing import Any
 
 import pytest
+from osprey.engine.conftest import ExecuteFunction, ExecuteWithResultFunction
 from osprey.engine.executor.execution_context import ExecutionContext
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import InvalidDynamicReturnType, UDFBase
 from osprey.engine.udf.registry import UDFRegistry
-
-from ...conftest import ExecuteFunction, ExecuteWithResultFunction
 
 
 class Arguments(ArgumentsBase):

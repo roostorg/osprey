@@ -18,7 +18,8 @@ from osprey.engine.executor.execution_context import (
 )
 from osprey.engine.language_types.entities import EntityT
 from osprey.engine.stdlib.udfs.entity import Entity
-from osprey.engine.stdlib.udfs.rules import Rule
+from osprey.engine.stdlib.udfs.labels import LabelAdd, LabelRemove
+from osprey.engine.stdlib.udfs.rules import Rule, WhenRules
 from osprey.engine.stdlib.udfs.time_delta import TimeDelta
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import UDFBase
@@ -26,9 +27,6 @@ from osprey.engine.udf.registry import UDFRegistry
 from osprey.engine.utils.proto_utils import datetime_to_timestamp
 from osprey.rpc.labels.v1.service_pb2 import EntityMutation, LabelStatus
 from osprey.worker.sinks.sink.output_sink import _get_label_effects_from_result
-
-from ..labels import LabelAdd, LabelRemove
-from ..rules import WhenRules
 
 # Moved here because WhenRules is not included in the MVP yet
 

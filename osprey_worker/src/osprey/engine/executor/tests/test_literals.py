@@ -1,8 +1,7 @@
 from typing import Any
 
 import pytest
-
-from ...conftest import CheckFailureFunction, ExecuteFunction, RunValidationFunction
+from osprey.engine.conftest import CheckFailureFunction, ExecuteFunction, RunValidationFunction
 
 
 def test_num_literal(execute: ExecuteFunction) -> None:

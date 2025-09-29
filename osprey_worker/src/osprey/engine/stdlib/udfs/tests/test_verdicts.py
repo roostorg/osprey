@@ -8,11 +8,9 @@ from osprey.engine.ast_validator.validators.unique_stored_names import UniqueSto
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
 from osprey.engine.conftest import ExecuteWithResultFunction
 from osprey.engine.stdlib import get_config_registry
-from osprey.engine.stdlib.udfs.rules import Rule
+from osprey.engine.stdlib.udfs.rules import Rule, WhenRules
 from osprey.engine.stdlib.udfs.verdicts import DeclareVerdict
 from osprey.engine.udf.registry import UDFRegistry
-
-from ..rules import WhenRules
 
 # Moved here because WhenRules is not included in the MVP yet
 

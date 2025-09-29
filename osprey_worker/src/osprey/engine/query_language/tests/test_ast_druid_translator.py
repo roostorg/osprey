@@ -1,11 +1,10 @@
 import json
 
 import pytest
+from osprey.engine.conftest import CheckJsonOutputFunction, RunValidationFunction
 from osprey.engine.query_language import parse_query_to_validated_ast
-
-from ...conftest import CheckJsonOutputFunction, RunValidationFunction
-from ..ast_druid_translator import DruidQueryTransformer
-from .conftest import MakeRulesSourcesFunction
+from osprey.engine.query_language.ast_druid_translator import DruidQueryTransformer
+from osprey.engine.query_language.tests.conftest import MakeRulesSourcesFunction
 
 # The validators that the rules source validation should use, *not* the query source validation.
 pytestmark = pytest.mark.use_standard_rules_validators()

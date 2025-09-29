@@ -1,6 +1,5 @@
 import pytest
-
-from ..entities import EntityT
+from osprey.engine.language_types.entities import EntityT
 
 
 def test_allowed_types() -> None:

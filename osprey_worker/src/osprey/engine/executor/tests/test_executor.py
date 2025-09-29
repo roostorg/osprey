@@ -8,16 +8,14 @@ import gevent.event
 import gevent.pool
 import pytest
 from osprey.engine.ast_validator.validation_context import ValidationContext
-from osprey.engine.executor.execution_context import ExpectedUdfException
+from osprey.engine.conftest import ExecuteFunction, ExecuteWithResultFunction
+from osprey.engine.executor.execution_context import ExecutionContext, ExpectedUdfException
 from osprey.engine.language_types.post_execution_convertible import PostExecutionConvertible
 from osprey.engine.stdlib.udfs.import_ import Import
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import BatchableUDFBase, UDFBase
 from osprey.engine.udf.registry import UDFRegistry
 from result import Err, Ok, Result
-
-from ...conftest import ExecuteFunction, ExecuteWithResultFunction
-from ..execution_context import ExecutionContext
 
 
 class RecordingArguments(ArgumentsBase):
