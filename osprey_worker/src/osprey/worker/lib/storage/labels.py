@@ -22,6 +22,6 @@ class LabelProvider(ExternalService[EntityT[Any], Labels], ABC):
 
     @abstractmethod
     def apply_entity_mutation(
-        self, entity_key: EntityT[str], mutations: List[EntityMutation]
+        self, entity_key: EntityT[Any], mutations: List[EntityMutation]
     ) -> ApplyEntityMutationReply:
         raise NotImplementedError()

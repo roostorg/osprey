@@ -84,10 +84,10 @@ class EntityLabelDisagreeRequest(BaseModel):
 class EntityMutation:
     label_name: str = ''
     reason_name: str = ''
-    status: int = 0
+    status: LabelStatus = LabelStatus.ADDED
     pending: bool = False
     description: str = ''
-    features: Dict[str, 'str'] = field(default_factory=dict)
+    features: Dict[str, str] = field(default_factory=dict)
     expires_at: Optional[datetime] = None
 
 
