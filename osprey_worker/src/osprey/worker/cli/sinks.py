@@ -1,5 +1,6 @@
 # mypy: ignore-errors
 # ruff: noqa: E402, E501
+
 from osprey.worker.lib.patcher import patch_all
 from osprey.worker.sinks.input_stream_chooser import get_rules_sink_input_stream
 from osprey.worker.sinks.sink.output_sink import EventEffectsOutputSink
@@ -12,14 +13,13 @@ from uuid import uuid1
 
 # this is required to avoid memory leaks with gRPC
 from gevent import config as gevent_config
-from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators, bootstrap_output_sinks, bootstrap_udfs
+from osprey.worker.adaptor.plugin_manager import bootstrap_output_sinks
 
 gevent_config.track_greenlet_tree = False
 
 import multiprocessing
 import os
 from concurrent.futures import ProcessPoolExecutor
-from pathlib import Path
 from typing import Optional, Set, TextIO, cast
 
 import click
@@ -36,11 +36,10 @@ configure_logging()
 
 from osprey.worker.lib.bulk_label import TaskStatus
 from osprey.worker.lib.config import Config
-from osprey.worker.lib.osprey_engine import OspreyEngine, get_sources_provider
+from osprey.worker.lib.osprey_engine import bootstrap_engine, bootstrap_engine_with_helpers, get_sources_provider
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.publisher import PubSubPublisher
 from osprey.worker.lib.singletons import CONFIG
-from osprey.worker.lib.sources_provider import EtcdSourcesProvider
 from osprey.worker.lib.storage import postgres
 from osprey.worker.lib.storage.bigtable import osprey_bigtable
 from osprey.worker.lib.storage.bulk_label_task import BulkLabelTask
@@ -109,11 +108,6 @@ def tail_kafka_input_sink() -> None:
 
 
 @cli.command()
-@click.option(
-    '--rules-path',
-    type=click.Path(dir_okay=True, file_okay=False, exists=True),
-    help='Which rules to use. If not provided uses the rules in etcd.',
-)
 @click.option('--pooled/--no-pooled', default=True, help='Whether to run multiple sinks simultaneously in a pool.')
 @click.option(
     '--bootstrap-pubsub/--no-bootstrap-pubsub',
@@ -128,7 +122,6 @@ def tail_kafka_input_sink() -> None:
     help='Create base tables',
 )
 def run_rules_sink(
-    rules_path: Optional[str],
     pooled: bool,
     bootstrap_pubsub: bool,
     bootstrap_bigtable: bool,
@@ -140,12 +133,8 @@ def run_rules_sink(
         _bootstrap_bigtable()
 
     config = init_config()
-    sources_provider = get_sources_provider(Path(rules_path) if rules_path is not None else None)
 
-    udf_registry, udf_helpers = bootstrap_udfs()
-    bootstrap_ast_validators()
-
-    engine = OspreyEngine(sources_provider=sources_provider, udf_registry=udf_registry)
+    engine, udf_helpers = bootstrap_engine_with_helpers()
 
     input_stream_source_string = config.get_str('OSPREY_INPUT_STREAM_SOURCE', 'plugin')
     try:
@@ -202,10 +191,8 @@ def _run_rules_worker_process() -> None:
 
     # Sources and Engine
     sources_provider = get_sources_provider(rules_path=None, input_stream_ready_signaler=input_stream_ready_signaler)
-    udf_registry, udf_helpers = bootstrap_udfs()
-    bootstrap_ast_validators()
 
-    engine = OspreyEngine(sources_provider=sources_provider, udf_registry=udf_registry)
+    engine, udf_helpers = bootstrap_engine_with_helpers(sources_provider=sources_provider)
 
     # Output Sink
     output_sink = bootstrap_output_sinks(config)
@@ -274,13 +261,7 @@ def run_bulk_label_sink(pooled: bool, send_status_webhook: bool) -> None:
 
     postgres.init_from_config('osprey_db')
 
-    sources_provider = EtcdSourcesProvider(
-        etcd_key=config.get_str('OSPREY_ETCD_SOURCES_PROVIDER_KEY', '/config/osprey/rules-sink-sources')
-    )
-    udf_registry, _ = bootstrap_udfs()
-    bootstrap_ast_validators()
-
-    engine = OspreyEngine(sources_provider, udf_registry)
+    engine = bootstrap_engine()
 
     analytics_pubsub_project_id = config.get_str('PUBSUB_DATA_PROJECT_ID', 'osprey-dev')
     analytics_pubsub_topic_id = config.get_str('PUBSUB_ANALYTICS_EVENT_TOPIC_ID', 'osprey-analytics')
@@ -325,14 +306,9 @@ def rollback_bulk_label_effects(
 ) -> None:
     # TODO: Clean up this copy pasta.
     config = init_config()
-    sources_provider = EtcdSourcesProvider(
-        etcd_key=config.get_str('OSPREY_ETCD_SOURCES_PROVIDER_KEY', '/config/osprey/rules-sink-sources')
-    )
     postgres.init_from_config('osprey_db')
-    udf_registry, _ = bootstrap_udfs()
-    bootstrap_ast_validators()
 
-    engine = OspreyEngine(sources_provider, udf_registry)
+    engine = bootstrap_engine()
 
     analytics_pubsub_project_id = config.get_str('PUBSUB_DATA_PROJECT_ID', 'osprey-dev')
     analytics_pubsub_topic_id = config.get_str('PUBSUB_ANALYTICS_EVENT_TOPIC_ID', 'osprey-analytics')

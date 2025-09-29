@@ -118,11 +118,12 @@ services:
       - OSPREY_RULES_SINK_NUM_WORKERS=1
       - BIGTABLE_EMULATOR_HOST=bigtable:8361
       - SNOWFLAKE_API_ENDPOINT=http://snowflake:8080
+      - OSPREY_RULES_PATH=./example_rules
     volumes:
       - ./osprey_worker:/osprey/osprey_worker
       - ./osprey_rpc:/osprey/osprey_rpc
       - ./example_rules:/osprey/example_rules
-
+      - ./entrypoint.sh:/osprey/entrypoint.sh
   osprey_ui_api:
     container_name: osprey_ui_api
     build:
