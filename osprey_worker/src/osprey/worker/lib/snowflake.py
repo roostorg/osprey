@@ -32,6 +32,13 @@ class Snowflake:
         epoch = CONFIG.instance().get_int('SNOWFLAKE_EPOCH', 0)
         return ((self.id >> 22) + epoch) / 1000.0
 
+    def to_key_prefix(self) -> str:
+        timestamp_portion = self.id >> 22
+        # reverse the last 4 characters of the timestamp to create a
+        # uniformly distributed prefix space.
+        key_prefix = str(timestamp_portion)[:-5:-1]
+        return key_prefix
+
     def __str__(self) -> str:
         return self.to_str()
 
