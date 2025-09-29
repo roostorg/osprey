@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
 
 import gevent
 import google.cloud.storage as storage
+from osprey.worker.lib.snowflake import Snowflake
 import pytz
 from google.api_core import retry
 from google.cloud.bigtable import row_filters
@@ -56,26 +57,6 @@ class ExecutionResultStore(ABC):
     ) -> None:
         """Insert an execution result."""
         pass
-
-    @staticmethod
-    def _generate_key_prefix_from_snowflake(action_id_snowflake: int) -> str:
-        """
-        Generate a uniformly distributed key prefix from a snowflake ID.
-
-        Extracts the timestamp portion from the snowflake and reverses the last 4 characters
-        to create a uniformly distributed prefix space for better key distribution.
-
-        Args:
-            action_id_snowflake: The snowflake ID to generate a prefix from
-
-        Returns:
-            A string prefix for key distribution
-        """
-        timestamp_portion = action_id_snowflake >> 22
-        # reverse the last 4 characters of the timestamp to create a
-        # uniformly distributed prefix space.
-        key_prefix = str(timestamp_portion)[:-5:-1]
-        return key_prefix
 
 
 class ErrorTrace(BaseModel):
@@ -238,7 +219,7 @@ class StoredExecutionResultBigTable(ExecutionResultStore):
     @staticmethod
     def _encode_action_id(action_id_snowflake: int) -> bytes:
         """Constructs a bigtable key for a given snowflake."""
-        key_prefix = ExecutionResultStore._generate_key_prefix_from_snowflake(action_id_snowflake)
+        key_prefix = Snowflake(action_id_snowflake).to_key_prefix()
         return f'{key_prefix}:{action_id_snowflake}'.encode()
 
     @staticmethod
@@ -357,7 +338,7 @@ class StoredExecutionResultGCS(ExecutionResultStore):
     @staticmethod
     def _encode_action_id(action_id_snowflake: int) -> str:
         """Constructs a GCS object key for a given snowflake using the same distribution logic as BigTable."""
-        key_prefix = ExecutionResultStore._generate_key_prefix_from_snowflake(action_id_snowflake)
+        key_prefix = Snowflake(action_id_snowflake).to_key_prefix()
         return f'{key_prefix}:{action_id_snowflake}.json'
 
     @staticmethod
@@ -454,7 +435,7 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
     @staticmethod
     def _encode_action_id(action_id_snowflake: int) -> str:
         """Constructs a MinIO object key for a given snowflake using the same distribution logic as BigTable."""
-        key_prefix = ExecutionResultStore._generate_key_prefix_from_snowflake(action_id_snowflake)
+        key_prefix = Snowflake(action_id_snowflake).to_key_prefix()
         return f'{key_prefix}:{action_id_snowflake}.json'
 
     @staticmethod

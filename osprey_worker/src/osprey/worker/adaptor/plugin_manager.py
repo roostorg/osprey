@@ -98,7 +98,7 @@ def bootstrap_execution_result_store(config: Config):
     load_all_osprey_plugins()
 
     try:
-        [store] = plugin_manager.hook.register_execution_result_store(config=config)
+        store = plugin_manager.hook.register_execution_result_store(config=config)
         return store
-    except Exception as e:
+    except Exception:
         return None

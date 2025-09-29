@@ -48,7 +48,7 @@ def register_input_stream(config: Config) -> BaseInputStream[BaseAckingContext[A
     raise NotImplementedError('register_input_stream must be implemented by the plugin')
 
 
-@hookspec
+@hookspec(firstresult=True)
 def register_execution_result_store(config: Config) -> ExecutionResultStore:
     """Register an execution result storage backend instance."""
     raise NotImplementedError('register_execution_result_store must be implemented by the plugin')
