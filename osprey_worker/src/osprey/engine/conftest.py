@@ -182,6 +182,10 @@ def run_validation(request: 'FixtureRequest', udf_registry: UDFRegistry) -> RunV
         )
     )
     if request.node.get_closest_marker('use_standard_rules_validators'):
+        # Ensure standard validators are present in the base registry
+        from osprey.engine.ast_validator.validators import register_standard_rule_validators
+
+        register_standard_rule_validators()
         registry = ValidatorRegistry.instance_with_additional_validators(
             *validators, get_config_registry().get_validator()
         )
@@ -267,15 +271,8 @@ def execute_with_result(udf_registry: UDFRegistry) -> ExecuteWithResultFunction:
     ) -> ExecutionResult:
         sources = into_sources(sources_dict)
 
-        # Ensure standard AST validators are registered before validation/execution
-        try:
-            from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators  # type: ignore
-
-            bootstrap_ast_validators()
-        except Exception:
-            # If plugin bootstrap is unavailable in this context, continue; tests using run_validation will supply validators
-            pass
-
+        # Use the baseline validator registry plus the config validator. Avoid bootstrapping plugins here to keep
+        # test expectations stable; tests that need extra validators can opt-in via run_validation markers.
         config_validator = get_config_registry().get_validator()
         validator_registry = ValidatorRegistry.get_instance().instance_with_additional_validators(config_validator)
         try:

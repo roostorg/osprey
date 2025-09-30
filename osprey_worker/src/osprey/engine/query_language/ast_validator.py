@@ -6,10 +6,14 @@ from osprey.engine.ast.error_utils import SpanWithHint
 from osprey.engine.ast.grammar import BinaryComparison, BooleanOperation, Call, Not, UnaryOperation
 from osprey.engine.ast_validator.base_validator import SourceValidator
 from osprey.engine.ast_validator.validator_registry import ValidatorRegistry
+from osprey.engine.ast_validator.validators import register_standard_rule_validators
 
 if TYPE_CHECKING:
     from osprey.engine.ast_validator.validation_context import ValidationContext
 
+
+# Ensure standard rule validators are available before cloning for queries
+register_standard_rule_validators()
 
 # Make a copy of the validator registry so we can add extra query-only validators and remove validators that
 # shouldn't run on queries.
