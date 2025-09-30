@@ -1,11 +1,5 @@
-2 errors occurred while validating:
-[1/2] error: unexpected Node
+error: unexpected Node
 --> main.sml:1:39
      |
    1 | Query = A == B or (C == D and F >= 2); Foo = Bar
      |                                        ^ you cannot define additional statements within the query
-[2/2] error: unknown identifier
---> main.sml:1:45
-     |
-   1 | Query = A == B or (C == D and F >= 2); Foo = Bar
-     |                                              ^ `Bar` does not exist in any rule files. typo, perhaps?
