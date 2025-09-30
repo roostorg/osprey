@@ -3,18 +3,27 @@ import json
 import os
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 import pytz
+from osprey.worker.lib.singletons import CONFIG
 from osprey.worker.ui_api.osprey.lib.abilities import Ability
 from sqlalchemy import BigInteger, Column, DateTime, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
 
-from .postgres import Model, scoped_session
+from .postgres import Model, scoped_session, session_registries
 
 DEFAULT_ABILITY_LIFETIME = timedelta(hours=8)
 DEFAULT_TOKEN_CONSUMPTION_LIFETIME = timedelta(minutes=3)
+
+# In-memory fallback store used only when DB is not initialized
+_MEM_TOKENS: Dict[str, 'TemporaryAbilityToken'] = {}
+
+
+enum_doc = """
+Consumption results for TemporaryAbilityToken operations.
+"""
 
 
 class ConsumptionResult(Enum):
@@ -22,6 +31,10 @@ class ConsumptionResult(Enum):
     TOKEN_NOT_FOUND = 1
     TOKEN_ALREADY_USED = 2
     TOKEN_EXPIRED = 3
+
+
+def _db_initialized(database: str = 'osprey_db') -> bool:
+    return session_registries.get(database) is not None
 
 
 class TemporaryAbilityToken(Model):
@@ -45,20 +58,29 @@ class TemporaryAbilityToken(Model):
     @classmethod
     def create(cls, abilities: List[Ability[Any, Any]], creation_origin: str) -> 'TemporaryAbilityToken':
         """
-        Adds a single `ability_token` to the database
+        Adds a single `ability_token` to the database or in-memory store when DB unavailable.
         """
-        with scoped_session(commit=True) as session:
-            now = datetime.now(tz=pytz.utc)
-            ability_token = TemporaryAbilityToken(
-                token=base64.urlsafe_b64encode(os.urandom(33)).decode('utf-8'),
-                # Dumping then loading the json is needed to get the ability in a form that postgres can accept
-                abilities_json=[json.loads(ability.json()) for ability in abilities],
-                creation_origin=creation_origin,
-                must_be_consumed_before=now + DEFAULT_TOKEN_CONSUMPTION_LIFETIME,
-                abilities_expire_at=now + DEFAULT_ABILITY_LIFETIME,
-                created_at=now,
-            )
-            session.add(ability_token)
+        now = datetime.now(tz=pytz.utc)
+        token_value = base64.urlsafe_b64encode(os.urandom(33)).decode('utf-8')
+        ability_token = TemporaryAbilityToken(
+            token=token_value,
+            abilities_json=[json.loads(ability.json()) for ability in abilities],
+            creation_origin=creation_origin,
+            must_be_consumed_before=now + DEFAULT_TOKEN_CONSUMPTION_LIFETIME,
+            abilities_expire_at=now + DEFAULT_ABILITY_LIFETIME,
+            created_at=now,
+        )
+
+        if _db_initialized():
+            with scoped_session(commit=True) as session:
+                session.add(ability_token)
+        else:
+            # Testing path without Postgres
+            if CONFIG.instance().testing:
+                _MEM_TOKENS[token_value] = ability_token
+            else:
+                # In non-testing environments, require DB
+                raise Exception('Database osprey_db has not yet been initialized!')
 
         return ability_token
 
@@ -79,24 +101,41 @@ class TemporaryAbilityToken(Model):
     @classmethod
     def consume(cls, token: str, user_email: str) -> ConsumptionResult:
         """
-        Consumes a token and assigns the `abilities` to a `user_email`
+        Consumes a token and assigns the `abilities` to a `user_email`.
+        Works with DB or in-memory fallback when testing without Postgres.
         """
-        with scoped_session(commit=True) as session:
-            ability_token = cls._get_ability_token_for_update(token, session)
+        now = datetime.now(tz=pytz.utc)
+        if _db_initialized():
+            with scoped_session(commit=True) as session:
+                ability_token = cls._get_ability_token_for_update(token, session)
+                if not ability_token:
+                    return ConsumptionResult.TOKEN_NOT_FOUND
+                if ability_token.consumed_by_email is not None and ability_token.consumed_by_email != user_email:
+                    if ability_token.consumed_by_email != user_email:
+                        return ConsumptionResult.TOKEN_ALREADY_USED
+                    else:
+                        return ConsumptionResult.SUCCESS
+                assert ability_token.must_be_consumed_before is not None
+                if ability_token.must_be_consumed_before < now:
+                    return ConsumptionResult.TOKEN_EXPIRED
+
+                ability_token.consumed_by_email = user_email
+                cls._test_only_pre_consume_lock()  # needed to simulate multiple simultaneous consumptions when testing
+                session.add(ability_token)
+                return ConsumptionResult.SUCCESS
+        else:
+            if not CONFIG.instance().testing:
+                raise Exception('Database osprey_db has not yet been initialized!')
+            ability_token = _MEM_TOKENS.get(token)
             if not ability_token:
                 return ConsumptionResult.TOKEN_NOT_FOUND
             if ability_token.consumed_by_email is not None and ability_token.consumed_by_email != user_email:
-                if ability_token.consumed_by_email != user_email:
-                    return ConsumptionResult.TOKEN_ALREADY_USED
-                else:
-                    return ConsumptionResult.SUCCESS
+                return ConsumptionResult.TOKEN_ALREADY_USED
             assert ability_token.must_be_consumed_before is not None
-            if ability_token.must_be_consumed_before < datetime.now(tz=pytz.utc):
+            if ability_token.must_be_consumed_before < now:
                 return ConsumptionResult.TOKEN_EXPIRED
-
             ability_token.consumed_by_email = user_email
-            cls._test_only_pre_consume_lock()  # needed to simulate multiple simultaneous consumptions when testing
-            session.add(ability_token)
+            _MEM_TOKENS[token] = ability_token
             return ConsumptionResult.SUCCESS
 
     @classmethod
@@ -104,13 +143,26 @@ class TemporaryAbilityToken(Model):
         """
         Gets all the temporary abilities associated with `email` that haven't expired yet
         """
-        with scoped_session() as session:
-            access_tokens: List['TemporaryAbilityToken'] = (
-                session.query(TemporaryAbilityToken)  # type: ignore # query is untyped
-                .filter(TemporaryAbilityToken.consumed_by_email == email)
-                .filter(TemporaryAbilityToken.abilities_expire_at > datetime.now(tz=pytz.utc))
-            )
-            return [ability for ability_token in access_tokens for ability in ability_token.abilities()]
+        now = datetime.now(tz=pytz.utc)
+        if _db_initialized():
+            with scoped_session() as session:
+                access_tokens: List['TemporaryAbilityToken'] = (
+                    session.query(TemporaryAbilityToken)  # type: ignore # query is untyped
+                    .filter(TemporaryAbilityToken.consumed_by_email == email)
+                    .filter(TemporaryAbilityToken.abilities_expire_at > now)
+                )
+                return [ability for ability_token in access_tokens for ability in ability_token.abilities()]
+        else:
+            if not CONFIG.instance().testing:
+                raise Exception('Database osprey_db has not yet been initialized!')
+            return [
+                ability
+                for ability_token in _MEM_TOKENS.values()
+                if ability_token.consumed_by_email == email
+                and ability_token.abilities_expire_at is not None
+                and ability_token.abilities_expire_at > now
+                for ability in ability_token.abilities()
+            ]
 
     def abilities(self) -> List[Ability[Any, Any]]:
         return [Ability.validate(ability_json) for ability_json in self.abilities_json]  # type: ignore # mypy doesn't like the list comprehension

@@ -8,12 +8,13 @@ from typing import Any, Dict, Iterator, List, Optional
 
 from osprey.rpc.labels.v1 import service_pb2
 from osprey.worker.lib.osprey_shared.labels import LabelStatus
+from osprey.worker.lib.singletons import CONFIG
 from osprey.worker.lib.storage.types import Enum
 from sqlalchemy import BigInteger, Boolean, Column, DateTime, Integer, Text, and_, func, or_
 from sqlalchemy.dialects.postgresql import ARRAY, INTERVAL, JSONB
 
 from ..bulk_label import TaskStatus
-from .postgres import Model, scoped_session
+from .postgres import Model, scoped_session, session_registries
 
 BASE_DELAY_SECONDS = 60 * 3
 MAX_ATTEMPTS = 3
@@ -69,6 +70,27 @@ class BulkLabelTask(Model):
         expected_total_entities_to_label: int,
         no_limit: bool,
     ) -> 'BulkLabelTask':
+        # Allow enqueue without Postgres in tests
+        if not session_registries.get('osprey_db') and CONFIG.instance().testing:
+            now = datetime.now()
+            task = BulkLabelTask(
+                initiated_by=initiated_by,
+                query=query,
+                dimension=dimension,
+                excluded_entities=excluded_entities,
+                expected_total_entities_to_label=expected_total_entities_to_label,
+                no_limit=no_limit,
+                label_name=label_name,
+                label_reason=label_reason,
+                label_status=LabelStatus(label_status),  # type: ignore
+                label_expiry=label_expiry,
+                task_status=TaskStatus.QUEUED,  # type: ignore
+                claim_until=now,  # type: ignore
+                created_at=now,  # type: ignore
+                updated_at=now,  # type: ignore
+            )
+            return task
+
         with scoped_session(commit=True) as session:
             task = BulkLabelTask(
                 initiated_by=initiated_by,
