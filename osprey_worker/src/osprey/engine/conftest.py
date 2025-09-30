@@ -266,6 +266,16 @@ def execute_with_result(udf_registry: UDFRegistry) -> ExecuteWithResultFunction:
         action_time: Optional[datetime] = None,
     ) -> ExecutionResult:
         sources = into_sources(sources_dict)
+
+        # Ensure standard AST validators are registered before validation/execution
+        try:
+            from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators  # type: ignore
+
+            bootstrap_ast_validators()
+        except Exception:
+            # If plugin bootstrap is unavailable in this context, continue; tests using run_validation will supply validators
+            pass
+
         config_validator = get_config_registry().get_validator()
         validator_registry = ValidatorRegistry.get_instance().instance_with_additional_validators(config_validator)
         try:
