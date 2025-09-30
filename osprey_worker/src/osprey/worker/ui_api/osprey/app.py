@@ -8,6 +8,7 @@ from werkzeug.exceptions import HTTPException
 
 ddtrace.patch_all(gevent=True)
 
+import os
 from http import HTTPStatus
 from typing import NoReturn, Tuple, Union
 
@@ -73,13 +74,20 @@ def create_app() -> Flask:
         saved_queries,
     )
 
-    CONFIG.instance().configure_from_env()
-    sentry_dsn = CONFIG.instance().get_str('SENTRY_UI_API_DSN', '')
+    # Avoid double-binding the config in tests where a global autouse fixture already configured it
+    config_singleton = CONFIG.instance()
+    try:
+        config_singleton.configure_from_env()
+    except RuntimeError:
+        pass
+    sentry_dsn = config_singleton.get_str('SENTRY_UI_API_DSN', '')
 
     if sentry_dsn:
         sentry_sdk.init(dsn=sentry_dsn, integrations=[FlaskIntegration()])
 
-    postgres.init_from_config('osprey_db')
+    # Only set up Postgres if configuration provides hosts
+    if 'POSTGRES_HOSTS' in os.environ:
+        postgres.init_from_config('osprey_db')
 
     gunicorn_logger = get_logger('gunicorn.error')
 
@@ -92,8 +100,8 @@ def create_app() -> Flask:
 
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
-    app.debug = CONFIG.instance().debug
-    app.testing = CONFIG.instance().testing
+    app.debug = config_singleton.debug
+    app.testing = config_singleton.testing
 
     app.bulk_action_file_manager = get_bulk_action_file_manager()
 

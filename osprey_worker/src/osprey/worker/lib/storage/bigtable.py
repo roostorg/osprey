@@ -3,6 +3,7 @@
 #
 # import pytest
 import logging
+import os
 from abc import ABC, abstractmethod
 from typing import Dict
 
@@ -41,6 +42,10 @@ class OspreyBigTable(BigTableClient):
 
     def init_from_config(self, config: Config) -> None:
         """Initialize this bigtable client once configuration is available."""
+        # Skip BigTable initialization when running tests without an emulator or credentials
+        if os.environ.get('TESTING') == 'true' and not os.environ.get('BIGTABLE_EMULATOR_HOST'):
+            return
+
         config = CONFIG.instance()
         gcp_project = config.get_str('OSPREY_GCP_PROJECT_ID', 'osprey-dev')
         bigtable_instance = config.get_str('OSPREY_BIGTABLE_INSTANCE_ID', 'osprey-bigtable')
@@ -88,6 +93,9 @@ class DataServicesBigTable(BigTableClient):
 
     def init_from_config(self, config: Config) -> None:
         """Initialize this bigtable client once configuration is available."""
+        if os.environ.get('TESTING') == 'true' and not os.environ.get('BIGTABLE_EMULATOR_HOST'):
+            return
+
         config = CONFIG.instance()
         gcp_project = config.get_str('DATA_SERVICES_GCP_PROJECT_ID', 'osprey-dev')
         bigtable_instance = config.get_str('DATA_SERVICES_BIGTABLE_INSTANCE_ID', 'derived-sinks-ml-instance-dev')
@@ -121,6 +129,9 @@ class DataStreamBigTable(BigTableClient):
 
     def init_from_config(self, config: Config) -> None:
         """Initialize this bigtable client once configuration is available."""
+        if os.environ.get('TESTING') == 'true' and not os.environ.get('BIGTABLE_EMULATOR_HOST'):
+            return
+
         config = CONFIG.instance()
         gcp_project = config.get_str('DATA_GCP_PROJECT_ID', 'osprey-dev')
         bigtable_instance = config.get_str('DATA_STREAM_BIGTABLE_INSTANCE_ID', 'stream')

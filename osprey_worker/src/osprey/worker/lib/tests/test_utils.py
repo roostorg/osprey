@@ -23,13 +23,27 @@ if TYPE_CHECKING:
 def make_postgres_database_config_fixture() -> object:
     """Returns a fixture which sets up the Osprey test database for the session.
     Result should be stored in a variable in a conftest.py file.
+    If POSTGRES_HOSTS is not configured in the environment, this fixture becomes a no-op.
     """
 
     @pytest.fixture(scope='session', autouse=True)
     def postgres_database_config() -> Iterator[None]:
+        # Only attempt to configure and create the database if POSTGRES_HOSTS is provided
+        if 'POSTGRES_HOSTS' not in os.environ:
+            # No database configuration available; proceed without setting up Postgres
+            yield
+            return
+
         config = CONFIG.instance()
         config.configure_from_env()
-        url = config['POSTGRES_HOSTS']['osprey']
+
+        # If POSTGRES_HOSTS is present but does not contain the expected key, no-op
+        try:
+            url = config['POSTGRES_HOSTS']['osprey']
+        except Exception:
+            config.unconfigure_for_tests()
+            yield
+            return
 
         try:
             create_database(url)
@@ -42,6 +56,7 @@ def make_postgres_database_config_fixture() -> object:
 
         postgres.init_from_config('osprey')
 
+        # Unbind global config so per-test fixtures can bind as needed
         config.unconfigure_for_tests()
 
         yield
