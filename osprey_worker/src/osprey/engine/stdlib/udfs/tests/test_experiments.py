@@ -58,7 +58,6 @@ def test_experiment_bucketing(execute: ExecuteFunction) -> None:
         str(0),
         str(1),
         str(1),
-        str(True),
     ]
 
 
@@ -333,7 +332,6 @@ def test_experiment_resolution(
         str(expected_bucket_index),
         str(1),
         str(1),
-        str(True),
     ]
 
 
