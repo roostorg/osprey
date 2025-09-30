@@ -8,7 +8,9 @@ repos:
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
+        exclude: .*/tests?/.*\.txt
       - id: end-of-file-fixer
+        exclude: .*/tests?/.*\.txt
       - id: check-yaml
       - id: check-case-conflict
       - id: check-merge-conflict
@@ -17,6 +19,7 @@ repos:
       - id: check-toml
       - id: mixed-line-ending
         args: ["--fix=lf"]
+        exclude: .*/tests?/.*\.txt
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.12.9
