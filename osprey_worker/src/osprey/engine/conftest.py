@@ -25,6 +25,7 @@ from typing_extensions import Protocol
 
 if TYPE_CHECKING:
     from _pytest.config import Config
+    from _pytest.config.argparsing import Parser
     from _pytest.fixtures import FixtureRequest
 
 SourcesDict = Union[Sources, str, Dict[str, str]]
@@ -378,6 +379,12 @@ def check_failure(check_output: CheckOutputFunction) -> CheckFailureFunction:
         assert check_output(e.value.rendered())
 
     return check_failure
+
+
+def pytest_addoption(parser: 'Parser') -> None:
+    parser.addoption(
+        '--write-outputs', action='store_true', help='write checked validator outputs instead of checking them'
+    )
 
 
 def pytest_configure(config: 'Config') -> None:
