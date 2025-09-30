@@ -5,7 +5,20 @@ import sys
 from contextlib import contextmanager
 from datetime import datetime
 from textwrap import dedent
-from typing import TYPE_CHECKING, Callable, ContextManager, Dict, Iterator, Optional, Set, Type, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ContextManager,
+    Dict,
+    Generator,
+    Iterator,
+    Optional,
+    Set,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import gevent.pool
 import pytest
@@ -21,12 +34,25 @@ from osprey.engine.executor.executor import execute as osprey_execute
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.stdlib import get_config_registry
 from osprey.engine.udf.registry import UDFRegistry
+from osprey.worker.lib.singletons import CONFIG
 from typing_extensions import Protocol
 
 if TYPE_CHECKING:
     from _pytest.config import Config
     from _pytest.config.argparsing import Parser
     from _pytest.fixtures import FixtureRequest
+
+
+@pytest.fixture(autouse=True)  # autouse = True means automatically use for each test
+def config_setup() -> Generator[Any, None, None]:
+    CONFIG.instance().configure_from_env()
+    # yield is used here to basically split this function into two parts:
+    # all code before `yield` is the setup code (run before each test), and
+    # all code after `yield` is the teardown code (run after each test)
+    yield  # this line is where the testing happens
+    # teardown code
+    CONFIG.instance().unconfigure_for_tests()
+
 
 SourcesDict = Union[Sources, str, Dict[str, str]]
 CheckOutputFunction = Callable[[str], bool]
