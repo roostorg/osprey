@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import TYPE_CHECKING, Any, Dict, Generic, Hashable, Type, TypeVar, cast
 
 from osprey.engine.executor.external_service_utils import (
@@ -28,13 +28,22 @@ class HasHelperInternal(Generic[HelperT]):
 
 
 class HasHelper(HasHelperInternal[HelperT], ABC):
-    """Indicates that a UDF requires a helper object to execute, which will be provided via the execution context."""
+    """Indicates that a UDF requires a helper object to execute, which will be provided via the execution context.
+
+    Subclasses may optionally implement `create_provider` to allow automatic helper bootstrapping via plugins.
+    Tests or callers can also inject helpers explicitly using `UDFHelpers.set_udf_helper` without requiring this method.
+    """
 
     @classmethod
-    @abstractmethod
     def create_provider(cls) -> HelperT:
-        """Create an instance of the provider for this UDF."""
-        pass
+        """Create an instance of the provider for this UDF.
+
+        Default behavior raises to signal that automatic provider creation isn't available. This keeps subclasses
+        instantiable for validation while still requiring explicit opt-in for plugin bootstrapping.
+        """
+        raise NotImplementedError(
+            f'{cls.__name__} does not define create_provider(); either implement it or inject via UDFHelpers'
+        )
 
 
 class UDFHelpers:
