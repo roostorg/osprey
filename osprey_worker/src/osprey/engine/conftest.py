@@ -98,7 +98,7 @@ def check_output(request: 'FixtureRequest') -> CheckOutputFunction:
             raise Exception('Cannot call check_output more than once per test run.')
 
         did_call = True
-        if request.config.option.write_outputs:
+        if getattr(request.config.option, 'write_outputs', False):
             put_file_contents(output)
             return True
         else:
@@ -108,7 +108,7 @@ def check_output(request: 'FixtureRequest') -> CheckOutputFunction:
                     f'\n\tExpected test output: {get_output_file()}'
                 )
             except AssertionError as e:
-                if request.config.option.write_first_failed_output:
+                if getattr(request.config.option, 'write_first_failed_output', False):
                     request.config.option.write_first_failed_output = False
                     put_file_contents(output)
                     raise AssertionError(
