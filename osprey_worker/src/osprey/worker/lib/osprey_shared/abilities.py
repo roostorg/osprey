@@ -3,8 +3,8 @@ from typing import Any, List, Mapping, Optional, Sequence, Set
 from urllib.parse import urlencode
 
 import requests
-from osprey.rpc.labels.v1.service_pb2 import EntityKey
 from osprey.worker.lib.utils.flask_signing import Signer
+from osprey.worker.ui_api.osprey.validators.entities import EntityKey
 from pydantic.main import BaseModel
 from requests import ConnectionError, HTTPError, Timeout
 from requests.models import ChunkedEncodingError

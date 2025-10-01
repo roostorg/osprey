@@ -6,7 +6,6 @@ from datetime import datetime
 from random import random
 from typing import Any, Dict, Iterator, List, Optional
 
-from osprey.rpc.labels.v1 import service_pb2
 from osprey.worker.lib.osprey_shared.labels import LabelStatus
 from osprey.worker.lib.storage.types import Enum
 from sqlalchemy import BigInteger, Boolean, Column, DateTime, Integer, Text, and_, func, or_
@@ -63,7 +62,7 @@ class BulkLabelTask(Model):
         initiated_by: str,
         label_name: str,
         label_reason: str,
-        label_status: 'service_pb2.LabelStatus.ValueType',  # NOTE: this could use regular LabelStatus, would just take a bit of refactoring
+        label_status: LabelStatus,
         label_expiry: Optional[datetime],
         excluded_entities: List[str],
         expected_total_entities_to_label: int,
