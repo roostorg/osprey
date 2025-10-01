@@ -1,13 +1,32 @@
 from typing import Any, Callable, List
 
 import pytest
+from osprey.engine.ast_validator.validators.imports_must_not_have_cycles import ImportsMustNotHaveCycles
+from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
+from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
+from osprey.engine.ast_validator.validators.validate_dynamic_calls_have_annotated_rvalue import (
+    ValidateDynamicCallsHaveAnnotatedRValue,
+)
+from osprey.engine.ast_validator.validators.validate_static_types import ValidateStaticTypes
+from osprey.engine.ast_validator.validators.variables_must_be_defined import VariablesMustBeDefined
 from osprey.engine.conftest import CheckFailureFunction, RunValidationFunction
 from osprey.engine.query_language import parse_query_to_validated_ast
 from osprey.engine.query_language.tests.conftest import MakeRulesSourcesFunction
 
 # The validators and UDFs that the rules source validation should use, *not* the query source validation.
+# We need to include the specific validators that parse_query_to_validated_ast expects.
 pytestmark: List[Callable[[Any], Any]] = [
     pytest.mark.use_standard_rules_validators(),
+    pytest.mark.use_validators(
+        [
+            UniqueStoredNames,
+            ValidateStaticTypes,
+            ValidateCallKwargs,
+            ImportsMustNotHaveCycles,
+            ValidateDynamicCallsHaveAnnotatedRValue,
+            VariablesMustBeDefined,
+        ]
+    ),
     pytest.mark.use_osprey_stdlib(),
 ]
 
