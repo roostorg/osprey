@@ -1,6 +1,5 @@
 import pytest
-
-from ..graph import CyclicDependencyError, Graph
+from osprey.engine.utils.graph import CyclicDependencyError, Graph
 
 
 def test_graph_ops() -> None:

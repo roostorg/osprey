@@ -1,6 +1,5 @@
 import pytest
-
-from ...conftest import ExecuteFunction
+from osprey.engine.conftest import ExecuteFunction
 
 
 @pytest.mark.parametrize(

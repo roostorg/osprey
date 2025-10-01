@@ -4,11 +4,10 @@ from typing import Any, Callable, Dict, List
 import pytest
 from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
+from osprey.engine.conftest import RunValidationFunction
+from osprey.engine.query_language.udfs.did_mutate_label import DidAddLabel, DidRemoveLabel
 from osprey.engine.stdlib import get_config_registry
 from osprey.engine.udf.registry import UDFRegistry
-
-from ...conftest import RunValidationFunction
-from ..udfs.did_mutate_label import DidAddLabel, DidRemoveLabel
 
 pytestmark: List[Callable[[Any], Any]] = [
     pytest.mark.use_validators([ValidateCallKwargs, UniqueStoredNames, get_config_registry().get_validator()]),

@@ -1,10 +1,9 @@
 from typing import Any, List, Optional
 
 import pytest
-
-from ....conftest import ExecuteFunction
-from ....osprey_udf.registry import UDFRegistry
-from ..list_read import ListRead
+from osprey.engine.conftest import ExecuteFunction
+from osprey.engine.stdlib.udfs.list_read import ListRead
+from osprey.engine.udf.registry import UDFRegistry
 
 pytestmark = [pytest.mark.use_udf_registry(UDFRegistry.with_udfs(ListRead))]
 

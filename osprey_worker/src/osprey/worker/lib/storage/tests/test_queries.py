@@ -7,10 +7,9 @@ import pytest
 from faker import Faker
 from intervals.interval import DateTimeInterval
 from osprey.worker.lib.snowflake import Snowflake
+from osprey.worker.lib.storage.postgres import scoped_session
+from osprey.worker.lib.storage.queries import Query, SavedQuery, SortOrder
 from sqlalchemy.orm.session import Session
-
-from ..postgres import scoped_session
-from ..queries import Query, SavedQuery, SortOrder
 
 fake = Faker()
 

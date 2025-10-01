@@ -1,7 +1,6 @@
 import pytest
-
-from ....conftest import CheckFailureFunction, RunValidationFunction
-from ..unique_stored_names import UniqueStoredNames
+from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
+from osprey.engine.conftest import CheckFailureFunction, RunValidationFunction
 
 pytestmark = pytest.mark.use_validators([UniqueStoredNames])
 

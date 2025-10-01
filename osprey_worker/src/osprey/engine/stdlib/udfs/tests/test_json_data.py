@@ -6,10 +6,14 @@ from osprey.engine.ast_validator.validators.validate_call_kwargs import Validate
 from osprey.engine.ast_validator.validators.validate_dynamic_calls_have_annotated_rvalue import (
     ValidateDynamicCallsHaveAnnotatedRValue,
 )
-
-from ....conftest import CheckFailureFunction, ExecuteFunction, ExecuteWithResultFunction, RunValidationFunction
-from ....osprey_udf.registry import UDFRegistry
-from ..json_data import JsonData
+from osprey.engine.conftest import (
+    CheckFailureFunction,
+    ExecuteFunction,
+    ExecuteWithResultFunction,
+    RunValidationFunction,
+)
+from osprey.engine.stdlib.udfs.json_data import JsonData
+from osprey.engine.udf.registry import UDFRegistry
 
 pytestmark: List[Callable[[Any], Any]] = [
     pytest.mark.use_validators([ValidateCallKwargs, ValidateDynamicCallsHaveAnnotatedRValue, UniqueStoredNames]),

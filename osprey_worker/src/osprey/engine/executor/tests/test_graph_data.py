@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from ..graph_data import GraphData, Node, NodeType
+from osprey.engine.executor.graph_data import GraphData, Node, NodeType
 
 
 def create_node(data: GraphData) -> Node:

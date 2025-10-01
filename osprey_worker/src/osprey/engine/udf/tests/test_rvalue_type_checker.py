@@ -4,9 +4,8 @@ import pytest
 from osprey.engine.ast.grammar import Annotation, AnnotationWithVariants, Span
 from osprey.engine.ast.sources import Sources
 from osprey.engine.language_types.entities import EntityT
+from osprey.engine.udf.rvalue_type_checker import AnnotationConversionError, convert_ast_annotation_to_type_checker
 from result import Err, Ok, Result
-
-from ..rvalue_type_checker import AnnotationConversionError, convert_ast_annotation_to_type_checker
 
 
 @pytest.fixture(scope='module')

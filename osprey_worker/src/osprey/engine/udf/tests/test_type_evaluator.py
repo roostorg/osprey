@@ -3,10 +3,9 @@ from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union
 import pytest
 from osprey.engine.language_types.entities import EntityT
 from osprey.engine.language_types.osprey_invariant_generic import OspreyInvariantGeneric
-
-from ..arguments import ConstExpr
-from ..type_evaluator import is_compatible_type
-from ..type_helpers import to_display_str
+from osprey.engine.udf.arguments import ConstExpr
+from osprey.engine.udf.type_evaluator import is_compatible_type
+from osprey.engine.udf.type_helpers import to_display_str
 
 
 class A:

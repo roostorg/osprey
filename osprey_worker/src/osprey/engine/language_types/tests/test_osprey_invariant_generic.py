@@ -1,7 +1,7 @@
 from typing import Any, Mapping, Sequence, TypeVar
 
 import pytest
-from osprey.engine.invariant_generic import OspreyInvariantGeneric
+from osprey.engine.language_types.osprey_invariant_generic import OspreyInvariantGeneric
 
 
 @pytest.mark.parametrize(

@@ -1,10 +1,9 @@
 from typing import Any, Callable, List
 
 import pytest
+from osprey.engine.conftest import CheckFailureFunction, RunValidationFunction
 from osprey.engine.query_language import parse_query_to_validated_ast
-
-from ...conftest import CheckFailureFunction, RunValidationFunction
-from .conftest import MakeRulesSourcesFunction
+from osprey.engine.query_language.tests.conftest import MakeRulesSourcesFunction
 
 # The validators and UDFs that the rules source validation should use, *not* the query source validation.
 pytestmark: List[Callable[[Any], Any]] = [

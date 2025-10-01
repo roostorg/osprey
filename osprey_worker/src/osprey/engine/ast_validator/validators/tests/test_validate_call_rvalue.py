@@ -1,13 +1,12 @@
 from typing import Any, Callable, List
 
 import pytest
-
-from ....conftest import CheckFailureFunction, RunValidationFunction
-from ....osprey_udf.arguments import ArgumentsBase
-from ....osprey_udf.base import UDFBase
-from ....osprey_udf.registry import UDFRegistry
-from ..unique_stored_names import UniqueStoredNames
-from ..validate_call_rvalue import ValidateCallRValue
+from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
+from osprey.engine.ast_validator.validators.validate_call_rvalue import ValidateCallRValue
+from osprey.engine.conftest import CheckFailureFunction, RunValidationFunction
+from osprey.engine.udf.arguments import ArgumentsBase
+from osprey.engine.udf.base import UDFBase
+from osprey.engine.udf.registry import UDFRegistry
 
 
 class EmptyArguments(ArgumentsBase):

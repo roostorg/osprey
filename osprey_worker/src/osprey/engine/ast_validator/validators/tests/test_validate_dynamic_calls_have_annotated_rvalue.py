@@ -1,9 +1,10 @@
 import pytest
 from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
+from osprey.engine.ast_validator.validators.validate_dynamic_calls_have_annotated_rvalue import (
+    ValidateDynamicCallsHaveAnnotatedRValue,
+)
 from osprey.engine.conftest import CheckFailureFunction, RunValidationFunction
-
-from ..validate_dynamic_calls_have_annotated_rvalue import ValidateDynamicCallsHaveAnnotatedRValue
 
 pytestmark = [
     pytest.mark.use_validators([ValidateCallKwargs, ValidateDynamicCallsHaveAnnotatedRValue, UniqueStoredNames]),

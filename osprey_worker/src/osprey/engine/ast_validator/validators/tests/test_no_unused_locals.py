@@ -1,7 +1,6 @@
 import pytest
-
-from ....conftest import CheckFailureFunction, RunValidationFunction
-from ..no_unused_locals import NoUnusedLocals
+from osprey.engine.ast_validator.validators.no_unused_locals import NoUnusedLocals
+from osprey.engine.conftest import CheckFailureFunction, RunValidationFunction
 
 pytestmark = pytest.mark.use_validators([NoUnusedLocals])
 

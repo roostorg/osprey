@@ -3,10 +3,14 @@ from unittest.mock import patch
 
 import pytest
 from osprey.worker.lib.snowflake import generate_snowflake
+from osprey.worker.lib.storage.bulk_action_task import (
+    BulkActionJob,
+    BulkActionJobStatus,
+    BulkActionTask,
+    BulkActionTaskStatus,
+)
+from osprey.worker.lib.storage.postgres import scoped_session
 from sqlalchemy.orm import Session
-
-from ..bulk_action_task import BulkActionJob, BulkActionJobStatus, BulkActionTask, BulkActionTaskStatus
-from ..postgres import scoped_session
 
 
 @pytest.fixture

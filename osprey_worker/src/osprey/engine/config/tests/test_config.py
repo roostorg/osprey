@@ -10,10 +10,9 @@ from osprey.engine.ast_validator.validation_context import ValidatedSources
 from osprey.engine.ast_validator.validator_registry import ValidatorRegistry
 from osprey.engine.config.config_registry import ConfigRegistry, ConfigSubkey
 from osprey.engine.config.config_subkey_handler import ConfigSubkeyHandler
+from osprey.engine.conftest import CheckFailureFunction, RunValidationFunction
 from pydantic.error_wrappers import ValidationError as PydanticValidationError
 from pydantic.main import BaseModel
-
-from ...conftest import CheckFailureFunction, RunValidationFunction
 
 
 class TestModel1(BaseModel):

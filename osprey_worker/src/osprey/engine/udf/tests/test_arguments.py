@@ -1,6 +1,6 @@
 from typing import Optional, Union
 
-from ..arguments import ArgumentsBase, ConstExpr
+from osprey.engine.udf.arguments import ArgumentsBase, ConstExpr
 
 StrConstExpr = ConstExpr[str]  # This being inside the below function is causing mypy to crash
 

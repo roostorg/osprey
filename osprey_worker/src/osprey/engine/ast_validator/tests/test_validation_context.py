@@ -1,6 +1,5 @@
 import pytest
-
-from ...conftest import CheckFailureFunction, RunValidationFunction
+from osprey.engine.conftest import CheckFailureFunction, RunValidationFunction
 
 pytestmark = [pytest.mark.use_validators([])]
 

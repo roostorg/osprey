@@ -1,8 +1,7 @@
 import pytest
-
-from ....conftest import ExecuteFunction
-from ....osprey_udf.registry import UDFRegistry
-from ..string_base64 import Base64Decode, Base64Encode
+from osprey.engine.conftest import ExecuteFunction
+from osprey.engine.stdlib.udfs.string_base64 import Base64Decode, Base64Encode
+from osprey.engine.udf.registry import UDFRegistry
 
 pytestmark = [
     pytest.mark.use_udf_registry(UDFRegistry.with_udfs(Base64Encode, Base64Decode)),
