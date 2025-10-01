@@ -32,6 +32,13 @@ class LabelStatus(IntEnum):
             case LabelStatus.REMOVED | LabelStatus.MANUALLY_REMOVED:
                 return LabelStatus.REMOVED
 
+    def is_automatic(self) -> bool:
+        """Checks if the status is automatic (ADDED or REMOVED)."""
+        return self in [LabelStatus.ADDED, LabelStatus.REMOVED]
+
+    def is_manual(self) -> bool:
+        """Checks if the status is manual (MANUALLY_ADDED or MANUALLY_REMOVED)."""
+        return self in [LabelStatus.MANUALLY_ADDED, LabelStatus.MANUALLY_REMOVED]
 
 @add_slots
 @dataclass
