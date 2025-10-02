@@ -7,13 +7,7 @@ from osprey.engine.ast_validator.validators.validate_call_kwargs import Validate
 from osprey.engine.conftest import CheckFailureFunction, ExecuteFunction, RunValidationFunction
 from osprey.engine.language_types.experiments import NOT_IN_EXPERIMENT_BUCKET, NOT_IN_EXPERIMENT_BUCKET_INDEX
 from osprey.engine.stdlib.udfs.entity import Entity
-from osprey.engine.stdlib.udfs.experiments import (
-    CONTROL_BUCKET,
-    EXPERIMENT_GRANULARITY,
-    Experiment,
-    # ExperimentsProvider, # TODO: figure out why this class no longer exists...
-    ExperimentWhen,
-)
+from osprey.engine.stdlib.udfs.experiments import CONTROL_BUCKET, EXPERIMENT_GRANULARITY, Experiment, ExperimentWhen
 from osprey.engine.stdlib.udfs.rules import Rule
 from osprey.engine.udf.registry import UDFRegistry
 
@@ -61,65 +55,44 @@ def test_experiment_bucketing(execute: ExecuteFunction) -> None:
     ]
 
 
-# TODO: related to ExperimentsProvider import issue above, re-enable when that is resolved
+def test_experiment_bucketing_nonlocal_with_missing_type(execute: ExecuteFunction) -> None:
+    experiment = f"""
+    E1 = Entity(type='MyEntity', id='entity 1')
+    A = Experiment(entity=E1, buckets=['{CONTROL_BUCKET}', 'treatment'], bucket_sizes=[50.0, 50.0], version=1, revision=1)
+    """
+    data = execute(experiment)
+    assert data['A'] == [
+        'A',
+        'entity 1',
+        'MyEntity',
+        CONTROL_BUCKET,
+        str(0),
+        str(1),
+        str(1),
+    ]
 
-# @mock.patch.object(ExperimentsProvider, 'get_bucket_assignment_request')
-# def test_experiment_bucketing_nonlocal_with_missing_type(
-#     get_bucket_assignment_request_mock: mock.MagicMock, execute: ExecuteFunction
-# ) -> None:
-#     get_bucket_assignment_request_mock.return_value = '0'
-#     experiment = f"""
-#     E1 = Entity(type='MyEntity', id='entity 1')
-#     A = Experiment(
-#         entity=E1, buckets=['{CONTROL_BUCKET}', 'treatment'], bucket_sizes=[50.0, 50.0], version=1,
-#         revision=1, local_bucketing=False
-#     )
-#     """
-#     data = execute(experiment, udf_helpers=UDFHelpers().set_udf_helper(Experiment, ExperimentsProvider()))
-#     assert data['A'] == [
-#         'A',
-#         'entity 1',
-#         'MyEntity',
-#         CONTROL_BUCKET,
-#         str(0),
-#         str(1),
-#         str(1),
-#         str(False),
-#     ]
-#
-#
-# @mock.patch.object(ExperimentsProvider, 'get_bucket_assignment_request')
-# def test_experiment_bucketing_nonlocal_type_user(
-#     get_bucket_assignment_request_mock: mock.MagicMock, execute: ExecuteFunction
-# ) -> None:
-#     get_bucket_assignment_request_mock.return_value = '0'
-#     experiment = f"""
-#     E1 = Entity(type='user', id='entity 1')
-#     A = Experiment(
-#         entity=E1, buckets=['{CONTROL_BUCKET}', 'treatment'], bucket_sizes=[50.0, 50.0], version=1,
-#         revision=1, local_bucketing=False
-#     )
-#     """
-#     data = execute(experiment, udf_helpers=UDFHelpers().set_udf_helper(Experiment, ExperimentsProvider()))
-#     assert data['A'] == [
-#         'A',
-#         'entity 1',
-#         'user',
-#         CONTROL_BUCKET,
-#         str(0),
-#         str(1),
-#         str(1),
-#         str(False),
-#     ]
+
+def test_experiment_bucketing_nonlocal_type_user(execute: ExecuteFunction) -> None:
+    experiment = f"""
+    E1 = Entity(type='user', id='entity 1')
+    A = Experiment(entity=E1, buckets=['{CONTROL_BUCKET}', 'treatment'], bucket_sizes=[50.0, 50.0], version=1, revision=1)
+    """
+    data = execute(experiment)
+    assert data['A'] == [
+        'A',
+        'entity 1',
+        'user',
+        CONTROL_BUCKET,
+        str(0),
+        str(1),
+        str(1),
+    ]
 
 
 def test_consistent_bucketing_with_rollout(execute: ExecuteFunction) -> None:
     experiment = f"""
     E1 = Entity(type='MyEntity', id='1089')
-    A = Experiment(
-        entity=E1, buckets=['{CONTROL_BUCKET}', 'treatment'], bucket_sizes=[1.0, 1.0], version=1,
-        revision=1, local_bucketing=True
-    )
+    A = Experiment(entity=E1, buckets=['{CONTROL_BUCKET}', 'treatment'], bucket_sizes=[1.0, 1.0], version=1, revision=1)
     """
     data = execute(experiment)
     assert data['A'] == [
@@ -130,15 +103,11 @@ def test_consistent_bucketing_with_rollout(execute: ExecuteFunction) -> None:
         str(0),
         str(1),
         str(1),
-        str(True),
     ]
 
     experiment = f"""
     E1 = Entity(type='MyEntity', id='1089')
-    A = Experiment(
-        entity=E1, buckets=['{CONTROL_BUCKET}', 'treatment'], bucket_sizes=[2.0, 2.0], version=2,
-        revision=1, local_bucketing=True
-    )
+    A = Experiment(entity=E1, buckets=['{CONTROL_BUCKET}', 'treatment'], bucket_sizes=[2.0, 2.0], version=2, revision=1)
     """
     data = execute(experiment)
     assert data['A'] == [
@@ -149,15 +118,11 @@ def test_consistent_bucketing_with_rollout(execute: ExecuteFunction) -> None:
         str(0),
         str(2),
         str(1),
-        str(True),
     ]
 
     experiment = f"""
     E1 = Entity(type='MyEntity', id='1089')
-    A = Experiment(
-        entity=E1, buckets=['{CONTROL_BUCKET}', 'treatment'], bucket_sizes=[50.0, 50.0], version=3,
-        revision=1, local_bucketing=True
-    )
+    A = Experiment(entity=E1, buckets=['{CONTROL_BUCKET}', 'treatment'], bucket_sizes=[50.0, 50.0], version=3, revision=1)
     """
     data = execute(experiment)
     assert data['A'] == [
@@ -168,7 +133,6 @@ def test_consistent_bucketing_with_rollout(execute: ExecuteFunction) -> None:
         str(0),
         str(3),
         str(1),
-        str(True),
     ]
 
 
@@ -190,10 +154,7 @@ def test_experiment_bucket_size_too_large(
         run_validation(
             f"""
             E1 = Entity(type='MyEntity', id='entity 1')
-            A = Experiment(
-                entity=E1, buckets={str(buckets)}, bucket_sizes={bucket_sizes}, version=1,
-                revision=1, local_bucketing=True
-            )
+            A = Experiment(entity=E1, buckets={str(buckets)}, bucket_sizes={bucket_sizes}, version=1, revision=1)
             """
         )
 
@@ -205,10 +166,7 @@ def test_experiment_control_bucket_exists(
         run_validation(
             """
             E1 = Entity(type='MyEntity', id='entity 1')
-            A = Experiment(
-                entity=E1, buckets=['a', 'b'], bucket_sizes=[15, 20], version=1,
-                revision=1, local_bucketing=True
-            )
+            A = Experiment(entity=E1, buckets=['a', 'b'], bucket_sizes=[15, 20], version=1, revision=1)
             """
         )
 
