@@ -37,7 +37,7 @@ class BigTableClient(ABC):
 
     @property
     def _instance(self) -> Instance:
-        if not hasattr(self, '__instance'):
+        if not getattr(self, '__instance', None):
             self.__instance = self._setup_client_instance()
         return self.__instance
 
