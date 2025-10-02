@@ -12,9 +12,9 @@ from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.adaptor.constants import OSPREY_ADAPTOR
 from osprey.worker.adaptor.hookspecs import osprey_hooks
 from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
-from osprey.worker.lib.storage.labels import HasLabelProvider
+from osprey.worker.lib.storage.labels import LabelProvider
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
-from osprey.worker.sinks.sink.output_sink import BaseOutputSink, MultiOutputSink
+from osprey.worker.sinks.sink.output_sink import BaseOutputSink, LabelOutputSink, MultiOutputSink
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 
 if TYPE_CHECKING:
@@ -39,6 +39,10 @@ def flatten(seq: List[List[T]]) -> List[T]:
     return sum(seq, [])
 
 
+def _has_labels_provider() -> bool:
+    return hasattr(plugin_manager.hook, 'register_labels_provider')
+
+
 def bootstrap_udfs() -> tuple[UDFRegistry, UDFHelpers]:
     load_all_osprey_plugins()
     udf_helpers = UDFHelpers()
@@ -50,10 +54,15 @@ def bootstrap_udfs() -> tuple[UDFRegistry, UDFHelpers]:
         if issubclass(udf, HasHelper):
             udf_helpers.set_udf_helper(udf, udf.create_provider())
 
-    # ayu change this one - note that referencing HasLabel has some odd circular imports so its done here
-    from osprey.engine.stdlib.udfs.labels import HasLabel
+    # Label udfs should only be registered if the labels provider is available
+    if _has_labels_provider():
+        # Imports kinda circular. Imports here are to avoid that.
+        from osprey.engine.stdlib.udfs.labels import HasLabel, LabelAdd, LabelRemove
 
-    udf_helpers.set_udf_helper(HasLabel, HasLabelProvider())
+        udfs.extend([HasLabel, LabelAdd, LabelRemove])
+
+        labels_provider = plugin_manager.hook.register_labels_provider()
+        udf_helpers.set_udf_helper(HasLabel, labels_provider)
 
     return udf_registry, udf_helpers
 
@@ -61,7 +70,23 @@ def bootstrap_udfs() -> tuple[UDFRegistry, UDFHelpers]:
 def bootstrap_output_sinks(config: Config) -> BaseOutputSink:
     load_all_osprey_plugins()
     sinks = flatten(plugin_manager.hook.register_output_sinks(config=config))
+
+    # Label udfs should only be registered if the labels provider is available
+    if _has_labels_provider():
+        sinks.append(LabelOutputSink(bootstrap_label_provider()))
+
     return MultiOutputSink(sinks)
+
+
+def bootstrap_label_provider() -> LabelProvider:
+    """
+    Generates a bootstrapped label provider using the registered plugin.
+    Calling this is not necessary if you already called bootstrap_output_sinks, but is available for convenience.
+    """
+    load_all_osprey_plugins()
+    if not _has_labels_provider():
+        raise NotImplementedError('Label provider assumes register_labels_provider is implemented.')
+    return plugin_manager.hook.register_labels_provider()
 
 
 def bootstrap_ast_validators() -> None:

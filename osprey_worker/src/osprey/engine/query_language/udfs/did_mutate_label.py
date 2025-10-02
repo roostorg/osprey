@@ -1,12 +1,11 @@
 from typing import Dict
 
+from osprey.engine import shared_constants
 from osprey.engine.ast_validator.validation_context import ValidationContext
+from osprey.engine.language_types.labels import LabelStatus
+from osprey.engine.query_language.udfs.registry import register
 from osprey.engine.udf.arguments import ArgumentsBase, ConstExpr
 from osprey.engine.udf.base import QueryUdfBase
-from osprey.rpc.labels.v1.service_pb2 import LabelStatus
-
-from ... import shared_constants
-from .registry import register
 
 
 class Arguments(ArgumentsBase):
