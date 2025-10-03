@@ -296,7 +296,7 @@ def execute_with_result(udf_registry: UDFRegistry) -> ExecuteWithResultFunction:
 
         # Ensure standard AST validators are registered before validation/execution
         try:
-            from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators  # type: ignore
+            from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators
 
             bootstrap_ast_validators()
         except Exception:
