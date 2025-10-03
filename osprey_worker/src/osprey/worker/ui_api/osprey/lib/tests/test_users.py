@@ -1,8 +1,7 @@
 import json
-from typing import Any, Generator, Type
+from typing import Any, Type
 
 import pytest
-from cachetools.keys import hashkey
 from flask import Flask
 from osprey.worker.ui_api.osprey.lib.abilities import (
     Ability,
@@ -11,7 +10,6 @@ from osprey.worker.ui_api.osprey.lib.abilities import (
     CanViewLabelsForEntity,
     HashableEntityKey,
 )
-from osprey.worker.ui_api.osprey.lib.auth import _okta_profile_request_cache
 from osprey.worker.ui_api.osprey.lib.users import User
 
 _super_user_test_ability = 'CAN_CREATE_AND_EDIT_SAVED_QUERIES'
@@ -186,22 +184,6 @@ def test_user_get_ability(
 def test_user_ability_list_match(app: 'Flask', user_email: str, expected_ability: Ability[Any, Any]) -> None:
     user = User(email=user_email)
     assert user.get_ability(type(expected_ability)) == expected_ability
-
-
-@pytest.fixture()
-def okta_profile_cache(user_email: str, is_super: bool) -> Generator[None, None, None]:
-    key = hashkey(user_email)
-    if is_super:
-        _okta_profile_request_cache[key] = {
-            'id': 'someid',
-            'name': 'Bob Ross',
-            'email': user_email,
-            'groups': ['App-Osprey-Super-User'],
-            'amr': ['pwd'],
-            'idp': {'id': 'someid', 'type': 'okta'},
-        }
-    yield
-    _okta_profile_request_cache.pop(key, None)
 
 
 @pytest.mark.use_rules_sources(config)

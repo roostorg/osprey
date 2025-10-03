@@ -1,17 +1,3 @@
-# ruff: noqa: E402
-"""TODO: move logic to another file
-
-__init__.py often gets imported and run before other modules,
-so it's dangerous to import other modules here, potentially prior to gevent patching
-
-Therefore we patch at the top of this file -- it's generally fine to double patch
-but not ideal as clients should be responsible for patching
-"""
-
-from osprey.worker.lib.patcher import patch_all
-
-patch_all()
-
 from enum import StrEnum, auto
 
 

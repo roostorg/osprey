@@ -1,12 +1,12 @@
-error:
+error: 
                     33.34 is over the
                     current max of 33.33.
                     Either reduce the bucket size or reduce the number of buckets
-
---> main.sml:4:59
+                    
+--> main.sml:3:70
      |
-   4 |     entity=E1, buckets=['control', 'b', 'c'], bucket_sizes=[33.34, 33.33, 33.33], version=1,
-     |                                                            ^
-                                                                  |                     max percentage size of each bucket is 100/(# of buckets) rounded
-                                                                  |                     down to the nearest hundreth decimal place
-                                                                  |
+   3 | A = Experiment(entity=E1, buckets=['control', 'b', 'c'], bucket_sizes=[33.34, 33.33, 33.33], version=1, revision=1)
+     |                                                                       ^ 
+                                                                             |                     max percentage size of each bucket is 100/(# of buckets) rounded
+                                                                             |                     down to the nearest hundreth decimal place
+                                                                             |                     

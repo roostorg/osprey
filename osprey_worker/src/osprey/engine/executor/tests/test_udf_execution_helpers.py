@@ -29,10 +29,18 @@ class CountingCallsUDF1(HasHelper[CountingService], UDFBase[Arguments, int]):
     def execute(self, execution_context: ExecutionContext, arguments: Arguments) -> int:
         return self.accessor_get(execution_context, arguments)
 
+    @classmethod
+    def create_provider(cls) -> CountingService:
+        return CountingService()
+
 
 class CountingCallsUDF2(HasHelper[CountingService], UDFBase[Arguments, int]):
     def execute(self, execution_context: ExecutionContext, arguments: Arguments) -> int:
         return self.accessor_get(execution_context, arguments)
+
+    @classmethod
+    def create_provider(cls) -> CountingService:
+        return CountingService()
 
 
 @pytest.fixture
@@ -41,8 +49,11 @@ def udf_registry() -> UDFRegistry:
 
 
 def test_helper_reuses_service_with_complex_key(execute: ExecuteFunction) -> None:
-    helper = CountingService()
-    helpers = UDFHelpers().set_udf_helper(CountingCallsUDF1, helper).set_udf_helper(CountingCallsUDF2, helper)
+    helpers = (
+        UDFHelpers()
+        .set_udf_helper(CountingCallsUDF1, CountingCallsUDF1.create_provider())
+        .set_udf_helper(CountingCallsUDF2, CountingCallsUDF2.create_provider())
+    )
     data = execute(
         """
         _MessageContent = 'this is weird'

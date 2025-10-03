@@ -1,5 +1,5 @@
 error: experiment revision must be zero or greater
---> main.sml:5:14
+--> main.sml:3:96
      |
-   5 |     revision=-1, local_bucketing=True
-     |               ^
+   3 | A = Experiment(entity=E1, buckets=['control', 'b'], bucket_sizes=[10, 10], version=1, revision=-1)
+     |                                                                                                 ^
