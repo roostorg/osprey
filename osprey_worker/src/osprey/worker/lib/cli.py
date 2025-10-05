@@ -346,6 +346,8 @@ def apply_label_with_effects(
     else:
         correctly_typed_delay_by = datetime.timedelta(seconds=float(delay_by))
 
+
+    # TODO(ayubun): modernize to label provider
     result = get_event_effects_output_sink().apply_label_mutations(
         mutation_event_type=MutationEventType.MANUAL_UPDATE,
         mutation_event_id=str(uuid.uuid4()),

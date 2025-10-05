@@ -12,7 +12,7 @@ from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.adaptor.constants import OSPREY_ADAPTOR
 from osprey.worker.adaptor.hookspecs import osprey_hooks
 from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
-from osprey.worker.lib.storage.labels import LabelProvider
+from osprey.worker.lib.storage.labels import BaseLabelProvider
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
 from osprey.worker.sinks.sink.output_sink import BaseOutputSink, LabelOutputSink, MultiOutputSink
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
@@ -78,7 +78,7 @@ def bootstrap_output_sinks(config: Config) -> BaseOutputSink:
     return MultiOutputSink(sinks)
 
 
-def bootstrap_label_provider() -> LabelProvider:
+def bootstrap_label_provider() -> BaseLabelProvider:
     """
     Generates a bootstrapped label provider using the registered plugin.
     Calling this is not necessary if you already called bootstrap_output_sinks, but is available for convenience.

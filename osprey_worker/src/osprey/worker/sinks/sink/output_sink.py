@@ -16,10 +16,9 @@ from osprey.worker.lib.ddtrace_utils import trace
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.labels import ApplyEntityMutationReply, EntityMutation
 from osprey.worker.lib.osprey_shared.logging import DynamicLogSampler, get_logger
-from osprey.worker.lib.storage.labels import LabelProvider
+from osprey.worker.lib.storage.labels import BaseLabelProvider
 from osprey.worker.sinks.sink.output_sink_utils.constants import MutationEventType
 from osprey.worker.ui_api.osprey.validators.entities import EntityKey
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 logger = get_logger()
 
@@ -157,7 +156,7 @@ def _get_label_effects_from_result(result: ExecutionResult) -> Mapping[EntityT[A
 class LabelOutputSink(BaseOutputSink):
     """An output sink that will send event effects to the label service."""
 
-    def __init__(self, label_provider: LabelProvider) -> None:
+    def __init__(self, label_provider: BaseLabelProvider) -> None:
         self._label_provider = label_provider
 
     def will_do_work(self, result: ExecutionResult) -> bool:
@@ -166,7 +165,7 @@ class LabelOutputSink(BaseOutputSink):
     def push(self, result: ExecutionResult) -> None:
         for entity, mutations in _get_label_effects_from_result(result).items():
             entity_key = EntityKey(type=entity.type, id=str(entity.id))
-            self.apply_label_mutations(
+            self._label_provider.apply_label_mutations(
                 MutationEventType.OSPREY_ACTION,
                 str(result.action.action_id),
                 entity_key,
@@ -175,14 +174,9 @@ class LabelOutputSink(BaseOutputSink):
                 mutation_event_action_name=result.action.action_name,
             )
 
-    @retry(wait=wait_exponential(min=0.5, max=5), stop=stop_after_attempt(3))
-    def apply_entity_mutation_with_retry(
-        self, entity_key: EntityKey, mutations: Sequence[ExtendedEntityMutation]
-    ) -> ApplyEntityMutationReply:
-        return self._label_provider.apply_entity_mutation(
-            entity_key=entity_key, mutations=[extended_mutation.mutation for extended_mutation in mutations]
-        )
 
+
+    # TODO(ayubun): this has no real need to exist on the output sink itself. i think this should be a part of the base label service provider
     def apply_label_mutations(
         self,
         mutation_event_type: MutationEventType,

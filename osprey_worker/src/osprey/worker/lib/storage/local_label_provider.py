@@ -2,11 +2,11 @@ from typing import Any, Dict, List, Sequence
 
 from osprey.engine.language_types.entities import EntityT
 from osprey.worker.lib.osprey_shared.labels import ApplyEntityMutationReply, EntityMutation, Labels
-from osprey.worker.lib.storage.labels import LabelProvider
+from osprey.worker.lib.storage.labels import BaseLabelProvider
 from result import Result
 
 
-class LocalLabelProvider(LabelProvider):
+class LocalLabelProvider(BaseLabelProvider):
     def __init__(self):
         self._labels: Dict[str, Labels] = {}
 

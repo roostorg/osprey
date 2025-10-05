@@ -22,7 +22,7 @@ from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_
 
 from ...adaptor.plugin_manager import bootstrap_label_provider
 from ...lib.osprey_shared.labels import EntityMutation
-from ...lib.storage.labels import LabelProvider
+from ...lib.storage.labels import BaseLabelProvider
 from ...ui_api.osprey.validators.entities import EntityKey
 from .base_sink import BaseSink
 
@@ -69,7 +69,7 @@ class BulkLabelSink(BaseSink):
     def __init__(
         self,
         input_stream: BaseInputStream[BulkLabelTask],
-        label_provider: LabelProvider,
+        label_provider: BaseLabelProvider,
         engine: OspreyEngine,
         analytics_publisher: BasePublisher,
         send_status_webhook: bool = True,
@@ -367,6 +367,7 @@ class BulkLabelSink(BaseSink):
             assert isinstance(task.dimension, str)
             assert isinstance(task.excluded_entities, Iterable)
 
+            # TODO(ayubun): modernize to label provider
             self._label_output_sink.apply_label_mutations(
                 mutation_event_type=MutationEventType.BULK_ACTION,
                 mutation_event_id=str(task.id),
