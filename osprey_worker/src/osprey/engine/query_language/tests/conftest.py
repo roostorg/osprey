@@ -2,7 +2,16 @@ from typing import Sequence, Tuple, Union
 
 import pytest
 from osprey.engine.ast_validator.validation_context import ValidatedSources
+from osprey.engine.ast_validator.validators.imports_must_not_have_cycles import ImportsMustNotHaveCycles
+from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
+from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
+from osprey.engine.ast_validator.validators.validate_dynamic_calls_have_annotated_rvalue import (
+    ValidateDynamicCallsHaveAnnotatedRValue,
+)
+from osprey.engine.ast_validator.validators.validate_static_types import ValidateStaticTypes
+from osprey.engine.ast_validator.validators.variables_must_be_defined import VariablesMustBeDefined
 from osprey.engine.conftest import RunValidationFunction
+from osprey.engine.query_language.ast_validator import REGISTRY
 from typing_extensions import Protocol
 
 
@@ -24,3 +33,13 @@ def make_rules_sources(run_validation: RunValidationFunction) -> MakeRulesSource
         return run_validation('\n'.join(source_lines))
 
     return _make_rules_sources
+
+
+@pytest.fixture(autouse=True)
+def register_ast_validators():
+    REGISTRY.register(UniqueStoredNames)
+    REGISTRY.register(ValidateCallKwargs)
+    REGISTRY.register(ValidateStaticTypes)
+    REGISTRY.register(VariablesMustBeDefined)
+    REGISTRY.register(ImportsMustNotHaveCycles)
+    REGISTRY.register(ValidateDynamicCallsHaveAnnotatedRValue)

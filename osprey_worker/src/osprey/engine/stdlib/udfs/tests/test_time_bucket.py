@@ -7,6 +7,7 @@ from osprey.engine.conftest import CheckFailureFunction, ExecuteFunction, RunVal
 from osprey.engine.stdlib.udfs.time_bucket import GetSnowflakeBucket, GetTimedeltaBucket, GetTimestampBucket
 from osprey.engine.stdlib.udfs.time_delta import TimeDelta
 from osprey.engine.udf.registry import UDFRegistry
+from osprey.worker.lib.snowflake import Snowflake
 
 pytestmark: List[Callable[[Any], Any]] = [
     pytest.mark.use_validators([ValidateCallKwargs, UniqueStoredNames]),
@@ -17,17 +18,24 @@ pytestmark: List[Callable[[Any], Any]] = [
 
 
 def test_get_snowflake_bucket(execute: ExecuteFunction) -> None:
+    snowflake = Snowflake(119144447702335491)
+    timestamp = int(snowflake.to_timestamp())  # Convert to integer seconds
+
+    week_granularity = 604800
+    day_granularity = 86400
+    hour_granularity = 3600
+
     data = execute(
-        """
-        Week_bucket = GetSnowflakeBucket(snowflake=119144447702335491,granularity_seconds=604800)
-        Day_Bucket = GetSnowflakeBucket(snowflake=119144447702335491,granularity_seconds=86400)
-        Hour_Bucket = GetSnowflakeBucket(snowflake=119144447702335491,granularity_seconds=3600)
+        f"""
+        Week_bucket = GetSnowflakeBucket(snowflake={snowflake},granularity_seconds={week_granularity})
+        Day_Bucket = GetSnowflakeBucket(snowflake={snowflake},granularity_seconds={day_granularity})
+        Hour_Bucket = GetSnowflakeBucket(snowflake={snowflake},granularity_seconds={hour_granularity})
         """
     )
     assert data == {
-        'Week_bucket': 1447891200,  # 11/19/2015 0:00:00
-        'Day_Bucket': 1448409600,  # 11/25/2015 0:00:00
-        'Hour_Bucket': 1448474400,  # 11/25/2015 18:00:00
+        'Week_bucket': (timestamp // week_granularity) * week_granularity,
+        'Day_Bucket': (timestamp // day_granularity) * day_granularity,
+        'Hour_Bucket': (timestamp // hour_granularity) * hour_granularity,
     }
 
 

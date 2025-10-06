@@ -28,8 +28,9 @@ def test_experiment_with_result_json(execute_with_result: ExecuteWithResultFunct
     experiment = f"""
     E1 = Entity(type='MyEntity', id='entity 1')
     A = Experiment(
-        entity=E1, buckets=['{CONTROL_BUCKET}', 'b'], bucket_sizes=[2.5, 2.5], version=1,
-        revision=1, local_bucketing=True
+        entity=E1,
+        buckets=['{CONTROL_BUCKET}', 'b'], bucket_sizes=[2.5, 2.5],
+        version=1, revision=1
     )
     """
     data = execute_with_result(experiment)
@@ -40,8 +41,9 @@ def test_validate_experiment_result(execute_with_result: ExecuteWithResultFuncti
     experiment = f"""
     E1 = Entity(type='MyEntity', id='entity 1')
     A = Experiment(
-        entity=E1, buckets=['{CONTROL_BUCKET}', 'b'], bucket_sizes=[2.5, 2.5], version=1,
-        revision=1, local_bucketing=True
+        entity=E1,
+        buckets=['{CONTROL_BUCKET}', 'b'], bucket_sizes=[2.5, 2.5],
+        version=1, revision=1
     )
     """
     data = execute_with_result(experiment)

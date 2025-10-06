@@ -5,7 +5,20 @@ import sys
 from contextlib import contextmanager
 from datetime import datetime
 from textwrap import dedent
-from typing import TYPE_CHECKING, Callable, ContextManager, Dict, Iterator, Optional, Set, Type, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ContextManager,
+    Dict,
+    Generator,
+    Iterator,
+    Optional,
+    Set,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import gevent.pool
 import pytest
@@ -21,11 +34,25 @@ from osprey.engine.executor.executor import execute as osprey_execute
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.stdlib import get_config_registry
 from osprey.engine.udf.registry import UDFRegistry
+from osprey.worker.lib.singletons import CONFIG
 from typing_extensions import Protocol
 
 if TYPE_CHECKING:
     from _pytest.config import Config
+    from _pytest.config.argparsing import Parser
     from _pytest.fixtures import FixtureRequest
+
+
+@pytest.fixture(autouse=True)  # autouse = True means automatically use for each test
+def config_setup() -> Generator[Any, None, None]:
+    CONFIG.instance().configure_from_env()
+    # yield is used here to basically split this function into two parts:
+    # all code before `yield` is the setup code (run before each test), and
+    # all code after `yield` is the teardown code (run after each test)
+    yield  # this line is where the testing happens
+    # teardown code
+    CONFIG.instance().unconfigure_for_tests()
+
 
 SourcesDict = Union[Sources, str, Dict[str, str]]
 CheckOutputFunction = Callable[[str], bool]
@@ -98,7 +125,7 @@ def check_output(request: 'FixtureRequest') -> CheckOutputFunction:
             raise Exception('Cannot call check_output more than once per test run.')
 
         did_call = True
-        if request.config.option.write_outputs:
+        if getattr(request.config.option, 'write_outputs', False):
             put_file_contents(output)
             return True
         else:
@@ -108,7 +135,7 @@ def check_output(request: 'FixtureRequest') -> CheckOutputFunction:
                     f'\n\tExpected test output: {get_output_file()}'
                 )
             except AssertionError as e:
-                if request.config.option.write_first_failed_output:
+                if getattr(request.config.option, 'write_first_failed_output', False):
                     request.config.option.write_first_failed_output = False
                     put_file_contents(output)
                     raise AssertionError(
@@ -266,6 +293,16 @@ def execute_with_result(udf_registry: UDFRegistry) -> ExecuteWithResultFunction:
         action_time: Optional[datetime] = None,
     ) -> ExecutionResult:
         sources = into_sources(sources_dict)
+
+        # Ensure standard AST validators are registered before validation/execution
+        try:
+            from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators
+
+            bootstrap_ast_validators()
+        except Exception:
+            # If plugin bootstrap is unavailable in this context, continue; tests using run_validation will supply validators
+            pass
+
         config_validator = get_config_registry().get_validator()
         validator_registry = ValidatorRegistry.get_instance().instance_with_additional_validators(config_validator)
         try:
@@ -368,6 +405,12 @@ def check_failure(check_output: CheckOutputFunction) -> CheckFailureFunction:
         assert check_output(e.value.rendered())
 
     return check_failure
+
+
+def pytest_addoption(parser: 'Parser') -> None:
+    parser.addoption(
+        '--write-outputs', action='store_true', help='write checked validator outputs instead of checking them'
+    )
 
 
 def pytest_configure(config: 'Config') -> None:

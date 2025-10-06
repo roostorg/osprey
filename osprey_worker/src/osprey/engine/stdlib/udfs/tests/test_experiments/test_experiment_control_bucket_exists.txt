@@ -1,5 +1,5 @@
 error: 'control' must be one of the buckets
---> main.sml:4:23
+--> main.sml:3:34
      |
-   4 |     entity=E1, buckets=['a', 'b'], bucket_sizes=[15, 20], version=1,
-     |                        ^
+   3 | A = Experiment(entity=E1, buckets=['a', 'b'], bucket_sizes=[15, 20], version=1, revision=1)
+     |                                   ^
