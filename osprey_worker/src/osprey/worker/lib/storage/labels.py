@@ -37,8 +37,6 @@ class BaseLabelsProvider(ExternalService[EntityT[Any], EntityLabels], ABC):
         old_labels = self.get_from_service(entity)
         new_labels = copy.deepcopy(old_labels)
 
-        added: list[str] = []
-        removed: list[str] = []
         updated: list[str] = []
         dropped: list[EntityLabelMutation] = []
 
@@ -77,24 +75,12 @@ class BaseLabelsProvider(ExternalService[EntityT[Any], EntityLabels], ABC):
                 new_labels.labels[label_name] = label_state
             else:
                 new_labels.labels[label_name].update_status(label_state.status, label_state.reasons)
-            if old_state and old_state.status == label_state.status:
-                updated.append(label_name)
-                continue
-            # if we modified the state, lets track whether it was an add or remove to return to our callers
-            match label_state.status.effective_label_status():
-                case LabelStatus.ADDED:
-                    added.append(label_name)
-                    break
-                case LabelStatus.REMOVED:
-                    removed.append(label_name)
-                    break
+            updated.append(label_name)
 
         # finally, return the result! duhh :D
         return EntityLabelMutationsResult(
             new_entity_labels=new_labels,
             old_entity_labels=old_labels,
-            added=added,
-            removed=removed,
             updated=updated,
             dropped=dropped,
         )

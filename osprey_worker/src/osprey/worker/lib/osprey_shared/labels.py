@@ -263,20 +263,17 @@ class EntityLabelMutationsResult:
     """
     all of the entity's labels pre-mutation
     """
-    added: list[str] = field(default_factory=list)
-    """
-    all (effective-status) label adds that occurred during this mutation
-    """
-    removed: list[str] = field(default_factory=list)
-    """
-    all (effective-status) label removes that occurred during this mutation
-    """
+    # added: list[str] = field(default_factory=list)
+    # """
+    # all (effective-status) label adds that occurred during this mutation
+    # """
+    # removed: list[str] = field(default_factory=list)
+    # """
+    # all (effective-status) label removes that occurred during this mutation
+    # """
     updated: list[str] = field(default_factory=list)
     """
-    labels that had their state updated (but not their status). an example would be
-    two LabelStatus.ADDED states having their reasons & expirations merged.
-
-    if there is not a currently unexpired label state, an update will not occur.
+    labels that had their state updated. this can include simply updating the reason.
     """
     dropped: list[EntityLabelMutation] = field(default_factory=list)
     """
