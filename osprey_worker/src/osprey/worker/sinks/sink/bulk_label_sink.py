@@ -20,9 +20,9 @@ from osprey.worker.sinks.sink.output_sink_utils.models import OspreyBulkJobAnaly
 from osprey.worker.ui_api.osprey.lib.druid import PeriodData, TopNDruidQuery, TopNPoPResponse
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from ...adaptor.plugin_manager import bootstrap_label_provider
-from ...lib.osprey_shared.labels import EntityMutation
-from ...lib.storage.labels import BaseLabelProvider
+from ...adaptor.plugin_manager import bootstrap_labels_provider
+from ...lib.osprey_shared.labels import EntityLabelMutation
+from ...lib.storage.labels import BaseLabelsProvider
 from ...ui_api.osprey.validators.entities import EntityKey
 from .base_sink import BaseSink
 
@@ -69,7 +69,7 @@ class BulkLabelSink(BaseSink):
     def __init__(
         self,
         input_stream: BaseInputStream[BulkLabelTask],
-        label_provider: BaseLabelProvider,
+        label_provider: BaseLabelsProvider,
         engine: OspreyEngine,
         analytics_publisher: BasePublisher,
         send_status_webhook: bool = True,
@@ -374,7 +374,7 @@ class BulkLabelSink(BaseSink):
                 entity_key=entity_key,
                 mutations=[
                     ExtendedEntityMutation(
-                        mutation=EntityMutation(
+                        mutation=EntityLabelMutation(
                             label_name=task.label_name,
                             reason_name=BULK_LABEL_REASON,
                             expires_at=task.label_expiry,
@@ -434,7 +434,7 @@ class BulkLabelSink(BaseSink):
         rows_rolled_back = 0
 
         feature_name_to_entity_type_mapping = engine.get_feature_name_to_entity_type_mapping()
-        label_provider = bootstrap_label_provider()
+        label_provider = bootstrap_labels_provider()
         label_output_sink = LabelOutputSink(label_provider)
         feature_name = task.dimension
         entity_type = feature_name_to_entity_type_mapping[feature_name]
@@ -487,7 +487,7 @@ class BulkLabelSink(BaseSink):
                 entity_key=entity_key,
                 mutations=[
                     ExtendedEntityMutation(
-                        mutation=EntityMutation(
+                        mutation=EntityLabelMutation(
                             label_name=task.label_name,
                             reason_name='_BulkLabelRollback',
                             status=LabelStatus.MANUALLY_REMOVED,

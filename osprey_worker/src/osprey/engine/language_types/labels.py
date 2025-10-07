@@ -15,10 +15,38 @@ from .rules import RuleT, add_slots
 
 
 class LabelStatus(IntEnum):
+    """
+    indicates the status of label.
+
+    regular (a.k.a. "automatic") statuses are applied via rules. they can be overwritten by manual
+    statuses, which can only be applied via humans using the ui.
+
+    statuses have weights, which control which ones get dropped when conflicting statuses occur during
+    a single attempted mutation; i.e., if an execution of the rules results in a label add and a label remove
+    of the same entity/label pair.
+    """
     ADDED = 0
     REMOVED = 1
     MANUALLY_ADDED = 2
     MANUALLY_REMOVED = 3
+
+    @property
+    def weight(self) -> int:
+        """
+        a higher weight means that a given status will take precedence during merging operations. 
+        so, if you have an added mutation and a removed mutation, and added is declared to weigh more
+        via this method, then the added mutation will be sent to the label provider and the removed 
+        mutation will be dropped.
+        """
+        match self:
+            case LabelStatus.MANUALLY_ADDED:
+                return 4
+            case LabelStatus.MANUALLY_REMOVED:
+                return 3
+            case LabelStatus.ADDED:
+                return 2
+            case LabelStatus.REMOVED:
+                return 1
 
     def effective_label_status(self) -> 'LabelStatus':
         """

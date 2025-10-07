@@ -10,11 +10,6 @@ from osprey.worker.ui_api.osprey.lib.marshal import FlaskRequestMarshaller, T
 from pydantic import BaseModel
 
 
-@dataclass(frozen=True)
-class EntityKey(EntityT[str]):
-    pass
-
-
 class EntityMarshaller(FlaskRequestMarshaller):
     @classmethod
     def marshal(cls: Type[T], flask_request: Request) -> T:
@@ -26,7 +21,7 @@ class EntityMarshaller(FlaskRequestMarshaller):
 
 
 class GetLabelsForEntityRequest(BaseModel, EntityMarshaller):
-    entity: EntityKey
+    entity: EntityT[str]
 
 
 class EventCountsByFeatureForEntityQuery(TimeseriesDruidQuery, EntityMarshaller):

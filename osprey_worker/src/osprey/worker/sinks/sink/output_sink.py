@@ -14,9 +14,9 @@ from osprey.engine.language_types.labels import LabelEffect
 from osprey.engine.stdlib.udfs.rules import RuleT
 from osprey.worker.lib.ddtrace_utils import trace
 from osprey.worker.lib.instruments import metrics
-from osprey.worker.lib.osprey_shared.labels import ApplyEntityMutationReply, EntityMutation
+from osprey.worker.lib.osprey_shared.labels import EntityLabelMutationsResult, EntityLabelMutation
 from osprey.worker.lib.osprey_shared.logging import DynamicLogSampler, get_logger
-from osprey.worker.lib.storage.labels import BaseLabelProvider
+from osprey.worker.lib.storage.labels import BaseLabelsProvider
 from osprey.worker.sinks.sink.output_sink_utils.constants import MutationEventType
 from osprey.worker.ui_api.osprey.validators.entities import EntityKey
 
@@ -105,7 +105,7 @@ def _create_entity_mutation(
     label_effect: LabelEffect, rule: RuleT, expires_at: Optional[datetime]
 ) -> ExtendedEntityMutation:
     return ExtendedEntityMutation(
-        mutation=EntityMutation(
+        mutation=EntityLabelMutation(
             label_name=label_effect.name,
             reason_name=rule.name,
             status=label_effect.status,
@@ -156,7 +156,7 @@ def _get_label_effects_from_result(result: ExecutionResult) -> Mapping[EntityT[A
 class LabelOutputSink(BaseOutputSink):
     """An output sink that will send event effects to the label service."""
 
-    def __init__(self, label_provider: BaseLabelProvider) -> None:
+    def __init__(self, label_provider: BaseLabelsProvider) -> None:
         self._label_provider = label_provider
 
     def will_do_work(self, result: ExecutionResult) -> bool:
@@ -185,18 +185,18 @@ class LabelOutputSink(BaseOutputSink):
         mutations: Sequence[ExtendedEntityMutation],
         features: Optional[Dict[str, Any]] = None,
         mutation_event_action_name: str = '',
-    ) -> ApplyEntityMutationReply:
+    ) -> EntityLabelMutationsResult:
         if not entity_key.id:
             metrics.increment(
                 'output_sink.apply_entity_mutation',
                 tags=['status:skipped', 'reason:no_entity_id', f'entity_type:{entity_key.type}'],
             )
-            return ApplyEntityMutationReply(
+            return EntityLabelMutationsResult(
                 unchanged=[mutation.mutation.label_name for mutation in mutations],
             )
 
         try:
-            result: ApplyEntityMutationReply = self.apply_entity_mutation_with_retry(entity_key, mutations)
+            result: EntityLabelMutationsResult = self.apply_entity_mutation_with_retry(entity_key, mutations)
             metrics.increment('output_sink.apply_entity_mutation', tags=['status:success'])
         except Exception as e:
             logger.error(

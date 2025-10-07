@@ -12,7 +12,7 @@ from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.adaptor.constants import OSPREY_ADAPTOR
 from osprey.worker.adaptor.hookspecs import osprey_hooks
 from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
-from osprey.worker.lib.storage.labels import BaseLabelProvider
+from osprey.worker.lib.storage.labels import BaseLabelsProvider
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
 from osprey.worker.sinks.sink.output_sink import BaseOutputSink, LabelOutputSink, MultiOutputSink
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
@@ -39,7 +39,7 @@ def flatten(seq: List[List[T]]) -> List[T]:
     return sum(seq, [])
 
 
-def _has_labels_provider() -> bool:
+def has_labels_provider() -> bool:
     return hasattr(plugin_manager.hook, 'register_labels_provider')
 
 
@@ -55,7 +55,7 @@ def bootstrap_udfs() -> tuple[UDFRegistry, UDFHelpers]:
             udf_helpers.set_udf_helper(udf, udf.create_provider())
 
     # Label udfs should only be registered if the labels provider is available
-    if _has_labels_provider():
+    if has_labels_provider():
         # Imports kinda circular. Imports here are to avoid that.
         from osprey.engine.stdlib.udfs.labels import HasLabel, LabelAdd, LabelRemove
 
@@ -72,19 +72,19 @@ def bootstrap_output_sinks(config: Config) -> BaseOutputSink:
     sinks = flatten(plugin_manager.hook.register_output_sinks(config=config))
 
     # Label udfs should only be registered if the labels provider is available
-    if _has_labels_provider():
-        sinks.append(LabelOutputSink(bootstrap_label_provider()))
+    if has_labels_provider():
+        sinks.append(LabelOutputSink(bootstrap_labels_provider()))
 
     return MultiOutputSink(sinks)
 
 
-def bootstrap_label_provider() -> BaseLabelProvider:
+def bootstrap_labels_provider() -> BaseLabelsProvider:
     """
     Generates a bootstrapped label provider using the registered plugin.
     Calling this is not necessary if you already called bootstrap_output_sinks, but is available for convenience.
     """
     load_all_osprey_plugins()
-    if not _has_labels_provider():
+    if not has_labels_provider():
         raise NotImplementedError('Label provider assumes register_labels_provider is implemented.')
     return plugin_manager.hook.register_labels_provider()
 

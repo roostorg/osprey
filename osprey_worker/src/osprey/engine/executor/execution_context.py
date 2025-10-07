@@ -39,7 +39,7 @@ from osprey.engine.language_types.post_execution_convertible import PostExecutio
 from osprey.engine.language_types.verdicts import VerdictEffect
 from osprey.engine.utils.types import add_slots, cached_property
 from osprey.rpc.common.v1.verdicts_pb2 import Verdicts
-from osprey.worker.lib.osprey_shared.labels import EntityMutation
+from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation
 from result import Result, UnwrapError
 
 if TYPE_CHECKING:
@@ -70,7 +70,7 @@ class ExternalServiceException(Exception):
 @add_slots
 @dataclass
 class ExtendedEntityMutation:
-    mutation: EntityMutation
+    mutation: EntityLabelMutation
     delay_action_by: Optional[timedelta]
 
 

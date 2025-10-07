@@ -23,6 +23,12 @@ class ExternalService(ABC, Generic[KeyT, ValueT]):
         Returns a time to live for items in the cache. By default, KVs are cached indefinitely.
 
         To have cache entries auto-expire, override this method in your external service definition.
+
+        Note that timedeltas can accept negative values to represent the past, but only on the days field.
+        You *can* use timedelta(seconds=0) to disable caching, but a negative time delta *ensures* that even
+        if a time shift occurs (such as daylight savings), the cache_ttl will still be immediate.
+
+        Therefore, to disable the read cache, it is recommended to set this to `timedelta(days=-1)`
         """
         return None
 
