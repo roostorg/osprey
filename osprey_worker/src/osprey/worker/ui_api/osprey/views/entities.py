@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 from flask import Blueprint, abort, jsonify
+from osprey.worker.adaptor.plugin_manager import bootstrap_labels_provider, has_labels_provider
 from osprey.worker.lib.osprey_shared.labels import EntityLabelMutationsResult, LabelState
 from osprey.worker.ui_api.osprey.lib.abilities import (
     CanMutateEntities,
@@ -29,8 +30,6 @@ blueprint = Blueprint('entities', __name__)
 @require_ability(CanViewLabels)
 def get_labels_for_entity(request_model: GetLabelsForEntityRequest) -> Any:
     require_ability_with_request(request_model, CanViewLabelsForEntity)
-
-    from ....adaptor.plugin_manager import bootstrap_labels_provider, has_labels_provider
 
     if not has_labels_provider():
         return {
@@ -76,8 +75,6 @@ def event_counts_by_feature_for_entity_query(request_model: EventCountsByFeature
 def manual_entity_mutation(request_model: ManualEntityLabelMutationRequest) -> Any:
     require_ability_with_request(request_model, CanMutateEntities)
     require_ability_with_request(request_model, CanMutateLabels)
-
-    from ....adaptor.plugin_manager import bootstrap_labels_provider, has_labels_provider
 
     if not has_labels_provider():
         return abort(501, 'Labels Provider Not Found')
