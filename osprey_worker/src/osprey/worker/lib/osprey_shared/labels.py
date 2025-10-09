@@ -223,7 +223,7 @@ class EntityLabelDisagreeRequest(BaseModel):
 @dataclass
 class EntityLabelMutation:
     """
-    a class that allows callers of BaseLabelsProvider.apply_entity_label_mutations() to request how an 
+    a class that allows callers of LabelsProvider.apply_entity_label_mutations() to request how an 
     entity's labels should be mutated.
 
     mutations are not guaranteed to be written to the labels provider. see EntityLabelMutationsResult.dropped

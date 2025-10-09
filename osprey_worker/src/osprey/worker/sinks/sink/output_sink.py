@@ -16,7 +16,7 @@ from osprey.worker.lib.ddtrace_utils import trace
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.labels import EntityLabelMutationsResult, EntityLabelMutation
 from osprey.worker.lib.osprey_shared.logging import DynamicLogSampler, get_logger
-from osprey.worker.lib.storage.labels import BaseLabelsProvider
+from osprey.worker.lib.storage.labels import LabelsProvider
 from osprey.worker.sinks.sink.output_sink_utils.constants import MutationEventType
 from osprey.worker.ui_api.osprey.validators.entities import EntityKey
 
@@ -156,7 +156,7 @@ def _get_label_effects_from_result(result: ExecutionResult) -> Mapping[EntityT[A
 class LabelOutputSink(BaseOutputSink):
     """An output sink that will send event effects to the label service."""
 
-    def __init__(self, label_provider: BaseLabelsProvider) -> None:
+    def __init__(self, label_provider: LabelsProvider) -> None:
         self._label_provider = label_provider
 
     def will_do_work(self, result: ExecutionResult) -> bool:

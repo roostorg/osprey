@@ -25,7 +25,7 @@ from osprey.engine.utils.get_closest_string_within_threshold import (
     get_closest_string_within_threshold,
 )
 from osprey.worker.lib.osprey_shared.labels import EntityLabels
-from osprey.worker.lib.storage.labels import BaseLabelsProvider
+from osprey.worker.lib.storage.labels import LabelsProvider
 from result import Err, Ok, Result
 
 
@@ -123,7 +123,7 @@ class BatchableHasLabelArguments:
     desired_status: Optional[_SimpleStatus]
 
 
-class HasLabel(HasHelperInternal[BaseLabelsProvider], BatchableUDFBase[HasLabelArguments, bool, BatchableHasLabelArguments]):
+class HasLabel(HasHelperInternal[LabelsProvider], BatchableUDFBase[HasLabelArguments, bool, BatchableHasLabelArguments]):
     """Returns `True` if the specified label is currently present in a given non-expired state on a provided Entity."""
 
     category = UdfCategories.ENGINE

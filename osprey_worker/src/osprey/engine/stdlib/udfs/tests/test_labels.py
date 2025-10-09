@@ -28,7 +28,7 @@ from osprey.engine.stdlib.udfs.time_delta import TimeDelta
 from osprey.engine.udf.registry import UDFRegistry
 from osprey.engine.utils.proto_utils import datetime_to_timestamp
 from osprey.rpc.labels.v1.service_pb2 import LabelReason, Labels, LabelState, LabelStatus
-from osprey.worker.lib.storage.labels import BaseLabelsProvider
+from osprey.worker.lib.storage.labels import LabelsProvider
 
 if TYPE_CHECKING:
     from osprey.rpc.labels.v1.service_pb2 import LabelStatusValue
@@ -49,7 +49,7 @@ pytestmark: List[Callable[[Any], Any]] = [
 ]
 
 
-class StaticLabelProvider(BaseLabelsProvider):
+class StaticLabelProvider(LabelsProvider):
     def __init__(self, entity_labels: Dict[EntityT[Any], Labels]) -> None:
         self._entity_labels = entity_labels
 

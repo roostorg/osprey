@@ -18,7 +18,7 @@ from osprey.worker.lib.osprey_shared.logging import get_logger
 
 logger = get_logger(__name__)
 
-class BaseLabelsService(ABC):
+class LabelsServiceBase(ABC):
     @abstractmethod
     def write_labels(self, key: EntityT[Any], value: EntityLabels) -> None:
         """
@@ -52,7 +52,7 @@ class BaseLabelsService(ABC):
 
 class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
 
-    def __init__(self, labels_service: BaseLabelsService):
+    def __init__(self, labels_service: LabelsServiceBase):
         self.labels_service = labels_service
 
 
