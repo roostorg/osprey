@@ -24,11 +24,8 @@ from osprey.engine.stdlib.udfs.time_delta import TimeDelta
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import UDFBase
 from osprey.engine.udf.registry import UDFRegistry
-from osprey.engine.utils.proto_utils import datetime_to_timestamp
-from osprey.rpc.labels.v1.service_pb2 import EntityMutation, LabelStatus
+from osprey.worker.lib.osprey_shared.labels import EntityMutation, LabelStatus
 from osprey.worker.sinks.sink.output_sink import _get_label_effects_from_result
-
-# Moved here because WhenRules is not included in the MVP yet
 
 
 class FailingUdf(UDFBase[ArgumentsBase, bool]):
@@ -169,7 +166,7 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
                     pending=False,
                     description='simple rule 1',
                     features={},
-                    expires_at=datetime_to_timestamp(now + timedelta(seconds=45)),
+                    expires_at=(now + timedelta(seconds=45)),
                 ),
                 delay_action_by=None,
             ),
@@ -181,7 +178,7 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
                     pending=False,
                     description='fstring rule description with name {UserName}',
                     features={'UserName': 'Wumpus'},
-                    expires_at=datetime_to_timestamp(now + timedelta(seconds=45)),
+                    expires_at=(now + timedelta(seconds=45)),
                 ),
                 delay_action_by=None,
             ),
@@ -217,7 +214,7 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
                     pending=False,
                     description='simple rule 2',
                     features={},
-                    expires_at=datetime_to_timestamp(now + timedelta(minutes=5)),
+                    expires_at=(now + timedelta(minutes=5)),
                 ),
                 delay_action_by=None,
             ),
@@ -229,7 +226,7 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
                     pending=False,
                     description='simple rule 2',
                     features={},
-                    expires_at=datetime_to_timestamp(now + timedelta(minutes=3)),
+                    expires_at=(now + timedelta(minutes=3)),
                 ),
                 delay_action_by=timedelta(minutes=1),
             ),
@@ -241,7 +238,7 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
                     pending=False,
                     description='simple rule 3',
                     features={},
-                    expires_at=datetime_to_timestamp(now + timedelta(seconds=30)),
+                    expires_at=(now + timedelta(seconds=30)),
                 ),
                 delay_action_by=None,
             ),
@@ -255,7 +252,7 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
                     pending=False,
                     description='simple rule 1',
                     features={},
-                    expires_at=datetime_to_timestamp(now + timedelta(seconds=30)),
+                    expires_at=(now + timedelta(seconds=30)),
                 ),
                 delay_action_by=None,
             ),
@@ -531,10 +528,7 @@ def _sort_entity_mutations(
         # Create a sorting key from the ExtendedEntityMutation fields
         entity_mutation = mutation.mutation
         # Extract comparable values from the pb2 EntityMutation
-        expires_at_key = (
-            entity_mutation.expires_at.seconds if entity_mutation.HasField('expires_at') else 0,
-            entity_mutation.expires_at.nanos if entity_mutation.HasField('expires_at') else 0,
-        )
+        expires_at_key = entity_mutation.expires_at.timestamp() if entity_mutation.expires_at is not None else 0.0
         features_key = tuple(sorted(entity_mutation.features.items()))
         # Use days, seconds, and microseconds for precise timedelta comparison
         delay_key = (
@@ -564,8 +558,10 @@ def _to_simple_dict(label_effects: Mapping[EntityT[Any], Sequence[ExtendedEntity
         # Convert ExtendedEntityMutation to a comparable dict
         entity_mutation = mutation.mutation
         expires_at_dict = None
-        if entity_mutation.HasField('expires_at'):
-            expires_at_dict = {'seconds': entity_mutation.expires_at.seconds, 'nanos': entity_mutation.expires_at.nanos}
+        if entity_mutation.expires_at is not None:
+            expires_at_dict = {
+                'timestamp': entity_mutation.expires_at.timestamp(),
+            }
 
         return {
             'mutation': {
