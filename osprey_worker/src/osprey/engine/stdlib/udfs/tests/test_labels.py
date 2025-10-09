@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set
 
 import gevent
 import pytest
@@ -20,18 +20,22 @@ from osprey.engine.conftest import (
 )
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.language_types.entities import EntityT
+from osprey.engine.language_types.labels import LabelStatus
 from osprey.engine.stdlib import get_config_registry
 from osprey.engine.stdlib.udfs.entity import Entity
 from osprey.engine.stdlib.udfs.labels import HasLabel, LabelAdd, LabelRemove
 from osprey.engine.stdlib.udfs.rules import Rule, WhenRules
 from osprey.engine.stdlib.udfs.time_delta import TimeDelta
 from osprey.engine.udf.registry import UDFRegistry
-from osprey.engine.utils.proto_utils import datetime_to_timestamp
-from osprey.rpc.labels.v1.service_pb2 import LabelReason, Labels, LabelState, LabelStatus
+from osprey.worker.lib.osprey_shared.labels import (
+    ApplyEntityMutationReply,
+    EntityMutation,
+    LabelReason,
+    Labels,
+    LabelState,
+)
 from osprey.worker.lib.storage.labels import LabelProvider
-
-if TYPE_CHECKING:
-    from osprey.rpc.labels.v1.service_pb2 import LabelStatusValue
+from result import Result
 
 pytestmark: List[Callable[[Any], Any]] = [
     pytest.mark.use_validators(
@@ -55,6 +59,14 @@ class StaticLabelProvider(LabelProvider):
 
     def get_from_service(self, key: EntityT[Any]) -> Labels:
         return self._entity_labels[key]
+
+    def batch_get_from_service(self, keys: Sequence[EntityT[Any]]) -> Sequence[Result[Labels, Exception]]:
+        return [Result.Ok(self._entity_labels[key]) for key in keys]
+
+    def apply_entity_mutation(
+        self, entity_key: EntityT[Any], mutations: List[EntityMutation]
+    ) -> ApplyEntityMutationReply:
+        return ApplyEntityMutationReply()
 
 
 class BlockingLabelProvider(StaticLabelProvider):
@@ -86,7 +98,7 @@ def source_with_labels_config(source: str, labels: Set[str]) -> Dict[str, str]:
             'added',
             None,
             LabelStatus.ADDED,
-            {'ExpiredReason': LabelReason(expires_at=datetime_to_timestamp(datetime.now() - timedelta(hours=1)))},
+            {'ExpiredReason': LabelReason(expires_at=(datetime.now() - timedelta(hours=1)))},
             False,
         ),
         (
@@ -94,7 +106,7 @@ def source_with_labels_config(source: str, labels: Set[str]) -> Dict[str, str]:
             None,
             LabelStatus.ADDED,
             {
-                'ExpiredReason': LabelReason(expires_at=datetime_to_timestamp(datetime.now() - timedelta(hours=1))),
+                'ExpiredReason': LabelReason(expires_at=(datetime.now() - timedelta(hours=1))),
                 'TestReason': LabelReason(),
             },
             True,
@@ -104,8 +116,8 @@ def source_with_labels_config(source: str, labels: Set[str]) -> Dict[str, str]:
             None,
             LabelStatus.ADDED,
             {
-                'ExpiredReason': LabelReason(expires_at=datetime_to_timestamp(datetime.now() - timedelta(hours=1))),
-                'ExpiringReason': LabelReason(expires_at=datetime_to_timestamp(datetime.now() + timedelta(hours=1))),
+                'ExpiredReason': LabelReason(expires_at=(datetime.now() - timedelta(hours=1))),
+                'ExpiringReason': LabelReason(expires_at=(datetime.now() + timedelta(hours=1))),
             },
             True,
         ),
@@ -113,7 +125,7 @@ def source_with_labels_config(source: str, labels: Set[str]) -> Dict[str, str]:
             'added',
             None,
             LabelStatus.ADDED,
-            {'ExpiringReason': LabelReason(expires_at=datetime_to_timestamp(datetime.now() + timedelta(hours=1)))},
+            {'ExpiringReason': LabelReason(expires_at=(datetime.now() + timedelta(hours=1)))},
             True,
         ),
         ('added', None, LabelStatus.MANUALLY_ADDED, {'TestReason': LabelReason()}, True),
@@ -151,7 +163,7 @@ def test_get_labels_retrieves_data(
     execute: ExecuteFunction,
     checking_status: str,
     manual: Optional[bool],
-    actual_status: Optional['LabelStatusValue'],
+    actual_status: Optional[LabelStatus],
     reasons: Dict[str, LabelReason],
     result: bool,
 ) -> None:
@@ -184,7 +196,7 @@ def test_get_labels_retrieves_data(
             'added',
             None,
             LabelStatus.ADDED,
-            {'TestReason': LabelReason(created_at=datetime_to_timestamp(datetime.now() - timedelta(days=1)))},
+            {'TestReason': LabelReason(created_at=(datetime.now() - timedelta(days=1)))},
             timedelta(days=1),
             True,
         ),
@@ -192,7 +204,7 @@ def test_get_labels_retrieves_data(
             'added',
             None,
             LabelStatus.ADDED,
-            {'TestReason': LabelReason(created_at=datetime_to_timestamp(datetime.now()))},
+            {'TestReason': LabelReason(created_at=(datetime.now()))},
             timedelta(days=1),
             False,
         ),
@@ -202,7 +214,7 @@ def test_get_labels_retrieves_data_added_after(
     execute: ExecuteFunction,
     checking_status: str,
     manual: Optional[bool],
-    actual_status: Optional['LabelStatusValue'],
+    actual_status: Optional[LabelStatus],
     reasons: Dict[str, LabelReason],
     min_label_age: timedelta,
     result: bool,
