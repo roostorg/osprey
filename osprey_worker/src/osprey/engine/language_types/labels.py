@@ -30,24 +30,6 @@ class LabelStatus(IntEnum):
     MANUALLY_ADDED = 2
     MANUALLY_REMOVED = 3
 
-    @property
-    def weight(self) -> int:
-        """
-        a higher weight means that a given status will take precedence during merging operations. 
-        so, if you have an added mutation and a removed mutation, and added is declared to weigh more
-        via this method, then the added mutation will be sent to the label provider and the removed 
-        mutation will be dropped.
-        """
-        match self:
-            case LabelStatus.MANUALLY_ADDED:
-                return 4
-            case LabelStatus.MANUALLY_REMOVED:
-                return 3
-            case LabelStatus.ADDED:
-                return 2
-            case LabelStatus.REMOVED:
-                return 1
-
     def effective_label_status(self) -> 'LabelStatus':
         """
         Returns the effective status of the label, which is what the upstreams that are observing label
@@ -80,7 +62,7 @@ class LabelEffect(EffectToCustomExtractedFeatureBase[List[str]]):
     """If set, the label effect has a timed expiration, which means that the reason will expire after this time."""
 
     delay_action_by: Optional[timedelta] = None
-    """If set, the propagation of the effect to the upstream (if configured) will be delayed.S"""
+    """If set, the propagation of the effect to the upstream (if configured via LabelsService.after_add or LabelsService.after_remove) will be delayed."""
 
     dependent_rule: Optional[RuleT] = None
     """If set, the effect will only be applied if the dependent rule evaluates to true."""

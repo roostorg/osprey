@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from enum import Enum
@@ -34,6 +35,7 @@ class LabelReason:
     """
     a label reason tells us why a label mutation was made, when it happened, and when it expires (if at all)
     """
+
     pending: bool = False
     description: str = ''
     """why the label was mutated"""
@@ -58,10 +60,6 @@ class LabelReason:
         return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=1) < datetime.now())
 
 
-        
-
-
-
 @dataclass
 class LabelStateInner:
     status: LabelStatus
@@ -73,6 +71,7 @@ class LabelState:
     status: LabelStatus
     """statuses dictate the way the current state behaves; certain statuses have priority over others 
     (see LabelStatus for more info)"""
+
     reasons: dict[str, LabelReason]
     """
     reasons are why this label state was applied; it is a dict because there may be multiple,
@@ -80,6 +79,7 @@ class LabelState:
 
     reasons applied under the same name are merged, with precedence given to newer creaeted_at timestamps.
     """
+
     previous_states: List[LabelStateInner] = field(default_factory=list)
     """the top-level label state also contains previous label states; we use an inner type
     because we don't need these prior states to have the previous_states field"""
@@ -92,7 +92,7 @@ class LabelState:
 
         this field is a convenience value to save users time on computing the effective expiration time from the reasons.
 
-        expiration defines when future label states can be applied. if the current label state is not expired, 
+        expiration defines when future label states can be applied. if the current label state is not expired,
         then then upon a new label state change attempt, the current and new statuses have their weights' compared.
         whichever has the higher weight will take precedence, and the lower weight(s) will be dropped.
         if the weights are the *same*, then a merge of reasons is performed, which can also cause the expiration to be delayed.
@@ -114,10 +114,7 @@ class LabelState:
             # to make this function idempotent, we don't want to shift an empty state to the previous state.
             # we should always have reasons to shift
             return
-        self.previous_states.insert(0, LabelStateInner(
-            status=self.status,
-            reasons=self.reasons.copy()
-        ))
+        self.previous_states.insert(0, LabelStateInner(status=self.status, reasons=copy.deepcopy(self.reasons)))
         self.reasons.clear()
 
     def update_status(self, status: LabelStatus, reasons: dict[str, LabelReason]) -> bool:
@@ -140,14 +137,14 @@ class LabelState:
         if self.status.weight > status.weight:
             # if our current weight is alr higher and non-expired, the new status is droppable
             return False
-        
+
         # if we made it here, the statuses are equal weight
         if self.status != status:
             self._shift_current_state_to_previous_state()
             self.status = status
             self.reasons = reasons
             return True
-            
+
         # if statuses are the same, and a currently non-expired reason exists (meaning the state as a whole is unexpired),
         # we will simply attempt to append the new reasons to the existing reason(s)~
         # # this would only fail if the creation time of the new reason is older than the existing reason(s), which shouldn't happen(?)
@@ -158,7 +155,7 @@ class LabelState:
 
     def append_reason(self, reason_name: str, reason: LabelReason) -> bool:
         """
-        returns true if the reason was able to be appended and/or merged with an existing reason; 
+        returns true if the reason was able to be appended and/or merged with an existing reason;
         false if it was dropped due to being older than the current reason
         """
         if self.is_expired():
@@ -170,8 +167,10 @@ class LabelState:
 
         current_reason = self.reasons[reason_name]
         if current_reason.created_at is None or reason.created_at is None:
-            raise AssertionError(f'invariant: missing created_at on one of the following LabelReasons: {current_reason} {reason}')
-        
+            raise AssertionError(
+                f'invariant: missing created_at on one of the following LabelReasons: {current_reason} {reason}'
+            )
+
         if current_reason.created_at > reason.created_at + timedelta(seconds=1):
             # the reason we are trying to append is older, so we will discard it (1sec added to adjust for potential code exec time)
             return False
@@ -182,19 +181,13 @@ class LabelState:
         )
         return True
 
-        
 
 @dataclass
 class EntityLabels:
     """this class represents a given entity's current labels & label states"""
+
     labels: Dict[str, LabelState] = field(default_factory=dict)
     """a mapping of label names to their current states'"""
-
-
-            
-
-
-
 
 
 class LabelsAndConnotationsResponse(BaseModel):
@@ -223,11 +216,12 @@ class EntityLabelDisagreeRequest(BaseModel):
 @dataclass
 class EntityLabelMutation:
     """
-    a class that allows callers of LabelsProvider.apply_entity_label_mutations() to request how an 
+    a class that allows callers of LabelsProvider.apply_entity_label_mutations() to request how an
     entity's labels should be mutated.
 
     mutations are not guaranteed to be written to the labels provider. see EntityLabelMutationsResult.dropped
     """
+
     label_name: str = ''
     reason_name: str = ''
     status: LabelStatus = LabelStatus.ADDED
@@ -235,6 +229,15 @@ class EntityLabelMutation:
     description: str = ''
     features: dict[str, str] = field(default_factory=dict)
     expires_at: datetime | None = None
+    delay_action_by: timedelta | None = None
+    """
+    in the event that this mutation is successfully applied to an entity, an action may occur via the
+    after_add or after_remove LabelsService definitions.
+
+    if the LabelAdd or LabelRemove call that created this mutation specified a delay_action_by, then the
+    post-label action will be delayed by said timedelta, assuming that no shutdown/stop signal forces a
+    more imminent execution.
+    """
 
     def desired_state(self) -> LabelState:
         return LabelState(
@@ -242,6 +245,7 @@ class EntityLabelMutation:
             reasons={self.reason_name: self.reason()},
         )
 
+    @property
     def reason(self) -> LabelReason:
         return LabelReason(
             pending=self.pending,
@@ -251,29 +255,33 @@ class EntityLabelMutation:
             expires_at=self.expires_at,
         )
 
-
 @dataclass
 class EntityLabelMutationsResult:
     new_entity_labels: EntityLabels
     """
     all of the entity's labels post-mutation
     """
+
     old_entity_labels: Optional[EntityLabels] = None
     """
     all of the entity's labels pre-mutation
     """
-    # added: list[str] = field(default_factory=list)
-    # """
-    # all (effective-status) label adds that occurred during this mutation
-    # """
-    # removed: list[str] = field(default_factory=list)
-    # """
-    # all (effective-status) label removes that occurred during this mutation
-    # """
+
+    added: list[str] = field(default_factory=list)
+    """
+    all (effective-status) label adds that occurred during this mutation
+    """
+
+    removed: list[str] = field(default_factory=list)
+    """
+    all (effective-status) label removes that occurred during this mutation
+    """
+
     updated: list[str] = field(default_factory=list)
     """
     labels that had their state updated. this can include simply updating the reason.
     """
+
     dropped: list[EntityLabelMutation] = field(default_factory=list)
     """
     dropped mutations occur when the current label state is unexpired and has a label

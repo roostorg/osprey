@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Any, Iterable, List, Optional, Set
 
 import sentry_sdk
-from osprey.engine.executor.execution_context import ExtendedEntityMutation
+from osprey.engine.executor.execution_context import ExtendedEntityLabelMutation
 from osprey.engine.language_types.labels import LabelStatus
 from osprey.worker.lib.bulk_label import TaskStatus
 from osprey.worker.lib.discovery.exceptions import ServiceUnavailable
@@ -373,7 +373,7 @@ class BulkLabelSink(BaseSink):
                 mutation_event_id=str(task.id),
                 entity_key=entity_key,
                 mutations=[
-                    ExtendedEntityMutation(
+                    ExtendedEntityLabelMutation(
                         mutation=EntityLabelMutation(
                             label_name=task.label_name,
                             reason_name=BULK_LABEL_REASON,
@@ -486,7 +486,7 @@ class BulkLabelSink(BaseSink):
                 mutation_event_id=str(task.id),
                 entity_key=entity_key,
                 mutations=[
-                    ExtendedEntityMutation(
+                    ExtendedEntityLabelMutation(
                         mutation=EntityLabelMutation(
                             label_name=task.label_name,
                             reason_name='_BulkLabelRollback',

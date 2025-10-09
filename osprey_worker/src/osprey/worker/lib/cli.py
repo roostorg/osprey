@@ -24,7 +24,7 @@ configure_logging()
 
 # Import safety record and common protos
 from osprey.engine.ast.sources import Sources  # noqa: E402
-from osprey.engine.executor.execution_context import ExtendedEntityMutation  # noqa: E402
+from osprey.engine.executor.execution_context import ExtendedEntityLabelMutation  # noqa: E402
 from osprey.rpc.labels.v1.service_pb2 import (  # noqa: E402
     Entity,
     EntityKey,
@@ -352,7 +352,7 @@ def apply_label_with_effects(
         mutation_event_type=MutationEventType.MANUAL_UPDATE,
         mutation_event_id=str(uuid.uuid4()),
         entity_key=EntityKey(type=entity_type, id=entity_id),
-        mutations=[ExtendedEntityMutation(mutation=mutation, delay_action_by=correctly_typed_delay_by)],
+        mutations=[ExtendedEntityLabelMutation(mutation=mutation, delay_action_by=correctly_typed_delay_by)],
     )
 
     time.sleep(2)
@@ -521,7 +521,7 @@ def bulk_apply_label_with_effects(
             mutation_event_type=MutationEventType.MANUAL_UPDATE,
             mutation_event_id=event_id,
             entity_key=EntityKey(type=entity_type, id=entity_id),
-            mutations=[ExtendedEntityMutation(mutation=mutation, delay_action_by=correctly_typed_delay_by)],
+            mutations=[ExtendedEntityLabelMutation(mutation=mutation, delay_action_by=correctly_typed_delay_by)],
         )
         progress_tracker.increment()
 

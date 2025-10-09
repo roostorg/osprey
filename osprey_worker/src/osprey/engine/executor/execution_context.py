@@ -67,12 +67,6 @@ class ExternalServiceException(Exception):
     """Indicates that an external service call failed or returned unexpected data."""
 
 
-@add_slots
-@dataclass
-class ExtendedEntityMutation:
-    mutation: EntityLabelMutation
-    delay_action_by: Optional[timedelta]
-
 
 class ExecutionContext:
     """The execution context stores any outputs or intermediate state of an execution."""

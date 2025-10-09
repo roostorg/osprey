@@ -14,7 +14,7 @@ from osprey.engine.conftest import (
 )
 from osprey.engine.executor.execution_context import (
     ExecutionContext,
-    ExtendedEntityMutation,
+    EntityLabelMutation,
 )
 from osprey.engine.language_types.entities import EntityT
 from osprey.engine.stdlib.udfs.entity import Entity
@@ -159,9 +159,9 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
         action_time=now,
     )
 
-    expected: Mapping[EntityT[Any], Sequence[ExtendedEntityMutation]] = {
+    expected: Mapping[EntityT[Any], Sequence[ExtendedEntityLabelMutation]] = {
         EntityT(type='MyEntity', id='entity 1'): [
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='foo',
                     reason_name='RSimple1',
@@ -173,7 +173,7 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
                 ),
                 delay_action_by=None,
             ),
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='foo',
                     reason_name='RWithFString',
@@ -185,7 +185,7 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
                 ),
                 delay_action_by=None,
             ),
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='bar',
                     reason_name='RSimple1',
@@ -197,7 +197,7 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
                 ),
                 delay_action_by=None,
             ),
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='bar',
                     reason_name='RWithFString',
@@ -209,7 +209,7 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
                 ),
                 delay_action_by=None,
             ),
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='baz',
                     reason_name='RSimple2',
@@ -221,7 +221,7 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
                 ),
                 delay_action_by=None,
             ),
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='foo',
                     reason_name='RSimple2',
@@ -233,7 +233,7 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
                 ),
                 delay_action_by=timedelta(minutes=1),
             ),
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='garply',
                     reason_name='RSimple3',
@@ -247,7 +247,7 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
             ),
         ],
         EntityT(type='MyEntity', id='entity 2'): [
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='garply',
                     reason_name='RSimple1',
@@ -259,7 +259,7 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
                 ),
                 delay_action_by=None,
             ),
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='garply',
                     reason_name='RSimple2',
@@ -271,7 +271,7 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
                 ),
                 delay_action_by=timedelta(seconds=30),
             ),
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='qux',
                     reason_name='RSimple2',
@@ -283,7 +283,7 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
                 ),
                 delay_action_by=None,
             ),
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='garply',
                     reason_name='RWithFString',
@@ -340,9 +340,9 @@ def test_when_rules_apply_if(execute_with_result: ExecuteWithResultFunction) -> 
         action_time=now,
     )
 
-    expected: Mapping[EntityT[Any], Sequence[ExtendedEntityMutation]] = {
+    expected: Mapping[EntityT[Any], Sequence[ExtendedEntityLabelMutation]] = {
         EntityT(type='MyEntity', id='entity 1'): [
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='foo',
                     reason_name='RT1',
@@ -353,7 +353,7 @@ def test_when_rules_apply_if(execute_with_result: ExecuteWithResultFunction) -> 
                 ),
                 delay_action_by=None,
             ),
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='foo',
                     reason_name='RT2',
@@ -366,7 +366,7 @@ def test_when_rules_apply_if(execute_with_result: ExecuteWithResultFunction) -> 
             ),
         ],
         EntityT(type='MyEntity', id='entity 3'): [
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='baz',
                     reason_name='RT1',
@@ -379,7 +379,7 @@ def test_when_rules_apply_if(execute_with_result: ExecuteWithResultFunction) -> 
             ),
         ],
         EntityT(type='MyEntity', id='entity 5'): [
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='uwu',
                     reason_name='RT1',
@@ -390,7 +390,7 @@ def test_when_rules_apply_if(execute_with_result: ExecuteWithResultFunction) -> 
                 ),
                 delay_action_by=None,
             ),
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='uwu',
                     reason_name='RT2',
@@ -437,9 +437,9 @@ def test_when_rules_apply_if_with_failed_rule(execute_with_result: ExecuteWithRe
         action_time=now,
     )
 
-    expected: Mapping[EntityT[Any], Sequence[ExtendedEntityMutation]] = {
+    expected: Mapping[EntityT[Any], Sequence[ExtendedEntityLabelMutation]] = {
         EntityT(type='MyEntity', id='entity 1'): [
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='bar',
                     reason_name='R1',
@@ -450,7 +450,7 @@ def test_when_rules_apply_if_with_failed_rule(execute_with_result: ExecuteWithRe
                 ),
                 delay_action_by=None,
             ),
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='uwu',
                     reason_name='R1',
@@ -461,7 +461,7 @@ def test_when_rules_apply_if_with_failed_rule(execute_with_result: ExecuteWithRe
                 ),
                 delay_action_by=None,
             ),
-            ExtendedEntityMutation(
+            ExtendedEntityLabelMutation(
                 mutation=EntityMutation(
                     label_name='uwu',
                     reason_name='R2',
@@ -523,11 +523,11 @@ def test_rules_must_have_str_or_f_str_descriptions(
 
 
 def _sort_entity_mutations(
-    effects: Mapping[EntityT[Any], Sequence[ExtendedEntityMutation]],
-) -> Mapping[EntityT[Any], Sequence[ExtendedEntityMutation]]:
+    effects: Mapping[EntityT[Any], Sequence[ExtendedEntityLabelMutation]],
+) -> Mapping[EntityT[Any], Sequence[ExtendedEntityLabelMutation]]:
     """Sorts entity mutations so that two sets of effects can be compared easily."""
 
-    def sort_key(mutation: ExtendedEntityMutation) -> tuple:
+    def sort_key(mutation: ExtendedEntityLabelMutation) -> tuple:
         # Create a sorting key from the ExtendedEntityMutation fields
         entity_mutation = mutation.mutation
         # Extract comparable values from the pb2 EntityMutation
@@ -557,10 +557,10 @@ def _sort_entity_mutations(
     return {entity: sorted(mutations, key=sort_key) for entity, mutations in effects.items()}
 
 
-def _to_simple_dict(label_effects: Mapping[EntityT[Any], Sequence[ExtendedEntityMutation]]) -> Dict[object, object]:
+def _to_simple_dict(label_effects: Mapping[EntityT[Any], Sequence[ExtendedEntityLabelMutation]]) -> Dict[object, object]:
     """Converts effects to bare dicts, so py.test can display them better in failure output!"""
 
-    def entity_mutation_to_dict(mutation: ExtendedEntityMutation) -> Dict[str, Any]:
+    def entity_mutation_to_dict(mutation: ExtendedEntityLabelMutation) -> Dict[str, Any]:
         # Convert ExtendedEntityMutation to a comparable dict
         entity_mutation = mutation.mutation
         expires_at_dict = None
@@ -588,8 +588,8 @@ def _to_simple_dict(label_effects: Mapping[EntityT[Any], Sequence[ExtendedEntity
 
 
 def _compare_effects(
-    actual: Mapping[EntityT[Any], Sequence[ExtendedEntityMutation]],
-    expected: Mapping[EntityT[Any], Sequence[ExtendedEntityMutation]],
+    actual: Mapping[EntityT[Any], Sequence[ExtendedEntityLabelMutation]],
+    expected: Mapping[EntityT[Any], Sequence[ExtendedEntityLabelMutation]],
 ) -> bool:
     """Given the actual effects from classification, and the expected effects, compare them to make sure they
     are equal."""
