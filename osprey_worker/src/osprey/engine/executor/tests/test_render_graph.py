@@ -4,19 +4,15 @@ from typing import Any, Dict, Set
 
 import pytest
 from osprey.engine.ast_validator.validation_context import ValidatedSources
-from osprey.engine.ast_validator.validator_registry import ValidatorRegistry
 from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
-from osprey.engine.ast_validator.validators.validate_dynamic_calls_have_annotated_rvalue import (
-    ValidateDynamicCallsHaveAnnotatedRValue,
-)
 from osprey.engine.conftest import RunValidationFunction
 from osprey.engine.executor.execution_graph import ExecutionGraph, compile_execution_graph
 from osprey.engine.executor.execution_visualizer import _render_graph
-from osprey.engine.stdlib import get_config_registry
 
 pytestmark = [
-    pytest.mark.use_validators([ValidateCallKwargs, ValidateDynamicCallsHaveAnnotatedRValue, UniqueStoredNames]),
+    pytest.mark.use_validators([ValidateCallKwargs, UniqueStoredNames]),
+    pytest.mark.use_standard_rules_validators,
     pytest.mark.use_osprey_stdlib,
 ]
 
@@ -147,9 +143,7 @@ def execution_graph(run_validation: RunValidationFunction) -> ExecutionGraph:
     """
     Compiles an ExecutionGraph based on the above Osprey Rules configs
     """
-    config_validator = get_config_registry().get_validator()
-    validator_registry = ValidatorRegistry.get_instance().instance_with_additional_validators(config_validator)
-    validated_sources: ValidatedSources = run_validation(config, validator_registry=validator_registry)
+    validated_sources: ValidatedSources = run_validation(config)
     execution_graph = compile_execution_graph(validated_sources)
     return execution_graph
 
