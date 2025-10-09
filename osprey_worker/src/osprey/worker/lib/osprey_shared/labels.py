@@ -1,17 +1,16 @@
-from collections import defaultdict
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Mapping, Optional, Self
+from typing import TYPE_CHECKING, Dict, List, Mapping, Optional
+
+from pydantic import BaseModel
 
 from osprey.engine.language_types.labels import LabelStatus
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.utils.request_utils import SessionWithRetries
-from osprey.worker.ui_api.osprey.validators.entities import EntityLabelMutation
-from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    from osprey.worker.lib.utils.flask_signing import Signer
+    pass
 
 
 # The requests session we will be using to contact osprey API.
@@ -98,7 +97,7 @@ class LabelState:
         whichever has the higher weight will take precedence, and the lower weight(s) will be dropped.
         if the weights are the *same*, then a merge of reasons is performed, which can also cause the expiration to be delayed.
         """
-        if not reasons:
+        if not self.reasons:
             AssertionError(f'invariant: the label state {self} did not have any associated reasons')
         expires_at = datetime.min
         for reason in self.reasons.values():

@@ -1,34 +1,67 @@
-from abc import ABC, abstractmethod
 import copy
+from abc import ABC, abstractmethod
+from collections import defaultdict
 from datetime import timedelta
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Optional, Sequence
 
-from osprey.engine.executor.execution_context import ExtendedEntityMutation
-from osprey.engine.executor.external_service_utils import ExternalService
+from result import Result
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+from osprey.engine.executor.external_service_utils import ExternalService, KeyT, ValueT
 from osprey.engine.language_types.entities import EntityT
-from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.labels import (
     EntityLabelMutationsResult,
     EntityLabelMutation,
     EntityLabels,
-    LabelState,
 )
 from osprey.worker.lib.osprey_shared.logging import get_logger
-from result import Result
-from tenacity import retry, stop_after_attempt, wait_exponential
-
 
 logger = get_logger(__name__)
 
+class BaseLabelsService(ABC):
+    @abstractmethod
+    def write_labels(self, key: EntityT[Any], value: EntityLabels) -> None:
+        """
+        A standard write to the labels service that attempts to write the value to the primary key.
 
-class BaseLabelsProvider(ExternalService[EntityT[Any], EntityLabels], ABC):
+        This method may be retried upon exceptions, so keep that in mind when adding potentially
+        non-idempotent behaviour.
+        """
+        raise NotImplementedError()
+
+    def get_entity_labels(self, key: EntityT[Any]) -> EntityLabels:
+        """
+        A standard read from the labels service. Keep in mind that if there is a cache_ttl greater than 0 seconds,
+        this method will not be called for every single label read.
+
+        This method may be retried upon exceptions, so keep that in mind when adding potentially
+        non-idempotent behaviour.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def batch_get_entity_labels(self, keys: Sequence[EntityT[Any]]) -> Sequence[Result[EntityLabels, Exception]]:
+        """
+        Batching can optimize the number of RPCs that are sent out during executions,
+        which has been observed to provide noticeable performance benefits in a python/gevent world.
+
+        If your labels service does not support a batch request endpoint, you can simply for-loop calls to get_from_service.
+        """
+        raise NotImplementedError()
+
+
+class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
+
+    def __init__(self, labels_service: BaseLabelsService):
+        self.labels_service = labels_service
+
 
     @retry(wait=wait_exponential(min=0.5, max=5), stop=stop_after_attempt(3))
     def apply_entity_label_mutations_with_retry(
         self, entity: EntityT[Any], mutations: Sequence[EntityLabelMutation]
     ) -> EntityLabelMutationsResult:
         return self.apply_entity_label_mutations(
-            entity=entity, mutations=[extended_mutation.mutation for extended_mutation in mutations]
+            entity=entity, mutations=mutations
         )
 
     def apply_entity_label_mutations(
@@ -85,20 +118,10 @@ class BaseLabelsProvider(ExternalService[EntityT[Any], EntityLabels], ABC):
             dropped=dropped,
         )
 
-    @abstractmethod
-    def write_to_service(self, key: EntityT[Any], value: EntityLabels) -> None:
-        """
-        A standard write to the labels service that attempts to write the value to the primary key.
-
-        This method may be retried upon exceptions, so keep that in mind when adding potentially
-        non-idempotent behaviour.
-        """
-        raise NotImplementedError()
 
     def cache_ttl(self) -> Optional[timedelta]:
         return timedelta(minutes=1)
 
-    @abstractmethod
     def get_from_service(self, key: EntityT[Any]) -> EntityLabels:
         """
         A standard read from the labels service. Keep in mind that if there is a cache_ttl greater than 0 seconds,
@@ -107,9 +130,8 @@ class BaseLabelsProvider(ExternalService[EntityT[Any], EntityLabels], ABC):
         This method may be retried upon exceptions, so keep that in mind when adding potentially
         non-idempotent behaviour.
         """
-        raise NotImplementedError()
+        return self.labels_service.get_entity_labels(key)
 
-    @abstractmethod
     def batch_get_from_service(self, keys: Sequence[EntityT[Any]]) -> Sequence[Result[EntityLabels, Exception]]:
         """
         Batching can optimize the number of RPCs that are sent out during executions,
@@ -117,4 +139,4 @@ class BaseLabelsProvider(ExternalService[EntityT[Any], EntityLabels], ABC):
 
         If your labels service does not support a batch request endpoint, you can simply for-loop calls to get_from_service.
         """
-        raise NotImplementedError()
+        return self.labels_service.batch_get_entity_labels(keys)
