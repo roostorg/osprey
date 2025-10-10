@@ -126,10 +126,9 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
                             entity=E1,
                             label='foo',
                             expires_after=TimeDelta(minutes=3),
-                            delay_action_by=TimeDelta(minutes=1),
                         ),
                         # Split outputs for different entities from same WhenRules
-                        LabelRemove(entity=E2, label='garply', delay_action_by=TimeDelta(seconds=30)),
+                        LabelRemove(entity=E2, label='garply'),
                         LabelRemove(entity=E2, label='qux'),
                     ],
                 )
@@ -159,141 +158,108 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
         action_time=now,
     )
 
-    expected: Mapping[EntityT[Any], Sequence[ExtendedEntityLabelMutation]] = {
+    expected: Mapping[EntityT[Any], Sequence[EntityLabelMutation]] = {
         EntityT(type='MyEntity', id='entity 1'): [
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='foo',
-                    reason_name='RSimple1',
-                    status=LabelStatus.ADDED,
-                    pending=False,
-                    description='simple rule 1',
-                    features={},
-                    expires_at=datetime_to_timestamp(now + timedelta(seconds=45)),
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='foo',
+                reason_name='RSimple1',
+                status=LabelStatus.ADDED,
+                pending=False,
+                description='simple rule 1',
+                features={},
+                expires_at=now + timedelta(seconds=45),
             ),
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='foo',
-                    reason_name='RWithFString',
-                    status=LabelStatus.ADDED,
-                    pending=False,
-                    description='fstring rule description with name {UserName}',
-                    features={'UserName': 'Wumpus'},
-                    expires_at=datetime_to_timestamp(now + timedelta(seconds=45)),
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='foo',
+                reason_name='RWithFString',
+                status=LabelStatus.ADDED,
+                pending=False,
+                description='fstring rule description with name {UserName}',
+                features={'UserName': 'Wumpus'},
+                expires_at=now + timedelta(seconds=45),
             ),
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='bar',
-                    reason_name='RSimple1',
-                    status=LabelStatus.REMOVED,
-                    pending=False,
-                    description='simple rule 1',
-                    features={},
-                    expires_at=None,
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='bar',
+                reason_name='RSimple1',
+                status=LabelStatus.REMOVED,
+                pending=False,
+                description='simple rule 1',
+                features={},
+                expires_at=None,
             ),
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='bar',
-                    reason_name='RWithFString',
-                    status=LabelStatus.REMOVED,
-                    pending=False,
-                    description='fstring rule description with name {UserName}',
-                    features={'UserName': 'Wumpus'},
-                    expires_at=None,
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='bar',
+                reason_name='RWithFString',
+                status=LabelStatus.REMOVED,
+                pending=False,
+                description='fstring rule description with name {UserName}',
+                features={'UserName': 'Wumpus'},
+                expires_at=None,
             ),
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='baz',
-                    reason_name='RSimple2',
-                    status=LabelStatus.ADDED,
-                    pending=False,
-                    description='simple rule 2',
-                    features={},
-                    expires_at=datetime_to_timestamp(now + timedelta(minutes=5)),
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='baz',
+                reason_name='RSimple2',
+                status=LabelStatus.ADDED,
+                pending=False,
+                description='simple rule 2',
+                features={},
+                expires_at=now + timedelta(minutes=5),
             ),
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='foo',
-                    reason_name='RSimple2',
-                    status=LabelStatus.ADDED,
-                    pending=False,
-                    description='simple rule 2',
-                    features={},
-                    expires_at=datetime_to_timestamp(now + timedelta(minutes=3)),
-                ),
-                delay_action_by=timedelta(minutes=1),
+            EntityLabelMutation(
+                label_name='foo',
+                reason_name='RSimple2',
+                status=LabelStatus.ADDED,
+                pending=False,
+                description='simple rule 2',
+                features={},
+                expires_at=now + timedelta(minutes=3),
             ),
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='garply',
-                    reason_name='RSimple3',
-                    status=LabelStatus.ADDED,
-                    pending=False,
-                    description='simple rule 3',
-                    features={},
-                    expires_at=datetime_to_timestamp(now + timedelta(seconds=30)),
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='garply',
+                reason_name='RSimple3',
+                status=LabelStatus.ADDED,
+                pending=False,
+                description='simple rule 3',
+                features={},
+                expires_at=now + timedelta(seconds=30),
             ),
         ],
         EntityT(type='MyEntity', id='entity 2'): [
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='garply',
-                    reason_name='RSimple1',
-                    status=LabelStatus.ADDED,
-                    pending=False,
-                    description='simple rule 1',
-                    features={},
-                    expires_at=datetime_to_timestamp(now + timedelta(seconds=30)),
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='garply',
+                reason_name='RSimple1',
+                status=LabelStatus.ADDED,
+                pending=False,
+                description='simple rule 1',
+                features={},
+                expires_at=now + timedelta(seconds=30),
             ),
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='garply',
-                    reason_name='RSimple2',
-                    status=LabelStatus.REMOVED,
-                    pending=False,
-                    description='simple rule 2',
-                    features={},
-                    expires_at=None,
-                ),
-                delay_action_by=timedelta(seconds=30),
+            EntityLabelMutation(
+                label_name='garply',
+                reason_name='RSimple2',
+                status=LabelStatus.REMOVED,
+                pending=False,
+                description='simple rule 2',
+                features={},
+                expires_at=None,
             ),
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='qux',
-                    reason_name='RSimple2',
-                    status=LabelStatus.REMOVED,
-                    pending=False,
-                    description='simple rule 2',
-                    features={},
-                    expires_at=None,
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='qux',
+                reason_name='RSimple2',
+                status=LabelStatus.REMOVED,
+                pending=False,
+                description='simple rule 2',
+                features={},
+                expires_at=None,
             ),
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='garply',
-                    reason_name='RWithFString',
-                    status=LabelStatus.ADDED,
-                    pending=False,
-                    description='fstring rule description with name {UserName}',
-                    features={'UserName': 'Wumpus'},
-                    expires_at=None,
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='garply',
+                reason_name='RWithFString',
+                status=LabelStatus.ADDED,
+                pending=False,
+                description='fstring rule description with name {UserName}',
+                features={'UserName': 'Wumpus'},
+                expires_at=None,
             ),
         ],
     }
@@ -340,66 +306,51 @@ def test_when_rules_apply_if(execute_with_result: ExecuteWithResultFunction) -> 
         action_time=now,
     )
 
-    expected: Mapping[EntityT[Any], Sequence[ExtendedEntityLabelMutation]] = {
+    expected: Mapping[EntityT[Any], Sequence[EntityLabelMutation]] = {
         EntityT(type='MyEntity', id='entity 1'): [
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='foo',
-                    reason_name='RT1',
-                    status=LabelStatus.ADDED,
-                    pending=False,
-                    description='rule 1',
-                    features={},
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='foo',
+                reason_name='RT1',
+                status=LabelStatus.ADDED,
+                pending=False,
+                description='rule 1',
+                features={},
             ),
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='foo',
-                    reason_name='RT2',
-                    status=LabelStatus.ADDED,
-                    pending=False,
-                    description='rule 2',
-                    features={},
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='foo',
+                reason_name='RT2',
+                status=LabelStatus.ADDED,
+                pending=False,
+                description='rule 2',
+                features={},
             ),
         ],
         EntityT(type='MyEntity', id='entity 3'): [
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='baz',
-                    reason_name='RT1',
-                    status=LabelStatus.ADDED,
-                    pending=False,
-                    description='rule 1',
-                    features={},
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='baz',
+                reason_name='RT1',
+                status=LabelStatus.ADDED,
+                pending=False,
+                description='rule 1',
+                features={},
             ),
         ],
         EntityT(type='MyEntity', id='entity 5'): [
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='uwu',
-                    reason_name='RT1',
-                    status=LabelStatus.ADDED,
-                    pending=False,
-                    description='rule 1',
-                    features={},
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='uwu',
+                reason_name='RT1',
+                status=LabelStatus.ADDED,
+                pending=False,
+                description='rule 1',
+                features={},
             ),
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='uwu',
-                    reason_name='RT2',
-                    status=LabelStatus.ADDED,
-                    pending=False,
-                    description='rule 2',
-                    features={},
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='uwu',
+                reason_name='RT2',
+                status=LabelStatus.ADDED,
+                pending=False,
+                description='rule 2',
+                features={},
             ),
         ],
     }
@@ -437,40 +388,31 @@ def test_when_rules_apply_if_with_failed_rule(execute_with_result: ExecuteWithRe
         action_time=now,
     )
 
-    expected: Mapping[EntityT[Any], Sequence[ExtendedEntityLabelMutation]] = {
+    expected: Mapping[EntityT[Any], Sequence[EntityLabelMutation]] = {
         EntityT(type='MyEntity', id='entity 1'): [
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='bar',
-                    reason_name='R1',
-                    status=LabelStatus.ADDED,
-                    pending=False,
-                    description='rule 1',
-                    features={},
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='bar',
+                reason_name='R1',
+                status=LabelStatus.ADDED,
+                pending=False,
+                description='rule 1',
+                features={},
             ),
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='uwu',
-                    reason_name='R1',
-                    status=LabelStatus.ADDED,
-                    pending=False,
-                    description='rule 1',
-                    features={},
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='uwu',
+                reason_name='R1',
+                status=LabelStatus.ADDED,
+                pending=False,
+                description='rule 1',
+                features={},
             ),
-            ExtendedEntityLabelMutation(
-                mutation=EntityMutation(
-                    label_name='uwu',
-                    reason_name='R2',
-                    status=LabelStatus.ADDED,
-                    pending=False,
-                    description='rule 2',
-                    features={},
-                ),
-                delay_action_by=None,
+            EntityLabelMutation(
+                label_name='uwu',
+                reason_name='R2',
+                status=LabelStatus.ADDED,
+                pending=False,
+                description='rule 2',
+                features={},
             ),
         ]
     }
@@ -523,63 +465,46 @@ def test_rules_must_have_str_or_f_str_descriptions(
 
 
 def _sort_entity_mutations(
-    effects: Mapping[EntityT[Any], Sequence[ExtendedEntityLabelMutation]],
-) -> Mapping[EntityT[Any], Sequence[ExtendedEntityLabelMutation]]:
+    effects: Mapping[EntityT[Any], Sequence[EntityLabelMutation]],
+) -> Mapping[EntityT[Any], Sequence[EntityLabelMutation]]:
     """Sorts entity mutations so that two sets of effects can be compared easily."""
 
-    def sort_key(mutation: ExtendedEntityLabelMutation) -> tuple:
-        # Create a sorting key from the ExtendedEntityMutation fields
-        entity_mutation = mutation.mutation
-        # Extract comparable values from the pb2 EntityMutation
+    def sort_key(mutation: EntityLabelMutation) -> tuple:
+        # Create a sorting key from the EntityLabelMutation fields
+        # Extract comparable values
         expires_at_key = (
-            entity_mutation.expires_at.seconds if entity_mutation.HasField('expires_at') else 0,
-            entity_mutation.expires_at.nanos if entity_mutation.HasField('expires_at') else 0,
+            mutation.expires_at.timestamp() if mutation.expires_at is not None else 0,
         )
-        features_key = tuple(sorted(entity_mutation.features.items()))
-        # Use days, seconds, and microseconds for precise timedelta comparison
-        delay_key = (
-            mutation.delay_action_by.days if mutation.delay_action_by is not None else 0,
-            mutation.delay_action_by.seconds if mutation.delay_action_by is not None else 0,
-            mutation.delay_action_by.microseconds if mutation.delay_action_by is not None else 0,
-        )
+        features_key = tuple(sorted(mutation.features.items()))
 
         return (
-            entity_mutation.label_name,
-            entity_mutation.reason_name,
-            entity_mutation.status,
-            entity_mutation.pending,
-            entity_mutation.description,
+            mutation.label_name,
+            mutation.reason_name,
+            mutation.status,
+            mutation.pending,
+            mutation.description,
             features_key,
             expires_at_key,
-            delay_key,
         )
 
     return {entity: sorted(mutations, key=sort_key) for entity, mutations in effects.items()}
 
 
-def _to_simple_dict(label_effects: Mapping[EntityT[Any], Sequence[ExtendedEntityLabelMutation]]) -> Dict[object, object]:
+def _to_simple_dict(label_effects: Mapping[EntityT[Any], Sequence[EntityLabelMutation]]) -> Dict[object, object]:
     """Converts effects to bare dicts, so py.test can display them better in failure output!"""
 
-    def entity_mutation_to_dict(mutation: ExtendedEntityLabelMutation) -> Dict[str, Any]:
-        # Convert ExtendedEntityMutation to a comparable dict
-        entity_mutation = mutation.mutation
-        expires_at_dict = None
-        if entity_mutation.HasField('expires_at'):
-            expires_at_dict = {'seconds': entity_mutation.expires_at.seconds, 'nanos': entity_mutation.expires_at.nanos}
+    def entity_mutation_to_dict(mutation: EntityLabelMutation) -> Dict[str, Any]:
+        # Convert EntityLabelMutation to a comparable dict
+        expires_at_timestamp = mutation.expires_at.timestamp() if mutation.expires_at is not None else None
 
         return {
-            'mutation': {
-                'label_name': entity_mutation.label_name,
-                'reason_name': entity_mutation.reason_name,
-                'status': entity_mutation.status,
-                'pending': entity_mutation.pending,
-                'description': entity_mutation.description,
-                'features': dict(entity_mutation.features),
-                'expires_at': expires_at_dict,
-            },
-            'delay_action_by': mutation.delay_action_by.total_seconds()
-            if mutation.delay_action_by is not None
-            else None,
+            'label_name': mutation.label_name,
+            'reason_name': mutation.reason_name,
+            'status': mutation.status,
+            'pending': mutation.pending,
+            'description': mutation.description,
+            'features': dict(mutation.features),
+            'expires_at': expires_at_timestamp,
         }
 
     return {
@@ -588,8 +513,8 @@ def _to_simple_dict(label_effects: Mapping[EntityT[Any], Sequence[ExtendedEntity
 
 
 def _compare_effects(
-    actual: Mapping[EntityT[Any], Sequence[ExtendedEntityLabelMutation]],
-    expected: Mapping[EntityT[Any], Sequence[ExtendedEntityLabelMutation]],
+    actual: Mapping[EntityT[Any], Sequence[EntityLabelMutation]],
+    expected: Mapping[EntityT[Any], Sequence[EntityLabelMutation]],
 ) -> bool:
     """Given the actual effects from classification, and the expected effects, compare them to make sure they
     are equal."""

@@ -373,21 +373,18 @@ class BulkLabelSink(BaseSink):
                 mutation_event_id=str(task.id),
                 entity_key=entity_key,
                 mutations=[
-                    ExtendedEntityLabelMutation(
-                        mutation=EntityLabelMutation(
-                            label_name=task.label_name,
-                            reason_name=BULK_LABEL_REASON,
-                            expires_at=task.label_expiry,
-                            status=task.label_status,  # type: ignore
-                            description='Bulk label (id={BulkLabelTaskId}) by {AdminEmail}: {Reason}',
-                            features={
-                                'AdminEmail': task.initiated_by,
-                                'Reason': task.label_reason,
-                                'BulkLabelTaskId': str(task.id),
-                            },
-                        ),
-                        delay_action_by=None,
-                    )
+                    EntityLabelMutation(
+                        label_name=task.label_name,
+                        reason_name=BULK_LABEL_REASON,
+                        expires_at=task.label_expiry,
+                        status=task.label_status,  # type: ignore
+                        description='Bulk label (id={BulkLabelTaskId}) by {AdminEmail}: {Reason}',
+                        features={
+                            'AdminEmail': task.initiated_by,
+                            'Reason': task.label_reason,
+                            'BulkLabelTaskId': str(task.id),
+                        },
+                    ),
                 ],
             )
 
@@ -486,24 +483,21 @@ class BulkLabelSink(BaseSink):
                 mutation_event_id=str(task.id),
                 entity_key=entity_key,
                 mutations=[
-                    ExtendedEntityLabelMutation(
-                        mutation=EntityLabelMutation(
-                            label_name=task.label_name,
-                            reason_name='_BulkLabelRollback',
-                            status=LabelStatus.MANUALLY_REMOVED,
-                            expires_at=datetime.now() + timedelta(hours=2),
-                            description=(
-                                'Bulk label rollback of (id={BulkLabelTaskId}) '
-                                '(initial reason: {Reason}, initially initiated by: {AdminEmail})'
-                            ),
-                            features={
-                                'AdminEmail': task.initiated_by,
-                                'Reason': task.label_reason,
-                                'BulkLabelTaskId': str(task.id),
-                            },
+                    EntityLabelMutation(
+                        label_name=task.label_name,
+                        reason_name='_BulkLabelRollback',
+                        status=LabelStatus.MANUALLY_REMOVED,
+                        expires_at=datetime.now() + timedelta(hours=2),
+                        description=(
+                            'Bulk label rollback of (id={BulkLabelTaskId}) '
+                            '(initial reason: {Reason}, initially initiated by: {AdminEmail})'
                         ),
-                        delay_action_by=None,
-                    )
+                        features={
+                            'AdminEmail': task.initiated_by,
+                            'Reason': task.label_reason,
+                            'BulkLabelTaskId': str(task.id),
+                        },
+                    ),
                 ],
             )
             rows_rolled_back += 1

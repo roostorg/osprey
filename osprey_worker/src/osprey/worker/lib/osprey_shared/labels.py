@@ -23,6 +23,35 @@ _REQUEST_TIMEOUT_SECS = 5
 logger = get_logger(__name__)
 
 
+class LabelStatus(IntEnum):
+    """
+    indicates the status of label.
+
+    regular (a.k.a. "automatic") statuses are applied via rules. they can be overwritten by manual
+    statuses, which can only be applied via humans using the ui.
+
+    statuses have weights, which control which ones get dropped when conflicting statuses occur during
+    a single attempted mutation; i.e., if an execution of the rules results in a label add and a label remove
+    of the same entity/label pair.
+    """
+    ADDED = 0
+    REMOVED = 1
+    MANUALLY_ADDED = 2
+    MANUALLY_REMOVED = 3
+
+    def effective_label_status(self) -> 'LabelStatus':
+        """
+        Returns the effective status of the label, which is what the upstreams that are observing label
+        status changes will see. Which is to say, the upstreams will currently not see if the label status was
+        manually added or manually removed, just that it was added or removed.
+        """
+        match self:
+            case LabelStatus.ADDED | LabelStatus.MANUALLY_ADDED:
+                return LabelStatus.ADDED
+            case LabelStatus.REMOVED | LabelStatus.MANUALLY_REMOVED:
+                return LabelStatus.REMOVED
+
+
 #  If you change this also change osprey/osprey_engine/packages/osprey_stdlib/configs/labels_config.py
 class LabelConnotation(Enum):
     POSITIVE = 'positive'
@@ -229,15 +258,6 @@ class EntityLabelMutation:
     description: str = ''
     features: dict[str, str] = field(default_factory=dict)
     expires_at: datetime | None = None
-    delay_action_by: timedelta | None = None
-    """
-    in the event that this mutation is successfully applied to an entity, an action may occur via the
-    after_add or after_remove LabelsService definitions.
-
-    if the LabelAdd or LabelRemove call that created this mutation specified a delay_action_by, then the
-    post-label action will be delayed by said timedelta, assuming that no shutdown/stop signal forces a
-    more imminent execution.
-    """
 
     def desired_state(self) -> LabelState:
         return LabelState(

@@ -29,14 +29,13 @@ from osprey.worker.lib.storage.labels import LabelsProvider
 from result import Err, Ok, Result
 
 
-# TODO: move back to labels.py once we actually make it stdlib
 class LabelArguments(ArgumentsBase):
     entity: EntityT[Any]
     """An entity to mutate a label on."""
     label: ConstExpr[str]
     """The label to mutate."""
-    delay_action_by: Optional[TimeDeltaT] = None
-    """Optional: Delays a label action by a specified `TimeDeltaT` time."""
+    # delay_action_by: Optional[TimeDeltaT] = None
+    # """Optional: Delays a label action by a specified `TimeDeltaT` time."""
     apply_if: Optional[RuleT] = None
     """Optional: Conditions that must be met for the label mutation to succeed."""
     expires_after: Optional[TimeDeltaT] = None
@@ -49,7 +48,7 @@ def synthesize_effect(status: LabelStatus, arguments: LabelArguments) -> LabelEf
         status=status,
         name=arguments.label.value,
         expires_after=TimeDeltaT.inner_from_optional(arguments.expires_after),
-        delay_action_by=TimeDeltaT.inner_from_optional(arguments.delay_action_by),
+        # delay_action_by=TimeDeltaT.inner_from_optional(arguments.delay_action_by),
         dependent_rule=arguments.apply_if,
         # NOTE: This is fairly significant, if this call node has an `apply_if` ast, but
         # the resolved apply_if is None, that means that the evaluation of the rule failed.

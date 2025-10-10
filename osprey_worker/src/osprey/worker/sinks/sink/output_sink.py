@@ -111,7 +111,6 @@ def _create_entity_mutation(
         description=rule.description,
         features=rule.features,
         expires_at=expires_at,
-        delay_action_by=label_effect.delay_action_by,
     )
 
 
