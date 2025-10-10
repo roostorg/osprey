@@ -3,8 +3,8 @@ from typing import Any, List, Mapping, Optional, Sequence, Set
 from urllib.parse import urlencode
 
 import requests
+from osprey.engine.language_types.entities import EntityT
 from osprey.worker.lib.utils.flask_signing import Signer
-from osprey.worker.ui_api.osprey.validators.entities import EntityKey
 from pydantic.main import BaseModel
 from requests import ConnectionError, HTTPError, Timeout
 from requests.models import ChunkedEncodingError
@@ -40,7 +40,7 @@ def bulk_create_entity_ability_links(
     osprey_ui_endpoint: str,
     osprey_ui_api_endpoint: str,
     creation_origin: str,
-    entities: List[EntityKey],
+    entities: List[EntityT],
     raise_on_error: bool = False,
     entity_url_options: EntityUrlOptions = EntityUrlOptions(),
 ) -> Optional[Sequence[str]]:

@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Any, Iterable, List, Optional, Set
 
 import sentry_sdk
-from osprey.engine.executor.execution_context import ExtendedEntityMutation
+from osprey.engine.executor.execution_context import ExtendedEntityLabelMutation
 from osprey.engine.language_types.labels import LabelStatus
 from osprey.worker.lib.bulk_label import TaskStatus
 from osprey.worker.lib.discovery.exceptions import ServiceUnavailable
@@ -20,9 +20,9 @@ from osprey.worker.sinks.sink.output_sink_utils.models import OspreyBulkJobAnaly
 from osprey.worker.ui_api.osprey.lib.druid import PeriodData, TopNDruidQuery, TopNPoPResponse
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from ...adaptor.plugin_manager import bootstrap_label_provider
-from ...lib.osprey_shared.labels import EntityMutation
-from ...lib.storage.labels import LabelProvider
+from ...adaptor.plugin_manager import bootstrap_labels_provider
+from ...lib.osprey_shared.labels import EntityLabelMutation
+from ...lib.storage.labels import LabelsProvider
 from ...ui_api.osprey.validators.entities import EntityKey
 from .base_sink import BaseSink
 
@@ -69,7 +69,7 @@ class BulkLabelSink(BaseSink):
     def __init__(
         self,
         input_stream: BaseInputStream[BulkLabelTask],
-        label_provider: LabelProvider,
+        label_provider: LabelsProvider,
         engine: OspreyEngine,
         analytics_publisher: BasePublisher,
         send_status_webhook: bool = True,
@@ -367,26 +367,24 @@ class BulkLabelSink(BaseSink):
             assert isinstance(task.dimension, str)
             assert isinstance(task.excluded_entities, Iterable)
 
+            # TODO(ayubun): modernize to label provider
             self._label_output_sink.apply_label_mutations(
                 mutation_event_type=MutationEventType.BULK_ACTION,
                 mutation_event_id=str(task.id),
                 entity_key=entity_key,
                 mutations=[
-                    ExtendedEntityMutation(
-                        mutation=EntityMutation(
-                            label_name=task.label_name,
-                            reason_name=BULK_LABEL_REASON,
-                            expires_at=task.label_expiry,
-                            status=task.label_status,  # type: ignore
-                            description='Bulk label (id={BulkLabelTaskId}) by {AdminEmail}: {Reason}',
-                            features={
-                                'AdminEmail': task.initiated_by,
-                                'Reason': task.label_reason,
-                                'BulkLabelTaskId': str(task.id),
-                            },
-                        ),
-                        delay_action_by=None,
-                    )
+                    EntityLabelMutation(
+                        label_name=task.label_name,
+                        reason_name=BULK_LABEL_REASON,
+                        expires_at=task.label_expiry,
+                        status=task.label_status,  # type: ignore
+                        description='Bulk label (id={BulkLabelTaskId}) by {AdminEmail}: {Reason}',
+                        features={
+                            'AdminEmail': task.initiated_by,
+                            'Reason': task.label_reason,
+                            'BulkLabelTaskId': str(task.id),
+                        },
+                    ),
                 ],
             )
 
@@ -433,7 +431,7 @@ class BulkLabelSink(BaseSink):
         rows_rolled_back = 0
 
         feature_name_to_entity_type_mapping = engine.get_feature_name_to_entity_type_mapping()
-        label_provider = bootstrap_label_provider()
+        label_provider = bootstrap_labels_provider()
         label_output_sink = LabelOutputSink(label_provider)
         feature_name = task.dimension
         entity_type = feature_name_to_entity_type_mapping[feature_name]
@@ -485,24 +483,21 @@ class BulkLabelSink(BaseSink):
                 mutation_event_id=str(task.id),
                 entity_key=entity_key,
                 mutations=[
-                    ExtendedEntityMutation(
-                        mutation=EntityMutation(
-                            label_name=task.label_name,
-                            reason_name='_BulkLabelRollback',
-                            status=LabelStatus.MANUALLY_REMOVED,
-                            expires_at=datetime.now() + timedelta(hours=2),
-                            description=(
-                                'Bulk label rollback of (id={BulkLabelTaskId}) '
-                                '(initial reason: {Reason}, initially initiated by: {AdminEmail})'
-                            ),
-                            features={
-                                'AdminEmail': task.initiated_by,
-                                'Reason': task.label_reason,
-                                'BulkLabelTaskId': str(task.id),
-                            },
+                    EntityLabelMutation(
+                        label_name=task.label_name,
+                        reason_name='_BulkLabelRollback',
+                        status=LabelStatus.MANUALLY_REMOVED,
+                        expires_at=datetime.now() + timedelta(hours=2),
+                        description=(
+                            'Bulk label rollback of (id={BulkLabelTaskId}) '
+                            '(initial reason: {Reason}, initially initiated by: {AdminEmail})'
                         ),
-                        delay_action_by=None,
-                    )
+                        features={
+                            'AdminEmail': task.initiated_by,
+                            'Reason': task.label_reason,
+                            'BulkLabelTaskId': str(task.id),
+                        },
+                    ),
                 ],
             )
             rows_rolled_back += 1
