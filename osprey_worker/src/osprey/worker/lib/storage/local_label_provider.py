@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Sequence
 
 from osprey.engine.language_types.entities import EntityT
-from osprey.worker.lib.osprey_shared.labels import EntityLabelMutationsResult, EntityLabelMutation, EntityLabels
+from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation, EntityLabelMutationsResult, EntityLabels
 from osprey.worker.lib.storage.labels import LabelsProvider
 from result import Result
 

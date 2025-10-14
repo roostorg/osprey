@@ -13,8 +13,8 @@ from osprey.engine.conftest import (
     RunValidationFunction,
 )
 from osprey.engine.executor.execution_context import (
-    ExecutionContext,
     EntityLabelMutation,
+    ExecutionContext,
 )
 from osprey.engine.language_types.entities import EntityT
 from osprey.engine.stdlib.udfs.entity import Entity
@@ -24,8 +24,7 @@ from osprey.engine.stdlib.udfs.time_delta import TimeDelta
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import UDFBase
 from osprey.engine.udf.registry import UDFRegistry
-from osprey.engine.utils.proto_utils import datetime_to_timestamp
-from osprey.rpc.labels.v1.service_pb2 import EntityMutation, LabelStatus
+from osprey.rpc.labels.v1.service_pb2 import LabelStatus
 from osprey.worker.sinks.sink.output_sink import _get_label_effects_from_result
 
 # Moved here because WhenRules is not included in the MVP yet
@@ -472,9 +471,7 @@ def _sort_entity_mutations(
     def sort_key(mutation: EntityLabelMutation) -> tuple:
         # Create a sorting key from the EntityLabelMutation fields
         # Extract comparable values
-        expires_at_key = (
-            mutation.expires_at.timestamp() if mutation.expires_at is not None else 0,
-        )
+        expires_at_key = (mutation.expires_at.timestamp() if mutation.expires_at is not None else 0,)
         features_key = tuple(sorted(mutation.features.items()))
 
         return (

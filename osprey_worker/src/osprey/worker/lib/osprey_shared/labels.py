@@ -1,14 +1,14 @@
 import copy
+from collections import UserDict
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import TYPE_CHECKING, Dict, List, Mapping, Optional
 
-from pydantic import BaseModel
-
 from osprey.engine.language_types.labels import LabelStatus
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.utils.request_utils import SessionWithRetries
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
     pass
@@ -23,6 +23,15 @@ _REQUEST_TIMEOUT_SECS = 5
 logger = get_logger(__name__)
 
 
+class MutationDropReason(IntEnum):
+    # If a label mutation was dropped due to another mutation that conflicted & was higher priority
+    # (priority of conflicting mutations in a given entity update is determined by the int value of the
+    # label status enum)
+    CONFLICTING_MUTATION = 0
+    # If the existing label status was manual and the attempted mutation was not
+    CANNOT_OVERRIDE_MANUAL = 1
+
+
 class LabelStatus(IntEnum):
     """
     indicates the status of label.
@@ -34,6 +43,7 @@ class LabelStatus(IntEnum):
     a single attempted mutation; i.e., if an execution of the rules results in a label add and a label remove
     of the same entity/label pair.
     """
+
     ADDED = 0
     REMOVED = 1
     MANUALLY_ADDED = 2
@@ -50,6 +60,16 @@ class LabelStatus(IntEnum):
                 return LabelStatus.ADDED
             case LabelStatus.REMOVED | LabelStatus.MANUALLY_REMOVED:
                 return LabelStatus.REMOVED
+
+    def is_manual(self) -> bool:
+        match self:
+            case LabelStatus.MANUALLY_ADDED | LabelStatus.MANUALLY_REMOVED:
+                return True
+            case _:
+                return False
+
+    def is_automatic(self) -> bool:
+        return not self.is_manual()
 
 
 #  If you change this also change osprey/osprey_engine/packages/osprey_stdlib/configs/labels_config.py
@@ -86,13 +106,53 @@ class LabelReason:
     """
 
     def is_expired(self) -> bool:
-        return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=1) < datetime.now())
+        return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=5) < datetime.now())
+
+
+class LabelReasons(UserDict[str, LabelReason]):
+    """
+    the label reasons userdict allows us to add a helper function to the dict directly, while otherwise
+    operating as a normal dict would~
+    """
+
+    def insert_or_update(self, reason_name: str, reason: LabelReason) -> bool:
+        """
+        returns true if the reason was able to be inserted or updated an existing reason;
+        false if it was dropped due to being older than the current reason
+        """
+        if reason_name not in self:
+            self[reason_name] = reason
+            return True
+
+        current_reason = self[reason_name]
+        if current_reason.created_at is None or reason.created_at is None:
+            raise AssertionError(
+                f'invariant: missing created_at on one of the following LabelReasons: {current_reason} {reason}'
+            )
+
+        if current_reason.created_at > reason.created_at + timedelta(seconds=5):
+            # the reason we are trying to append is older than the one currently at the reason_name key,
+            # so we will discard it (5sec added to adjust for potential code exec time).
+            return False
+
+        self[reason_name] = replace(
+            reason,
+            # since the current reason is older by this point in the code, we want to preserve the original created_at timestamp
+            created_at=current_reason.created_at,
+        )
+        return True
 
 
 @dataclass
 class LabelStateInner:
     status: LabelStatus
-    reasons: Dict[str, LabelReason]
+    reasons: LabelReasons
+
+    def into_outer(self) -> LabelState:
+        return LabelState(
+            status=self.status,
+            reasons=self.reasons,
+        )
 
 
 @dataclass
@@ -101,12 +161,13 @@ class LabelState:
     """statuses dictate the way the current state behaves; certain statuses have priority over others 
     (see LabelStatus for more info)"""
 
-    reasons: dict[str, LabelReason]
+    reasons: LabelReasons
     """
     reasons are why this label state was applied; it is a dict because there may be multiple,
     with each reason being distinct based on it's reason name.
 
-    reasons applied under the same name are merged, with precedence given to newer creaeted_at timestamps.
+    reasons applied under the same name are merged (assuming the status has not changed), 
+    with precedence given to newer creaeted_at timestamps.
     """
 
     previous_states: List[LabelStateInner] = field(default_factory=list)
@@ -136,79 +197,45 @@ class LabelState:
         return expires_at
 
     def is_expired(self) -> bool:
-        return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=1) < datetime.now())
+        return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=5) < datetime.now())
 
     def _shift_current_state_to_previous_state(self) -> None:
         if not self.reasons:
             # to make this function idempotent, we don't want to shift an empty state to the previous state.
             # we should always have reasons to shift
             return
-        self.previous_states.insert(0, LabelStateInner(status=self.status, reasons=copy.deepcopy(self.reasons)))
-        self.reasons.clear()
+        self.previous_states.insert(
+            0, LabelStateInner(status=copy.copy(self.status), reasons=copy.deepcopy(self.reasons))
+        )
+        self.reasons = dict()
 
-    def update_status(self, status: LabelStatus, reasons: dict[str, LabelReason]) -> bool:
+    def try_apply_desired_state(self, desired_state: LabelStateInner) -> MutationDropReason | None:
         """
-        sets the label state to the provided status if the provided status has a higher weight or if the current
-        status is expired.
-
-        if the status is updated, the current state is shifted to previous_states and the reasons are appended.
-
-        returns true if the status is accepted and/or merged; returns false if it was dropped.
-        """
-        if self.is_expired() or self.status.weight < status.weight:
-            # if the curr state is expired, we will shift those reasons to prev state and make the new reason the curr state.
-            # append_reason will automatically do this for us at the start of the code. we just need to update the status
-            self._shift_current_state_to_previous_state()
-            self.status = status
-            self.reasons = reasons
-            return True
-
-        if self.status.weight > status.weight:
-            # if our current weight is alr higher and non-expired, the new status is droppable
-            return False
-
-        # if we made it here, the statuses are equal weight
-        if self.status != status:
-            self._shift_current_state_to_previous_state()
-            self.status = status
-            self.reasons = reasons
-            return True
-
-        # if statuses are the same, and a currently non-expired reason exists (meaning the state as a whole is unexpired),
-        # we will simply attempt to append the new reasons to the existing reason(s)~
-        # # this would only fail if the creation time of the new reason is older than the existing reason(s), which shouldn't happen(?)
-        success = all(self.append_reason(reason_name, reason) for reason_name, reason in reasons.items())
-        if not success:
-            logger.error(f'update_status could not append reasons {reasons} to state {self}')
-        return True
-
-    def append_reason(self, reason_name: str, reason: LabelReason) -> bool:
-        """
-        returns true if the reason was able to be appended and/or merged with an existing reason;
-        false if it was dropped due to being older than the current reason
+        attempts to apply the desired state to this state.
+        if the state could not be applied (i.e. due to an unexpired manual status blocking
+        a status change to an automatic status), this method will return the MutationDropReason that
+        should be applied to the responsible mutations. otherwise, it will return None to indicate success
         """
         if self.is_expired():
             self._shift_current_state_to_previous_state()
+            self.status = desired_state.status
+            self.reasons = desired_state.reasons
+            return None
 
-        if reason_name not in self.reasons:
-            self.reasons[reason_name] = reason
-            return True
+        # if the current status is manual, we will drop automatic statuses (unless the current state is expired)
+        if self.status.is_manual() and desired_state.status.is_automatic():
+            return MutationDropReason.CANNOT_OVERRIDE_MANUAL
 
-        current_reason = self.reasons[reason_name]
-        if current_reason.created_at is None or reason.created_at is None:
-            raise AssertionError(
-                f'invariant: missing created_at on one of the following LabelReasons: {current_reason} {reason}'
-            )
+        # if the statuses are different and we've made it this far, the desired state is allowed to overwrite
+        # the current state. so lets do that by shifting to previous state and updating
+        if self.status != desired_state.status:
+            self._shift_current_state_to_previous_state()
+            self.status = desired_state.status
 
-        if current_reason.created_at > reason.created_at + timedelta(seconds=1):
-            # the reason we are trying to append is older, so we will discard it (1sec added to adjust for potential code exec time)
-            return False
+        for reason_name, reason in desired_state.reasons.items():
+            self.reasons.insert_or_update(reason_name, reason)
 
-        self.reasons[reason_name] = replace(
-            reason,
-            created_at=current_reason.created_at,
-        )
-        return True
+        return None
 
 
 @dataclass
@@ -259,8 +286,8 @@ class EntityLabelMutation:
     features: dict[str, str] = field(default_factory=dict)
     expires_at: datetime | None = None
 
-    def desired_state(self) -> LabelState:
-        return LabelState(
+    def desired_state(self) -> LabelStateInner:
+        return LabelStateInner(
             status=self.status,
             reasons={self.reason_name: self.reason()},
         )
@@ -275,6 +302,13 @@ class EntityLabelMutation:
             expires_at=self.expires_at,
         )
 
+
+@dataclass
+class DroppedEntityLabelMutation:
+    mutation: EntityLabelMutation
+    reason: MutationDropReason
+
+
 @dataclass
 class EntityLabelMutationsResult:
     new_entity_labels: EntityLabels
@@ -287,27 +321,26 @@ class EntityLabelMutationsResult:
     all of the entity's labels pre-mutation
     """
 
-    added: list[str] = field(default_factory=list)
+    labels_added: list[str] = field(default_factory=list)
     """
     all (effective-status) label adds that occurred during this mutation
     """
 
-    removed: list[str] = field(default_factory=list)
+    labels_removed: list[str] = field(default_factory=list)
     """
     all (effective-status) label removes that occurred during this mutation
     """
 
-    updated: list[str] = field(default_factory=list)
+    labels_updated: list[str] = field(default_factory=list)
     """
-    labels that had their state updated. this can include simply updating the reason.
+    labels that had their state updated. this can include simply updating or 
+    appending to the reason
     """
 
-    dropped: list[EntityLabelMutation] = field(default_factory=list)
+    dropped_mutations: list[DroppedEntityLabelMutation] = field(default_factory=list)
     """
-    dropped mutations occur when the current label state is unexpired and has a label
-    status with a higher weight than the mutation attempts to make.
-
-    dropping can also happen if there are errors during the mutations.
+    mutations that were dropped for one reason or another. each dropped mutation is
+    given a drop reason
     """
 
 

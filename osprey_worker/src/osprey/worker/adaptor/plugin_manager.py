@@ -12,7 +12,7 @@ from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.adaptor.constants import OSPREY_ADAPTOR
 from osprey.worker.adaptor.hookspecs import osprey_hooks
 from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
-from osprey.worker.lib.storage.labels import LabelsServiceBase, LabelsProvider
+from osprey.worker.lib.storage.labels import LabelsProvider
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
 from osprey.worker.sinks.sink.output_sink import BaseOutputSink, LabelOutputSink, MultiOutputSink
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext

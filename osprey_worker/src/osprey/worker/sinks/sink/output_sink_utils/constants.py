@@ -10,7 +10,6 @@ class OspreyAnalyticsEvents(str, Enum):
     RULES_VISUALIZER_GEN_GRAPH = 'network_action_osprey_rules_visualizer_generate_graph'
 
 
-
 # There are more types, currently listing the ones we need to use in code
 class EntityType(str, Enum):
     USER = 'User'

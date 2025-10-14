@@ -299,6 +299,7 @@ class SynchronousPubSubMultiProtoInputStream(BasePubSubInputStream[PullPubSubMes
                         attributes={k: v for k, v in message.attributes.items()},
                     )
 
+
 # Use for utility scripts, not for production
 class RawPubSubInputStream(BasePubSubInputStream[PullPubSubMessageContext[PubsubMessage]]):
     def _gen(self) -> Iterator[PullPubSubMessageContext[PubsubMessage]]:

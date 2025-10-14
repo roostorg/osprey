@@ -122,7 +122,9 @@ class BatchableHasLabelArguments:
     desired_status: Optional[_SimpleStatus]
 
 
-class HasLabel(HasHelperInternal[LabelsProvider], BatchableUDFBase[HasLabelArguments, bool, BatchableHasLabelArguments]):
+class HasLabel(
+    HasHelperInternal[LabelsProvider], BatchableUDFBase[HasLabelArguments, bool, BatchableHasLabelArguments]
+):
     """Returns `True` if the specified label is currently present in a given non-expired state on a provided Entity."""
 
     category = UdfCategories.ENGINE

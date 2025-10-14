@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from typing import Any, Iterable, List, Optional, Set
 
 import sentry_sdk
-from osprey.engine.executor.execution_context import ExtendedEntityLabelMutation
 from osprey.engine.language_types.labels import LabelStatus
 from osprey.worker.lib.bulk_label import TaskStatus
 from osprey.worker.lib.discovery.exceptions import ServiceUnavailable

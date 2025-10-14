@@ -15,9 +15,7 @@ import ipaddress  # noqa: E402
 import logging  # noqa: E402
 import os  # noqa: E402
 import subprocess  # noqa: E402
-import time  # noqa: E402
-import uuid  # noqa: E402
-from typing import TYPE_CHECKING, Any, Optional, Set, Union  # noqa: E402
+from typing import Any, Optional, Set, Union  # noqa: E402
 
 import click  # noqa: E402
 from click import Context, Parameter, ParamType  # noqa: E402
@@ -27,16 +25,12 @@ configure_logging()
 
 # Import safety record and common protos
 from osprey.engine.ast.sources import Sources  # noqa: E402
-from osprey.engine.executor.execution_context import ExtendedEntityLabelMutation  # noqa: E402
 from osprey.rpc.labels.v1.service_pb2 import (  # noqa: E402
     Entity,
     EntityKey,
     EntityMutation,
     LabelStatus,
 )
-from osprey.worker.lib.osprey_engine import bootstrap_engine  # noqa: E402
-from osprey.worker.lib.publisher import PubSubPublisher  # noqa: E402
-from osprey.worker.lib.singletons import CONFIG  # noqa: E402
 from osprey.worker.lib.sources_publisher import (  # noqa: E402
     upload_dependencies_mapping,
     validate_and_push,
@@ -45,12 +39,9 @@ from osprey.worker.lib.storage import (  # noqa: E402
     access_audit_log,  # noqa: E402
     entity_label_webhook,
     labels,
-    postgres,
     stored_execution_result,
 )
 from osprey.worker.lib.utils.click_utils import EnumChoicePb2  # noqa: E402
-from osprey.worker.sinks.sink.output_sink import LabelOutputSink  # noqa: E402
-from osprey.worker.sinks.sink.output_sink_utils.constants import MutationEventType  # noqa: E402
 
 
 @click.group()

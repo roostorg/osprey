@@ -1,23 +1,21 @@
 import abc
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, DefaultDict, Dict, List, Mapping, Optional, Sequence
+from typing import Any, DefaultDict, Dict, Mapping, Optional, Sequence
 
 import gevent
 import sentry_sdk
 from osprey.engine.executor.execution_context import (
     ExecutionResult,
-    ExtendedEntityLabelMutation,
 )
 from osprey.engine.language_types.entities import EntityT
 from osprey.engine.language_types.labels import LabelEffect
 from osprey.engine.stdlib.udfs.rules import RuleT
 from osprey.worker.lib.ddtrace_utils import trace
 from osprey.worker.lib.instruments import metrics
-from osprey.worker.lib.osprey_shared.labels import EntityLabelMutationsResult, EntityLabelMutation
+from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation
 from osprey.worker.lib.osprey_shared.logging import DynamicLogSampler, get_logger
 from osprey.worker.lib.storage.labels import LabelsProvider
-from osprey.worker.sinks.sink.output_sink_utils.constants import MutationEventType
 from osprey.worker.ui_api.osprey.validators.entities import EntityKey
 
 logger = get_logger()
@@ -156,7 +154,6 @@ class LabelOutputSink(BaseOutputSink):
     def __init__(self, labels_provider: LabelsProvider) -> None:
         self._labels_provider = labels_provider
 
-
     def will_do_work(self, result: ExecutionResult) -> bool:
         return len(_get_label_effects_from_result(result)) > 0
 
@@ -173,5 +170,3 @@ class LabelOutputSink(BaseOutputSink):
         """
         we need to make sure the provider can stop and immediately execute all delayed label actions
         """
-
-

@@ -3,13 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence, Type
 
 import pluggy
-
 from osprey.engine.ast_validator.base_validator import BaseValidator
 from osprey.engine.executor.execution_context import Action
 from osprey.engine.udf.base import UDFBase
 from osprey.worker.adaptor.constants import OSPREY_ADAPTOR
 from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
-from osprey.worker.lib.storage.labels import LabelsProvider, LabelsServiceBase
+from osprey.worker.lib.storage.labels import LabelsServiceBase
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 

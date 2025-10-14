@@ -23,4 +23,3 @@ class OspreyRulesVisualizerGenGraphAnalyticsEvent(BaseModel):
     path: str
     request_method: str
     timestamp: str
-
