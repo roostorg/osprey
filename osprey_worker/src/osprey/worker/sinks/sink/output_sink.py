@@ -16,7 +16,6 @@ from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation
 from osprey.worker.lib.osprey_shared.logging import DynamicLogSampler, get_logger
 from osprey.worker.lib.storage.labels import LabelsProvider
-from osprey.worker.ui_api.osprey.validators.entities import EntityKey
 
 logger = get_logger()
 
@@ -159,14 +158,10 @@ class LabelOutputSink(BaseOutputSink):
 
     def push(self, result: ExecutionResult) -> None:
         for entity, mutations in _get_label_effects_from_result(result).items():
-            entity_key: EntityT[str] = EntityKey(type=str(entity.type), id=str(entity.id))
-            result = self._labels_provider.apply_entity_label_mutations(
-                entity_key,
+            _ = self._labels_provider.apply_entity_label_mutations(
+                entity,
                 mutations,
             )
 
     def stop(self) -> None:
         self._labels_provider.stop()
-        """
-        we need to make sure the provider can stop and immediately execute all delayed label actions
-        """

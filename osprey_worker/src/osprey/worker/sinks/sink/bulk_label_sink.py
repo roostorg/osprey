@@ -3,26 +3,24 @@ from datetime import datetime, timedelta
 from typing import Any, Iterable, List, Optional, Set
 
 import sentry_sdk
+from osprey.engine.language_types.entities import EntityT
 from osprey.engine.language_types.labels import LabelStatus
+from osprey.worker.adaptor.plugin_manager import bootstrap_labels_provider
 from osprey.worker.lib.bulk_label import TaskStatus
 from osprey.worker.lib.discovery.exceptions import ServiceUnavailable
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_engine import OspreyEngine
+from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.pigeon.exceptions import RPCException
 from osprey.worker.lib.publisher import BasePublisher
 from osprey.worker.lib.storage.bulk_label_task import BASE_DELAY_SECONDS, MAX_ATTEMPTS, BulkLabelTask
+from osprey.worker.lib.storage.labels import LabelsProvider
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
-from osprey.worker.sinks.sink.output_sink import LabelOutputSink
-from osprey.worker.sinks.sink.output_sink_utils.constants import MutationEventType
 from osprey.worker.sinks.sink.output_sink_utils.models import OspreyBulkJobAnalyticsEvent
 from osprey.worker.ui_api.osprey.lib.druid import PeriodData, TopNDruidQuery, TopNPoPResponse
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from ...adaptor.plugin_manager import bootstrap_labels_provider
-from ...lib.osprey_shared.labels import EntityLabelMutation
-from ...lib.storage.labels import LabelsProvider
-from ...ui_api.osprey.validators.entities import EntityKey
 from .base_sink import BaseSink
 
 logger = get_logger()
@@ -68,14 +66,13 @@ class BulkLabelSink(BaseSink):
     def __init__(
         self,
         input_stream: BaseInputStream[BulkLabelTask],
-        label_provider: LabelsProvider,
+        labels_provider: LabelsProvider,
         engine: OspreyEngine,
         analytics_publisher: BasePublisher,
         send_status_webhook: bool = True,
     ):
         self._input_stream = input_stream
-        self._label_provider = label_provider
-        self._label_output_sink = LabelOutputSink(self._label_provider)
+        self._labels_provider = labels_provider
         self._engine = engine
         self._metric_tags = [f'sink:{self.__class__.__name__}']
         self._analytics_publisher = analytics_publisher
@@ -318,8 +315,8 @@ class BulkLabelSink(BaseSink):
         # This range resumes work at the place last left off
         for current_entity_index in task.iterate_entity_indices():
             entity_id = entity_ids_list[current_entity_index]
-            entity_key = EntityKey(type=entity_type, id=entity_id)
-            self._apply_label_mutations(entity_key, task)
+            entity = EntityT(type=entity_type, id=entity_id)
+            self._apply_label_mutations(entity, task)
 
         self._send_bulk_job_analytics(task)
 
@@ -339,7 +336,7 @@ class BulkLabelSink(BaseSink):
         )
         self._analytics_publisher.publish(analytics_properties)
 
-    def _apply_label_mutations(self, entity_key: EntityKey, task: BulkLabelTask) -> None:
+    def _apply_label_mutations(self, entity: EntityT[Any], task: BulkLabelTask) -> None:
         def _log_before_sleep(retry_state: RetryCallState) -> None:
             assert isinstance(task.entities_labeled, int)
 
@@ -366,11 +363,8 @@ class BulkLabelSink(BaseSink):
             assert isinstance(task.dimension, str)
             assert isinstance(task.excluded_entities, Iterable)
 
-            # TODO(ayubun): modernize to label provider
-            self._label_output_sink.apply_label_mutations(
-                mutation_event_type=MutationEventType.BULK_ACTION,
-                mutation_event_id=str(task.id),
-                entity_key=entity_key,
+            _ = self._labels_provider.apply_entity_label_mutations(
+                entity=entity,
                 mutations=[
                     EntityLabelMutation(
                         label_name=task.label_name,
@@ -430,8 +424,7 @@ class BulkLabelSink(BaseSink):
         rows_rolled_back = 0
 
         feature_name_to_entity_type_mapping = engine.get_feature_name_to_entity_type_mapping()
-        label_provider = bootstrap_labels_provider()
-        label_output_sink = LabelOutputSink(label_provider)
+        labels_provider = bootstrap_labels_provider()
         feature_name = task.dimension
         entity_type = feature_name_to_entity_type_mapping[feature_name]
 
@@ -448,16 +441,16 @@ class BulkLabelSink(BaseSink):
                 rows_skipped += 1
                 continue
 
-            entity_key = EntityKey(type=entity_type, id=value)
-            if entity_key.id in excluded_ids:
+            entity = EntityT(type=entity_type, id=value)
+            if entity.id in excluded_ids:
                 rows_excluded += 1
                 continue
 
-            if include_ids is not None and str(entity_key.id) not in include_ids:
+            if include_ids is not None and str(entity.id) not in include_ids:
                 rows_excluded += 1
                 continue
 
-            labels = label_provider.get_from_service(entity_key)
+            labels = labels_provider.get_from_service(entity)
 
             # No label anymore, nothing to do.
             label_state = labels.labels.get(task.label_name)
@@ -477,10 +470,8 @@ class BulkLabelSink(BaseSink):
                 continue
 
             # Apply the inverse effect of the rollback.
-            label_output_sink.apply_label_mutations(
-                mutation_event_type=MutationEventType.BULK_ACTION,
-                mutation_event_id=str(task.id),
-                entity_key=entity_key,
+            _ = labels_provider.apply_entity_label_mutations(
+                entity=entity,
                 mutations=[
                     EntityLabelMutation(
                         label_name=task.label_name,

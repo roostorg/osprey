@@ -116,6 +116,9 @@ class LabelReasons(UserDict[str, LabelReason]):
     operating as a normal dict would~
     """
 
+    def __init__(self, initial_data: dict[str, LabelReason] | None = None) -> None:
+        super().__init__(initial_data)
+
     def insert_or_update(self, reason_name: str, reason: LabelReason) -> bool:
         """
         returns true if the reason was able to be inserted or updated an existing reason;
@@ -226,7 +229,7 @@ class LabelState:
         self.previous_states.insert(
             0, LabelStateInner(status=copy.copy(self.status), reasons=copy.deepcopy(self.reasons))
         )
-        self.reasons = dict()
+        self.reasons = LabelReasons()
 
     def try_apply_desired_state(self, desired_state: LabelStateInner) -> MutationDropReason | None:
         """
@@ -285,7 +288,7 @@ class EntityLabelMutation:
     def desired_state(self) -> LabelStateInner:
         return LabelStateInner(
             status=self.status,
-            reasons={self.reason_name: self.reason()},
+            reasons=LabelReasons({self.reason_name: self.reason}),
         )
 
     @property

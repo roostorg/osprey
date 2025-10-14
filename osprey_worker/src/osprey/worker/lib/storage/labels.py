@@ -62,9 +62,9 @@ class LabelsServiceBase(ABC):
                 Exception('invariant: label could not be retrieved but no error was caught')
             )
             try:
-                result: Result[EntityLabels, Exception] = Ok(self.read_labels(entity))
+                result = Ok(self.read_labels(entity))
             except Exception as e:
-                result: Result[EntityLabels, Exception] = Err(e)
+                result = Err(e)
             finally:
                 results.append(result)
         return results
@@ -109,7 +109,7 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
                         )
                     mutations_by_label_name[label_name] = [mutation]
                     continue
-                elif mutation.status.weight < other_mutation.status.weight:
+                elif mutation.status.value < other_mutation.status.value:
                     dropped_mutations.append(
                         DroppedEntityLabelMutation(mutation=mutation, reason=MutationDropReason.CONFLICTING_MUTATION)
                     )
@@ -135,7 +135,7 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
             )
             desired_state = mutations[0].desired_state()
             for i in range(1, len(mutations)):
-                desired_state.append_reason(mutations[i].reason_name, mutations[i].reason)
+                desired_state.reasons.insert_or_update(mutations[i].reason_name, mutations[i].reason)
             desired_states_by_label_name[label_name] = desired_state
 
         return desired_states_by_label_name
@@ -203,7 +203,7 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
         with self._labels_service.get_labels_atomically(entity) as old_labels:
             result = self._compute_new_labels_from_mutations(old_labels, mutations)
 
-            self._labels_service.write_labels(entity, result.new_entity_lEntityLabelMutation)
+            self._labels_service.write_labels(entity, result.new_entity_labels)
 
             return result
 
@@ -225,3 +225,10 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
               See LabelsServiceBase.batch_read_labels for more information
         """
         return self._labels_service.batch_read_labels(entities=keys)
+
+    def stop(self) -> None:
+        """
+        this method is called when the output sink receives a shutdown signal. if you would like to
+        add shutdown logic, override this~
+        """
+        pass

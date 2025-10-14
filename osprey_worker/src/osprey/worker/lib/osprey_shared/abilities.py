@@ -40,7 +40,7 @@ def bulk_create_entity_ability_links(
     osprey_ui_endpoint: str,
     osprey_ui_api_endpoint: str,
     creation_origin: str,
-    entities: List[EntityT],
+    entities: List[EntityT[str]],
     raise_on_error: bool = False,
     entity_url_options: EntityUrlOptions = EntityUrlOptions(),
 ) -> Optional[Sequence[str]]:

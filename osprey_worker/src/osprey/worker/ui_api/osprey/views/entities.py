@@ -1,7 +1,7 @@
 from typing import Any
 
 from flask import Blueprint, abort, jsonify
-from osprey.worker.adaptor.plugin_manager import bootstrap_labels_provider, has_labels_provider
+from osprey.worker.adaptor.plugin_manager import bootstrap_labels_provider, has_labels_service
 from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation
 from osprey.worker.ui_api.osprey.lib.abilities import (
     CanMutateEntities,
@@ -30,7 +30,7 @@ blueprint = Blueprint('entities', __name__)
 def get_labels_for_entity(request_model: GetLabelsForEntityRequest) -> Any:
     require_ability_with_request(request_model, CanViewLabelsForEntity)
 
-    if not has_labels_provider():
+    if not has_labels_service():
         return {
             'labels': {},
             # this field is deprecated
@@ -69,7 +69,7 @@ def manual_entity_mutation(request_model: ManualEntityLabelMutationRequest) -> A
     require_ability_with_request(request_model, CanMutateEntities)
     require_ability_with_request(request_model, CanMutateLabels)
 
-    if not has_labels_provider():
+    if not has_labels_service():
         return abort(501, 'Labels Provider Not Found')
 
     labels_provider = bootstrap_labels_provider()
@@ -84,7 +84,7 @@ def manual_entity_mutation(request_model: ManualEntityLabelMutationRequest) -> A
             continue
         entity_mutation = EntityLabelMutation(
             label_name=request_mutation.label_name,
-            status=request_mutation.status.value,
+            status=request_mutation.status,
             expires_at=request_mutation.expires_at,
             reason_name='_ManuallyUpdated',
             description='Manual update by {AdminEmail}: {Reason}',

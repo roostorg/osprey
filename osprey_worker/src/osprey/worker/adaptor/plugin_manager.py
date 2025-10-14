@@ -12,7 +12,7 @@ from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.adaptor.constants import OSPREY_ADAPTOR
 from osprey.worker.adaptor.hookspecs import osprey_hooks
 from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
-from osprey.worker.lib.storage.labels import LabelsProvider
+from osprey.worker.lib.storage.labels import LabelsProvider, LabelsServiceBase
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
 from osprey.worker.sinks.sink.output_sink import BaseOutputSink, LabelOutputSink, MultiOutputSink
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
@@ -81,12 +81,14 @@ def bootstrap_output_sinks(config: Config) -> BaseOutputSink:
 def bootstrap_labels_provider() -> LabelsProvider:
     """
     Generates a bootstrapped label provider using the registered plugin.
-    Calling this is not necessary if you already called bootstrap_output_sinks, but is available for convenience.
     """
     load_all_osprey_plugins()
     if not has_labels_service():
-        raise NotImplementedError('Label provider assumes register_labels_service is implemented.')
-    return LabelsProvider(plugin_manager.hook.regiser_labels_service())
+        raise NotImplementedError('Labels provider assumes register_labels_service is implemented.')
+    provider_or_service: LabelsProvider | LabelsServiceBase = plugin_manager.hook.regiser_labels_service()
+    if isinstance(provider_or_service, LabelsProvider):
+        return provider_or_service
+    return LabelsProvider(provider_or_service)
 
 
 def bootstrap_ast_validators() -> None:
