@@ -25,12 +25,6 @@ configure_logging()
 
 # Import safety record and common protos
 from osprey.engine.ast.sources import Sources  # noqa: E402
-from osprey.rpc.labels.v1.service_pb2 import (  # noqa: E402
-    Entity,
-    EntityKey,
-    EntityMutation,
-    LabelStatus,
-)
 from osprey.worker.lib.sources_publisher import (  # noqa: E402
     upload_dependencies_mapping,
     validate_and_push,
@@ -131,9 +125,9 @@ def shell(auto_import: str) -> None:
         'access_audit_log': access_audit_log,
         'entity_label_webhook': entity_label_webhook,
         'stored_execution_result': stored_execution_result,
-        'EntityKey': EntityKey,
-        'Entity': Entity,
-        'EntityMutation': EntityMutation,
+        'EntityT': EntityT,
+        # 'Entity': Entity,
+        'EntityLabelMutation': EntityLabelMutation,
         'LabelStatus': LabelStatus,
     }
 
@@ -241,7 +235,7 @@ def apply_label(
     entity_type: str,
     entity_id: str,
     label_name: str,
-    label_status: 'LabelStatusValue',
+    label_status: LabelStatus,
     reason: Optional[str],
     description: Optional[str],
     expire_instantly: bool,
@@ -251,7 +245,7 @@ def apply_label(
     Mainly intended to be used for debugging purposes or importing lists of labels from external sources.
     """
     if expire_instantly:
-        mutation = EntityMutation(
+        mutation = EntityLabelMutation(
             label_name=label_name,
             reason_name=reason or 'CliLabelMutationWithoutEffects',
             status=label_status,
@@ -259,7 +253,7 @@ def apply_label(
             expires_at=(datetime.datetime.now() + datetime.timedelta(seconds=5)),
         )
     else:
-        mutation = EntityMutation(
+        mutation = EntityLabelMutation(
             label_name=label_name,
             reason_name=reason or 'CliLabelMutationWithoutEffects',
             status=label_status,
@@ -334,7 +328,7 @@ def bulk_apply_label(
     provider = bootstrap_labels_provider()
     for entity_id in entity_ids:
         provider.apply_entity_label_mutations(
-            entity=EntityKey(type=entity_type, id=entity_id),
+            entity=EntityT(type=entity_type, id=entity_id),
             mutations=[mutation],
         )
         progress_tracker.increment()

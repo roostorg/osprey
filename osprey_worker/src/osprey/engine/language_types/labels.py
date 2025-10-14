@@ -8,6 +8,7 @@ from osprey.engine.shared_constants import (
     ENTITY_LABEL_MUTATION_DIMENSION_NAME,
     ENTITY_LABEL_MUTATION_DIMENSION_VALUE,
 )
+from osprey.worker.lib.osprey_shared.labels import LabelStatus
 
 from .entities import EntityT
 from .rules import RuleT, add_slots

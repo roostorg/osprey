@@ -12,8 +12,9 @@ from osprey.worker.lib.osprey_shared.labels import (
     EntityLabelMutation,
     EntityLabelMutationsResult,
     EntityLabels,
-    ExtendedEntityLabelMutation,
+    LabelState,
     LabelStateInner,
+    LabelStatus,
     MutationDropReason,
 )
 from osprey.worker.lib.osprey_shared.logging import get_logger
@@ -108,7 +109,7 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
                         )
                     mutations_by_label_name[label_name] = [mutation]
                     continue
-                elif mutation.status.weight < other_mut.status.weight:
+                elif mutation.status.weight < other_mutation.status.weight:
                     dropped_mutations.append(
                         DroppedEntityLabelMutation(mutation=mutation, reason=MutationDropReason.CONFLICTING_MUTATION)
                     )
@@ -155,11 +156,11 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
         new_labels = copy.deepcopy(old_labels)
         for label_name, desired_state in desired_states_by_label_name.items():
             if label_name not in new_labels.labels:
-                new_labels.labels[label_name] = desired_state.into_outer()
+                new_labels.labels[label_name] = LabelState.from_inner(desired_state)
                 added.append(label_name)
                 continue
             current_state = new_labels.labels[label_name]
-            # tbh idk enough about python to know if this copy is necessary
+            # tbh idk enough about python to know if this copy is necessary but better safe than sorry
             prev_status = copy.copy(current_state.status)
             drop_reason = current_state.try_apply_desired_state(desired_state)
             if drop_reason:
@@ -167,7 +168,7 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
                 for mutation in mutations_by_label_name[label_name]:
                     dropped_mutations.append(DroppedEntityLabelMutation(mutation=mutation, reason=drop_reason))
                 continue
-            # otherwise, let's compare the new status so we can add to the EntityLabelMutationsResult c:
+            # otherwise, let's compare the new status so we can add data to the EntityLabelMutationsResult c:
             new_status = current_state.status
             if prev_status == new_status:
                 updated.append(label_name)
@@ -192,7 +193,7 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
 
     @retry(wait=wait_exponential(min=0.5, max=5), stop=stop_after_attempt(3))
     def apply_entity_label_mutations_with_retry(
-        self, entity: EntityT[Any], mutations: Sequence[ExtendedEntityLabelMutation]
+        self, entity: EntityT[Any], mutations: Sequence[EntityLabelMutation]
     ) -> EntityLabelMutationsResult:
         return self.apply_entity_label_mutations(entity=entity, mutations=mutations)
 
@@ -200,9 +201,9 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
         self, entity: EntityT[Any], mutations: Sequence[EntityLabelMutation]
     ) -> EntityLabelMutationsResult:
         with self._labels_service.get_labels_atomically(entity) as old_labels:
-            result = self._compute_new_labels_from_mutations(old_labels, mutations_by_label_name)
+            result = self._compute_new_labels_from_mutations(old_labels, mutations)
 
-            self._labels_service.write_labels(entity, result.new_entity_labels)
+            self._labels_service.write_labels(entity, result.new_entity_lEntityLabelMutation)
 
             return result
 

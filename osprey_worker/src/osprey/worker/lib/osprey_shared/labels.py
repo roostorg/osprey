@@ -2,13 +2,11 @@ import copy
 from collections import UserDict
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
-from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Mapping, Optional
+from enum import Enum, IntEnum
+from typing import TYPE_CHECKING, Dict, Optional
 
-from osprey.engine.language_types.labels import LabelStatus
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.utils.request_utils import SessionWithRetries
-from pydantic import BaseModel
 
 if TYPE_CHECKING:
     pass
@@ -44,10 +42,10 @@ class LabelStatus(IntEnum):
     of the same entity/label pair.
     """
 
-    ADDED = 0
-    REMOVED = 1
-    MANUALLY_ADDED = 2
-    MANUALLY_REMOVED = 3
+    REMOVED = 0
+    ADDED = 1
+    MANUALLY_REMOVED = 2
+    MANUALLY_ADDED = 3
 
     def effective_label_status(self) -> 'LabelStatus':
         """
@@ -60,6 +58,8 @@ class LabelStatus(IntEnum):
                 return LabelStatus.ADDED
             case LabelStatus.REMOVED | LabelStatus.MANUALLY_REMOVED:
                 return LabelStatus.REMOVED
+            case _:
+                raise NotImplementedError()
 
     def is_manual(self) -> bool:
         match self:
@@ -109,6 +109,7 @@ class LabelReason:
         return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=5) < datetime.now())
 
 
+@dataclass
 class LabelReasons(UserDict[str, LabelReason]):
     """
     the label reasons userdict allows us to add a helper function to the dict directly, while otherwise
@@ -142,17 +143,28 @@ class LabelReasons(UserDict[str, LabelReason]):
         )
         return True
 
+    @classmethod
+    def __get_validators__(cls):
+        """Pydantic v1 validator"""
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        """Validate and convert to LabelReasons"""
+        if isinstance(v, cls):
+            return v
+        if isinstance(v, dict):
+            return cls(v)
+        raise TypeError(f'LabelReasons expected dict or LabelReasons, got {type(v)}')
+
+    def __repr__(self):
+        return f'LabelReasons({self.data})'
+
 
 @dataclass
 class LabelStateInner:
     status: LabelStatus
     reasons: LabelReasons
-
-    def into_outer(self) -> LabelState:
-        return LabelState(
-            status=self.status,
-            reasons=self.reasons,
-        )
 
 
 @dataclass
@@ -170,7 +182,7 @@ class LabelState:
     with precedence given to newer creaeted_at timestamps.
     """
 
-    previous_states: List[LabelStateInner] = field(default_factory=list)
+    previous_states: list[LabelStateInner] = field(default_factory=list)
     """the top-level label state also contains previous label states; we use an inner type
     because we don't need these prior states to have the previous_states field"""
 
@@ -195,6 +207,13 @@ class LabelState:
                 return None
             expires_at = max(reason.expires_at, expires_at)
         return expires_at
+
+    @classmethod
+    def from_inner(cls, inner: LabelStateInner) -> 'LabelState':
+        return cls(
+            status=inner.status,
+            reasons=inner.reasons,
+        )
 
     def is_expired(self) -> bool:
         return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=5) < datetime.now())
@@ -244,29 +263,6 @@ class EntityLabels:
 
     labels: Dict[str, LabelState] = field(default_factory=dict)
     """a mapping of label names to their current states'"""
-
-
-class LabelsAndConnotationsResponse(BaseModel):
-    labels: EntityLabels
-    label_connotations: Mapping[str, LabelConnotation]
-
-
-def get_labels_for_entity(
-    endpoint: str, signer: 'Signer', entity_type: str, entity_id: str
-) -> LabelsAndConnotationsResponse:
-    url = f'{endpoint}entity/{entity_type}/{entity_id}/labels'
-    headers = signer.sign_url(url)
-    raw_resp = _session.get(url, headers=headers, timeout=_REQUEST_TIMEOUT_SECS)
-    logger.info(f'[get_labels_for_entity] status code is {raw_resp.status_code}')
-    raw_resp.raise_for_status()
-    return LabelsAndConnotationsResponse.parse_obj(raw_resp.json())
-
-
-class EntityLabelDisagreeRequest(BaseModel):
-    label_name: str
-    description: str
-    admin_email: str
-    expires_at: Optional[datetime]
 
 
 @dataclass
@@ -342,22 +338,3 @@ class EntityLabelMutationsResult:
     mutations that were dropped for one reason or another. each dropped mutation is
     given a drop reason
     """
-
-
-class EntityLabelDisagreeResponse(BaseModel):
-    mutation_result: EntityLabelMutationsResult
-    labels: Dict[str, LabelState]
-    expires_at: Optional[datetime]
-
-
-def disagree_wth_label(
-    endpoint: str, signer: 'Signer', entity_type: str, entity_id: str, label_disagreement: EntityLabelDisagreeRequest
-) -> EntityLabelDisagreeResponse:
-    url = f'{endpoint}entity/{entity_type}/{entity_id}/labels/disagree'
-
-    label_disagreement_bytes = label_disagreement.json().encode()
-    headers = signer.sign(label_disagreement_bytes)
-
-    raw_resp = _session.post(url, headers=headers, data=label_disagreement_bytes, timeout=_REQUEST_TIMEOUT_SECS)
-    raw_resp.raise_for_status()
-    return EntityLabelDisagreeResponse.parse_obj(raw_resp.json())
