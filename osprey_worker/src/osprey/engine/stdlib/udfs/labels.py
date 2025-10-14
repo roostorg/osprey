@@ -34,6 +34,13 @@ class LabelArguments(ArgumentsBase):
     """An entity to mutate a label on."""
     label: ConstExpr[str]
     """The label to mutate."""
+    # NOTE(ayubun): delayed actions are removed; they are legacy code from when discord used osprey
+    #               to trigger webhooks upon label adds/removes.
+    #
+    #               we may eventually add something *similar* to this in the future? but i suspect
+    #               that a better abstraction would be to have any sort of "external impact" come
+    #               from verdicts, which were created to be an output (whereas labels were created
+    #               to simply store state, thus making label webhooks a leaky abstraction)
     # delay_action_by: Optional[TimeDeltaT] = None
     # """Optional: Delays a label action by a specified `TimeDeltaT` time."""
     apply_if: Optional[RuleT] = None
