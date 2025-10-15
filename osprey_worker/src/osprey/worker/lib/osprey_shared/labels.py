@@ -3,14 +3,10 @@ from collections import UserDict
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from enum import Enum, IntEnum
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import Dict, Optional
 
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.utils.request_utils import SessionWithRetries
-
-if TYPE_CHECKING:
-    pass
-
 
 # The requests session we will be using to contact osprey API.
 _session = SessionWithRetries()
@@ -226,9 +222,7 @@ class LabelState:
             # to make this function idempotent, we don't want to shift an empty state to the previous state.
             # we should always have reasons to shift
             return
-        self.previous_states.insert(
-            0, LabelStateInner(status=copy.copy(self.status), reasons=copy.deepcopy(self.reasons))
-        )
+        self.previous_states.insert(0, LabelStateInner(status=self.status, reasons=copy.deepcopy(self.reasons)))
         self.reasons = LabelReasons()
 
     def try_apply_desired_state(self, desired_state: LabelStateInner) -> MutationDropReason | None:

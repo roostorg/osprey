@@ -160,8 +160,7 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
                 added.append(label_name)
                 continue
             current_state = new_labels.labels[label_name]
-            # tbh idk enough about python to know if this copy is necessary but better safe than sorry
-            prev_status = copy.copy(current_state.status)
+            prev_status = current_state.status
             drop_reason = current_state.try_apply_desired_state(desired_state)
             if drop_reason:
                 # if the current state rejected the desired state, we will drop the mutation(s) with the provided drop reason

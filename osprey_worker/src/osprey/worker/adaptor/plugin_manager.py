@@ -61,7 +61,12 @@ def bootstrap_udfs() -> tuple[UDFRegistry, UDFHelpers]:
 
         udfs.extend([HasLabel, LabelAdd, LabelRemove])
 
-        labels_provider = LabelsProvider(plugin_manager.hook.regiser_labels_service())
+        provider_or_service: LabelsProvider | LabelsServiceBase = plugin_manager.hook.register_labels_service()
+        if isinstance(provider_or_service, LabelsProvider):
+            labels_provider = provider_or_service
+        else:
+            labels_provider = LabelsProvider(labels_service=provider_or_service)
+
         udf_helpers.set_udf_helper(HasLabel, labels_provider)
 
     return udf_registry, udf_helpers
@@ -85,7 +90,7 @@ def bootstrap_labels_provider() -> LabelsProvider:
     load_all_osprey_plugins()
     if not has_labels_service():
         raise NotImplementedError('Labels provider assumes register_labels_service is implemented.')
-    provider_or_service: LabelsProvider | LabelsServiceBase = plugin_manager.hook.regiser_labels_service()
+    provider_or_service: LabelsProvider | LabelsServiceBase = plugin_manager.hook.register_labels_service()
     if isinstance(provider_or_service, LabelsProvider):
         return provider_or_service
     return LabelsProvider(provider_or_service)
