@@ -1,25 +1,21 @@
 import abc
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, DefaultDict, Dict, List, Mapping, Optional, Sequence
+from typing import Any, DefaultDict, Dict, Mapping, Optional, Sequence
 
 import gevent
 import sentry_sdk
 from osprey.engine.executor.execution_context import (
     ExecutionResult,
-    ExtendedEntityMutation,
 )
 from osprey.engine.language_types.entities import EntityT
 from osprey.engine.language_types.labels import LabelEffect
 from osprey.engine.stdlib.udfs.rules import RuleT
 from osprey.worker.lib.ddtrace_utils import trace
 from osprey.worker.lib.instruments import metrics
-from osprey.worker.lib.osprey_shared.labels import ApplyEntityMutationReply, EntityMutation
+from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation
 from osprey.worker.lib.osprey_shared.logging import DynamicLogSampler, get_logger
-from osprey.worker.lib.storage.labels import LabelProvider
-from osprey.worker.sinks.sink.output_sink_utils.constants import MutationEventType
-from osprey.worker.ui_api.osprey.validators.entities import EntityKey
-from tenacity import retry, stop_after_attempt, wait_exponential
+from osprey.worker.lib.storage.labels import LabelsProvider
 
 logger = get_logger()
 
@@ -104,22 +100,19 @@ class StdoutOutputSink(BaseOutputSink):
 
 def _create_entity_mutation(
     label_effect: LabelEffect, rule: RuleT, expires_at: Optional[datetime]
-) -> ExtendedEntityMutation:
-    return ExtendedEntityMutation(
-        mutation=EntityMutation(
-            label_name=label_effect.name,
-            reason_name=rule.name,
-            status=label_effect.status,
-            description=rule.description,
-            features=rule.features,
-            expires_at=expires_at,
-        ),
-        delay_action_by=label_effect.delay_action_by,
+) -> EntityLabelMutation:
+    return EntityLabelMutation(
+        label_name=label_effect.name,
+        reason_name=rule.name,
+        status=label_effect.status,
+        description=rule.description,
+        features=rule.features,
+        expires_at=expires_at,
     )
 
 
-def _get_label_effects_from_result(result: ExecutionResult) -> Mapping[EntityT[Any], List[ExtendedEntityMutation]]:
-    effects: DefaultDict[EntityT[Any], List[ExtendedEntityMutation]] = defaultdict(list)
+def _get_label_effects_from_result(result: ExecutionResult) -> Mapping[EntityT[Any], list[EntityLabelMutation]]:
+    effects: DefaultDict[EntityT[Any], list[EntityLabelMutation]] = defaultdict(list)
 
     for label_effect in result.effects.get(LabelEffect, []):
         # assert for typing
@@ -157,62 +150,18 @@ def _get_label_effects_from_result(result: ExecutionResult) -> Mapping[EntityT[A
 class LabelOutputSink(BaseOutputSink):
     """An output sink that will send event effects to the label service."""
 
-    def __init__(self, label_provider: LabelProvider) -> None:
-        self._label_provider = label_provider
+    def __init__(self, labels_provider: LabelsProvider) -> None:
+        self._labels_provider = labels_provider
 
     def will_do_work(self, result: ExecutionResult) -> bool:
         return len(_get_label_effects_from_result(result)) > 0
 
     def push(self, result: ExecutionResult) -> None:
         for entity, mutations in _get_label_effects_from_result(result).items():
-            entity_key = EntityKey(type=entity.type, id=str(entity.id))
-            self.apply_label_mutations(
-                MutationEventType.OSPREY_ACTION,
-                str(result.action.action_id),
-                entity_key,
+            _ = self._labels_provider.apply_entity_label_mutations(
+                entity,
                 mutations,
-                result.extracted_features,
-                mutation_event_action_name=result.action.action_name,
             )
-
-    @retry(wait=wait_exponential(min=0.5, max=5), stop=stop_after_attempt(3))
-    def apply_entity_mutation_with_retry(
-        self, entity_key: EntityKey, mutations: Sequence[ExtendedEntityMutation]
-    ) -> ApplyEntityMutationReply:
-        return self._label_provider.apply_entity_mutation(
-            entity_key=entity_key, mutations=[extended_mutation.mutation for extended_mutation in mutations]
-        )
-
-    def apply_label_mutations(
-        self,
-        mutation_event_type: MutationEventType,
-        mutation_event_id: str,
-        entity_key: EntityKey,
-        mutations: Sequence[ExtendedEntityMutation],
-        features: Optional[Dict[str, Any]] = None,
-        mutation_event_action_name: str = '',
-    ) -> ApplyEntityMutationReply:
-        if not entity_key.id:
-            metrics.increment(
-                'output_sink.apply_entity_mutation',
-                tags=['status:skipped', 'reason:no_entity_id', f'entity_type:{entity_key.type}'],
-            )
-            return ApplyEntityMutationReply(
-                unchanged=[mutation.mutation.label_name for mutation in mutations],
-            )
-
-        try:
-            result: ApplyEntityMutationReply = self.apply_entity_mutation_with_retry(entity_key, mutations)
-            metrics.increment('output_sink.apply_entity_mutation', tags=['status:success'])
-        except Exception as e:
-            logger.error(
-                f'Failed to apply entity mutation on entity of type: {entity_key.type} with id: {entity_key.id} - {e}',
-                exc_info=True,
-            )
-            metrics.increment('output_sink.apply_entity_mutation', tags=['status:failure'])
-            raise e
-
-        return result
 
     def stop(self) -> None:
-        pass
+        self._labels_provider.stop()

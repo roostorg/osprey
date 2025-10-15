@@ -4,21 +4,21 @@ import gzip
 import json
 from abc import ABC, abstractmethod
 from datetime import datetime
+from io import BytesIO
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
 
 import gevent
 import google.cloud.storage as storage
-from osprey.worker.lib.snowflake import Snowflake
 import pytz
 from google.api_core import retry
 from google.cloud.bigtable import row_filters
 from google.cloud.bigtable.row import Row
-from io import BytesIO
 from minio import Minio
 from minio.error import S3Error
 from osprey.engine.executor.execution_context import ExecutionResult
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
+from osprey.worker.lib.snowflake import Snowflake
 from osprey.worker.lib.storage.bigtable import osprey_bigtable
 from pydantic.main import BaseModel
 

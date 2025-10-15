@@ -1,7 +1,7 @@
 from typing import List, Sequence
 
 from kafka import KafkaProducer
-from osprey.worker.adaptor.plugin_manager import hookimpl_osprey, bootstrap_execution_result_store
+from osprey.worker.adaptor.plugin_manager import bootstrap_execution_result_store, hookimpl_osprey
 from osprey.worker.lib.config import Config
 from osprey.worker.sinks.sink.kafka_output_sink import KafkaOutputSink
 from osprey.worker.sinks.sink.output_sink import BaseOutputSink, StdoutOutputSink

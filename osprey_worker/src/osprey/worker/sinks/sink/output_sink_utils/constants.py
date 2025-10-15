@@ -10,13 +10,6 @@ class OspreyAnalyticsEvents(str, Enum):
     RULES_VISUALIZER_GEN_GRAPH = 'network_action_osprey_rules_visualizer_generate_graph'
 
 
-class MutationEventType(str, Enum):
-    OSPREY_ACTION = 'osprey_action'
-    BULK_ACTION = 'bulk_action'
-    LABEL_DISAGREEMENT = 'label_disagreement'
-    MANUAL_UPDATE = 'manual_update'
-
-
 # There are more types, currently listing the ones we need to use in code
 class EntityType(str, Enum):
     USER = 'User'

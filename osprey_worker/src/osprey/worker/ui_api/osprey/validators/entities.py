@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional, Type
 
@@ -8,11 +7,6 @@ from osprey.worker.lib.osprey_shared.labels import LabelStatus
 from osprey.worker.ui_api.osprey.lib.druid import TimeseriesDruidQuery
 from osprey.worker.ui_api.osprey.lib.marshal import FlaskRequestMarshaller, T
 from pydantic import BaseModel
-
-
-@dataclass(frozen=True)
-class EntityKey(EntityT[str]):
-    pass
 
 
 class EntityMarshaller(FlaskRequestMarshaller):
@@ -26,7 +20,7 @@ class EntityMarshaller(FlaskRequestMarshaller):
 
 
 class GetLabelsForEntityRequest(BaseModel, EntityMarshaller):
-    entity: EntityKey
+    entity: EntityT[str]
 
 
 class EventCountsByFeatureForEntityQuery(TimeseriesDruidQuery, EntityMarshaller):
@@ -41,5 +35,5 @@ class EntityLabelMutation(BaseModel):
 
 
 class ManualEntityLabelMutationRequest(BaseModel, EntityMarshaller):
-    entity: EntityKey
+    entity: EntityT[str]
     mutations: List[EntityLabelMutation]

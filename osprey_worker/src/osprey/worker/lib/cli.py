@@ -2,6 +2,9 @@
 import sys
 from pathlib import Path  # noqa: E402
 
+from osprey.engine.language_types.entities import EntityT
+from osprey.worker.adaptor.plugin_manager import bootstrap_labels_provider
+from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation, LabelStatus
 from osprey.worker.lib.patcher import patch_all  # noqa: E402
 
 patch_all()  # please ensure this occurs before *any* other imports !
@@ -12,9 +15,7 @@ import ipaddress  # noqa: E402
 import logging  # noqa: E402
 import os  # noqa: E402
 import subprocess  # noqa: E402
-import time  # noqa: E402
-import uuid  # noqa: E402
-from typing import TYPE_CHECKING, Any, Optional, Set, Union  # noqa: E402
+from typing import Any, Optional, Set, Union  # noqa: E402
 
 import click  # noqa: E402
 from click import Context, Parameter, ParamType  # noqa: E402
@@ -24,16 +25,6 @@ configure_logging()
 
 # Import safety record and common protos
 from osprey.engine.ast.sources import Sources  # noqa: E402
-from osprey.engine.executor.execution_context import ExtendedEntityMutation  # noqa: E402
-from osprey.rpc.labels.v1.service_pb2 import (  # noqa: E402
-    Entity,
-    EntityKey,
-    EntityMutation,
-    LabelStatus,
-)
-from osprey.worker.lib.osprey_engine import bootstrap_engine  # noqa: E402
-from osprey.worker.lib.publisher import PubSubPublisher  # noqa: E402
-from osprey.worker.lib.singletons import CONFIG  # noqa: E402
 from osprey.worker.lib.sources_publisher import (  # noqa: E402
     upload_dependencies_mapping,
     validate_and_push,
@@ -42,15 +33,9 @@ from osprey.worker.lib.storage import (  # noqa: E402
     access_audit_log,  # noqa: E402
     entity_label_webhook,
     labels,
-    postgres,
     stored_execution_result,
 )
 from osprey.worker.lib.utils.click_utils import EnumChoicePb2  # noqa: E402
-from osprey.worker.sinks.sink.output_sink import LabelOutputSink  # noqa: E402
-from osprey.worker.sinks.sink.output_sink_utils.constants import MutationEventType  # noqa: E402
-
-if TYPE_CHECKING:
-    from osprey.rpc.labels.v1.service_pb2 import LabelStatusValue
 
 
 @click.group()
@@ -140,9 +125,9 @@ def shell(auto_import: str) -> None:
         'access_audit_log': access_audit_log,
         'entity_label_webhook': entity_label_webhook,
         'stored_execution_result': stored_execution_result,
-        'EntityKey': EntityKey,
-        'Entity': Entity,
-        'EntityMutation': EntityMutation,
+        'EntityT': EntityT,
+        # 'Entity': Entity,
+        'EntityLabelMutation': EntityLabelMutation,
         'LabelStatus': LabelStatus,
     }
 
@@ -207,6 +192,21 @@ def shell(auto_import: str) -> None:
         code.InteractiveConsole(namespace).interact()
 
 
+def get_lines_from_file_as_set(file_path: str) -> Set[str]:
+    """
+    Collects all lines from a file in an unordered set.
+    This collection does not include empty lines.
+    """
+    lines = []
+    with open(file_path) as f:
+        lines = f.readlines()
+        for i in range(len(lines) - 1, -1, -1):
+            lines[i] = lines[i].replace('\n', '')
+            if not lines[i] or lines[i] == '':
+                del lines[i]
+    return set(lines)
+
+
 @cli.command()
 @click.argument('entity_type')
 @click.argument('entity_id')
@@ -231,22 +231,21 @@ def shell(auto_import: str) -> None:
     default=False,
     help=('Boolean option to make the label expire instantly. Supplying False means the label does not expire.'),
 )
-def apply_label_without_effects(
+def apply_label(
     entity_type: str,
     entity_id: str,
     label_name: str,
-    label_status: 'LabelStatusValue',
+    label_status: LabelStatus,
     reason: Optional[str],
     description: Optional[str],
     expire_instantly: bool,
 ) -> None:
     """Manually apply a label to an entity.
 
-    Mainly intended to be used for debugging purposes or importing lists of labels from external sources. Does *NOT*
-    do anything with label effects (eg, does *NOT* send webhooks for changed labels).
+    Mainly intended to be used for debugging purposes or importing lists of labels from external sources.
     """
     if expire_instantly:
-        mutation = EntityMutation(
+        mutation = EntityLabelMutation(
             label_name=label_name,
             reason_name=reason or 'CliLabelMutationWithoutEffects',
             status=label_status,
@@ -254,123 +253,18 @@ def apply_label_without_effects(
             expires_at=(datetime.datetime.now() + datetime.timedelta(seconds=5)),
         )
     else:
-        mutation = EntityMutation(
+        mutation = EntityLabelMutation(
             label_name=label_name,
             reason_name=reason or 'CliLabelMutationWithoutEffects',
             status=label_status,
             description=description or 'Manually changed from the command line for debugging.',
         )
 
-    result = labels.apply_entity_mutation(entity_key=EntityKey(type=entity_type, id=entity_id), mutations=[mutation])
-
-    print(result)
-
-
-def get_event_effects_output_sink() -> LabelOutputSink:
-    config = CONFIG.instance()
-    config.configure_from_env()
-
-    postgres.init_from_config('osprey_db')
-    engine = bootstrap_engine()
-    analytics_pubsub_project_id = config.get_str('PUBSUB_DATA_PROJECT_ID', 'osprey-dev')
-    analytics_pubsub_topic_id = config.get_str('PUBSUB_ANALYTICS_EVENT_TOPIC_ID', 'osprey-analytics')
-    analytics_publisher = PubSubPublisher(analytics_pubsub_project_id, analytics_pubsub_topic_id)
-
-    osprey_webhook_pubsub_project = config.get_str('PUBSUB_OSPREY_WEBHOOKS_PROJECT_ID', 'osprey-dev')
-    osprey_webhook_pubsub_topic = config.get_str('PUBSUB_OSPREY_WEBHOOKS_TOPIC_ID', 'osprey-webhooks')
-    webhooks_publisher = PubSubPublisher(osprey_webhook_pubsub_project, osprey_webhook_pubsub_topic)
-    return LabelOutputSink(engine, analytics_publisher, webhooks_publisher)
-
-
-@cli.command()
-@click.argument('entity_type')
-@click.argument('entity_id')
-@click.argument('label_name')
-@click.argument('label_status', type=EnumChoicePb2(LabelStatus))
-@click.option(
-    '--reason',
-    help=(
-        'If specified, the reason the label is being applied.'
-        ' Should be camel case, without spaces. Defaults to "CliLabelMutationWithEffects".'
-    ),
-)
-@click.option(
-    '--description',
-    help=(
-        'If specified, the description for why the label is being applied.'
-        ' Should be an English sentence. Defaults to "Manually changed from the command line for debugging."'
-    ),
-)
-@click.option(
-    '--expire-instantly',
-    default=False,
-    help=('Boolean option to make the label expire instantly. Supplying False means the label does not expire.'),
-)
-@click.option(
-    '--delay-by',
-    default=0,
-    help=('Number of seconds to delay the action by. Defaults to instant.'),
-)
-def apply_label_with_effects(
-    entity_type: str,
-    entity_id: str,
-    label_name: str,
-    label_status: 'LabelStatusValue',
-    reason: Optional[str],
-    description: Optional[str],
-    expire_instantly: bool,
-    delay_by: int,
-) -> None:
-    """Manually apply a label to an entity.
-
-    This method applies label effects (eg, sends webhooks for changed labels).
-    """
-    if expire_instantly:
-        mutation = EntityMutation(
-            label_name=label_name,
-            reason_name=reason or 'CliLabelMutationWithEffects',
-            status=label_status,
-            description=description or 'Manually changed from the command line for debugging.',
-            expires_at=(datetime.datetime.now() + datetime.timedelta(seconds=5)),
-        )
-    else:
-        mutation = EntityMutation(
-            label_name=label_name,
-            reason_name=reason or 'CliLabelMutationWithEffects',
-            status=label_status,
-            description=description or 'Manually changed from the command line for debugging.',
-        )
-
-    if not delay_by:
-        correctly_typed_delay_by = None
-    else:
-        correctly_typed_delay_by = datetime.timedelta(seconds=float(delay_by))
-
-    result = get_event_effects_output_sink().apply_label_mutations(
-        mutation_event_type=MutationEventType.MANUAL_UPDATE,
-        mutation_event_id=str(uuid.uuid4()),
-        entity_key=EntityKey(type=entity_type, id=entity_id),
-        mutations=[ExtendedEntityMutation(mutation=mutation, delay_action_by=correctly_typed_delay_by)],
+    result = bootstrap_labels_provider().apply_entity_label_mutations(
+        entity=EntityT(type=entity_type, id=entity_id), mutations=[mutation]
     )
 
-    time.sleep(2)
-
     print(result)
-
-
-def get_lines_from_file_as_set(file_path: str) -> Set[str]:
-    """
-    Collects all lines from a file in an unordered set.
-    This collection does not include empty lines.
-    """
-    lines = []
-    with open(file_path) as f:
-        lines = f.readlines()
-        for i in range(len(lines) - 1, -1, -1):
-            lines[i] = lines[i].replace('\n', '')
-            if not lines[i] or lines[i] == '':
-                del lines[i]
-    return set(lines)
 
 
 @cli.command()
@@ -397,26 +291,25 @@ def get_lines_from_file_as_set(file_path: str) -> Set[str]:
     default=False,
     help=('Boolean option to make the label expire instantly. Supplying False means the label does not expire.'),
 )
-def bulk_apply_label_without_effects(
+def bulk_apply_label(
     entity_type: str,
     entity_ids_file_path: str,
     label_name: str,
-    label_status: 'LabelStatusValue',
+    label_status: LabelStatus,
     reason: Optional[str],
     description: Optional[str],
     expire_instantly: bool,
 ) -> None:
     """Manually apply a label to all entity IDs in the provided file at the file path.
 
-    Mainly intended to be used for debugging purposes or importing lists of labels from external sources. Does *NOT*
-    do anything with label effects (eg, does *NOT* send webhooks for changed labels).
+    Mainly intended to be used for debugging purposes or importing lists of labels from external sources.
     """
     entity_ids = get_lines_from_file_as_set(file_path=entity_ids_file_path)
     # I found that it *generally* took ~10ms per request; Multiply by 10.05 for 5% latency headroom
     expire_timestamp = datetime.datetime.now() + datetime.timedelta(milliseconds=int(len(entity_ids) * 10.05))
     print(f'Found {len(entity_ids)} entity IDs to label.\nETA: {int(len(entity_ids) * 10.05 / 100)} second(s)')
     if expire_instantly:
-        mutation = EntityMutation(
+        mutation = EntityLabelMutation(
             label_name=label_name,
             reason_name=reason or 'CliLabelMutationWithoutEffects',
             status=label_status,
@@ -424,7 +317,7 @@ def bulk_apply_label_without_effects(
             expires_at=expire_timestamp,
         )
     else:
-        mutation = EntityMutation(
+        mutation = EntityLabelMutation(
             label_name=label_name,
             reason_name=reason or 'CliLabelMutationWithoutEffects',
             status=label_status,
@@ -432,100 +325,15 @@ def bulk_apply_label_without_effects(
         )
 
     progress_tracker: CliCommandProgressTracker = CliCommandProgressTracker(total_actions=len(entity_ids))
+    provider = bootstrap_labels_provider()
     for entity_id in entity_ids:
-        labels.apply_entity_mutation(
-            entity_key=EntityKey(type=entity_type, id=entity_id),
+        provider.apply_entity_label_mutations(
+            entity=EntityT(type=entity_type, id=entity_id),
             mutations=[mutation],
         )
         progress_tracker.increment()
 
     print(f'Bulk labelling complete! Total labels applied: {progress_tracker.total_actions}')
-
-
-@cli.command()
-@click.argument('entity_type')
-@click.argument('entity_ids_file_path')
-@click.argument('label_name')
-@click.argument('label_status', type=EnumChoicePb2(LabelStatus))
-@click.option(
-    '--reason',
-    help=(
-        'If specified, the reason the label is being applied.'
-        ' Should be camel case, without spaces. Defaults to "CliLabelMutationWithEffects".'
-    ),
-)
-@click.option(
-    '--description',
-    help=(
-        'If specified, the description for why the label is being applied.'
-        ' Should be an English sentence. Defaults to "Manually changed from the command line for debugging."'
-    ),
-)
-@click.option(
-    '--expire-instantly',
-    default=False,
-    help=('Boolean option to make the label expire instantly. Supplying False means the label does not expire.'),
-)
-@click.option(
-    '--delay-by',
-    default=0,
-    help=('Number of seconds to delay the action by. Defaults to instant.'),
-)
-def bulk_apply_label_with_effects(
-    entity_type: str,
-    entity_ids_file_path: str,
-    label_name: str,
-    label_status: 'LabelStatusValue',
-    reason: Optional[str],
-    description: Optional[str],
-    expire_instantly: bool,
-    delay_by: int,
-) -> None:
-    """Manually apply a label to all entity IDs in the provided file at the file path.
-
-    This method applies label effects (eg, sends webhooks for changed labels).
-    """
-    entity_ids = get_lines_from_file_as_set(file_path=entity_ids_file_path)
-    event_id = str(uuid.uuid4())
-    event_effects_output_sink = get_event_effects_output_sink()
-    # I found that it *generally* took ~10ms per request; Multiply by 10.05 for 5% latency headroom
-    expire_timestamp = datetime.datetime.now() + datetime.timedelta(milliseconds=int(len(entity_ids) * 10.05))
-    print(f'Found {len(entity_ids)} entity IDs to label. Proceeding with analytics event ID {event_id}.')
-    print(f'ETA: {int(len(entity_ids) * 1.05 / 100)} second(s)')
-    if expire_instantly:
-        mutation = EntityMutation(
-            label_name=label_name,
-            reason_name=reason or 'CliLabelMutationWithEffects',
-            status=label_status,
-            description=description or 'Manually changed from the command line for debugging.',
-            expires_at=expire_timestamp,
-        )
-    else:
-        mutation = EntityMutation(
-            label_name=label_name,
-            reason_name=reason or 'CliLabelMutationWithEffects',
-            status=label_status,
-            description=description or 'Manually changed from the command line for debugging.',
-        )
-
-    if not delay_by:
-        correctly_typed_delay_by = None
-    else:
-        correctly_typed_delay_by = datetime.timedelta(seconds=float(delay_by))
-
-    progress_tracker: CliCommandProgressTracker = CliCommandProgressTracker(total_actions=len(entity_ids))
-    for entity_id in entity_ids:
-        event_effects_output_sink.apply_label_mutations(
-            mutation_event_type=MutationEventType.MANUAL_UPDATE,
-            mutation_event_id=event_id,
-            entity_key=EntityKey(type=entity_type, id=entity_id),
-            mutations=[ExtendedEntityMutation(mutation=mutation, delay_action_by=correctly_typed_delay_by)],
-        )
-        progress_tracker.increment()
-
-    time.sleep(2)
-
-    print(f'Bulk labelling complete! Total labels applied: {progress_tracker.total_actions}\nEvent ID: {event_id}')
 
 
 class IpAddress(ParamType):

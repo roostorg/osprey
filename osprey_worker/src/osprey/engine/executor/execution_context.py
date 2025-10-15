@@ -3,7 +3,7 @@ import logging
 import traceback
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -12,7 +12,6 @@ from typing import (
     Iterable,
     List,
     Mapping,
-    Optional,
     Sequence,
     Set,
     Type,
@@ -39,7 +38,6 @@ from osprey.engine.language_types.post_execution_convertible import PostExecutio
 from osprey.engine.language_types.verdicts import VerdictEffect
 from osprey.engine.utils.types import add_slots, cached_property
 from osprey.rpc.common.v1.verdicts_pb2 import Verdicts
-from osprey.worker.lib.osprey_shared.labels import EntityMutation
 from result import Result, UnwrapError
 
 if TYPE_CHECKING:
@@ -65,13 +63,6 @@ class GeventTimeoutException(Exception):
 
 class ExternalServiceException(Exception):
     """Indicates that an external service call failed or returned unexpected data."""
-
-
-@add_slots
-@dataclass
-class ExtendedEntityMutation:
-    mutation: EntityMutation
-    delay_action_by: Optional[timedelta]
 
 
 class ExecutionContext:

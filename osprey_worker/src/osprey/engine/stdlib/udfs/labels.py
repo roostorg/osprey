@@ -24,19 +24,25 @@ from osprey.engine.udf.base import BatchableUDFBase
 from osprey.engine.utils.get_closest_string_within_threshold import (
     get_closest_string_within_threshold,
 )
-from osprey.worker.lib.osprey_shared.labels import Labels
-from osprey.worker.lib.storage.labels import LabelProvider
+from osprey.worker.lib.osprey_shared.labels import EntityLabels
+from osprey.worker.lib.storage.labels import LabelsProvider
 from result import Err, Ok, Result
 
 
-# TODO: move back to labels.py once we actually make it stdlib
 class LabelArguments(ArgumentsBase):
     entity: EntityT[Any]
     """An entity to mutate a label on."""
     label: ConstExpr[str]
     """The label to mutate."""
-    delay_action_by: Optional[TimeDeltaT] = None
-    """Optional: Delays a label action by a specified `TimeDeltaT` time."""
+    # NOTE(ayubun): delayed actions are removed; they are legacy code from when discord used osprey
+    #               to trigger webhooks upon label adds/removes.
+    #
+    #               we may eventually add something *similar* to this in the future? but i suspect
+    #               that a better abstraction would be to have any sort of "external impact" come
+    #               from verdicts, which were created to be an output (whereas labels were created
+    #               to simply store state, thus making label webhooks a leaky abstraction)
+    # delay_action_by: Optional[TimeDeltaT] = None
+    # """Optional: Delays a label action by a specified `TimeDeltaT` time."""
     apply_if: Optional[RuleT] = None
     """Optional: Conditions that must be met for the label mutation to succeed."""
     expires_after: Optional[TimeDeltaT] = None
@@ -49,7 +55,7 @@ def synthesize_effect(status: LabelStatus, arguments: LabelArguments) -> LabelEf
         status=status,
         name=arguments.label.value,
         expires_after=TimeDeltaT.inner_from_optional(arguments.expires_after),
-        delay_action_by=TimeDeltaT.inner_from_optional(arguments.delay_action_by),
+        # delay_action_by=TimeDeltaT.inner_from_optional(arguments.delay_action_by),
         dependent_rule=arguments.apply_if,
         # NOTE: This is fairly significant, if this call node has an `apply_if` ast, but
         # the resolved apply_if is None, that means that the evaluation of the rule failed.
@@ -123,7 +129,9 @@ class BatchableHasLabelArguments:
     desired_status: Optional[_SimpleStatus]
 
 
-class HasLabel(HasHelperInternal[LabelProvider], BatchableUDFBase[HasLabelArguments, bool, BatchableHasLabelArguments]):
+class HasLabel(
+    HasHelperInternal[LabelsProvider], BatchableUDFBase[HasLabelArguments, bool, BatchableHasLabelArguments]
+):
     """Returns `True` if the specified label is currently present in a given non-expired state on a provided Entity."""
 
     category = UdfCategories.ENGINE
@@ -157,7 +165,7 @@ class HasLabel(HasHelperInternal[LabelProvider], BatchableUDFBase[HasLabelArgume
             validation_context.add_error(message='unknown label', span=arguments.label.argument_span, hint=hint)
 
     def _execute(
-        self, execution_context: ExecutionContext, arguments: BatchableHasLabelArguments, entity_labels: Labels
+        self, execution_context: ExecutionContext, arguments: BatchableHasLabelArguments, entity_labels: EntityLabels
     ) -> bool:
         desired_manual = _ManualType.get(arguments.manual)
         desired_delay = TimeDeltaT.inner_from_optional(arguments.min_label_age)

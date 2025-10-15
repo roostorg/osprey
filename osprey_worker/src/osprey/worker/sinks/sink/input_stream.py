@@ -23,7 +23,6 @@ from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.storage.postgres import Model, scoped_session
 from osprey.worker.lib.utils.dates import parse_go_timestamp
-from osprey.worker.sinks.sink.output_sink_utils.models import OspreyEntityLabelWebhook
 from osprey.worker.sinks.utils.acking_contexts import (
     BaseAckingContext,
     NoopAckingContext,
@@ -299,62 +298,6 @@ class SynchronousPubSubMultiProtoInputStream(BasePubSubInputStream[PullPubSubMes
                         publish_time=message.publish_time.ToDatetime(),
                         attributes={k: v for k, v in message.attributes.items()},
                     )
-
-
-class PubSubEntityLabelWebhookInputStream(BasePubSubInputStream[BaseAckingContext[OspreyEntityLabelWebhook]]):
-    def __init__(
-        self,
-        subscriber: SubscriberClient,
-        subscription_path: str,
-        max_messages: int = 250,
-        gevent_queue_size: int = 1000,
-    ):
-        super().__init__(subscriber, subscription_path, max_messages)
-        self.queue = GeventQueue(maxsize=gevent_queue_size)
-
-    def _worker(self) -> None:
-        logger.info('Webhook Pubsub worker spawned')
-
-        def stream_callback(message: Message) -> None:
-            self.queue.put(message)
-
-        with self.subscriber as subscriber:
-            flow_control = types.FlowControl(
-                max_messages=self.max_messages,
-                # assume 4KB per message
-                max_bytes=4_000 * self.max_messages,
-                max_lease_duration=60 * 60,
-                max_duration_per_lease_extension=600,
-            )
-            streaming_pull_future = subscriber.subscribe(
-                self.subscription_path, callback=stream_callback, flow_control=flow_control
-            )
-
-            while True:
-                try:
-                    streaming_pull_future.result()
-                except Exception as e:
-                    logger.error(e)
-                    sentry_sdk.capture_exception(error=e)
-                    continue
-
-    def _gen(self) -> Iterator[PubSubMessageAckingContext[OspreyEntityLabelWebhook]]:
-        gevent.spawn(self._worker)
-        while True:
-            try:
-                received_message = self.queue.get()
-                assert isinstance(received_message, Message)
-                metrics.increment('webhook_pubsub_reads', tags=['status:success'])
-
-                webhook_object_data = received_message.data
-                webhook_object = OspreyEntityLabelWebhook.parse_raw(webhook_object_data)
-
-                yield PubSubMessageAckingContext(webhook_object, received_message)
-            except Exception:
-                metrics.increment('webhook_pubsub_reads', tags=['status:failure'])
-                logger.exception('Error while generating input message')
-                sentry_sdk.capture_exception()
-                continue
 
 
 # Use for utility scripts, not for production

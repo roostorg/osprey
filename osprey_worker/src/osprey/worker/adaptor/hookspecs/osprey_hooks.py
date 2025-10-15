@@ -8,7 +8,7 @@ from osprey.engine.executor.execution_context import Action
 from osprey.engine.udf.base import UDFBase
 from osprey.worker.adaptor.constants import OSPREY_ADAPTOR
 from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
-from osprey.worker.lib.storage.labels import LabelProvider
+from osprey.worker.lib.storage.labels import LabelsProvider, LabelsServiceBase
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 
@@ -56,6 +56,8 @@ def register_execution_result_store(config: Config) -> ExecutionResultStore:
 
 
 @hookspec(firstresult=True)
-def register_label_provider(config: Config) -> LabelProvider:
-    """Register an execution result storage backend instance."""
-    raise NotImplementedError('register_label_provider must be implemented by the plugin')
+def register_labels_service(config: Config) -> LabelsServiceBase | LabelsProvider:
+    """Register a labels service backend. This can be achieved by implementing a labels service
+    and utilizing the provided labels provider, or by overriding the labels provider to fit your
+    business needs"""
+    raise NotImplementedError('register_labels_service must be implemented by the plugin')

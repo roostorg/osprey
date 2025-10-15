@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import timedelta
-from enum import IntEnum
 from typing import Any, List, Optional, Self, cast
 
 from osprey.engine.executor.custom_extracted_features import CustomExtractedFeature
@@ -9,28 +8,10 @@ from osprey.engine.shared_constants import (
     ENTITY_LABEL_MUTATION_DIMENSION_NAME,
     ENTITY_LABEL_MUTATION_DIMENSION_VALUE,
 )
+from osprey.worker.lib.osprey_shared.labels import LabelStatus
 
 from .entities import EntityT
 from .rules import RuleT, add_slots
-
-
-class LabelStatus(IntEnum):
-    ADDED = 0
-    REMOVED = 1
-    MANUALLY_ADDED = 2
-    MANUALLY_REMOVED = 3
-
-    def effective_label_status(self) -> 'LabelStatus':
-        """
-        Returns the effective status of the label, which is what the upstreams that are observing label
-        status changes will see. Which is to say, the upstreams will currently not see if the label status was
-        manually added or manually removed, just that it was added or removed.
-        """
-        match self:
-            case LabelStatus.ADDED | LabelStatus.MANUALLY_ADDED:
-                return LabelStatus.ADDED
-            case LabelStatus.REMOVED | LabelStatus.MANUALLY_REMOVED:
-                return LabelStatus.REMOVED
 
 
 @add_slots
@@ -51,8 +32,8 @@ class LabelEffect(EffectToCustomExtractedFeatureBase[List[str]]):
     expires_after: Optional[timedelta] = None
     """If set, the label effect has a timed expiration, which means that the reason will expire after this time."""
 
-    delay_action_by: Optional[timedelta] = None
-    """If set, the propagation of the effect to the upstream (if configured) will be delayed.S"""
+    # delay_action_by: Optional[timedelta] = None
+    # """If set, the propagation of the effect to the upstream (if configured via LabelsService.after_add or LabelsService.after_remove) will be delayed."""
 
     dependent_rule: Optional[RuleT] = None
     """If set, the effect will only be applied if the dependent rule evaluates to true."""
