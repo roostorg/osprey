@@ -16,7 +16,6 @@ from google.cloud.bigtable.row import Row
 from minio import Minio
 from minio.error import S3Error
 from osprey.engine.executor.execution_context import ExecutionResult
-from osprey.worker._stdlibplugin.execution_result_store_chooser import get_rules_execution_result_storage_backend
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.snowflake import Snowflake
@@ -484,6 +483,7 @@ class ExecutionResultStorageService:
 
 def bootstrap_execution_result_storage_service() -> ExecutionResultStorageService:
     """Create an ExecutionResultStorageService with the configured storage backend."""
+    from osprey.worker._stdlibplugin.execution_result_store_chooser import get_rules_execution_result_storage_backend
     from osprey.worker.lib.singletons import CONFIG
 
     config = CONFIG.instance()
