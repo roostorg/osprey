@@ -3,10 +3,9 @@ from typing import Dict
 
 from osprey.engine.ast import grammar
 from osprey.engine.ast_validator.validation_context import ValidationContext
+from osprey.engine.query_language.udfs.registry import register
 from osprey.engine.udf.arguments import ArgumentsBase, ConstExpr
 from osprey.engine.udf.base import QueryUdfBase
-
-from .registry import register
 
 
 class Arguments(ArgumentsBase):
