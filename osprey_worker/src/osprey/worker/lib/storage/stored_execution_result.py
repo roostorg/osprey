@@ -16,11 +16,11 @@ from google.cloud.bigtable.row import Row
 from minio import Minio
 from minio.error import S3Error
 from osprey.engine.executor.execution_context import ExecutionResult
-from osprey.worker._stdlibplugin.execution_result_store_chooser import get_rules_execution_result_store_backend
+from osprey.worker._stdlibplugin.execution_result_store_chooser import get_rules_execution_result_storage_backend
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.snowflake import Snowflake
-from osprey.worker.lib.storage import ExecutionResultStoreBackendType
+from osprey.worker.lib.storage import ExecutionResultStorageBackendType
 from osprey.worker.lib.storage.bigtable import osprey_bigtable
 from pydantic.main import BaseModel
 
@@ -488,8 +488,10 @@ def bootstrap_execution_result_storage_service() -> ExecutionResultStorageServic
 
     config = CONFIG.instance()
 
-    storage_backend = get_rules_execution_result_store_backend(
-        backend_type=ExecutionResultStoreBackendType(config.get_str('OSPREY_EXECUTION_RESULT_STORAGE_BACKEND', 'none'))
+    storage_backend = get_rules_execution_result_storage_backend(
+        backend_type=ExecutionResultStorageBackendType(
+            config.get_str('OSPREY_EXECUTION_RESULT_STORAGE_BACKEND', 'none')
+        )
     )
 
     if not storage_backend:

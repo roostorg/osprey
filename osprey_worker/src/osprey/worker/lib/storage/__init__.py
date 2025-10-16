@@ -1,7 +1,7 @@
 from enum import StrEnum, auto
 
 
-class ExecutionResultStoreBackendType(StrEnum):
+class ExecutionResultStorageBackendType(StrEnum):
     """Type of store used for execution results."""
 
     BIGTABLE = auto()
