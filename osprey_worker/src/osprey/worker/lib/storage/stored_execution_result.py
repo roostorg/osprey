@@ -494,7 +494,7 @@ def bootstrap_execution_result_storage_service() -> ExecutionResultStorageServic
         )
     )
 
-    if not storage_backend:
+    if storage_backend is None:
         raise AssertionError('No storage backend registered')
 
     return ExecutionResultStorageService(storage_backend)
