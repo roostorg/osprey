@@ -27,7 +27,7 @@ def register_output_sinks(config: Config) -> Sequence[BaseOutputSink]:
         )
 
     storage_backend_type = ExecutionResultStorageBackendType(
-        config.get_str('OSPREY_EXECUTION_RESULT_STORAGE_BACKEND', 'none')
+        config.get_str('OSPREY_EXECUTION_RESULT_STORAGE_BACKEND', 'none').lower()
     )
     storage_backend = get_rules_execution_result_storage_backend(backend_type=storage_backend_type)
 
