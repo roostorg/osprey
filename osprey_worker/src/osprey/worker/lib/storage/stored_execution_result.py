@@ -482,7 +482,7 @@ class ExecutionResultStorageService:
         return StoredExecutionResult.get_many(action_ids, self._storage_backend, data_censor_abilities)
 
 
-def bootstrap_execution_result_storage_service() -> Optional[ExecutionResultStorageService]:
+def bootstrap_execution_result_storage_service() -> ExecutionResultStorageService:
     """Create an ExecutionResultStorageService with the configured storage backend."""
     from osprey.worker.lib.singletons import CONFIG
 
