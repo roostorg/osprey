@@ -1,8 +1,10 @@
 from typing import List, Sequence
 
 from kafka import KafkaProducer
-from osprey.worker.adaptor.plugin_manager import bootstrap_execution_result_store, hookimpl_osprey
+from osprey.worker.adaptor.plugin_manager import hookimpl_osprey
 from osprey.worker.lib.config import Config
+from osprey.worker.lib.storage import ExecutionResultStoreType
+from osprey.worker.lib.storage.stored_execution_result import get_rules_execution_result_store
 from osprey.worker.sinks.sink.kafka_output_sink import KafkaOutputSink
 from osprey.worker.sinks.sink.output_sink import BaseOutputSink, StdoutOutputSink
 from osprey.worker.sinks.sink.stored_execution_result_output_sink import StoredExecutionResultOutputSink
@@ -23,7 +25,12 @@ def register_output_sinks(config: Config) -> Sequence[BaseOutputSink]:
                 kafka_producer=KafkaProducer(bootstrap_servers=bootstrap_servers, client_id=client_id),
             )
         )
-    execution_result_store = bootstrap_execution_result_store(config=config)
-    if execution_result_store is not None:
+
+    store_backend = ExecutionResultStoreType(config.get_str('OSPREY_EXECUTION_RESULT_STORAGE_BACKEND', 'none'))
+    execution_result_store = get_rules_execution_result_store(execution_result_store_type=store_backend)
+
+    # There may not be an execution result store configured, so check before adding the output sink
+    if execution_result_store:
         sinks.append(StoredExecutionResultOutputSink())
+
     return sinks

@@ -1,4 +1,5 @@
 # ruff: noqa: E402
+from google.cloud import storage
 from osprey.worker.lib.patcher import patch_all  # isort: skip
 
 patch_all()  # please ensure this occurs before *any* other imports !
@@ -83,6 +84,8 @@ def export_all_actions(
         return {'id': d['id'], 'timestamp': d['timestamp'], 'action_data': d['action_data']}
 
     storage_service = bootstrap_execution_result_storage_service()
+    if not storage_service:
+        raise
     druid_result = query_druid()
     while druid_result.action_ids:
         events = storage_service.get_many(action_ids=druid_result.action_ids)

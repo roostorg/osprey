@@ -16,9 +16,11 @@ from google.cloud.bigtable.row import Row
 from minio import Minio
 from minio.error import S3Error
 from osprey.engine.executor.execution_context import ExecutionResult
+from osprey.worker._stdlibplugin.execution_result_store_chooser import get_rules_execution_result_store
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.snowflake import Snowflake
+from osprey.worker.lib.storage import ExecutionResultStoreType
 from osprey.worker.lib.storage.bigtable import osprey_bigtable
 from pydantic.main import BaseModel
 
@@ -480,11 +482,19 @@ class ExecutionResultStorageService:
         return StoredExecutionResult.get_many(action_ids, self._storage_backend, data_censor_abilities)
 
 
-def bootstrap_execution_result_storage_service() -> ExecutionResultStorageService:
+def bootstrap_execution_result_storage_service() -> Optional[ExecutionResultStorageService]:
     """Create an ExecutionResultStorageService with the configured storage backend."""
-    from osprey.worker.adaptor.plugin_manager import bootstrap_execution_result_store
     from osprey.worker.lib.singletons import CONFIG
 
     config = CONFIG.instance()
-    storage_backend = bootstrap_execution_result_store(config)
+
+    storage_backend = get_rules_execution_result_store(
+        execution_result_store_type=ExecutionResultStoreType(
+            config.get_str('OSPREY_EXECUTION_RESULT_STORAGE_BACKEND', 'none')
+        )
+    )
+
+    if not storage_backend:
+        raise AssertionError('No storage backend registered')
+
     return ExecutionResultStorageService(storage_backend)
