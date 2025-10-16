@@ -139,7 +139,7 @@ services:
       dockerfile: osprey_worker/Dockerfile
     depends_on:
       - osprey_worker
-      - broker
+      - druid-broker
       - postgres
       - snowflake
       - bigtable
@@ -153,8 +153,8 @@ services:
       - DEBUG=true
       - FLASK_DEBUG=1
       - FLASK_ENV=development
-      - DRUID_URL=http://broker:8082
-      - POSTGRES_HOSTS={"osprey_db":"postgresql://druid:FoolishPassword@postgres:5432/druid"}
+      - DRUID_URL=http://druid-broker:8082
+      - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
       - DD_TRACE_ENABLED=False
       - DD_DOGSTATSD_DISABLE=True
       - OSPREY_RULES_PATH=/osprey/example_rules
@@ -241,7 +241,6 @@ services:
       - /bin/bash
     command: ["/osprey/example_data/generate_test_data.sh"]
 
-  # DRUID, HERE BE DRAGONS
   postgres:
     container_name: postgres
     image: postgres:latest
@@ -251,26 +250,27 @@ services:
       - metadata_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_PASSWORD=FoolishPassword
-      - POSTGRES_USER=druid
-      - POSTGRES_DB=druid
+      - POSTGRES_USER=osprey
+      - POSTGRES_DB=osprey
 
+  # DRUID, HERE BE DRAGONS
   # Need 3.5 or later for container nodes
-  zookeeper:
-    container_name: zookeeper
+  druid-zookeeper:
+    container_name: druid-zookeeper
     image: zookeeper:3.5.10
     ports:
       - "2181:2181"
     environment:
       - ZOO_MY_ID=1
 
-  coordinator:
+  druid-coordinator:
     image: apache/druid:34.0.0
-    container_name: coordinator
+    container_name: druid-coordinator
     volumes:
       - druid_shared:/opt/shared
       - coordinator_var:/opt/druid/var
     depends_on:
-      - zookeeper
+      - druid-zookeeper
       - postgres
     ports:
       - "8081:8081"
@@ -279,15 +279,15 @@ services:
     env_file:
       - druid/environment
 
-  broker:
+  druid-broker:
     image: apache/druid:34.0.0
-    container_name: broker
+    container_name: druid-broker
     volumes:
       - broker_var:/opt/druid/var
     depends_on:
-      - zookeeper
+      - druid-zookeeper
       - postgres
-      - coordinator
+      - druid-coordinator
     ports:
       - "8082:8082"
     command:
@@ -295,16 +295,16 @@ services:
     env_file:
       - druid/environment
 
-  historical:
+  druid-historical:
     image: apache/druid:34.0.0
-    container_name: historical
+    container_name: druid-historical
     volumes:
       - druid_shared:/opt/shared
       - historical_var:/opt/druid/var
     depends_on:
-      - zookeeper
+      - druid-zookeeper
       - postgres
-      - coordinator
+      - druid-coordinator
     ports:
       - "8083:8083"
     command:
@@ -312,16 +312,16 @@ services:
     env_file:
       - druid/environment
 
-  middlemanager:
+  druid-middlemanager:
     image: apache/druid:34.0.0
-    container_name: middlemanager
+    container_name: druid-middlemanager
     volumes:
       - druid_shared:/opt/shared
       - middle_var:/opt/druid/var
     depends_on:
-      - zookeeper
+      - druid-zookeeper
       - postgres
-      - coordinator
+      - druid-coordinator
     ports:
       - "8091:8091"
       - "8100-8105:8100-8105"
@@ -330,15 +330,15 @@ services:
     env_file:
       - druid/environment
 
-  router:
+  druid-router:
     image: apache/druid:34.0.0
-    container_name: router
+    container_name: druid-router
     volumes:
       - router_var:/opt/druid/var
     depends_on:
-      - zookeeper
+      - druid-zookeeper
       - postgres
-      - coordinator
+      - druid-coordinator
     ports:
       - "8888:8888"
     command:
@@ -346,10 +346,10 @@ services:
     env_file:
       - druid/environment
 
-  spec-submitter:
+  druid-spec-submitter:
     image: curlimages/curl:latest
     depends_on:
-      - coordinator
+      - druid-coordinator
     volumes:
       - ./druid/specs:/specs
     command: ["/bin/sh", "/specs/submit-specs.sh"]
