@@ -29,10 +29,10 @@ def register_output_sinks(config: Config) -> Sequence[BaseOutputSink]:
     storage_backend_type = ExecutionResultStorageBackendType(
         config.get_str('OSPREY_EXECUTION_RESULT_STORAGE_BACKEND', 'none')
     )
-    execution_result_store = get_rules_execution_result_storage_backend(backend_type=storage_backend_type)
+    storage_backend = get_rules_execution_result_storage_backend(backend_type=storage_backend_type)
 
     # There may not be an execution result store configured, so check before adding the output sink
-    if execution_result_store is not None:
+    if storage_backend is not None:
         sinks.append(StoredExecutionResultOutputSink())
 
     return sinks

@@ -488,11 +488,10 @@ def bootstrap_execution_result_storage_service() -> ExecutionResultStorageServic
 
     config = CONFIG.instance()
 
-    storage_backend = get_rules_execution_result_storage_backend(
-        backend_type=ExecutionResultStorageBackendType(
-            config.get_str('OSPREY_EXECUTION_RESULT_STORAGE_BACKEND', 'none')
-        )
+    storage_backend_type = ExecutionResultStorageBackendType(
+        config.get_str('OSPREY_EXECUTION_RESULT_STORAGE_BACKEND', 'none')
     )
+    storage_backend = get_rules_execution_result_storage_backend(backend_type=storage_backend_type)
 
     if storage_backend is None:
         raise AssertionError('No storage backend registered')
