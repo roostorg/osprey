@@ -26,5 +26,5 @@ class ExecutionResultStorageBackendType(StrEnum):
 
     NONE = auto()
     """
-    Disable execution results from being stored
+    Disable execution results from being stored. This may cause certain elements of Osprey to break, such as the events stream and individual event details in the UI
     """
