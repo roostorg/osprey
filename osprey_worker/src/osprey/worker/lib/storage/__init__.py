@@ -21,7 +21,7 @@ class ExecutionResultStorageBackendType(StrEnum):
 
     PLUGIN = auto()
     """
-    Execution result store that is sdefined via register_execution_result_store
+    Execution result store that is defined via register_execution_result_store
     """
 
     NONE = auto()
