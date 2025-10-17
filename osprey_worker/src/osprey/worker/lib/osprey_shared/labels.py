@@ -3,7 +3,7 @@ from collections import UserDict
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from enum import Enum, IntEnum
-from typing import Dict, Optional
+from typing import Any, Dict, Optional, Self
 
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.utils.request_utils import SessionWithRetries
@@ -98,11 +98,38 @@ class LabelReason:
     for 1 day, the label cannot be applied via LabelState.ADDED. all LabelState.ADDED attempts will be dropped.
 
     if a given label state has multiple label reasons, all reasons would need to expire before the status/state
-    is considered expired, too. 
+    is considered expired, too.
     """
 
     def is_expired(self) -> bool:
         return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=5) < datetime.now())
+
+    def serialize(self) -> dict[str, Any]:
+        """
+        serialize LabelReason to a JSON-compatible dict.
+        converts datetime objects to ISO format strings.
+        """
+        return {
+            'pending': self.pending,
+            'description': self.description,
+            'features': self.features,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+        }
+
+    @classmethod
+    def deserialize(cls, d: dict[str, Any]) -> Self:
+        """
+        deserialize a dict into a LabelReason object.
+        converts ISO format strings back to datetime objects.
+        """
+        return cls(
+            pending=d.get('pending', False),
+            description=d.get('description', ''),
+            features=d.get('features', {}),
+            created_at=datetime.fromisoformat(d['created_at']) if d.get('created_at') else None,
+            expires_at=datetime.fromisoformat(d['expires_at']) if d.get('expires_at') else None,
+        )
 
 
 @dataclass
@@ -159,11 +186,55 @@ class LabelReasons(UserDict[str, LabelReason]):
     def __repr__(self):
         return f'LabelReasons({self.data})'
 
+    def serialize(self) -> dict[str, dict[str, Any]]:
+        """
+        serialize LabelReasons to a JSON-compatible dict.
+        returns a dict mapping reason names to serialized LabelReason dicts.
+        """
+        return {reason_name: reason.serialize() for reason_name, reason in self.items()}
+
+    @classmethod
+    def deserialize(cls, d: dict[str, dict[str, Any]]) -> Self:
+        """
+        deserialize a dict into a LabelReasons object.
+        expects a dict mapping reason names to LabelReason dicts.
+        """
+
+        deserialized_reasons: dict[str, LabelReason] = {}
+        for reason_name, reason_data in d.items():
+            try:
+                deserialized_reasons[reason_name] = LabelReason.deserialize(reason_data)
+            except Exception as e:
+                raise TypeError(f'could not create LabelReasons from dict: failed to deserialize {reason_name}', e)
+
+        return cls(deserialized_reasons)
+
 
 @dataclass
 class LabelStateInner:
     status: LabelStatus
     reasons: LabelReasons
+
+    def serialize(self) -> dict[str, Any]:
+        """
+        serialize LabelStateInner to a JSON-compatible dict.
+        """
+        return {
+            'status': self.status.value,
+            'reasons': self.reasons.serialize(),
+        }
+
+    @classmethod
+    def deserialize(cls, d: dict[str, Any]) -> Self:
+        """
+        deserialize a dict into a LabelStateInner object.
+        """
+        try:
+            status = LabelStatus(d['status'])
+            reasons = LabelReasons.deserialize(d['reasons'])
+            return cls(status=status, reasons=reasons)
+        except Exception as e:
+            raise TypeError(f'could not create LabelStateInner from dict: {d}', e)
 
 
 @dataclass
@@ -253,6 +324,32 @@ class LabelState:
 
         return None
 
+    def serialize(self) -> dict[str, Any]:
+        """
+        serialize LabelState to a JSON-compatible dict.
+        """
+        return {
+            'status': self.status.value,
+            'reasons': self.reasons.serialize(),
+            'previous_states': [prev_state.serialize() for prev_state in self.previous_states],
+        }
+
+    @classmethod
+    def deserialize(cls, d: dict[str, Any]) -> Self:
+        """
+        deserialize a dict into a LabelState object.
+        """
+
+        try:
+            status = LabelStatus(d['status'])
+            reasons = LabelReasons.deserialize(d['reasons'])
+            previous_states = [
+                LabelStateInner.deserialize(prev_state_data) for prev_state_data in d.get('previous_states', [])
+            ]
+            return cls(status=status, reasons=reasons, previous_states=previous_states)
+        except Exception as e:
+            raise TypeError(f'could not create LabelState from dict: {d}', e)
+
 
 @dataclass
 class EntityLabels:
@@ -260,6 +357,26 @@ class EntityLabels:
 
     labels: Dict[str, LabelState] = field(default_factory=dict)
     """a mapping of label names to their current states'"""
+
+    def serialize(self) -> dict[str, Any]:
+        """
+        given the current EntityLabels object, returns a dict that is
+        json-serializable via json.dumps()
+        """
+        return {'labels': {k: v.serialize() for k, v in self.labels.items()}}
+
+    @classmethod
+    def deserialize(cls, d: dict[str, dict[str, Any]]) -> Self:
+        """
+        given a dict, deserializes it into an EntityLabels object
+        """
+        if 'labels' in d:
+            d = d['labels']
+
+        try:
+            return cls(labels={k: LabelState.deserialize(v) for k, v in d.items()})
+        except Exception as e:
+            raise TypeError(f'could not create EntityLabels from dict: {d};', e)
 
 
 @dataclass
