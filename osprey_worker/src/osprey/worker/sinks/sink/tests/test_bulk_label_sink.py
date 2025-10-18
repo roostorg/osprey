@@ -5,10 +5,10 @@ from unittest.mock import MagicMock, call
 
 import pytest
 from osprey.engine.ast.sources import Sources
-from osprey.rpc.labels.v1.service_pb2 import EntityKey, LabelStatus
 from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators, bootstrap_udfs
 from osprey.worker.lib.bulk_label import TaskStatus
 from osprey.worker.lib.osprey_engine import OspreyEngine
+from osprey.worker.lib.osprey_shared.labels import LabelStatus
 from osprey.worker.lib.sources_provider import StaticSourcesProvider
 from osprey.worker.lib.storage.bulk_label_task import MAX_ATTEMPTS, BulkLabelTask
 from osprey.worker.sinks.sink.bulk_label_sink import (
@@ -19,9 +19,10 @@ from osprey.worker.sinks.sink.bulk_label_sink import (
     BulkLabelSink,
     UnretryableTaskException,
 )
-from osprey.worker.sinks.sink.input_stream import StaticInputStream
 from osprey.worker.ui_api.osprey.lib.druid import TopNDruidQuery
 from pytest_mock import MockFixture
+
+from ..input_stream import StaticInputStream
 
 # Druid might also return null/empty values, we need to make sure we handle those in our sink.
 _TASK_NULLISH_ENTITIES: List[Dict[str, Optional[str]]] = [{'UserId': None}, {'UserId': ''}]
@@ -127,21 +128,21 @@ def test_bulk_label_golden_path() -> None:
         for args, kwargs in sink_and_mocks.event_effects_output_sink_mock.apply_label_mutations_pb2.call_args_list
     ]
     expected_entity_keys = [
-        EntityKey(type='User', id='0'),
-        EntityKey(type='User', id='1'),
-        EntityKey(type='User', id='2'),
-        EntityKey(type='User', id='3'),
-        EntityKey(type='User', id='4'),
-        EntityKey(type='User', id='5'),
-        EntityKey(type='User', id='6'),
-        EntityKey(type='User', id='7'),
-        EntityKey(type='User', id='8'),
-        EntityKey(type='User', id='9'),
+        ('User', '0'),
+        ('User', '1'),
+        ('User', '2'),
+        ('User', '3'),
+        ('User', '4'),
+        ('User', '5'),
+        ('User', '6'),
+        ('User', '7'),
+        ('User', '8'),
+        ('User', '9'),
     ]
     # We have to check that the lists are equal, but unordered.
     # We cant use a set because the proto EntityKey object is not
     # hashable :(
-    expected_keys_as_tuples = {(key.type, key.id) for key in expected_entity_keys}
+    expected_keys_as_tuples = set(expected_entity_keys)
     actual_keys_as_tuples = {(key.type, key.id) for key in event_keys}
     assert actual_keys_as_tuples == expected_keys_as_tuples
 
@@ -241,6 +242,7 @@ def test_bulk_label_no_limit() -> None:
         query_filter=query['query_filter'],
         dimension=sink_and_mocks.task.dimension,
         limit=BULK_LABEL_NO_LIMIT_SIZE,
+        entity=None,
     )
 
     assert sink_and_mocks.sink._build_top_n_queries(sink_and_mocks.task) == [expected_topN_query]
@@ -274,6 +276,7 @@ def test_bulk_label_no_limit_multiple_queries() -> None:
         query_filter=query['query_filter'],
         dimension=sink_and_mocks.task.dimension,
         limit=BULK_LABEL_NO_LIMIT_SIZE,
+        entity=None,
     )
 
     expected_topN_query_two = TopNDruidQuery(
@@ -282,6 +285,7 @@ def test_bulk_label_no_limit_multiple_queries() -> None:
         query_filter=query['query_filter'],
         dimension=sink_and_mocks.task.dimension,
         limit=BULK_LABEL_NO_LIMIT_SIZE,
+        entity=None,
     )
 
     assert sink_and_mocks.sink._build_top_n_queries(sink_and_mocks.task) == [
