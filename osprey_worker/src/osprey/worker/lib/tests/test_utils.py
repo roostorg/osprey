@@ -29,7 +29,7 @@ def make_postgres_database_config_fixture() -> object:
         config = CONFIG.instance()
         config.configure_from_env()
         hosts = config['POSTGRES_HOSTS']
-        url = hosts.get('osprey') if hosts is not None else None
+        url = hosts.get('osprey_db') if hosts is not None else None
 
         if url is None:
             pytest.skip('POSTGRES_HOSTS not configured, skipping Postgres tests')
@@ -43,7 +43,7 @@ def make_postgres_database_config_fixture() -> object:
             if not isinstance(e.orig, DuplicateDatabase):
                 raise
 
-        postgres.init_from_config('osprey')
+        postgres.init_from_config('osprey_db')
 
         config.unconfigure_for_tests()
 
