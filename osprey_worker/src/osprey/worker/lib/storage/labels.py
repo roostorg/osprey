@@ -76,7 +76,7 @@ class LabelsServiceBase(ABC):
         and should write the EntityLabels post-yield.
 
         IMPORTANT: Implementations should ensure the entity key is locked/in a transaction so that other read-modify-write
-                   calls must wait.
+                   calls (even across multiple workers) must wait.
 
         This code may be retried upon exceptions, so keep that in mind when adding potentially
         non-idempotent behaviour.

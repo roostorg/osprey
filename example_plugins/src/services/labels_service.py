@@ -57,7 +57,7 @@ class PostgresLabelsService(LabelsServiceBase):
                 logger.debug(f'No labels found for entity {entity_key}')
                 return EntityLabels()
 
-            labels = EntityLabels.deserialize(result)
+            labels = EntityLabels.deserialize(result.labels)
             logger.debug(f'Read labels for entity {entity_key}')
             return labels
 
@@ -95,7 +95,7 @@ class PostgresLabelsService(LabelsServiceBase):
                 if result is None:
                     labels = EntityLabels()
                 else:
-                    labels = EntityLabels.deserialize(result)
+                    labels = EntityLabels.deserialize(result.labels)
 
                 # Yield control - The default LabelsProvider will modify the labels IN PLACE
                 yield labels
