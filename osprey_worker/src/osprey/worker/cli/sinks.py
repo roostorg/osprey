@@ -2,11 +2,12 @@
 # ruff: noqa: E402, E501
 
 from osprey.worker.lib.patcher import patch_all
-from osprey.worker.sinks.input_stream_chooser import get_rules_sink_input_stream
-from osprey.worker.sinks.sink.output_sink import LabelOutputSink
 
+# do not move this below other imports
 patch_all(ddtrace_args={'cassandra': True, 'psycopg': True})
 
+from osprey.worker.sinks.input_stream_chooser import get_rules_sink_input_stream
+from osprey.worker.sinks.sink.output_sink import LabelOutputSink
 
 import signal
 from uuid import uuid1
