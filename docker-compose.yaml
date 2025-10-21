@@ -178,7 +178,7 @@ services:
       - "5002:5002"
     environment:
       - NODE_ENV=development
-      - REACT_APP_API_URL=http://osprey_ui_api:5004
+      - REACT_APP_API_BASE_URL=http://osprey_ui_api:5004
     volumes:
       - ./osprey_ui:/app
       - /app/node_modules
