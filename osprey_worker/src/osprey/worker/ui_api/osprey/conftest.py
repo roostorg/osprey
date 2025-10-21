@@ -28,6 +28,14 @@ def pytest_configure(config: 'Config') -> None:
     test_utils.add_use_rules_sources(config)
 
 
+# Override the worker-level config_setup fixture to avoid redundant configuration
+# since postgres_database_config already handles Config setup in UI API tests
+@pytest.fixture(autouse=True)
+def config_setup():
+    # No-op: postgres_database_config fixture handles Config setup
+    yield
+
+
 @pytest.fixture(autouse=True, scope='module')
 def mock_audit_log_persist():
     with patch('osprey.worker.lib.storage.access_audit_log.AccessAuditLog.persist'):

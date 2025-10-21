@@ -92,7 +92,6 @@ def make_app_with_rules_sources_fixture(app_creator: Callable[[], Flask], name: 
         engine = bootstrap_engine(sources_provider=sources_provider)
 
         with ENGINE.override_instance_for_test(engine):
-            CONFIG.instance().unconfigure_for_tests()
             flask_app = app_creator()
             yield flask_app
 
