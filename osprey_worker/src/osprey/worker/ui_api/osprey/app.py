@@ -13,6 +13,7 @@ from typing import NoReturn, Tuple, Union
 
 import sentry_sdk
 from flask import Flask, Response
+from flask_cors import CORS
 from osprey.engine.ast_validator.validation_context import ValidationFailed
 from osprey.worker.lib import ddtrace_utils
 from osprey.worker.lib.osprey_shared.logging import get_logger
@@ -21,9 +22,6 @@ from sentry_sdk.integrations.flask import FlaskIntegration
 
 
 def _after_request(response: Response) -> Response:
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', '*')
-    response.headers.add('Access-Control-Allow-Methods', '*')
     response.mimetype = 'application/json'
 
     return response
@@ -84,6 +82,9 @@ def create_app() -> Flask:
     gunicorn_logger = get_logger('gunicorn.error')
 
     app = OspreyFlask(__name__)
+
+    # allows requests to come from any origin
+    CORS(app)
 
     postgres.init_app(app)
     app.after_request(_after_request)
