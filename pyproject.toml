@@ -181,6 +181,7 @@ dev = [
     "pre-commit>=4.3.0",
     "ruff>=0.12.9",
     "sqlalchemy[mypy]>=1.4.31",
+    "types-flask-cors>=3.0.10",
 ]
 
 

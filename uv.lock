@@ -203,6 +203,7 @@ dev = [
     { name = "pre-commit", specifier = ">=4.3.0" },
     { name = "ruff", specifier = ">=0.12.9" },
     { name = "sqlalchemy", extras = ["mypy"], specifier = ">=1.4.31" },
+    { name = "types-flask-cors", specifier = ">=3.0.10" },
 ]
 
 [[package]]
@@ -2539,6 +2540,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/79/65/728a104973133a45fba50f3d1e1ee832287666ac74cfd47004cea8402ea3/types-Flask-1.1.6.tar.gz", hash = "sha256:aac777b3abfff9436e6b01f6d08171cf23ea6e5be71cbf773aaabb1c5763e9cf", size = 9829, upload-time = "2021-11-26T06:21:31.199Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/60/6c/a98a0c29c39d8a6283ac704f3d36f0d570d8dee931e9d46d6cc60d436bec/types_Flask-1.1.6-py3-none-any.whl", hash = "sha256:6ab8a9a5e258b76539d652f6341408867298550b19b81f0e41e916825fc39087", size = 13733, upload-time = "2021-11-26T06:21:30.365Z" },
+]
+
+[[package]]
+name = "types-flask-cors"
+version = "3.0.10"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/cf/e0ead32db111ffa49c7bdfc9854a4d81f6b5b0f3e05e3d5cb6fb2b849ffb/types-Flask-Cors-3.0.10.tar.gz", hash = "sha256:8d2dad18f3f5d2b3a22bc4235c97629b701b784fd428e671564093ca293ae91d", size = 3779, upload-time = "2022-07-12T15:25:46.787Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/77/91/d23d00dc4cae85097cd89c35c6c2caf92e98829e60ae7c0e5a7700aa565b/types_Flask_Cors-3.0.10-py3-none-any.whl", hash = "sha256:17ba57b32a97dde31d136e2b312f06714533d1e828bf5328adde64b49c9cdbd8", size = 4507, upload-time = "2022-07-12T15:25:45.478Z" },
 ]
 
 [[package]]
