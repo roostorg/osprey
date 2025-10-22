@@ -29,17 +29,22 @@ class PostgresLabelsService(LabelsServiceBase):
     It provides atomic read-modify-write operations through database transactions.
     """
 
-    def __init__(self, database: str = 'osprey_db'):
+    def __init__(self, database: str = 'osprey_db') -> None:
         """
         Initialize the PostgreSQL labels service.
+        Note: This will not init the postgres connection; To do that,
+        initialize() must be called (which is called by the LabelsProvider
+        by default)
 
         Args:
             database: The database name to use. Defaults to 'osprey_db'.
         """
-        self.database = database
-        # Initialize the database connection from config
-        init_from_config(database)
-        logger.info(f'Initialized PostgresLabelsService with database: {database}')
+        super().__init__()
+        self._database_name: str = database
+
+    def initialize(self) -> None:
+        init_from_config(self._database_name)
+        logger.info(f'Initialized PostgresLabelsService with database: {self._database_name}')
 
     def read_labels(self, entity: EntityT[Any]) -> EntityLabels:
         """
@@ -49,7 +54,7 @@ class PostgresLabelsService(LabelsServiceBase):
         """
         entity_key = str(entity)
 
-        with scoped_session(database=self.database) as session:
+        with scoped_session(database=self._database_name) as session:
             stmt = select(EntityLabelsModel).where(EntityLabelsModel.entity_key == entity_key)
             result = session.execute(stmt).scalars().first()
 
@@ -86,7 +91,7 @@ class PostgresLabelsService(LabelsServiceBase):
         """
         entity_key = str(entity)
 
-        with scoped_session(commit=False, database=self.database) as session:
+        with scoped_session(commit=False, database=self._database_name) as session:
             try:
                 # Use SELECT FOR UPDATE to acquire a row-level lock
                 stmt = select(EntityLabelsModel).where(EntityLabelsModel.entity_key == entity_key).with_for_update()

@@ -21,6 +21,6 @@ def register_output_sinks(config: Config) -> Sequence[BaseOutputSink]:
 
 
 @hookimpl_osprey
-def register_labels_service(config: Config) -> LabelsServiceBase:
+def register_labels_service_or_provider(config: Config) -> LabelsServiceBase:
     """Register a PostgreSQL-backed labels service."""
-    return PostgresLabelsService(database='osprey_db')
+    return PostgresLabelsService()

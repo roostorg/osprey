@@ -3,22 +3,18 @@ import sys
 from pathlib import Path  # noqa: E402
 
 from osprey.engine.language_types.entities import EntityT
-from osprey.worker.adaptor.plugin_manager import bootstrap_labels_provider
 from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation, LabelStatus
-from osprey.worker.lib.patcher import patch_all  # noqa: E402
+from osprey.worker.lib.patcher import patch_all
+from osprey.worker.lib.singletons import LABELS_PROVIDER  # noqa: E402
 
 patch_all()  # please ensure this occurs before *any* other imports !
 
 
 import datetime  # noqa: E402
-import ipaddress  # noqa: E402
-import logging  # noqa: E402
 import os  # noqa: E402
-import subprocess  # noqa: E402
-from typing import Any, Optional, Set, Union  # noqa: E402
+from typing import Any, Optional, Set  # noqa: E402
 
 import click  # noqa: E402
-from click import Context, Parameter, ParamType  # noqa: E402
 from osprey.worker.lib.osprey_logging import configure_logging  # noqa: E402
 
 configure_logging()
@@ -31,7 +27,6 @@ from osprey.worker.lib.sources_publisher import (  # noqa: E402
 )
 from osprey.worker.lib.storage import (  # noqa: E402
     access_audit_log,  # noqa: E402
-    entity_label_webhook,
     labels,
     stored_execution_result,
 )
@@ -86,7 +81,6 @@ def compute_and_upload_dependencies_mapping(rules_path: str, suppress_warnings: 
 @cli.command()
 @click.option('--auto-import/--no-auto-import', '-i', default=True)
 def shell(auto_import: str) -> None:
-    import os
     import sys
 
     osprey_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -123,7 +117,6 @@ def shell(auto_import: str) -> None:
     namespace_overrides = {
         'labels': labels,
         'access_audit_log': access_audit_log,
-        'entity_label_webhook': entity_label_webhook,
         'stored_execution_result': stored_execution_result,
         'EntityT': EntityT,
         # 'Entity': Entity,
@@ -260,9 +253,12 @@ def apply_label(
             description=description or 'Manually changed from the command line for debugging.',
         )
 
-    result = bootstrap_labels_provider().apply_entity_label_mutations(
-        entity=EntityT(type=entity_type, id=entity_id), mutations=[mutation]
+    provider = LABELS_PROVIDER.instance()
+    assert provider is not None, (
+        'this CLI cannot be used because no labels service / provider is supplied for this osprey instance'
     )
+
+    result = provider.apply_entity_label_mutations(entity=EntityT(type=entity_type, id=entity_id), mutations=[mutation])
 
     print(result)
 
@@ -325,69 +321,15 @@ def bulk_apply_label(
         )
 
     progress_tracker: CliCommandProgressTracker = CliCommandProgressTracker(total_actions=len(entity_ids))
-    provider = bootstrap_labels_provider()
+    provider = LABELS_PROVIDER.instance()
+    assert provider is not None, (
+        'this code cannot be used because no labels service / provider is supplied for this osprey instance'
+    )
     for entity_id in entity_ids:
-        provider.apply_entity_label_mutations(
+        _ = provider.apply_entity_label_mutations(
             entity=EntityT(type=entity_type, id=entity_id),
             mutations=[mutation],
         )
         progress_tracker.increment()
 
     print(f'Bulk labelling complete! Total labels applied: {progress_tracker.total_actions}')
-
-
-class IpAddress(ParamType):
-    def convert(self, value: Union[str], param: Optional[Parameter], ctx: Optional[Context]) -> Optional[str]:
-        """Check that the value parses as an ip V4 or V6 address"""
-        ipaddress.IPv4Address(value)
-        return value
-
-
-@cli.command()
-@click.option('--from-sub-gcp-project', required=True, help='Source GCP project for the subscription')
-@click.option('--from-subscription', required=True, help='Subscription ID to read from')
-@click.option('--target-destination-gcp-topic', required=True, help='Target GCP project for the topic')
-@click.option('--destination-topic', required=True, help='Destination topic to publish to')
-def restream_subscription(
-    from_sub_gcp_project: str, from_subscription: str, target_destination_gcp_topic: str, destination_topic: str
-) -> None:
-    """
-    Run the restreamer to restream from a subscription to a topic.
-    This is most useful for running DLQs.
-    This command runs ./pubsub_restream with the specified options.
-    """
-    # Unset PUBSUB_EMULATOR_HOST if it is set
-    if 'PUBSUB_EMULATOR_HOST' in os.environ:
-        logging.info('Unsetting PUBSUB_EMULATOR_HOST')
-        del os.environ['PUBSUB_EMULATOR_HOST']
-
-    cargo_bin_path = os.path.expanduser('~/.cargo/bin')
-    if cargo_bin_path not in os.environ['PATH']:
-        logging.info('Adding cargo bin path to PATH: %s', cargo_bin_path)
-        os.environ['PATH'] += os.pathsep + cargo_bin_path
-
-    command = [
-        'pubsub_restream',
-        '--use-gcloud-auth',
-        f'--gcp-project={from_sub_gcp_project}',
-        f'--subscription={from_subscription}',
-        f'--dst-gcp-project={target_destination_gcp_topic}',
-        f'--dst-topic={destination_topic}',
-    ]
-
-    logging.info('Running the pubsub restreaming command: %s', ' '.join(command))
-
-    try:
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
-        logging.info('Command output:\n%s', result.stdout)
-    except subprocess.CalledProcessError as e:
-        logging.error('Command failed with return code %d', e.returncode)
-        logging.error('Command stderr:\n%s', e.stderr)
-        sys.exit(e.returncode)
-    except Exception as e:
-        logging.error('An unexpected error occurred: %s', str(e))
-        sys.exit(1)
-
-
-if __name__ == '__main__':
-    cli()

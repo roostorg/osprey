@@ -56,8 +56,8 @@ def register_execution_result_store(config: Config) -> ExecutionResultStore:
 
 
 @hookspec(firstresult=True)
-def register_labels_service(config: Config) -> LabelsServiceBase | LabelsProvider:
-    """Register a labels service backend. This can be achieved by implementing a labels service
-    and utilizing the provided labels provider, or by overriding the labels provider to fit your
-    business needs"""
-    raise NotImplementedError('register_labels_service must be implemented by the plugin')
+def register_labels_service_or_provider(config: Config) -> LabelsServiceBase | LabelsProvider:
+    """Register a labels service or labels provider. This can be achieved by implementing a labels
+    service base and utilizing the provided labels provider, or by overriding the labels provider to
+    fit your needs"""
+    raise NotImplementedError('register_labels_service_or_provider must be implemented by the plugin')

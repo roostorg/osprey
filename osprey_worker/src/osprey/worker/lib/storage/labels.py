@@ -34,6 +34,13 @@ class LabelsServiceBase(ABC):
     read_modify_write_labels_atomically is called post-rule execution (or by the ui api).
     """
 
+    def initialize(self) -> None:
+        """
+        This method will be called after the initialization of this labels service base. Any side effects
+        that implementers may want, i.e. connecting to an external service, should be placed here.
+        """
+        pass
+
     @abstractmethod
     def read_labels(self, entity: EntityT[Any]) -> EntityLabels:
         """
@@ -87,6 +94,13 @@ class LabelsServiceBase(ABC):
 class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
     def __init__(self, labels_service: LabelsServiceBase):
         self._labels_service = labels_service
+
+    def initialize(self) -> None:
+        """
+        This method will be called after the initialization of this labels provider. Any side effects
+        that implementers may want, i.e. connecting to an external service, should be placed here.
+        """
+        self._labels_service.initialize()
 
     def _get_mutations_by_label_name_and_drop_conflicts(
         self, mutations: Sequence[EntityLabelMutation]

@@ -1,8 +1,8 @@
 from typing import Any
 
 from flask import Blueprint, abort, jsonify
-from osprey.worker.adaptor.plugin_manager import bootstrap_labels_provider, has_labels_service
 from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation
+from osprey.worker.lib.singletons import LABELS_PROVIDER
 from osprey.worker.ui_api.osprey.lib.abilities import (
     CanMutateEntities,
     CanMutateLabels,
@@ -30,14 +30,13 @@ blueprint = Blueprint('entities', __name__)
 def get_labels_for_entity(request_model: GetLabelsForEntityRequest) -> Any:
     require_ability_with_request(request_model, CanViewLabelsForEntity)
 
-    if not has_labels_service():
+    labels_provider = LABELS_PROVIDER.instance()
+    if not labels_provider:
         return {
             'labels': {},
             # this field is deprecated
             'expires_at': None,
         }
-
-    labels_provider = bootstrap_labels_provider()
 
     entity_labels = labels_provider.get_from_service(key=request_model.entity)
     #  Filter out all but the allowed labels
@@ -69,10 +68,9 @@ def manual_entity_mutation(request_model: ManualEntityLabelMutationRequest) -> A
     require_ability_with_request(request_model, CanMutateEntities)
     require_ability_with_request(request_model, CanMutateLabels)
 
-    if not has_labels_service():
+    labels_provider = LABELS_PROVIDER.instance()
+    if not labels_provider:
         return abort(501, 'Labels Provider Not Found')
-
-    labels_provider = bootstrap_labels_provider()
 
     can_mutate_labels_ability = get_current_user().get_ability(CanMutateLabels)
     # We can make this assertion because of the above line that requires CanMutateLabel for the request
