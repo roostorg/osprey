@@ -48,7 +48,6 @@ def bootstrap_udfs() -> tuple[UDFRegistry, UDFHelpers]:
     udf_helpers = UDFHelpers()
 
     udfs: List[Type[UDFBase[Any, Any]]] = flatten(plugin_manager.hook.register_udfs())
-    udf_registry = UDFRegistry.with_udfs(*udfs)
 
     for udf in udfs:
         if issubclass(udf, HasHelper):
@@ -65,6 +64,8 @@ def bootstrap_udfs() -> tuple[UDFRegistry, UDFHelpers]:
         udfs.extend([HasLabel, LabelAdd, LabelRemove])
 
         udf_helpers.set_udf_helper(HasLabel, labels_provider)
+
+    udf_registry = UDFRegistry.with_udfs(*udfs)
 
     return udf_registry, udf_helpers
 
