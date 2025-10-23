@@ -1,7 +1,6 @@
 # mypy: ignore-errors
 # ruff: noqa: E402, E501
 
-from osprey.worker.adaptor.plugin_manager import bootstrap_output_sinks
 from osprey.worker.lib.patcher import patch_all
 
 # do not move this below other imports
@@ -12,6 +11,7 @@ from uuid import uuid1
 
 # this is required to avoid memory leaks with gRPC
 from gevent import config as gevent_config
+from osprey.worker.adaptor.plugin_manager import bootstrap_output_sinks
 from osprey.worker.sinks.input_stream_chooser import get_rules_sink_input_stream
 
 gevent_config.track_greenlet_tree = False

@@ -45,6 +45,7 @@ services:
   minio:
     image: minio/minio:latest
     container_name: minio
+    hostname: minio
     ports:
       - "9000:9000" # minio API
       - "9001:9001" # minio Console
