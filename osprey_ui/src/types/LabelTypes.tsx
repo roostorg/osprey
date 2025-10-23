@@ -44,7 +44,7 @@ export interface LabelMutation {
 
 export interface LabelMutationDetails {
   added: string[];
-  dropped: string[];
+  updated: string[];
   removed: string[];
   unchanged: string[];
 }
