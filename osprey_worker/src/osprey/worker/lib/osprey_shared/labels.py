@@ -1,9 +1,9 @@
 import copy
 from collections import UserDict
 from dataclasses import dataclass, field, replace
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum, IntEnum
-from typing import Any, Dict, Optional, Self
+from typing import Any, Dict, Self
 
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.utils.request_utils import SessionWithRetries
@@ -15,6 +15,14 @@ _REQUEST_TIMEOUT_SECS = 5
 
 
 logger = get_logger(__name__)
+
+
+def _guarantee_utc_timezone_awareness(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 class MutationDropReason(IntEnum):
@@ -85,7 +93,7 @@ class LabelReason:
     description: str = ''
     """why the label was mutated"""
     features: dict[str, str] = field(default_factory=dict)
-    """features are injected into the description as k/v's, similar to how fstrings work. for example, 
+    """features are injected into the description as k/v's, similar to how fstrings work. for example,
     the {you} in 'hello {you}' would be substituted as 'person' with a feature dict of {'you': 'person'}"""
     created_at: datetime | None = None
     """
@@ -94,7 +102,7 @@ class LabelReason:
     expires_at: datetime | None = None
     """marks when this label reason 'expires'
 
-    if a LabelState.MANUALLY_REMOVED is applied with a reason that has a 1 day expiration, then 
+    if a LabelState.MANUALLY_REMOVED is applied with a reason that has a 1 day expiration, then
     for 1 day, the label cannot be applied via LabelState.ADDED. all LabelState.ADDED attempts will be dropped.
 
     if a given label state has multiple label reasons, all reasons would need to expire before the status/state
@@ -102,19 +110,21 @@ class LabelReason:
     """
 
     def is_expired(self) -> bool:
-        return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=5) < datetime.now())
+        return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=5) < datetime.now(timezone.utc))
 
     def serialize(self) -> dict[str, Any]:
         """
         serialize LabelReason to a JSON-compatible dict.
         converts datetime objects to ISO format strings.
         """
+        created_at = _guarantee_utc_timezone_awareness(self.created_at)
+        expires_at = _guarantee_utc_timezone_awareness(self.expires_at)
         return {
             'pending': self.pending,
             'description': self.description,
             'features': self.features,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'created_at': created_at.isoformat() if created_at else None,
+            'expires_at': expires_at.isoformat() if expires_at else None,
         }
 
     @classmethod
@@ -123,12 +133,18 @@ class LabelReason:
         deserialize a dict into a LabelReason object.
         converts ISO format strings back to datetime objects.
         """
+        created_at = _guarantee_utc_timezone_awareness(
+            datetime.fromisoformat(d['created_at']) if d.get('created_at') else None
+        )
+        expires_at = _guarantee_utc_timezone_awareness(
+            datetime.fromisoformat(d['expires_at']) if d.get('expires_at') else None
+        )
         return cls(
             pending=d.get('pending', False),
             description=d.get('description', ''),
             features=d.get('features', {}),
-            created_at=datetime.fromisoformat(d['created_at']) if d.get('created_at') else None,
-            expires_at=datetime.fromisoformat(d['expires_at']) if d.get('expires_at') else None,
+            created_at=created_at,
+            expires_at=expires_at,
         )
 
 
@@ -240,7 +256,7 @@ class LabelStateInner:
 @dataclass
 class LabelState:
     status: LabelStatus
-    """statuses dictate the way the current state behaves; certain statuses have priority over others 
+    """statuses dictate the way the current state behaves; certain statuses have priority over others
     (see LabelStatus for more info)"""
 
     reasons: LabelReasons
@@ -248,7 +264,7 @@ class LabelState:
     reasons are why this label state was applied; it is a dict because there may be multiple,
     with each reason being distinct based on it's reason name.
 
-    reasons applied under the same name are merged (assuming the status has not changed), 
+    reasons applied under the same name are merged (assuming the status has not changed),
     with precedence given to newer creaeted_at timestamps.
     """
 
@@ -270,8 +286,9 @@ class LabelState:
         if the weights are the *same*, then a merge of reasons is performed, which can also cause the expiration to be delayed.
         """
         if not self.reasons:
-            AssertionError(f'invariant: the label state {self} did not have any associated reasons')
-        expires_at = datetime.min
+            return None
+            # AssertionError(f'invariant: the label state {self} did not have any associated reasons')
+        expires_at = datetime.min.replace(tzinfo=timezone.utc)
         for reason in self.reasons.values():
             if reason.expires_at is None:
                 return None
@@ -286,7 +303,7 @@ class LabelState:
         )
 
     def is_expired(self) -> bool:
-        return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=5) < datetime.now())
+        return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=5) < datetime.now(timezone.utc))
 
     def _shift_current_state_to_previous_state(self) -> None:
         if not self.reasons:
@@ -408,15 +425,33 @@ class EntityLabelMutation:
             pending=self.pending,
             description=self.description,
             features=self.features,
-            created_at=datetime.now(),
-            expires_at=self.expires_at,
+            created_at=datetime.now(timezone.utc),
+            expires_at=_guarantee_utc_timezone_awareness(self.expires_at),
         )
+
+    def serialize(self) -> dict[str, Any]:
+        expires_at = _guarantee_utc_timezone_awareness(self.expires_at)
+        return {
+            'label_name': self.label_name,
+            'reason_name': self.reason_name,
+            'status': self.status,
+            'pending': self.pending,
+            'description': self.description,
+            'features': self.features,
+            'expires_at': expires_at.isoformat() if expires_at else None,
+        }
 
 
 @dataclass
 class DroppedEntityLabelMutation:
     mutation: EntityLabelMutation
     reason: MutationDropReason
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            'mutation': self.mutation.serialize(),
+            'reason': self.reason,
+        }
 
 
 @dataclass
@@ -426,7 +461,7 @@ class EntityLabelMutationsResult:
     all of the entity's labels post-mutation
     """
 
-    old_entity_labels: Optional[EntityLabels] = None
+    old_entity_labels: EntityLabels
     """
     all of the entity's labels pre-mutation
     """
@@ -443,7 +478,7 @@ class EntityLabelMutationsResult:
 
     labels_updated: list[str] = field(default_factory=list)
     """
-    labels that had their state updated. this can include simply updating or 
+    labels that had their state updated. this can include simply updating or
     appending to the reason
     """
 
@@ -452,3 +487,13 @@ class EntityLabelMutationsResult:
     mutations that were dropped for one reason or another. each dropped mutation is
     given a drop reason
     """
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            'new_entity_labels': self.new_entity_labels.serialize(),
+            'old_entity_labels': self.old_entity_labels.serialize(),
+            'labels_added': self.labels_added,
+            'labels_removed': self.labels_removed,
+            'labels_updated': self.labels_updated,
+            'dropped_mutations': [mutation.serialize() for mutation in self.dropped_mutations],
+        }

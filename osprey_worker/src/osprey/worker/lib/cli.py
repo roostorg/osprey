@@ -243,7 +243,7 @@ def apply_label(
             reason_name=reason or 'CliLabelMutationWithoutEffects',
             status=label_status,
             description=description or 'Manually changed from the command line for debugging.',
-            expires_at=(datetime.datetime.now() + datetime.timedelta(seconds=5)),
+            expires_at=(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=5)),
         )
     else:
         mutation = EntityLabelMutation(
@@ -302,7 +302,9 @@ def bulk_apply_label(
     """
     entity_ids = get_lines_from_file_as_set(file_path=entity_ids_file_path)
     # I found that it *generally* took ~10ms per request; Multiply by 10.05 for 5% latency headroom
-    expire_timestamp = datetime.datetime.now() + datetime.timedelta(milliseconds=int(len(entity_ids) * 10.05))
+    expire_timestamp = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+        milliseconds=int(len(entity_ids) * 10.05)
+    )
     print(f'Found {len(entity_ids)} entity IDs to label.\nETA: {int(len(entity_ids) * 10.05 / 100)} second(s)')
     if expire_instantly:
         mutation = EntityLabelMutation(

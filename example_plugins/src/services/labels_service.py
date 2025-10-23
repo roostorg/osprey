@@ -6,8 +6,8 @@ from osprey.worker.lib.osprey_shared.labels import EntityLabels
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.storage.labels import LabelsServiceBase
 from osprey.worker.lib.storage.postgres import Model, init_from_config, scoped_session
-from sqlalchemy import JSON, Column, String, select
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import Column, String, select
+from sqlalchemy.dialects.postgresql import JSONB, insert
 
 logger = get_logger(__name__)
 
@@ -18,7 +18,10 @@ class EntityLabelsModel(Model):
     __tablename__ = 'entity_labels'
 
     entity_key = Column(String, primary_key=True)
-    labels = Column(JSON, nullable=False, default={'labels': {}})
+    labels = Column(JSONB, nullable=False)
+
+    def __str__(self) -> str:
+        return f'EntityLabelsModel(entity_key={self.entity_key}, labels={self.labels})'
 
 
 class PostgresLabelsService(LabelsServiceBase):
@@ -56,14 +59,14 @@ class PostgresLabelsService(LabelsServiceBase):
 
         with scoped_session(database=self._database_name) as session:
             stmt = select(EntityLabelsModel).where(EntityLabelsModel.entity_key == entity_key)
-            result = session.execute(stmt).scalars().first()
+            result = session.scalars(stmt).first()
 
             if result is None:
                 logger.debug(f'No labels found for entity {entity_key}')
                 return EntityLabels()
 
             labels = EntityLabels.deserialize(result.labels)
-            logger.debug(f'Read labels for entity {entity_key}')
+            logger.debug(f'Read labels for entity {entity_key}', result)
             return labels
 
     @contextmanager
@@ -95,7 +98,7 @@ class PostgresLabelsService(LabelsServiceBase):
             try:
                 # Use SELECT FOR UPDATE to acquire a row-level lock
                 stmt = select(EntityLabelsModel).where(EntityLabelsModel.entity_key == entity_key).with_for_update()
-                result = session.execute(stmt).scalars().first()
+                result = session.scalars(stmt).first()
 
                 if result is None:
                     labels = EntityLabels()
@@ -108,11 +111,13 @@ class PostgresLabelsService(LabelsServiceBase):
                 # After yield, write the modified labels back
                 labels_dict = labels.serialize()
                 upsert_stmt = insert(EntityLabelsModel).values(entity_key=entity_key, labels=labels_dict)
-                upsert_stmt = upsert_stmt.on_conflict_do_update(index_elements=['entity_key'], set_=labels_dict)
+                upsert_stmt = upsert_stmt.on_conflict_do_update(
+                    index_elements=['entity_key'], set_={EntityLabelsModel.labels: labels_dict}
+                )
                 session.execute(upsert_stmt)
 
                 session.commit()
-                logger.debug(f'Committed atomic read-modify-write for entity {entity_key}')
+                logger.debug(f'Committed atomic read-modify-write for entity {entity_key}', labels_dict)
 
             except Exception:
                 session.rollback()

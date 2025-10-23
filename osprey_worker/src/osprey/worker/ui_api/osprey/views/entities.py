@@ -46,7 +46,7 @@ def get_labels_for_entity(request_model: GetLabelsForEntityRequest) -> Any:
     if hasattr(entity_labels, 'labels'):
         for label_name, label_state in entity_labels.labels.items():
             if ability and ability.item_is_allowed(label_name):
-                response_labels[label_name] = label_state
+                response_labels[label_name] = label_state.serialize()
 
     return {
         'labels': response_labels,
