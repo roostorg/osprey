@@ -286,8 +286,7 @@ class LabelState:
         if the weights are the *same*, then a merge of reasons is performed, which can also cause the expiration to be delayed.
         """
         if not self.reasons:
-            return None
-            # AssertionError(f'invariant: the label state {self} did not have any associated reasons')
+            raise AssertionError(f'invariant: the label state {self} did not have any associated reasons')
         expires_at = datetime.min.replace(tzinfo=timezone.utc)
         for reason in self.reasons.values():
             if reason.expires_at is None:

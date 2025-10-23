@@ -1,6 +1,7 @@
 # mypy: ignore-errors
 # ruff: noqa: E402, E501
 
+from osprey.worker.adaptor.plugin_manager import bootstrap_output_sinks
 from osprey.worker.lib.patcher import patch_all
 
 # do not move this below other imports
@@ -140,8 +141,6 @@ def run_rules_sink(
     except ValueError:
         raise NotImplementedError(f'{input_stream_source_string} is not a valid input stream source.')
 
-    from osprey.worker.adaptor.plugin_manager import bootstrap_output_sinks
-
     input_stream = get_rules_sink_input_stream(input_stream_source)
     output_sink = bootstrap_output_sinks(config=config)
 
@@ -193,8 +192,6 @@ def _run_rules_worker_process() -> None:
     sources_provider = get_sources_provider(rules_path=None, input_stream_ready_signaler=input_stream_ready_signaler)
 
     engine, udf_helpers = bootstrap_engine_with_helpers(sources_provider=sources_provider)
-
-    from osprey.worker.adaptor.plugin_manager import bootstrap_output_sinks
 
     # Output Sink
     output_sink = bootstrap_output_sinks(config)

@@ -4,7 +4,7 @@ from osprey.engine.config.config_registry import ConfigRegistry
 from osprey.engine.stdlib import get_config_registry
 from osprey.worker.lib.config import Config
 from osprey.worker.lib.singleton import Singleton
-from osprey.worker.lib.storage.labels import LabelsProvider, _init_labels_provider
+from osprey.worker.lib.storage.labels import LabelsProvider
 
 if TYPE_CHECKING:
     from osprey.worker.lib.osprey_engine import OspreyEngine
@@ -23,18 +23,22 @@ def _init_engine():
 ENGINE: Singleton['OspreyEngine'] = Singleton(_init_engine)
 
 
-# def _init_labels_provider():
-#     # the plugin manager imports this file to reference the labels provider singleton;
-#     # therefore, we need these to not cause circular imports
-#     from osprey.worker.adaptor.plugin_manager import (
-#         _labels_service_or_provider_is_registered,
-#         bootstrap_labels_provider,
-#     )
-#
-#     if not _labels_service_or_provider_is_registered():
-#         return None
-#     config = CONFIG.instance()
-#     return bootstrap_labels_provider(config)
+def _init_labels_provider() -> LabelsProvider | None:
+    """
+    a helper method to initialize the labels provider for the LABELS_PROVIDER singleton
+    """
+    # the plugin manager imports this file to reference the labels provider singleton;
+    # therefore, we need these to not cause circular imports
+    from osprey.worker.adaptor.plugin_manager import (
+        _labels_service_or_provider_is_registered,
+        bootstrap_labels_provider,
+    )
+    # from osprey.worker.lib.singletons import CONFIG
+
+    if not _labels_service_or_provider_is_registered():
+        return None
+    config = CONFIG.instance()
+    return bootstrap_labels_provider(config)
 
 
 LABELS_PROVIDER: Singleton['LabelsProvider | None'] = Singleton(_init_labels_provider)

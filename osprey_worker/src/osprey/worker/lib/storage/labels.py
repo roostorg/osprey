@@ -257,21 +257,3 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
         add shutdown logic, override this~
         """
         pass
-
-
-def _init_labels_provider() -> LabelsProvider | None:
-    """
-    a helper method to initialize the labels provider for the LABELS_PROVIDER singleton
-    """
-    # the plugin manager imports this file to reference the labels provider singleton;
-    # therefore, we need these to not cause circular imports
-    from osprey.worker.adaptor.plugin_manager import (
-        _labels_service_or_provider_is_registered,
-        bootstrap_labels_provider,
-    )
-    from osprey.worker.lib.singletons import CONFIG
-
-    if not _labels_service_or_provider_is_registered():
-        return None
-    config = CONFIG.instance()
-    return bootstrap_labels_provider(config)

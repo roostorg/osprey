@@ -6,6 +6,7 @@ from google.cloud import pubsub_v1
 from kafka.coordinator.assignors.roundrobin import RoundRobinPartitionAssignor
 from osprey.engine.executor.execution_context import Action
 from osprey.worker.adaptor.plugin_manager import bootstrap_input_stream
+from osprey.worker.lib.singletons import CONFIG
 from osprey.worker.sinks import InputStreamSource
 from osprey.worker.sinks.sink.input_stream import (
     AsyncPubSubOspreyActionInputStream,
@@ -22,9 +23,6 @@ def get_rules_sink_input_stream(
 ) -> BaseInputStream[BaseAckingContext[Action]]:
     """Based on the `input_stream_source` constructs a configured input stream that can be used to source events to
     classify. For more details, see `InputStreamSource`."""
-
-    # circular imports...
-    from osprey.worker.lib.singletons import CONFIG
 
     config = CONFIG.instance()
 
