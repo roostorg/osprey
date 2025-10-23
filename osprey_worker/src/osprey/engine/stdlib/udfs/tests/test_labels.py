@@ -413,8 +413,8 @@ def test_suggests_similar_labels(check_failure: CheckFailureFunction, run_valida
 @pytest.mark.parametrize(
     'entity_type, label_name, label_udf, entity_label_mutation',
     (
-        ('EntityA', 'label_a', 'LabelAdd', 'EntityA/label_a/0'),
-        ('EntityB', 'label_b', 'LabelRemove', 'EntityB/label_b/1'),
+        ('EntityA', 'label_a', 'LabelAdd', 'EntityA/label_a/1'),
+        ('EntityB', 'label_b', 'LabelRemove', 'EntityB/label_b/0'),
     ),
 )
 def test_label_effects_are_exported_to_extracted_features(
@@ -445,8 +445,8 @@ def test_label_effects_are_exported_to_extracted_features(
 @pytest.mark.parametrize(
     'entity_type, label_name, label_udf, entity_label_mutation',
     (
-        ('EntityA', 'label_a', 'LabelAdd', 'EntityA/label_a/0'),
-        ('EntityB', 'label_b', 'LabelRemove', 'EntityB/label_b/1'),
+        ('EntityA', 'label_a', 'LabelAdd', 'EntityA/label_a/1'),
+        ('EntityB', 'label_b', 'LabelRemove', 'EntityB/label_b/0'),
     ),
 )
 def test_label_effects_are_exported_to_extracted_features_multi_rule(

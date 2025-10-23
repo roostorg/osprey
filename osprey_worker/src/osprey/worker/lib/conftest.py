@@ -17,14 +17,6 @@ execute_with_result = rules_conftest.execute_with_result
 udf_registry = rules_conftest.udf_registry
 
 # Rules-package fixtures used for testing validators
-from _pytest.config.argparsing import Parser
-
-
-def pytest_addoption(parser: Parser) -> None:
-    parser.addoption(
-        '--write-outputs', action='store_true', help='write checked validator outputs instead of checking them'
-    )
-
 
 run_validation = rules_conftest.run_validation
 check_failure = rules_conftest.check_failure
