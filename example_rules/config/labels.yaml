@@ -1,0 +1,5 @@
+labels:
+  meow:
+    valid_for: [User]
+    connotation: positive
+    description: ayu testing label

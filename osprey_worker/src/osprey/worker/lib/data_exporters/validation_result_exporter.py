@@ -6,7 +6,6 @@ from osprey.engine.ast_validator.validators.validate_experiments import (
 )
 from osprey.worker.lib.data_exporters.models import ospreyExperimentMetadataUpdate
 from osprey.worker.lib.publisher import BasePublisher, PubSubPublisher
-from osprey.worker.lib.singletons import CONFIG
 
 
 class BaseValidationResultExporter(abc.ABC):
@@ -47,6 +46,9 @@ class ExperimentValidationResultExporter(BaseValidationResultExporter):
 
 def get_validation_result_exporter() -> BaseValidationResultExporter:
     """setup and returns the validation result exporter that will run during source updates"""
+
+    from osprey.worker.lib.singletons import CONFIG
+
     config = CONFIG.instance()
 
     # Use null exporter if disabled (for development)

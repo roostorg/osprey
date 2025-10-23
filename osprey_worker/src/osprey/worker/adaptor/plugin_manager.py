@@ -12,7 +12,6 @@ from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.adaptor.constants import OSPREY_ADAPTOR
 from osprey.worker.adaptor.hookspecs import osprey_hooks
 from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
-from osprey.worker.lib.singletons import LABELS_PROVIDER
 from osprey.worker.lib.storage.labels import LabelsProvider, LabelsServiceBase
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
 from osprey.worker.sinks.sink.output_sink import BaseOutputSink, LabelOutputSink, MultiOutputSink
@@ -56,6 +55,8 @@ def bootstrap_udfs() -> tuple[UDFRegistry, UDFHelpers]:
             udf_helpers.set_udf_helper(udf, udf.create_provider())
 
     # Label udfs should only be registered if the labels provider is available
+    from osprey.worker.lib.singletons import LABELS_PROVIDER
+
     labels_provider = LABELS_PROVIDER.instance()
     if labels_provider:
         # Imports kinda circular. Imports here are to avoid that.
@@ -73,6 +74,8 @@ def bootstrap_output_sinks(config: Config) -> BaseOutputSink:
     sinks = flatten(plugin_manager.hook.register_output_sinks(config=config))
 
     # Label udfs should only be registered if the labels provider is available
+    from osprey.worker.lib.singletons import LABELS_PROVIDER
+
     labels_provider = LABELS_PROVIDER.instance()
     if labels_provider:
         sinks.append(LabelOutputSink(labels_provider))

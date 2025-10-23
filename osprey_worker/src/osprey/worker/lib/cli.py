@@ -34,7 +34,7 @@ from osprey.worker.lib.utils.click_utils import EnumChoicePb2  # noqa: E402
 
 
 @click.group()
-def cli() -> None:
+def cli():
     pass
 
 
