@@ -92,4 +92,12 @@ def manual_entity_mutation(request_model: ManualEntityLabelMutationRequest) -> A
 
     result = labels_provider.apply_entity_label_mutations(request_model.entity, mutations)
 
-    return result
+    return {
+        'mutation_result': {
+            'added': result.labels_added,
+            'removed': result.labels_removed,
+            'updated': result.labels_updated,
+            'unchanged': list(set(mut.mutation.label_name for mut in result.dropped_mutations)),
+        },
+        **result.new_entity_labels.serialize(),
+    }
