@@ -11,7 +11,7 @@ import gevent
 import google.cloud.storage as storage
 import pytz
 from google.api_core import retry
-from google.cloud.bigtable import row_filters
+from google.cloud.bigtable import row_filters, row_set
 from google.cloud.bigtable.row import Row
 from minio import Minio
 from minio.error import S3Error
@@ -193,11 +193,26 @@ class StoredExecutionResultBigTable(ExecutionResultStore):
     # TODO: Add `select_*_minimal` methods
 
     def select_many(self, action_ids: List[int]) -> List[Dict[str, Any]]:
-        return [
-            row
-            for row in gevent.pool.Pool(BIGTABLE_CONCURRENCY_LIMIT).imap(self.select_one, action_ids)
-            if row is not None
-        ]
+        if not action_ids:
+            return []
+
+        row_set_obj = row_set.RowSet()
+        for action_id in action_ids:
+            row_set_obj.add_row_key(StoredExecutionResultBigTable._encode_action_id(action_id))
+
+        rows = osprey_bigtable.table('stored_execution_result').read_rows(
+            row_set=row_set,
+            filter_=row_filters.CellsColumnLimitFilter(1),
+            retry=self.retry_policy,
+        )
+
+        results: List[Dict[str, Any]] = []
+        for row in rows:
+            if not row:
+                continue
+            results.append(StoredExecutionResultBigTable._execution_result_dict_from_row(row))
+
+        return results
 
     def insert(
         self,
