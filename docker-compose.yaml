@@ -263,6 +263,12 @@ services:
       - POSTGRES_PASSWORD=FoolishPassword
       - POSTGRES_USER=osprey
       - POSTGRES_DB=osprey
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      start_period: 30s
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   # DRUID, HERE BE DRAGONS
   # Need 3.5 or later for container nodes
