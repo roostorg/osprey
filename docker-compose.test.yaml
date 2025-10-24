@@ -1,0 +1,51 @@
+# Test-specific docker-compose that extends the main one
+# Usage: docker compose -f docker-compose.yaml -f docker-compose.test.yml --profile test <command>
+
+services:
+  # Test runner service
+  test_runner:
+    container_name: osprey_test_runner
+    build:
+      context: .
+      dockerfile: osprey_worker/Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-topic-creator:
+        condition: service_completed_successfully
+      bigtable:
+        condition: service_healthy
+      bigtable_initializer:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+      minio-bucket-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      snowflake:
+        condition: service_started
+    profiles:
+      - test
+    environment:
+      - PYTHONPATH=/osprey
+      - BIGTABLE_EMULATOR_HOST=bigtable:8361
+      - DRUID_URL=http://druid-broker:8082
+      - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
+      - OSPREY_KAFKA_BOOTSTRAP_SERVERS=["kafka:29092"]
+      - OSPREY_MINIO_ENDPOINT=minio:9000
+      - OSPREY_MINIO_ACCESS_KEY=minioadmin
+      - OSPREY_MINIO_SECRET_KEY=minioadmin123
+      - OSPREY_MINIO_SECURE=false
+      - OSPREY_MINIO_EXECUTION_RESULTS_BUCKET=execution-output
+      - SNOWFLAKE_API_ENDPOINT=http://snowflake:8080
+      - DD_TRACE_ENABLED=False
+      - DD_DOGSTATSD_DISABLE=True
+      - TESTING=true
+    volumes:
+      - ./osprey_worker:/osprey/osprey_worker
+      - ./osprey_rpc:/osprey/osprey_rpc
+      - ./example_rules:/osprey/example_rules
+      - ./example_plugins:/osprey/example_plugins
+    working_dir: /osprey
+    entrypoint: "uv run pytest"
