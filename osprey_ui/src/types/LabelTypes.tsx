@@ -1,8 +1,8 @@
 export enum LabelStatus {
-  ADDED,
   REMOVED,
-  MANUALLY_ADDED,
+  ADDED,
   MANUALLY_REMOVED,
+  MANUALLY_ADDED,
 }
 
 export const LabelStatusAPIMapping: Record<LabelStatus, string> = {
