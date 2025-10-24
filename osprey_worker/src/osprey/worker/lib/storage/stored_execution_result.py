@@ -210,11 +210,7 @@ class StoredExecutionResultBigTable(ExecutionResultStore):
         for row in rows:
             if not row:
                 continue
-
-            try:
-                results.append(StoredExecutionResultBigTable._execution_result_dict_from_row(row))
-            except Exception as e:
-                logger.error(f'Failed to parse row {row.row_key}: {e}')
+            results.append(StoredExecutionResultBigTable._execution_result_dict_from_row(row))
 
         return results
 
