@@ -1,8 +1,8 @@
 export enum LabelStatus {
-  ADDED,
   REMOVED,
-  MANUALLY_ADDED,
+  ADDED,
   MANUALLY_REMOVED,
+  MANUALLY_ADDED,
 }
 
 export const LabelStatusAPIMapping: Record<LabelStatus, string> = {
@@ -44,7 +44,7 @@ export interface LabelMutation {
 
 export interface LabelMutationDetails {
   added: string[];
-  dropped: string[];
+  updated: string[];
   removed: string[];
   unchanged: string[];
 }

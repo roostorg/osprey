@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum, auto
 from typing import Any, Optional, Sequence
 
@@ -170,7 +170,7 @@ class HasLabel(
         desired_manual = _ManualType.get(arguments.manual)
         desired_delay = TimeDeltaT.inner_from_optional(arguments.min_label_age)
         label_state = entity_labels.labels.get(arguments.label)
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
 
         if label_state is not None:
             # Check to see if all reasons have expired, if so, the label should be considered as expired.

@@ -6,15 +6,13 @@ from osprey.worker.lib.patcher import patch_all
 # do not move this below other imports
 patch_all(ddtrace_args={'cassandra': True, 'psycopg': True})
 
-from osprey.worker.sinks.input_stream_chooser import get_rules_sink_input_stream
-from osprey.worker.sinks.sink.output_sink import LabelOutputSink
-
 import signal
 from uuid import uuid1
 
 # this is required to avoid memory leaks with gRPC
 from gevent import config as gevent_config
 from osprey.worker.adaptor.plugin_manager import bootstrap_output_sinks
+from osprey.worker.sinks.input_stream_chooser import get_rules_sink_input_stream
 
 gevent_config.track_greenlet_tree = False
 
@@ -40,7 +38,7 @@ from osprey.worker.lib.config import Config
 from osprey.worker.lib.osprey_engine import bootstrap_engine, bootstrap_engine_with_helpers, get_sources_provider
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.publisher import PubSubPublisher
-from osprey.worker.lib.singletons import CONFIG
+from osprey.worker.lib.singletons import CONFIG, LABELS_PROVIDER
 from osprey.worker.lib.storage import postgres
 from osprey.worker.lib.storage.bigtable import osprey_bigtable
 from osprey.worker.lib.storage.bulk_label_task import BulkLabelTask
@@ -248,12 +246,7 @@ def run_rules_worker_production() -> None:
 
 @cli.command()
 @click.option('--pooled/--no-pooled', default=True, help='Whether to run multiple bulk label sinks in a pool')
-@click.option(
-    '--send-status-webhook/--no-send-status-webhook',
-    default=True,
-    help='Whether to send status webhook to channel specified in rules repo',
-)
-def run_bulk_label_sink(pooled: bool, send_status_webhook: bool) -> None:
+def run_bulk_label_sink(pooled: bool) -> None:
     config = init_config()
 
     sentry_dsn = config.get_str(CONFIG_SENTRY_OTHER_SINKS_DSN, '')
@@ -268,21 +261,17 @@ def run_bulk_label_sink(pooled: bool, send_status_webhook: bool) -> None:
     analytics_pubsub_topic_id = config.get_str('PUBSUB_ANALYTICS_EVENT_TOPIC_ID', 'osprey-analytics')
     analytics_publisher = PubSubPublisher(analytics_pubsub_project_id, analytics_pubsub_topic_id)
 
-    osprey_webhook_pubsub_project = config.get_str('PUBSUB_OSPREY_WEBHOOKS_PROJECT_ID', 'osprey-dev')
-    osprey_webhook_pubsub_topic = config.get_str('PUBSUB_OSPREY_WEBHOOKS_TOPIC_ID', 'osprey-webhooks')
-    webhooks_publisher = PubSubPublisher(osprey_webhook_pubsub_project, osprey_webhook_pubsub_topic)
-
-    event_effects_output_sink = LabelOutputSink(engine, analytics_publisher, webhooks_publisher)
-
     def factory() -> BulkLabelSink:
         # NOTE: It's very important the input stream is created per-webhook sink
         postgres_source = PostgresInputStream(BulkLabelTask, tags=['sink:bulklabelsink'])
+        labels_provider = LABELS_PROVIDER.instance()
+        if not labels_provider:
+            raise AssertionError('BulkLabelSink cannot be instantiated without a labels provider')
         return BulkLabelSink(
             input_stream=postgres_source,
-            event_effects_output_sink=event_effects_output_sink,
+            labels_provider=labels_provider,
             engine=engine,
             analytics_publisher=analytics_publisher,
-            send_status_webhook=send_status_webhook,
         )
 
     if pooled:

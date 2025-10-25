@@ -47,6 +47,7 @@ class ExperimentValidationResultExporter(BaseValidationResultExporter):
 
 def get_validation_result_exporter() -> BaseValidationResultExporter:
     """setup and returns the validation result exporter that will run during source updates"""
+
     config = CONFIG.instance()
 
     # Use null exporter if disabled (for development)

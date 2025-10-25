@@ -15,5 +15,8 @@ ContainsHello = Rule(
 
 WhenRules(
   rules_any=[ContainsHello],
-  then=[BanUser(entity=UserId, comment='User said "hello"')],
+  then=[
+    BanUser(entity=UserId, comment='User said "hello"'),
+    LabelAdd(entity=UserId, label='meow'),
+  ],
 )
