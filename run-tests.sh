@@ -9,14 +9,14 @@ dc() {
 # Cleanup function to run on script exit
 cleanup() {
     echo "Cleaning up services..."
-    dc down --remove-orphans
+    dc down --remove-orphans --volumes
 }
 
 # Trap cleanup function on script exit (success or failure)
 trap cleanup EXIT
 
 echo "Starting required services..."
-dc up -d
+dc up -d --force-recreate
 
 echo "Waiting for services to be ready..."
 
