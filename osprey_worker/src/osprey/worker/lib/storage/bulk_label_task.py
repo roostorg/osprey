@@ -43,7 +43,7 @@ class BulkLabelTask(Model):
     label_reason = Column(Text, nullable=False)
     label_expiry = Column(DateTime(timezone=True))
 
-    task_status = Column(Enum(TaskStatus, name='task_status', create_type=False), nullable=False)
+    task_status = Column(Enum(TaskStatus, name='task_status', create_type=True), nullable=False)
     entities_collected = Column(Integer, nullable=False, default=0)
     entities_labeled = Column(Integer, nullable=False, default=0)
     total_entities_to_label = Column(Integer, nullable=True)
