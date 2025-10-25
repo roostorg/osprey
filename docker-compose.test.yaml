@@ -30,6 +30,8 @@ services:
         condition: service_healthy
       snowflake:
         condition: service_started
+      etcd:
+        condition: service_healthy
     profiles:
       - test
     environment:
@@ -58,6 +60,7 @@ services:
       - OSPREY_DISABLE_VALIDATION_EXPORTER=true
       - DRUID_URL=http://druid-broker:8082
       - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
+      - ETCD_PEERS=http://etcd:2379
       - TESTING=true
     volumes:
       - ./osprey_worker:/osprey/osprey_worker

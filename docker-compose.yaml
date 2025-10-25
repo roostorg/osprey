@@ -201,6 +201,27 @@ services:
       - PORT=8088
     restart: unless-stopped
 
+  etcd:
+    container_name: etcd
+    image: quay.io/coreos/etcd:v3.4.18
+    ports:
+      - "2379:2379"
+    environment:
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd:2380
+      - ETCD_INITIAL_CLUSTER=etcd=http://etcd:2380
+      - ETCD_NAME=etcd
+      - ETCD_DATA_DIR=/etcd-data
+      - ETCD_ENABLE_V2=true
+    healthcheck:
+      test: ["CMD", "etcdctl", "--endpoints=http://localhost:2379", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   bigtable:
     hostname: bigtable
     container_name: bigtable
