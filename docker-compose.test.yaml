@@ -1,8 +1,13 @@
 # Test-specific docker-compose that extends the main one
-# Usage: docker compose -f docker-compose.yaml -f docker-compose.test.yml --profile test <command>
+# Usage: docker compose -f docker-compose.yaml -f docker-compose.test.yaml --profile test <command>
 
 services:
-  # Test runner service
+  postgres:
+    volumes: !reset []
+
+  minio:
+    volumes: !reset []
+
   test_runner:
     container_name: osprey_test_runner
     build:
@@ -22,7 +27,7 @@ services:
       minio-bucket-init:
         condition: service_completed_successfully
       postgres:
-        condition: service_started
+        condition: service_healthy
       snowflake:
         condition: service_started
     profiles:
