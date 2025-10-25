@@ -32,7 +32,7 @@ def make_postgres_database_config_fixture() -> object:
         url = hosts.get('osprey_db') if hosts is not None else None
 
         if url is None:
-            pytest.skip('POSTGRES_HOSTS not configured, skipping Postgres tests')
+            pytest.fail('POSTGRES_HOSTS not configured')
 
         try:
             create_database(url)
