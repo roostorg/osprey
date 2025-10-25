@@ -36,7 +36,7 @@ class BulkActionJob(Model):
     id: int = Column(BigInteger, primary_key=True)
     user_id: str = Column(Text, nullable=False)
     status: BulkActionJobStatus = Column(
-        Enum(BulkActionJobStatus, name='status', create_type=False, values_callable=lambda x: [e.value for e in x]),
+        Enum(BulkActionJobStatus, name='job_status', create_type=True, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
     )
     gcs_path: str = Column(Text, nullable=False)
@@ -89,6 +89,7 @@ class BulkActionJob(Model):
                 gcs_path=gcs_path,
                 original_filename=original_filename,
                 total_rows=total_rows,
+                processed_rows=0,
                 action_workflow_name=action_workflow_name,
                 entity_type=entity_type,
                 status=BulkActionJobStatus.PENDING_UPLOAD,
@@ -170,7 +171,9 @@ class BulkActionTask(Model):
     id: int = Column(BigInteger, primary_key=True)
     job_id: int = Column(BigInteger, nullable=False)
     status: BulkActionTaskStatus = Column(
-        Enum(BulkActionTaskStatus, name='status', create_type=False, values_callable=lambda x: [e.value for e in x]),
+        Enum(
+            BulkActionTaskStatus, name='task_status', create_type=False, values_callable=lambda x: [e.value for e in x]
+        ),
         nullable=False,
     )
     chunk_number: int = Column(Integer, nullable=False)
