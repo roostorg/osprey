@@ -33,7 +33,6 @@ def create_experiments() -> List[ExperimentT]:
             resolved_bucket='b',
             version=1,
             revision=1,
-            local_bucketing=True,
         ),
         ExperimentT(
             name='Experiment2',
@@ -43,7 +42,6 @@ def create_experiments() -> List[ExperimentT]:
             resolved_bucket='',
             version=2,
             revision=1,
-            local_bucketing=True,
         ),
         ExperimentT(
             name='Experiment3',
@@ -53,7 +51,6 @@ def create_experiments() -> List[ExperimentT]:
             resolved_bucket='a',
             version=2,
             revision=1,
-            local_bucketing=True,
         ),
     ]
 
