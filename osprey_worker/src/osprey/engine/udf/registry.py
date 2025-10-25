@@ -21,8 +21,12 @@ class UDFRegistry:
         return instance
 
     def register(self, func: Type[UDFBase[Any, Any]]) -> Type[UDFBase[Any, Any]]:
-        if func.__name__ in self._functions:
-            raise Exception(f'A function with the name {func.__name__} is already registered.')
+        # Allow idempotent re-registration of the exact same class.
+        existing = self.get(func.__name__)
+        if existing is not None:
+            if existing is func:
+                return existing
+            raise Exception(f'A function with the name {func.__name__} is already registered with {func}.')
 
         try:
             rvalue_type = func.get_rvalue_type()

@@ -1,11 +1,10 @@
 from typing import Dict
 
+from osprey.engine import shared_constants
 from osprey.engine.ast_validator.validation_context import ValidationContext
+from osprey.engine.query_language.udfs.registry import register
 from osprey.engine.udf.arguments import ArgumentsBase, ConstExpr
 from osprey.engine.udf.base import QueryUdfBase
-
-from ... import shared_constants
-from .registry import register
 
 
 class Arguments(ArgumentsBase):
