@@ -19,6 +19,7 @@ from osprey.engine.executor.execution_context import ExecutionResult
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.snowflake import Snowflake
+from osprey.worker.lib.storage import ExecutionResultStorageBackendType
 from osprey.worker.lib.storage.bigtable import osprey_bigtable
 from pydantic.main import BaseModel
 
@@ -497,9 +498,17 @@ class ExecutionResultStorageService:
 
 def bootstrap_execution_result_storage_service() -> ExecutionResultStorageService:
     """Create an ExecutionResultStorageService with the configured storage backend."""
-    from osprey.worker.adaptor.plugin_manager import bootstrap_execution_result_store
+    from osprey.worker._stdlibplugin.execution_result_store_chooser import get_rules_execution_result_storage_backend
     from osprey.worker.lib.singletons import CONFIG
 
     config = CONFIG.instance()
-    storage_backend = bootstrap_execution_result_store(config)
+
+    storage_backend_type = ExecutionResultStorageBackendType(
+        config.get_str('OSPREY_EXECUTION_RESULT_STORAGE_BACKEND', 'none').lower()
+    )
+    storage_backend = get_rules_execution_result_storage_backend(backend_type=storage_backend_type)
+
+    if storage_backend is None:
+        raise AssertionError('No storage backend registered')
+
     return ExecutionResultStorageService(storage_backend)
