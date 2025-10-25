@@ -45,7 +45,7 @@ class BulkLabelSinkAndMocks:
     task: BulkLabelTask
     heartbeat_mock: MagicMock
     release_mock: MagicMock
-    event_effects_output_sink_mock: MagicMock
+    labels_provider_mock: MagicMock
     analytics_mock: MagicMock
 
 
@@ -97,10 +97,10 @@ def create_bulk_label_sink_with_single_task(
 
     engine = OspreyEngine(sources_provider=provider, udf_registry=udf_registry)
 
-    event_effects_output_sink_mock = MagicMock()
+    labels_provider_mock = MagicMock()
     bulk_label_sink = BulkLabelSink(
         StaticInputStream([task]),
-        event_effects_output_sink=event_effects_output_sink_mock,
+        labels_provider=labels_provider_mock,
         analytics_publisher=MagicMock(),
         engine=engine,
     )
@@ -110,7 +110,7 @@ def create_bulk_label_sink_with_single_task(
         task=task,
         heartbeat_mock=heartbeat_mock,
         release_mock=release_mock,
-        event_effects_output_sink_mock=event_effects_output_sink_mock,
+        labels_provider_mock=labels_provider_mock,
         analytics_mock=analytics_mock,
     )
 
@@ -120,13 +120,13 @@ def test_bulk_label_golden_path() -> None:
 
     sink_and_mocks.sink.run()
 
-    assert (
-        sink_and_mocks.event_effects_output_sink_mock.apply_label_mutations_pb2.call_count == _TASK_TOTAL_VALID_ENTITIES
-    )
-    event_keys = [
-        kwargs['entity_key']
-        for args, kwargs in sink_and_mocks.event_effects_output_sink_mock.apply_label_mutations_pb2.call_args_list
-    ]
+    assert sink_and_mocks.labels_provider_mock.apply_entity_label_mutations.call_count == _TASK_TOTAL_VALID_ENTITIES
+    # Extract entity keys from the mock calls
+    entity_keys = []
+    for call_args in sink_and_mocks.labels_provider_mock.apply_entity_label_mutations.call_args_list:
+        entity = call_args.kwargs['entity']
+        entity_keys.append((entity.type, entity.id))
+
     expected_entity_keys = [
         ('User', '0'),
         ('User', '1'),
@@ -140,10 +140,8 @@ def test_bulk_label_golden_path() -> None:
         ('User', '9'),
     ]
     # We have to check that the lists are equal, but unordered.
-    # We cant use a set because the proto EntityKey object is not
-    # hashable :(
     expected_keys_as_tuples = set(expected_entity_keys)
-    actual_keys_as_tuples = {(key.type, key.id) for key in event_keys}
+    actual_keys_as_tuples = set(entity_keys)
     assert actual_keys_as_tuples == expected_keys_as_tuples
 
     sink_and_mocks.release_mock.assert_called_once_with(status=TaskStatus.COMPLETE)
@@ -163,7 +161,7 @@ def test_bulk_label_golden_path() -> None:
 def test_bulk_label_retries() -> None:
     sink_and_mocks = create_bulk_label_sink_with_single_task()
     exc = Exception('fake')
-    sink_and_mocks.event_effects_output_sink_mock.apply_label_mutations_pb2.side_effect = exc
+    sink_and_mocks.labels_provider_mock.apply_entity_label_mutations.side_effect = exc
 
     sink_and_mocks.sink.run()
 
@@ -177,7 +175,7 @@ def test_bulk_label_retries() -> None:
 def test_bulk_label_fails() -> None:
     sink_and_mocks = create_bulk_label_sink_with_single_task(attempts=MAX_ATTEMPTS + 1)
     exc = Exception('fake')
-    sink_and_mocks.event_effects_output_sink_mock.apply_label_mutations_pb2.side_effect = exc
+    sink_and_mocks.labels_provider_mock.apply_entity_label_mutations.side_effect = exc
 
     sink_and_mocks.sink.run()
 
@@ -194,12 +192,19 @@ def test_bulk_label_golden_path_exclude_ids() -> None:
 
     sink_and_mocks.sink.run()
 
-    apply_label_mutations = sink_and_mocks.event_effects_output_sink_mock.apply_label_mutations_pb2
+    assert (
+        sink_and_mocks.labels_provider_mock.apply_entity_label_mutations.call_count
+        == _TASK_TOTAL_VALID_ENTITIES - len(excluded_entities)
+    )
 
-    assert apply_label_mutations.call_count == _TASK_TOTAL_VALID_ENTITIES - len(excluded_entities)
+    # Extract entity keys from the mock calls
+    entity_keys = []
+    for call_args in sink_and_mocks.labels_provider_mock.apply_entity_label_mutations.call_args_list:
+        entity = call_args.kwargs['entity']
+        entity_keys.append(entity.id)
 
     included_entities_set = {'1', '3', '5', '7', '9'}
-    entities_labeled = {k['entity_key'].id for _, k in apply_label_mutations.call_args_list}
+    entities_labeled = set(entity_keys)
     assert included_entities_set == entities_labeled
 
     sink_and_mocks.heartbeat_mock.assert_has_calls(
