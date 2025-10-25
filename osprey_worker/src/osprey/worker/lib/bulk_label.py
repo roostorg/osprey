@@ -19,7 +19,7 @@ class TaskStatus(Enum):
 
     @staticmethod
     def non_final_statuses() -> Collection['TaskStatus']:
-        return {status for status in TaskStatus if not status.is_final()}
+        return {status for status in TaskStatus if not status.is_final() and status != TaskStatus.RUNNING_DEPRECATED}
 
     def is_final(self) -> bool:
         return self in TaskStatus.final_statuses()
