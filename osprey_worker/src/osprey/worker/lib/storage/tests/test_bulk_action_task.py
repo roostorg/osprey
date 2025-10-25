@@ -53,7 +53,7 @@ def test_create_job(sqlalchemy_session):
     assert job.gcs_path == gcs_path
     assert job.original_filename == original_file_name
     assert job.total_rows == total_rows
-    assert job.processed_rows is None
+    assert job.processed_rows == 0
     assert job.action_workflow_name == action_workflow_name
     assert job.entity_type == entity_type
     assert job.status == BulkActionJobStatus.PENDING_UPLOAD
