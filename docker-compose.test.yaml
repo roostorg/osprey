@@ -34,23 +34,35 @@ services:
       - test
     environment:
       - PYTHONPATH=/osprey
-      - BIGTABLE_EMULATOR_HOST=bigtable:8361
-      - DRUID_URL=http://druid-broker:8082
-      - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
+      - OSPREY_INPUT_STREAM_SOURCE=kafka
+      - OSPREY_STDOUT_OUTPUT_SINK=True
       - OSPREY_KAFKA_BOOTSTRAP_SERVERS=["kafka:29092"]
+      - OSPREY_KAFKA_INPUT_STREAM_TOPIC=osprey.actions_input
+      - OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID=localhost
+      - OSPREY_KAFKA_OUTPUT_SINK=True
+      - OSPREY_KAFKA_OUTPUT_TOPIC=osprey.execution_results
+      - OSPREY_KAFKA_OUTPUT_CLIENT_ID=localhost
+      - DD_TRACE_ENABLED=False
+      - DD_DOGSTATSD_DISABLE=True
+      - OSPREY_RULES_SINK_NUM_WORKERS=1
+      - BIGTABLE_EMULATOR_HOST=bigtable:8361
+      - OSPREY_EXECUTION_RESULT_STORAGE_BACKEND=minio
       - OSPREY_MINIO_ENDPOINT=minio:9000
       - OSPREY_MINIO_ACCESS_KEY=minioadmin
       - OSPREY_MINIO_SECRET_KEY=minioadmin123
       - OSPREY_MINIO_SECURE=false
       - OSPREY_MINIO_EXECUTION_RESULTS_BUCKET=execution-output
       - SNOWFLAKE_API_ENDPOINT=http://snowflake:8080
-      - DD_TRACE_ENABLED=False
-      - DD_DOGSTATSD_DISABLE=True
+      - SNOWFLAKE_EPOCH=1420070400000
+      - OSPREY_RULES_PATH=./example_rules
+      - OSPREY_DISABLE_VALIDATION_EXPORTER=true
+      - DRUID_URL=http://druid-broker:8082
+      - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
       - TESTING=true
     volumes:
       - ./osprey_worker:/osprey/osprey_worker
       - ./osprey_rpc:/osprey/osprey_rpc
       - ./example_rules:/osprey/example_rules
-      - ./example_plugins:/osprey/example_plugins
-    working_dir: /osprey
-    entrypoint: "uv run pytest"
+      - ./entrypoint.sh:/osprey/entrypoint.sh
+    # entrypoint: "uv run pytest"
+    command: ["run-tests"]
