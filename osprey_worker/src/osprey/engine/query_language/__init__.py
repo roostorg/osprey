@@ -3,11 +3,10 @@ from osprey.engine.ast_validator.validation_context import ValidatedSources, Val
 from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
 from osprey.engine.ast_validator.validators.validate_static_types import ValidateStaticTypes
 from osprey.engine.ast_validator.validators.variables_must_be_defined import VariablesMustBeDefined
+from osprey.engine.query_language import udfs
+from osprey.engine.query_language.ast_validator import REGISTRY
+from osprey.engine.query_language.udfs.registry import UDF_REGISTRY
 from osprey.engine.utils.imports import import_all_direct_children
-
-from . import udfs
-from .ast_validator import REGISTRY
-from .udfs.registry import UDF_REGISTRY
 
 
 def parse_query_to_validated_ast(query: str, rules_sources: ValidatedSources) -> ValidatedSources:

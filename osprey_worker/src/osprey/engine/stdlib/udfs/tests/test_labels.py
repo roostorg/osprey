@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set
 
 import gevent
 import pytest
@@ -20,18 +20,23 @@ from osprey.engine.conftest import (
 )
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.language_types.entities import EntityT
+from osprey.engine.language_types.labels import LabelStatus
 from osprey.engine.stdlib import get_config_registry
 from osprey.engine.stdlib.udfs.entity import Entity
 from osprey.engine.stdlib.udfs.labels import HasLabel, LabelAdd, LabelRemove
 from osprey.engine.stdlib.udfs.rules import Rule, WhenRules
 from osprey.engine.stdlib.udfs.time_delta import TimeDelta
 from osprey.engine.udf.registry import UDFRegistry
-from osprey.engine.utils.proto_utils import datetime_to_timestamp
-from osprey.rpc.labels.v1.service_pb2 import LabelReason, Labels, LabelState, LabelStatus
+from osprey.worker.lib.osprey_shared.labels import (
+    EntityLabelMutation,
+    EntityLabelMutationsResult,
+    EntityLabels,
+    LabelReason,
+    LabelReasons,
+    LabelState,
+)
 from osprey.worker.lib.storage.labels import LabelsProvider
-
-if TYPE_CHECKING:
-    from osprey.rpc.labels.v1.service_pb2 import LabelStatusValue
+from result import Result
 
 pytestmark: List[Callable[[Any], Any]] = [
     pytest.mark.use_validators(
@@ -50,20 +55,28 @@ pytestmark: List[Callable[[Any], Any]] = [
 
 
 class StaticLabelProvider(LabelsProvider):
-    def __init__(self, entity_labels: Dict[EntityT[Any], Labels]) -> None:
+    def __init__(self, entity_labels: Dict[EntityT[Any], EntityLabels]) -> None:
         self._entity_labels = entity_labels
 
-    def get_from_service(self, key: EntityT[Any]) -> Labels:
+    def get_from_service(self, key: EntityT[Any]) -> EntityLabels:
         return self._entity_labels[key]
+
+    def batch_get_from_service(self, keys: Sequence[EntityT[Any]]) -> Sequence[Result[EntityLabels, Exception]]:
+        return [Result.Ok(self.get_from_service(key)) for key in keys]
+
+    def apply_entity_mutation(
+        self, entity_key: EntityT[Any], mutations: List[EntityLabelMutation]
+    ) -> EntityLabelMutationsResult:
+        return self.apply_entity_label_mutations(entity_key, mutations)
 
 
 class BlockingLabelProvider(StaticLabelProvider):
-    def __init__(self, entity_labels: Dict[EntityT[Any], Labels]) -> None:
+    def __init__(self, entity_labels: Dict[EntityT[Any], EntityLabels]) -> None:
         super().__init__(entity_labels)
         self.blocking_events: List[Event] = []
         self.calls: List[EntityT[Any]] = []
 
-    def get_from_service(self, key: EntityT[Any]) -> Labels:
+    def get_from_service(self, key: EntityT[Any]) -> EntityLabels:
         event = Event()
         self.blocking_events.append(event)
         event.wait()
@@ -81,84 +94,88 @@ def source_with_labels_config(source: str, labels: Set[str]) -> Dict[str, str]:
 @pytest.mark.parametrize(
     'checking_status, manual, actual_status, reasons, result',
     (
-        ('added', None, LabelStatus.ADDED, {'TestReason': LabelReason()}, True),
+        ('added', None, LabelStatus.ADDED, LabelReasons({'TestReason': LabelReason()}), True),
         (
             'added',
             None,
             LabelStatus.ADDED,
-            {'ExpiredReason': LabelReason(expires_at=datetime_to_timestamp(datetime.now() - timedelta(hours=1)))},
+            LabelReasons({'ExpiredReason': LabelReason(expires_at=(datetime.now() - timedelta(hours=1)))}),
             False,
         ),
         (
             'added',
             None,
             LabelStatus.ADDED,
-            {
-                'ExpiredReason': LabelReason(expires_at=datetime_to_timestamp(datetime.now() - timedelta(hours=1))),
-                'TestReason': LabelReason(),
-            },
+            LabelReasons(
+                {
+                    'ExpiredReason': LabelReason(expires_at=(datetime.now() - timedelta(hours=1))),
+                    'TestReason': LabelReason(),
+                }
+            ),
             True,
         ),
         (
             'added',
             None,
             LabelStatus.ADDED,
-            {
-                'ExpiredReason': LabelReason(expires_at=datetime_to_timestamp(datetime.now() - timedelta(hours=1))),
-                'ExpiringReason': LabelReason(expires_at=datetime_to_timestamp(datetime.now() + timedelta(hours=1))),
-            },
+            LabelReasons(
+                {
+                    'ExpiredReason': LabelReason(expires_at=(datetime.now() - timedelta(hours=1))),
+                    'ExpiringReason': LabelReason(expires_at=(datetime.now() + timedelta(hours=1))),
+                }
+            ),
             True,
         ),
         (
             'added',
             None,
             LabelStatus.ADDED,
-            {'ExpiringReason': LabelReason(expires_at=datetime_to_timestamp(datetime.now() + timedelta(hours=1)))},
+            LabelReasons({'ExpiringReason': LabelReason(expires_at=(datetime.now() + timedelta(hours=1)))}),
             True,
         ),
-        ('added', None, LabelStatus.MANUALLY_ADDED, {'TestReason': LabelReason()}, True),
-        ('added', None, LabelStatus.REMOVED, {'TestReason': LabelReason()}, False),
-        ('added', None, LabelStatus.MANUALLY_REMOVED, {'TestReason': LabelReason()}, False),
-        ('added', None, None, {'TestReason': LabelReason()}, False),
-        ('added', True, LabelStatus.ADDED, {'TestReason': LabelReason()}, False),
-        ('added', True, LabelStatus.MANUALLY_ADDED, {'TestReason': LabelReason()}, True),
-        ('added', True, LabelStatus.REMOVED, {'TestReason': LabelReason()}, False),
-        ('added', True, LabelStatus.MANUALLY_REMOVED, {'TestReason': LabelReason()}, False),
-        ('added', True, None, {'TestReason': LabelReason()}, False),
-        ('added', False, LabelStatus.ADDED, {'TestReason': LabelReason()}, True),
-        ('added', False, LabelStatus.MANUALLY_ADDED, {'TestReason': LabelReason()}, False),
-        ('added', False, LabelStatus.REMOVED, {'TestReason': LabelReason()}, False),
-        ('added', False, LabelStatus.MANUALLY_REMOVED, {'TestReason': LabelReason()}, False),
-        ('added', False, None, {'TestReason': LabelReason()}, False),
-        ('removed', None, LabelStatus.ADDED, {'TestReason': LabelReason()}, False),
-        ('removed', None, LabelStatus.MANUALLY_ADDED, {'TestReason': LabelReason()}, False),
-        ('removed', None, LabelStatus.REMOVED, {'TestReason': LabelReason()}, True),
-        ('removed', None, LabelStatus.MANUALLY_REMOVED, {'TestReason': LabelReason()}, True),
-        ('removed', None, None, {'TestReason': LabelReason()}, True),
-        ('removed', True, LabelStatus.ADDED, {'TestReason': LabelReason()}, False),
-        ('removed', True, LabelStatus.MANUALLY_ADDED, {'TestReason': LabelReason()}, False),
-        ('removed', True, LabelStatus.REMOVED, {'TestReason': LabelReason()}, False),
-        ('removed', True, LabelStatus.MANUALLY_REMOVED, {'TestReason': LabelReason()}, True),
-        ('removed', True, None, {'TestReason': LabelReason()}, False),
-        ('removed', False, LabelStatus.ADDED, {'TestReason': LabelReason()}, False),
-        ('removed', False, LabelStatus.MANUALLY_ADDED, {'TestReason': LabelReason()}, False),
-        ('removed', False, LabelStatus.REMOVED, {'TestReason': LabelReason()}, True),
-        ('removed', False, LabelStatus.MANUALLY_REMOVED, {'TestReason': LabelReason()}, False),
-        ('removed', False, None, {'TestReason': LabelReason()}, True),
+        ('added', None, LabelStatus.MANUALLY_ADDED, LabelReasons({'TestReason': LabelReason()}), True),
+        ('added', None, LabelStatus.REMOVED, LabelReasons({'TestReason': LabelReason()}), False),
+        ('added', None, LabelStatus.MANUALLY_REMOVED, LabelReasons({'TestReason': LabelReason()}), False),
+        ('added', None, None, LabelReasons({'TestReason': LabelReason()}), False),
+        ('added', True, LabelStatus.ADDED, LabelReasons({'TestReason': LabelReason()}), False),
+        ('added', True, LabelStatus.MANUALLY_ADDED, LabelReasons({'TestReason': LabelReason()}), True),
+        ('added', True, LabelStatus.REMOVED, LabelReasons({'TestReason': LabelReason()}), False),
+        ('added', True, LabelStatus.MANUALLY_REMOVED, LabelReasons({'TestReason': LabelReason()}), False),
+        ('added', True, None, LabelReasons({'TestReason': LabelReason()}), False),
+        ('added', False, LabelStatus.ADDED, LabelReasons({'TestReason': LabelReason()}), True),
+        ('added', False, LabelStatus.MANUALLY_ADDED, LabelReasons({'TestReason': LabelReason()}), False),
+        ('added', False, LabelStatus.REMOVED, LabelReasons({'TestReason': LabelReason()}), False),
+        ('added', False, LabelStatus.MANUALLY_REMOVED, LabelReasons({'TestReason': LabelReason()}), False),
+        ('added', False, None, LabelReasons({'TestReason': LabelReason()}), False),
+        ('removed', None, LabelStatus.ADDED, LabelReasons({'TestReason': LabelReason()}), False),
+        ('removed', None, LabelStatus.MANUALLY_ADDED, LabelReasons({'TestReason': LabelReason()}), False),
+        ('removed', None, LabelStatus.REMOVED, LabelReasons({'TestReason': LabelReason()}), True),
+        ('removed', None, LabelStatus.MANUALLY_REMOVED, LabelReasons({'TestReason': LabelReason()}), True),
+        ('removed', None, None, LabelReasons({'TestReason': LabelReason()}), True),
+        ('removed', True, LabelStatus.ADDED, LabelReasons({'TestReason': LabelReason()}), False),
+        ('removed', True, LabelStatus.MANUALLY_ADDED, LabelReasons({'TestReason': LabelReason()}), False),
+        ('removed', True, LabelStatus.REMOVED, LabelReasons({'TestReason': LabelReason()}), False),
+        ('removed', True, LabelStatus.MANUALLY_REMOVED, LabelReasons({'TestReason': LabelReason()}), True),
+        ('removed', True, None, LabelReasons({'TestReason': LabelReason()}), False),
+        ('removed', False, LabelStatus.ADDED, LabelReasons({'TestReason': LabelReason()}), False),
+        ('removed', False, LabelStatus.MANUALLY_ADDED, LabelReasons({'TestReason': LabelReason()}), False),
+        ('removed', False, LabelStatus.REMOVED, LabelReasons({'TestReason': LabelReason()}), True),
+        ('removed', False, LabelStatus.MANUALLY_REMOVED, LabelReasons({'TestReason': LabelReason()}), False),
+        ('removed', False, None, LabelReasons({'TestReason': LabelReason()}), True),
     ),
 )
 def test_get_labels_retrieves_data(
     execute: ExecuteFunction,
     checking_status: str,
     manual: Optional[bool],
-    actual_status: Optional['LabelStatusValue'],
-    reasons: Dict[str, LabelReason],
+    actual_status: Optional[LabelStatus],
+    reasons: LabelReasons,
     result: bool,
 ) -> None:
     if actual_status is None:
-        labels = Labels(labels={})
+        labels = EntityLabels(labels={})
     else:
-        labels = Labels(labels={'my_label': LabelState(status=actual_status, reasons=reasons)})
+        labels = EntityLabels(labels={'my_label': LabelState(status=actual_status, reasons=reasons)})
     label_provider = StaticLabelProvider({EntityT('MyEntity', 'my_id'): labels})
     data = execute(
         source_with_labels_config(
@@ -184,7 +201,7 @@ def test_get_labels_retrieves_data(
             'added',
             None,
             LabelStatus.ADDED,
-            {'TestReason': LabelReason(created_at=datetime_to_timestamp(datetime.now() - timedelta(days=1)))},
+            LabelReasons({'TestReason': LabelReason(created_at=(datetime.now() - timedelta(days=1)))}),
             timedelta(days=1),
             True,
         ),
@@ -192,7 +209,7 @@ def test_get_labels_retrieves_data(
             'added',
             None,
             LabelStatus.ADDED,
-            {'TestReason': LabelReason(created_at=datetime_to_timestamp(datetime.now()))},
+            LabelReasons({'TestReason': LabelReason(created_at=(datetime.now()))}),
             timedelta(days=1),
             False,
         ),
@@ -202,15 +219,15 @@ def test_get_labels_retrieves_data_added_after(
     execute: ExecuteFunction,
     checking_status: str,
     manual: Optional[bool],
-    actual_status: Optional['LabelStatusValue'],
-    reasons: Dict[str, LabelReason],
+    actual_status: Optional[LabelStatus],
+    reasons: LabelReasons,
     min_label_age: timedelta,
     result: bool,
 ) -> None:
     if actual_status is None:
-        labels = Labels(labels={})
+        labels = EntityLabels(labels={})
     else:
-        labels = Labels(labels={'my_label': LabelState(status=actual_status, reasons=reasons)})
+        labels = EntityLabels(labels={'my_label': LabelState(status=actual_status, reasons=reasons)})
     label_provider = StaticLabelProvider({EntityT('MyEntity', 'my_id'): labels})
     data = execute(
         source_with_labels_config(
@@ -268,7 +285,7 @@ def test_get_labels_retrieves_data_added_after(
 
 
 def test_gets_only_debounces_single_execution(execute: ExecuteFunction) -> None:
-    label_provider = BlockingLabelProvider({EntityT('User', 123): Labels(labels={})})
+    label_provider = BlockingLabelProvider({EntityT('User', 123): EntityLabels(labels={})})
 
     def do_execute() -> None:
         execute(

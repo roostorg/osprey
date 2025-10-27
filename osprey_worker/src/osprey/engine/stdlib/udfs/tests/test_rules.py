@@ -13,7 +13,6 @@ from osprey.engine.conftest import (
     RunValidationFunction,
 )
 from osprey.engine.executor.execution_context import (
-    EntityLabelMutation,
     ExecutionContext,
 )
 from osprey.engine.language_types.entities import EntityT
@@ -24,10 +23,8 @@ from osprey.engine.stdlib.udfs.time_delta import TimeDelta
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import UDFBase
 from osprey.engine.udf.registry import UDFRegistry
-from osprey.rpc.labels.v1.service_pb2 import LabelStatus
+from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation, LabelStatus
 from osprey.worker.sinks.sink.output_sink import _get_label_effects_from_result
-
-# Moved here because WhenRules is not included in the MVP yet
 
 
 class FailingUdf(UDFBase[ArgumentsBase, bool]):
