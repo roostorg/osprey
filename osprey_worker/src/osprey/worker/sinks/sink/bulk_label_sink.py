@@ -423,9 +423,10 @@ class BulkLabelSink(BaseSink):
 
         feature_name_to_entity_type_mapping = engine.get_feature_name_to_entity_type_mapping()
         labels_provider = LABELS_PROVIDER.instance()
-        assert labels_provider is not None, (
-            'this code cannot be used because no labels service / provider is supplied for this osprey instance'
-        )
+        if labels_provider is None:
+            raise NotImplementedError(
+                'this code cannot be used because no labels service / provider is supplied for this osprey instance'
+            )
         feature_name = task.dimension
         entity_type = feature_name_to_entity_type_mapping[feature_name]
 

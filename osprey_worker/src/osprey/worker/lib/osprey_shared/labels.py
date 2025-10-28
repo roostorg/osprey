@@ -488,11 +488,15 @@ class EntityLabelMutationsResult:
     """
 
     def serialize(self) -> dict[str, Any]:
+        """
+        the only place this is currently needed is for the ui, which expects a specific json blob
+        """
         return {
-            'new_entity_labels': self.new_entity_labels.serialize(),
-            'old_entity_labels': self.old_entity_labels.serialize(),
-            'labels_added': self.labels_added,
-            'labels_removed': self.labels_removed,
-            'labels_updated': self.labels_updated,
-            'dropped_mutations': [mutation.serialize() for mutation in self.dropped_mutations],
+            'mutation_result': {
+                'added': self.labels_added,
+                'removed': self.labels_removed,
+                'updated': self.labels_updated,
+                'unchanged': list(set(mut.mutation.label_name for mut in self.dropped_mutations)),
+            },
+            **self.new_entity_labels.serialize(),
         }

@@ -1,7 +1,7 @@
 from typing import Any
 
 from flask import Blueprint, abort, jsonify
-from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation
+from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation, EntityLabelMutationsResult
 from osprey.worker.lib.singletons import LABELS_PROVIDER
 from osprey.worker.ui_api.osprey.lib.abilities import (
     CanMutateEntities,
@@ -90,14 +90,6 @@ def manual_entity_mutation(request_model: ManualEntityLabelMutationRequest) -> A
         )
         mutations.append(entity_mutation)
 
-    result = labels_provider.apply_entity_label_mutations(request_model.entity, mutations)
+    result: EntityLabelMutationsResult = labels_provider.apply_entity_label_mutations(request_model.entity, mutations)
 
-    return {
-        'mutation_result': {
-            'added': result.labels_added,
-            'removed': result.labels_removed,
-            'updated': result.labels_updated,
-            'unchanged': list(set(mut.mutation.label_name for mut in result.dropped_mutations)),
-        },
-        **result.new_entity_labels.serialize(),
-    }
+    return result.serialize()
