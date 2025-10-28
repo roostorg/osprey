@@ -82,7 +82,7 @@ services:
       - OSPREY_MINIO_SECRET_KEY=minioadmin123
       - OSPREY_MINIO_SECURE=false
       - OSPREY_MINIO_EXECUTION_RESULTS_BUCKET=execution-output
-      - SNOWFLAKE_API_ENDPOINT=http://snowflake:8080
+      - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
       - SNOWFLAKE_EPOCH=1420070400000
       - OSPREY_RULES_PATH=./example_rules
       - OSPREY_DISABLE_VALIDATION_EXPORTER=true
