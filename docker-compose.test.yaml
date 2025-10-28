@@ -48,7 +48,7 @@ services:
         condition: service_completed_successfully
       bigtable:
         condition: service_healthy
-      bigtable_initializer:
+      bigtable-initializer:
         condition: service_completed_successfully
       minio:
         condition: service_healthy
@@ -56,7 +56,7 @@ services:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
-      snowflake:
+      snowflake-id-worker:
         condition: service_started
       etcd:
         condition: service_healthy
