@@ -36,6 +36,12 @@ class EntityT(OspreyInvariantGeneric[_T], PostExecutionConvertible[_T]):
     def to_post_execution_value(self) -> _T:
         return self.id
 
+    def __str__(self) -> str:
+        return f'{self.type}/{self.id}'
+
+    def __repr__(self) -> str:
+        return f"EntityT[{type(self.id)}](type='{self.type}', id={self.id})"
+
     @staticmethod
     def _internal_post_execution_type(cls: Type['PostExecutionConvertible[_U]']) -> Type[_U]:
         # Since we leave PostExecutionConvertible with a generic variable, override how we determine our type to give

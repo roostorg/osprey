@@ -25,15 +25,21 @@ logger = get_logger(__name__)
 
 
 class LabelsServiceBase(ABC):
-    @abstractmethod
-    def write_labels(self, entity: EntityT[Any], labels: EntityLabels) -> None:
-        """
-        A standard write to the labels service that attempts to write the value to the primary key.
+    """
+    An abstract class to represent an implementable labels service backend.
 
-        This method may be retried upon exceptions, so keep that in mind when adding potentially
-        non-idempotent behaviour.
+    With the default LabelsProvider, read_labels and batch_read_labels are called
+    *during* rule executions (or by the ui api).
+
+    read_modify_write_labels_atomically is called post-rule execution (or by the ui api).
+    """
+
+    def initialize(self) -> None:
         """
-        raise NotImplementedError()
+        This method will be called after the initialization of this labels service base. Any side effects
+        that implementers may want, i.e. connecting to an external service, should be placed here.
+        """
+        pass
 
     @abstractmethod
     def read_labels(self, entity: EntityT[Any]) -> EntityLabels:
@@ -71,10 +77,16 @@ class LabelsServiceBase(ABC):
 
     @abstractmethod
     @contextmanager
-    def get_labels_atomically(self, entity: EntityT[Any]) -> Generator[EntityLabels, None, None]:
+    def read_modify_write_labels_atomically(self, entity: EntityT[Any]) -> Generator[EntityLabels, None, None]:
         """
-        Context manager for atomic read-modify-write operations.
-        Implementations should ensure the entity key is locked/in a transaction.
+        Context manager for atomic read-modify-write operations. This generator should yield EntityLabels upon reading
+        and should write the EntityLabels post-yield.
+
+        IMPORTANT: Implementations should ensure the entity key is locked/in a transaction so that other read-modify-write
+                   calls (even across multiple workers) must wait.
+
+        This code may be retried upon exceptions, so keep that in mind when adding potentially
+        non-idempotent behaviour.
         """
         pass
 
@@ -82,6 +94,13 @@ class LabelsServiceBase(ABC):
 class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
     def __init__(self, labels_service: LabelsServiceBase):
         self._labels_service = labels_service
+
+    def initialize(self) -> None:
+        """
+        This method will be called after the initialization of this labels provider. Any side effects
+        that implementers may want, i.e. connecting to an external service, should be placed here.
+        """
+        self._labels_service.initialize()
 
     def _get_mutations_by_label_name_and_drop_conflicts(
         self, mutations: Sequence[EntityLabelMutation]
@@ -141,8 +160,14 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
         return desired_states_by_label_name
 
     def _compute_new_labels_from_mutations(
-        self, old_labels: EntityLabels, mutations: Sequence[EntityLabelMutation]
+        self, labels: EntityLabels, mutations: Sequence[EntityLabelMutation]
     ) -> EntityLabelMutationsResult:
+        """
+        given an entity's labels and a set of mutations, modify the labels based on the mutations' desired states.
+
+        **this method WILL modify the labels object that is passed into it**.
+        it will also return the pre-modification labels in EntityLabelMutationsResult.old_labels
+        """
         (mutations_by_label_name, dropped_mutations) = self._get_mutations_by_label_name_and_drop_conflicts(mutations)
         desired_states_by_label_name: dict[str, LabelStateInner] = self._get_desired_states_by_label_name(
             mutations_by_label_name
@@ -153,13 +178,13 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
         added: list[str] = []
         removed: list[str] = []
         updated: list[str] = []
-        new_labels = copy.deepcopy(old_labels)
+        old_labels = copy.deepcopy(labels)
         for label_name, desired_state in desired_states_by_label_name.items():
-            if label_name not in new_labels.labels:
-                new_labels.labels[label_name] = LabelState.from_inner(desired_state)
+            if label_name not in labels.labels:
+                labels.labels[label_name] = LabelState.from_inner(desired_state)
                 added.append(label_name)
                 continue
-            current_state = new_labels.labels[label_name]
+            current_state = labels.labels[label_name]
             prev_status = current_state.status
             drop_reason = current_state.try_apply_desired_state(desired_state)
             if drop_reason:
@@ -182,7 +207,7 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
 
         # finally, return the result! duhh :D
         return EntityLabelMutationsResult(
-            new_entity_labels=new_labels,
+            new_entity_labels=labels,
             old_entity_labels=old_labels,
             labels_added=added,
             labels_removed=removed,
@@ -199,12 +224,13 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
     def apply_entity_label_mutations(
         self, entity: EntityT[Any], mutations: Sequence[EntityLabelMutation]
     ) -> EntityLabelMutationsResult:
-        with self._labels_service.get_labels_atomically(entity) as old_labels:
-            result = self._compute_new_labels_from_mutations(old_labels, mutations)
-
-            self._labels_service.write_labels(entity, result.new_entity_labels)
-
+        try:
+            with self._labels_service.read_modify_write_labels_atomically(entity) as entity_labels:
+                result = self._compute_new_labels_from_mutations(entity_labels, mutations)
             return result
+        except Exception as e:
+            logger.error(f'Could not read-modify-write labels for entity {entity.__repr__()}:', e)
+            raise e
 
     def cache_ttl(self) -> Optional[timedelta]:
         return timedelta(minutes=1)

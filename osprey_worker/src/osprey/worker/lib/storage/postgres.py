@@ -8,13 +8,12 @@ from typing import TYPE_CHECKING, Dict, Iterator, Optional  # noqa: E402
 
 from flask import Flask, has_request_context  # noqa: E402
 from osprey.worker.lib.config import Config  # noqa: E402
+from osprey.worker.lib.singletons import CONFIG  # noqa: E402
 from sqlalchemy import MetaData  # noqa: E402
 from sqlalchemy.engine.url import make_url  # noqa: E402
 from sqlalchemy.ext.declarative import declarative_base  # noqa: E402
 from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
 from sqlalchemy.orm.scoping import ThreadLocalRegistry  # type: ignore # missing stub  # noqa: E402
-
-from ..singletons import CONFIG  # noqa: E402
 
 metadata = MetaData()
 Model = declarative_base(name='Model', metadata=metadata)
