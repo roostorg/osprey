@@ -28,8 +28,11 @@ def make_postgres_database_config_fixture() -> object:
     def postgres_database_config() -> Iterator[None]:
         config = CONFIG.instance()
         config.configure_from_env()
-        hosts = config['POSTGRES_HOSTS']
-        url = hosts.get('osprey_db') if hosts is not None else None
+
+        try:
+            url = config['POSTGRES_HOSTS']['osprey_db']
+        except KeyError:
+            url = None
 
         if url is None:
             pytest.fail('POSTGRES_HOSTS not configured')

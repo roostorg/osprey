@@ -241,7 +241,7 @@ class Config:
         return self.get_bool('DEBUG', False)
 
     def __getitem__(self, item: str) -> Any:
-        return self._config_dict.get(item)
+        return self._config_dict[item]
 
 
 def config_from_env(
