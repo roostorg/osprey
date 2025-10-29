@@ -1,5 +1,6 @@
 import json
 from typing import Any, Type
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -199,3 +200,27 @@ def test_okta_grants(app: Flask, okta_profile_cache: None, user_email: str, is_s
         current_user_abilities = request.current_user.get_all_abilities()  # type: ignore
         has_super_sentinel = 'CAN_CREATE_AND_EDIT_SAVED_QUERIES' in current_user_abilities
         assert is_super == has_super_sentinel
+
+
+@pytest.fixture
+def okta_profile_cache():
+    """Mock Okta profile cache to grant super user abilities to test_okta@example.com"""
+    from osprey.worker.lib.sources_config.subkeys.acl_config import AclConfig
+
+    original_get_abilities_for_user = AclConfig.get_abilities_for_user
+
+    def mock_get_abilities_for_user(self, user_email: str):
+        # Get the original abilities
+        abilities = original_get_abilities_for_user(self, user_email)
+
+        # Grant super user abilities to test_okta@example.com
+        if user_email == 'test_okta@example.com':
+            from osprey.worker.lib.acls.acls import ACL
+
+            super_user_abilities = ACL.get_one('SUPER_USER')
+            abilities.extend(super_user_abilities)
+
+        return abilities
+
+    with patch.object(AclConfig, 'get_abilities_for_user', mock_get_abilities_for_user):
+        yield

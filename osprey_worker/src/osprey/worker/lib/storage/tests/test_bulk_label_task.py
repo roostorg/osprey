@@ -4,8 +4,8 @@ from datetime import datetime, timedelta
 from typing import Iterator
 
 import pytest
-from osprey.rpc.labels.v1.service_pb2 import LabelStatus
 from osprey.worker.lib.bulk_label import TaskStatus
+from osprey.worker.lib.osprey_shared.labels import LabelStatus
 from osprey.worker.lib.storage.bulk_label_task import BASE_DELAY_SECONDS, BulkLabelTask
 from osprey.worker.lib.storage.postgres import scoped_session
 from sqlalchemy.orm import Session

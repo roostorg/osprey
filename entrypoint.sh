@@ -39,8 +39,7 @@ cli-run-tests() {
   # Only use in CI via harbormaster buildkite run_tests VARIANT PROJECT [directories]
   # Docker command will be run-tests --junitxml=/osprey/junit-pytest.xml [directory]
   # Last argument is the directory, the rest are pytest args
-  cd "osprey/${!#}"
-  python3.11 -m gevent.monkey --module pytest "${@:1:$#-1}"
+  exec uv run python3.11 -m gevent.monkey --module pytest "${@}"
 }
 
 cli-operator() {

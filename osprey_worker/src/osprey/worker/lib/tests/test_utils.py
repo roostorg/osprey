@@ -28,7 +28,14 @@ def make_postgres_database_config_fixture() -> object:
     def postgres_database_config() -> Iterator[None]:
         config = CONFIG.instance()
         config.configure_from_env()
-        url = config['POSTGRES_HOSTS']['osprey']
+
+        try:
+            url = config['POSTGRES_HOSTS']['osprey_db']
+        except KeyError:
+            url = None
+
+        if url is None:
+            pytest.fail('POSTGRES_HOSTS not configured')
 
         try:
             create_database(url)
@@ -39,7 +46,7 @@ def make_postgres_database_config_fixture() -> object:
             if not isinstance(e.orig, DuplicateDatabase):
                 raise
 
-        postgres.init_from_config('osprey')
+        postgres.init_from_config('osprey_db')
 
         config.unconfigure_for_tests()
 
@@ -88,7 +95,6 @@ def make_app_with_rules_sources_fixture(app_creator: Callable[[], Flask], name: 
         engine = bootstrap_engine(sources_provider=sources_provider)
 
         with ENGINE.override_instance_for_test(engine):
-            CONFIG.instance().unconfigure_for_tests()
             flask_app = app_creator()
             yield flask_app
 

@@ -4,10 +4,10 @@ from osprey.engine.config.config_registry import ConfigRegistry
 from osprey.engine.stdlib import get_config_registry
 from osprey.worker.lib.config import Config
 from osprey.worker.lib.singleton import Singleton
-from osprey.worker.lib.storage.labels import LabelsProvider
 
 if TYPE_CHECKING:
     from osprey.worker.lib.osprey_engine import OspreyEngine
+    from osprey.worker.lib.storage.labels import LabelsProvider
 
 CONFIG: Singleton[Config] = Singleton(Config)
 # Clone this so we don't pollute the stdlib registry with other things.
@@ -23,7 +23,7 @@ def _init_engine():
 ENGINE: Singleton['OspreyEngine'] = Singleton(_init_engine)
 
 
-def _init_labels_provider() -> LabelsProvider | None:
+def _init_labels_provider() -> 'LabelsProvider | None':
     """
     a helper method to initialize the labels provider for the LABELS_PROVIDER singleton
     """

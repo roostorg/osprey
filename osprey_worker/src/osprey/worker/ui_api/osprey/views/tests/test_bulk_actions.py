@@ -37,6 +37,11 @@ def test_bulk_action_start_job_with_bulk_action_ability(app: Flask, client: 'Fla
             'entity_type': 'user',
         },
     )
+
+    # TODO(caidanw): update this test when the bulk action feature is re-implemented
+    assert res.status_code == 501
+    return
+
     assert res.status_code == 200
     assert res.json['id'] is not None
     assert res.json['url'] is not None
@@ -69,6 +74,10 @@ def test_bulk_action_upload_completed_with_bulk_action_ability(app: Flask, clien
             'entity_type': 'user',
         },
     )
+
+    # TODO(caidanw): update this test when the bulk action feature is re-implemented
+    assert res.status_code == 501
+    return
 
     assert res.status_code == 200
     assert res.json['id'] is not None

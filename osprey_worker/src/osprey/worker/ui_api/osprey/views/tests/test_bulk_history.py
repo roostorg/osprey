@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 import pytest
 from flask import Flask, Response, url_for
 from flask.testing import FlaskClient
-from osprey.rpc.labels.v1.service_pb2 import LabelStatus
+from osprey.worker.lib.osprey_shared.labels import LabelStatus
 from osprey.worker.lib.storage.bulk_label_task import BulkLabelTask
 
 config_a = {

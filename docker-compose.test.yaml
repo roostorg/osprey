@@ -1,0 +1,99 @@
+# Test-specific docker-compose that extends the main one
+# Usage: docker compose -f docker-compose.yaml -f docker-compose.test.yaml --profile test <command>
+
+services:
+  postgres:
+    volumes: !reset []
+
+  minio:
+    volumes: !reset []
+
+  etcd:
+    container_name: etcd
+    image: quay.io/coreos/etcd:v3.4.18
+    ports:
+      - "2379:2379"
+    environment:
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd:2380
+      - ETCD_INITIAL_CLUSTER=etcd=http://etcd:2380
+      - ETCD_NAME=etcd
+      - ETCD_DATA_DIR=/etcd-data
+      - ETCD_ENABLE_V2=true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "etcdctl",
+          "--endpoints=http://localhost:2379",
+          "endpoint",
+          "health",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  test_runner:
+    container_name: osprey_test_runner
+    build:
+      context: .
+      dockerfile: osprey_worker/Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-topic-creator:
+        condition: service_completed_successfully
+      bigtable:
+        condition: service_healthy
+      bigtable-initializer:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+      minio-bucket-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      snowflake-id-worker:
+        condition: service_started
+      etcd:
+        condition: service_healthy
+    profiles:
+      - test
+    environment:
+      - PYTHONPATH=/osprey
+      - OSPREY_INPUT_STREAM_SOURCE=kafka
+      - OSPREY_STDOUT_OUTPUT_SINK=True
+      - OSPREY_KAFKA_BOOTSTRAP_SERVERS=["kafka:29092"]
+      - OSPREY_KAFKA_INPUT_STREAM_TOPIC=osprey.actions_input
+      - OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID=localhost
+      - OSPREY_KAFKA_OUTPUT_SINK=True
+      - OSPREY_KAFKA_OUTPUT_TOPIC=osprey.execution_results
+      - OSPREY_KAFKA_OUTPUT_CLIENT_ID=localhost
+      - DD_TRACE_ENABLED=False
+      - DD_DOGSTATSD_DISABLE=True
+      - OSPREY_RULES_SINK_NUM_WORKERS=1
+      - BIGTABLE_EMULATOR_HOST=bigtable:8361
+      - OSPREY_EXECUTION_RESULT_STORAGE_BACKEND=minio
+      - OSPREY_MINIO_ENDPOINT=minio:9000
+      - OSPREY_MINIO_ACCESS_KEY=minioadmin
+      - OSPREY_MINIO_SECRET_KEY=minioadmin123
+      - OSPREY_MINIO_SECURE=false
+      - OSPREY_MINIO_EXECUTION_RESULTS_BUCKET=execution-output
+      - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
+      - SNOWFLAKE_EPOCH=1420070400000
+      - OSPREY_RULES_PATH=./example_rules
+      - OSPREY_DISABLE_VALIDATION_EXPORTER=true
+      - DRUID_URL=http://druid-broker:8082
+      - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
+      - ETCD_PEERS=http://etcd:2379
+      - TESTING=true
+    volumes:
+      - ./osprey_worker:/osprey/osprey_worker
+      - ./osprey_rpc:/osprey/osprey_rpc
+      - ./example_rules:/osprey/example_rules
+      - ./entrypoint.sh:/osprey/entrypoint.sh
+    # entrypoint: "uv run pytest"
+    command: ["run-tests"]
