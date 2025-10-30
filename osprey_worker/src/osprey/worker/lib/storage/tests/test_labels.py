@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytest
@@ -78,35 +78,46 @@ def test_compute_new_labels_from_mutations_adds_new_label(labels_provider: Label
     assert len(result.dropped_mutations) == 0
 
 
-def test_compute_new_labels_from_mutations_removes_existing_label(labels_provider: LabelsProvider, now: datetime):
-    """Test removing an existing label"""
+def test_compute_new_labels_from_mutations_cannot_remove_unexpired_manual_label(
+    labels_provider: LabelsProvider, now: datetime
+):
+    """Test removing an unexpired manually-added label"""
     old_labels = EntityLabels(
         labels={
             'test_label': LabelState(
-                status=LabelStatus.ADDED,
-                reasons=LabelReasons({'reason1': LabelReason(description='original', created_at=now)}),
+                status=LabelStatus.MANUALLY_ADDED,
+                reasons=LabelReasons(
+                    {
+                        'reason1': LabelReason(
+                            description='original',
+                            created_at=now,
+                            expires_at=datetime.now(timezone.utc) + timedelta(days=5),
+                        )
+                    }
+                ),
             )
         }
     )
-    mutations = [
-        EntityLabelMutation(
-            label_name='test_label',
-            reason_name='removal_reason',
-            status=LabelStatus.REMOVED,
-            pending=False,
-            description='Removing label',
-            features={},
-            expires_at=None,
-        )
-    ]
+    removal_mut = EntityLabelMutation(
+        label_name='test_label',
+        reason_name='removal_reason',
+        status=LabelStatus.REMOVED,
+        pending=False,
+        description='Removing label',
+        features={},
+        expires_at=None,
+    )
+
+    mutations = [removal_mut]
 
     result = labels_provider._compute_new_labels_from_mutations(old_labels, mutations)
 
-    assert result.new_entity_labels.labels['test_label'].status == LabelStatus.REMOVED
-    assert 'test_label' in result.labels_removed
+    assert result.new_entity_labels.labels['test_label'].status == LabelStatus.MANUALLY_ADDED
+    assert len(result.labels_removed) == 0
     assert len(result.labels_added) == 0
     assert len(result.labels_updated) == 0
-    assert len(result.dropped_mutations) == 0
+    assert len(result.dropped_mutations) == 1
+    assert result.dropped_mutations[0].mutation == removal_mut
 
 
 def test_compute_new_labels_from_mutations_updates_existing_label_same_status(
@@ -172,7 +183,7 @@ def test_compute_new_labels_from_mutations_drops_conflicting_mutations(labels_pr
     assert len(result.dropped_mutations) == 1
     assert result.dropped_mutations[0].reason == MutationDropReason.CONFLICTING_MUTATION
     # The higher priority status (ADDED > REMOVED) should win
-    assert result.new_entity_labels.labels['test_label'].status == LabelStatus.REMOVED
+    assert result.new_entity_labels.labels['test_label'].status == LabelStatus.ADDED
 
 
 def test_compute_new_labels_from_mutations_manual_blocks_automatic(labels_provider: LabelsProvider, now: datetime):
