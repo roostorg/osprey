@@ -28,6 +28,7 @@ const QUERY_ROW_LIMIT = 100;
 const HEADER_HEIGHT = 44;
 const ADDITIONAL_PADDING = 4;
 const ROW_HEIGHT = 44;
+const EMPTY_ROW_HEIGHT = 116;
 const NUM_COLUMNS = 3;
 
 const calculateCardHeight = (currentHeight: number, featureBlock: readonly string[], item: OspreyEvent) => {
@@ -159,6 +160,10 @@ const EventStream: React.FC = () => {
       customSummaryFeatures == null
         ? getSummaryFeatures(eventStream[index].extracted_features.ActionName)
         : [customSummaryFeatures];
+
+    if (!features.length) {
+      return EMPTY_ROW_HEIGHT;
+    }
 
     return features.reduce(
       (height: number, featureBlock: readonly string[]) =>
