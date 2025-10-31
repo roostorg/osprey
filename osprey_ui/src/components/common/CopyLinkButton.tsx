@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { CheckCircleOutlined, LinkOutlined } from '@ant-design/icons';
 import { message, Button } from 'antd';
+import { copyText } from '../../lib/copyText';
 
 interface CopyLinkButtonProps {
   link: string;
@@ -25,7 +26,7 @@ const CopyLinkButton = ({ link }: CopyLinkButtonProps) => {
   }, [showCopySuccess]);
 
   const handleCopyLink = async () => {
-    await navigator.clipboard.writeText(link);
+    await copyText(link);
     message.success('Link copied to clipboard', 1);
     setShowCopySuccess(true);
   };
