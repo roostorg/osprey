@@ -95,5 +95,5 @@ services:
       - ./osprey_rpc:/osprey/osprey_rpc
       - ./example_rules:/osprey/example_rules
       - ./entrypoint.sh:/osprey/entrypoint.sh
-    # entrypoint: "uv run pytest"
+      - /tmp/test-results:/tmp/test-results
     command: ["run-tests"]
