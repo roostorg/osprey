@@ -22,11 +22,11 @@ jobs:
       - name: Make run-tests.sh executable
         run: chmod +x run-tests.sh
 
-      - name: Pull and build Docker images
-        run: docker compose -f docker-compose.yaml -f docker-compose.test.yaml --profile test build --pull
-
       - name: Create temp directory for test results
         run: mkdir -p /tmp/test-results
+
+      - name: Pull and build Docker images
+        run: docker compose -f docker-compose.yaml -f docker-compose.test.yaml --profile test build --pull
 
       - name: Run integration tests
         run: ./run-tests.sh --junitxml=/tmp/test-results/junit-pytest.xml
