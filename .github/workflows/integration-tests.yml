@@ -26,7 +26,9 @@ jobs:
         run: mkdir -p /tmp/test-results
 
       - name: Pull and build Docker images
-        run: docker compose -f docker-compose.yaml -f docker-compose.test.yaml --profile test build --pull
+        run: |
+          docker compose -f docker-compose.yaml -f docker-compose.test.yaml --profile test pull
+          docker compose -f docker-compose.yaml -f docker-compose.test.yaml --profile test build
 
       - name: Run integration tests
         run: ./run-tests.sh --junitxml=/tmp/test-results/junit-pytest.xml
