@@ -23,9 +23,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Make run-tests.sh executable
-        run: chmod +x run-tests.sh
-
       - name: Create temp directory for test results
         run: mkdir -p /tmp/test-results
 
