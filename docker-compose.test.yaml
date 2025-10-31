@@ -3,6 +3,7 @@
 
 services:
   postgres:
+    ports: !reset []
     volumes: !reset []
 
   minio:
