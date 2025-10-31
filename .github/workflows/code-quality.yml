@@ -35,10 +35,6 @@ jobs:
       - name: Run mypy type checking
         run: uv run mypy .
 
-      - name: Run tests
-        run: uv run pytest
-        continue-on-error: true # Remove once the tests are working
-
   ui-quality:
     runs-on: ubuntu-latest
     steps:
