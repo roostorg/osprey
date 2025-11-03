@@ -8,5 +8,7 @@ dependencies = [
     "flask-cors>=6.0.1",
     "osprey_rpc",
 ]
+[project.scripts]
+osprey-cli = "osprey.worker.lib.cli:cli"
 [project.entry-points."osprey_plugin"]
 stdlib = "osprey.worker._stdlibplugin"
