@@ -32,6 +32,10 @@ class MutationDropReason(IntEnum):
     CONFLICTING_MUTATION = 0
     # If the existing label status was manual and the attempted mutation was not
     CANNOT_OVERRIDE_MANUAL = 1
+    # if the label name was an empty string
+    INVALID_LABEL_NAME = 2
+    # if the entity id was an empty string
+    INVALID_ENTITY_ID = 3
 
 
 class LabelStatus(IntEnum):

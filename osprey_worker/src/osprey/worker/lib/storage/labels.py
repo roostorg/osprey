@@ -118,6 +118,12 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
         dropped_mutations: list[DroppedEntityLabelMutation] = []
         for mutation in mutations:
             label_name = mutation.label_name
+            if label_name == '':
+                # guard against empty label names
+                dropped_mutations.append(
+                    DroppedEntityLabelMutation(mutation=mutation, reason=MutationDropReason.INVALID_LABEL_NAME)
+                )
+                continue
             if label_name in mutations_by_label_name:
                 other_mutation = mutations_by_label_name[label_name][0]
                 if mutation.status.value > other_mutation.status.value:
@@ -168,6 +174,7 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
         **this method WILL modify the labels object that is passed into it**.
         it will also return the pre-modification labels in EntityLabelMutationsResult.old_labels
         """
+
         (mutations_by_label_name, dropped_mutations) = self._get_mutations_by_label_name_and_drop_conflicts(mutations)
         desired_states_by_label_name: dict[str, LabelStateInner] = self._get_desired_states_by_label_name(
             mutations_by_label_name
@@ -179,10 +186,19 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
         removed: list[str] = []
         updated: list[str] = []
         old_labels = copy.deepcopy(labels)
+
+        def _append_result(new_status: LabelStatus) -> None:
+            match new_status.effective_label_status():
+                case LabelStatus.ADDED:
+                    added.append(label_name)
+                case LabelStatus.REMOVED:
+                    removed.append(label_name)
+
         for label_name, desired_state in desired_states_by_label_name.items():
             if label_name not in labels.labels:
-                labels.labels[label_name] = LabelState.from_inner(desired_state)
-                added.append(label_name)
+                new_state = LabelState.from_inner(desired_state)
+                labels.labels[label_name] = new_state
+                _append_result(new_state.status)
                 continue
             current_state = labels.labels[label_name]
             prev_status = current_state.status
@@ -197,13 +213,7 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
             if prev_status == new_status:
                 updated.append(label_name)
                 continue
-            match new_status.effective_label_status():
-                case LabelStatus.ADDED:
-                    added.append(label_name)
-                    continue
-                case LabelStatus.REMOVED:
-                    removed.append(label_name)
-                    continue
+            _append_result(new_status)
 
         # finally, return the result! duhh :D
         return EntityLabelMutationsResult(
@@ -219,11 +229,39 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
     def apply_entity_label_mutations_with_retry(
         self, entity: EntityT[Any], mutations: Sequence[EntityLabelMutation]
     ) -> EntityLabelMutationsResult:
+        if str(entity.id) == '':
+            labels = EntityLabels()
+            dropped_mutations = [
+                DroppedEntityLabelMutation(mutation=mut, reason=MutationDropReason.INVALID_ENTITY_ID)
+                for mut in mutations
+            ]
+            return EntityLabelMutationsResult(
+                old_entity_labels=labels,
+                new_entity_labels=labels,
+                labels_added=[],
+                labels_updated=[],
+                labels_removed=[],
+                dropped_mutations=dropped_mutations,
+            )
         return self.apply_entity_label_mutations(entity=entity, mutations=mutations)
 
     def apply_entity_label_mutations(
         self, entity: EntityT[Any], mutations: Sequence[EntityLabelMutation]
     ) -> EntityLabelMutationsResult:
+        if str(entity.id) == '':
+            labels = EntityLabels()
+            dropped_mutations = [
+                DroppedEntityLabelMutation(mutation=mut, reason=MutationDropReason.INVALID_ENTITY_ID)
+                for mut in mutations
+            ]
+            return EntityLabelMutationsResult(
+                old_entity_labels=labels,
+                new_entity_labels=labels,
+                labels_added=[],
+                labels_updated=[],
+                labels_removed=[],
+                dropped_mutations=dropped_mutations,
+            )
         try:
             with self._labels_service.read_modify_write_labels_atomically(entity) as entity_labels:
                 result = self._compute_new_labels_from_mutations(entity_labels, mutations)
