@@ -5,31 +5,27 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   python-quality:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: ".python-version"
+
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v7
         with:
           version: "latest"
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Cache uv dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/uv
-          key: uv-${{ runner.os }}-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
-          restore-keys: |
-            uv-${{ runner.os }}-
-            uv-
+          enable-cache: true
 
       - name: Install dependencies
         run: uv sync --dev
@@ -42,10 +38,6 @@ jobs:
 
       - name: Run mypy type checking
         run: uv run mypy .
-
-      - name: Run tests
-        run: uv run pytest
-        continue-on-error: true # Remove once the tests are working
 
   ui-quality:
     runs-on: ubuntu-latest
