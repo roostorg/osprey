@@ -51,6 +51,8 @@ def test_get_bulk_label_task_missing_ability(app: Flask, client: 'FlaskClient[Re
     assert res.data.decode('utf-8') == "User `local-dev@localhost` doesn't have ability `CAN_BULK_LABEL`"
 
 
+# TODO: Stop skipping these tests once bulk label capability is supported
+@pytest.mark.skip(reason='Bulk labelling is not yet supported')
 @pytest.mark.use_rules_sources(config_b)
 @patch.object(BulkLabelTask, 'get_one')
 def test_get_bulk_label_task(

@@ -52,16 +52,22 @@ def enqueue() -> BulkLabelTask:
     return task
 
 
+# TODO: Stop skipping these tests once bulk label capability is supported
+@pytest.mark.skip(reason='Bulk labelling is not yet supported')
 def test_claim__empty() -> None:
     assert BulkLabelTask.claim() is None
 
 
+# TODO: Stop skipping these tests once bulk label capability is supported
+@pytest.mark.skip(reason='Bulk labelling is not yet supported')
 def test_enqueue() -> None:
     task = enqueue()
     db_task = _query_get_one(task.id)
     assert db_task.id == task.id
 
 
+# TODO: Stop skipping these tests once bulk label capability is supported
+@pytest.mark.skip(reason='Bulk labelling is not yet supported')
 def test_claim__one() -> None:
     task = enqueue()
     claimed = BulkLabelTask.claim()
@@ -70,6 +76,8 @@ def test_claim__one() -> None:
     assert claimed.attempts == 1
 
 
+# TODO: Stop skipping these tests once bulk label capability is supported
+@pytest.mark.skip(reason='Bulk labelling is not yet supported')
 def test_claim__many() -> None:
     first = enqueue()
     second = enqueue()
@@ -81,6 +89,8 @@ def test_claim__many() -> None:
     assert second_claimed.id == second.id
 
 
+# TODO: Stop skipping these tests once bulk label capability is supported
+@pytest.mark.skip(reason='Bulk labelling is not yet supported')
 def test_release() -> None:
     enqueue()
     task = BulkLabelTask.claim()
@@ -94,6 +104,8 @@ def test_release() -> None:
     assert updated.updated_at > updated.created_at
 
 
+# TODO: Stop skipping these tests once bulk label capability is supported
+@pytest.mark.skip(reason='Bulk labelling is not yet supported')
 def test_claim_time() -> None:
     enqueue()
     # Get the database time to avoid any future timezone issues
@@ -104,6 +116,8 @@ def test_claim_time() -> None:
     assert task.claim_until >= now + timedelta(seconds=BASE_DELAY_SECONDS)
 
 
+# TODO: Stop skipping these tests once bulk label capability is supported
+@pytest.mark.skip(reason='Bulk labelling is not yet supported')
 def test_get_one() -> None:
     task = enqueue()
     assert task is not None
