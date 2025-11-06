@@ -34,10 +34,6 @@ jobs:
       - name: Run integration tests
         run: ./run-tests.sh --junitxml=/tmp/test-results/junit-pytest.xml
 
-      - name: Clean up Docker containers
-        if: always()
-        run: docker compose -f docker-compose.yaml -f docker-compose.test.yaml --profile test down --volumes
-
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
