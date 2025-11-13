@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package discord_smite_rpc.actions.v1;
+
+import "discord_smite_rpc/actions/v1/user.proto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+message Application {
+    fixed64 id = 1;
+    fixed64 bot_id = 2;
+    User bot = 3;
+    string name = 4;
+    fixed64 eventual_owner_user_id = 5;
+    google.protobuf.StringValue team_id = 6;
+}

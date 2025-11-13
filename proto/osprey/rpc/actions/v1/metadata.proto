@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package discord_smite_rpc.actions.v1;
+
+import "google/protobuf/wrappers.proto";
+
+message HttpRequestData {
+  map<string, string> headers = 1;
+
+  string url = 2;
+  google.protobuf.StringValue endpoint = 3;
+  google.protobuf.StringValue query_string = 4;
+  string method = 5;
+  google.protobuf.Int32Value api_version = 6;
+
+  google.protobuf.StringValue remote_addr = 7;
+  google.protobuf.BoolValue remote_addr_is_whitelisted = 8;
+
+}
+
+message Properties {
+  google.protobuf.StringValue os = 1;
+  google.protobuf.StringValue os_version = 2;
+  google.protobuf.StringValue browser = 3;
+  google.protobuf.StringValue browser_version = 4;
+  google.protobuf.StringValue browser_user_agent = 5;
+  google.protobuf.StringValue device = 6;
+  google.protobuf.StringValue referrer = 7;
+  google.protobuf.StringValue referring_domain = 8;
+  google.protobuf.StringValue release_channel = 9;
+  google.protobuf.StringValue client_version = 10;
+  google.protobuf.Int64Value client_build_number = 11;
+  google.protobuf.StringValue location = 12;
+  google.protobuf.StringValue system_locale = 13;
+  google.protobuf.StringValue chosen_locale = 14;
+  google.protobuf.StringValue device_vendor_id = 15;
+  google.protobuf.StringValue cfduid = 16;
+  bool cfduid_signed = 17;
+}
