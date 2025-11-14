@@ -210,7 +210,7 @@ class StoredExecutionResultBigTable(ExecutionResultStore):
             row_set_obj.add_row_key(StoredExecutionResultBigTable._encode_action_id(action_id))
 
         rows = osprey_bigtable.table('stored_execution_result').read_rows(
-            row_set=row_set,
+            row_set=row_set_obj,
             filter_=row_filters.CellsColumnLimitFilter(1),
             retry=self.retry_policy,
         )
