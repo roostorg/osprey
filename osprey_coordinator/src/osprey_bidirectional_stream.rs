@@ -1,4 +1,4 @@
-use crate::coordinator_metrics::SmiteCoordinatorMetrics;
+use crate::coordinator_metrics::OspreyCoordinatorMetrics;
 use crate::priority_queue::ActionAcker;
 use crate::priority_queue::{PriorityQueueReceiver, PriorityQueueSender};
 use crate::proto;
@@ -49,20 +49,20 @@ enum ClientState {
     OutstandingAction(OutstandingActionState),
 }
 
-pub struct SmiteCoordinatorServer {
+pub struct OspreyCoordinatorServer {
     priority_queue_receiver: PriorityQueueReceiver,
     #[allow(unused)]
     priority_queue_sender: PriorityQueueSender, // TODO: use this for retrying sync actions
-    metrics: Arc<SmiteCoordinatorMetrics>,
+    metrics: Arc<OspreyCoordinatorMetrics>,
 }
 
-impl SmiteCoordinatorServer {
+impl OspreyCoordinatorServer {
     pub fn new(
         priority_queue_sender: PriorityQueueSender,
         priority_queue_receiver: PriorityQueueReceiver,
-        metrics: Arc<SmiteCoordinatorMetrics>,
-    ) -> SmiteCoordinatorServer {
-        SmiteCoordinatorServer {
+        metrics: Arc<OspreyCoordinatorMetrics>,
+    ) -> OspreyCoordinatorServer {
+        OspreyCoordinatorServer {
             priority_queue_sender,
             priority_queue_receiver,
             metrics,
@@ -73,7 +73,7 @@ impl SmiteCoordinatorServer {
 fn handle_action_request(
     action_request: ActionRequest,
     current_client_state: ClientState,
-    metrics: Arc<SmiteCoordinatorMetrics>,
+    metrics: Arc<OspreyCoordinatorMetrics>,
 ) -> Result<proto::ClientDetails> {
     match (action_request, current_client_state) {
         (ActionRequest::Initial(client_details), ClientState::NoOutstandingAction) => {
@@ -109,10 +109,10 @@ enum UpdateClientStateOrDisconnect {
 
 async fn handle_request(
     client_state: ClientState,
-    sender: &Sender<Result<proto::SmiteCoordinatorAction, tonic::Status>>,
+    sender: &Sender<Result<proto::OspreyCoordinatorAction, tonic::Status>>,
     request: proto::Request,
     action_receiver: &PriorityQueueReceiver,
-    metrics: Arc<SmiteCoordinatorMetrics>,
+    metrics: Arc<OspreyCoordinatorMetrics>,
     receive_timeout: Duration,
 ) -> Result<UpdateClientStateOrDisconnect> {
     match request
@@ -168,14 +168,14 @@ async fn handle_request(
 }
 
 #[tonic::async_trait]
-impl proto::smite_coordinator_service_server::SmiteCoordinatorService for SmiteCoordinatorServer {
-    type SmiteBidirectionalStreamStream =
-        ReceiverStream<Result<proto::SmiteCoordinatorAction, tonic::Status>>;
+impl proto::osprey_coordinator_service_server::OspreyCoordinatorService for OspreyCoordinatorServer {
+    type OspreyBidirectionalStreamStream =
+        ReceiverStream<Result<proto::OspreyCoordinatorAction, tonic::Status>>;
 
-    async fn smite_bidirectional_stream(
+    async fn osprey_bidirectional_stream(
         &self,
         request: tonic::Request<tonic::Streaming<proto::Request>>,
-    ) -> Result<tonic::Response<Self::SmiteBidirectionalStreamStream>, tonic::Status> {
+    ) -> Result<tonic::Response<Self::OspreyBidirectionalStreamStream>, tonic::Status> {
         tracing::debug!(
             { connection =? request.metadata() },
             "New Connection Received"
@@ -286,12 +286,12 @@ impl proto::smite_coordinator_service_server::SmiteCoordinatorService for SmiteC
 #[cfg(test)]
 mod tests {
 
-    use crate::coordinator_metrics::SmiteCoordinatorMetrics;
+    use crate::coordinator_metrics::OspreyCoordinatorMetrics;
     use crate::metrics::emit_worker::SpawnEmitWorker;
     use crate::metrics::new_client;
-    use crate::proto::smite_coordinator_action::ActionData;
-    use crate::proto::smite_coordinator_action::SecretData;
-    use proto::smite_coordinator_service_server::SmiteCoordinatorService;
+    use crate::proto::osprey_coordinator_action::ActionData;
+    use crate::proto::osprey_coordinator_action::SecretData;
+    use proto::osprey_coordinator_service_server::OspreyCoordinatorService;
 
     use crate::priority_queue::create_ackable_action_priority_queue;
     use crate::priority_queue::AckableAction;
@@ -306,12 +306,12 @@ mod tests {
         tracing_subscriber::fmt::init();
         let (priority_queue_sender, priority_queue_receiver) =
             create_ackable_action_priority_queue();
-        let metrics = SmiteCoordinatorMetrics::new();
+        let metrics = OspreyCoordinatorMetrics::new();
         let _worker_guard = metrics
             .clone()
             .spawn_emit_worker(new_client("smite_coordinator").unwrap());
 
-        let ackable_action = proto::SmiteCoordinatorAction {
+        let ackable_action = proto::OspreyCoordinatorAction {
             ack_id: 1,
             action_id: 1,
             action_name: "test_action".into(),
@@ -329,7 +329,7 @@ mod tests {
             .await
             .unwrap();
 
-        let ackable_action_2 = proto::SmiteCoordinatorAction {
+        let ackable_action_2 = proto::OspreyCoordinatorAction {
             ack_id: 2,
             action_id: 2,
             action_name: "test_action".into(),
@@ -347,7 +347,7 @@ mod tests {
             .await
             .unwrap();
 
-        let server = SmiteCoordinatorServer::new(
+        let server = OspreyCoordinatorServer::new(
             priority_queue_sender.clone(),
             priority_queue_receiver,
             metrics.clone(),
@@ -385,7 +385,7 @@ mod tests {
         ]);
 
         let res = server
-            .smite_bidirectional_stream(req)
+            .osprey_bidirectional_stream(req)
             .await
             .expect("error in stream");
 

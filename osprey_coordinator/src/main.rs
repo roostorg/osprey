@@ -17,7 +17,7 @@ mod pub_sub_streaming_pull;
 mod pubsub;
 mod shutdown_handler;
 mod signals;
-mod smite_bidirectional_stream;
+mod osprey_bidirectional_stream;
 mod snowflake_client;
 mod sync_action_rpc;
 mod tokio_utils;
@@ -25,13 +25,13 @@ mod tokio_utils;
 mod tonic_mock;
 use anyhow::Result;
 use clap::Parser;
-use proto::smite_coordinator_sync_action::smite_coordinator_sync_action_service_server::SmiteCoordinatorSyncActionServiceServer;
+use proto::osprey_coordinator_sync_action::osprey_coordinator_sync_action_service_server::OspreyCoordinatorSyncActionServiceServer;
 use std::sync::Arc;
 use std::time::Duration;
 
 use crate::snowflake_client::SnowflakeClient;
 use crate::{
-    coordinator_metrics::SmiteCoordinatorMetrics, label_service_client::LabelServiceClient,
+    coordinator_metrics::OspreyCoordinatorMetrics, label_service_client::LabelServiceClient,
 };
 
 use crate::metrics::emit_worker::SpawnEmitWorker;
@@ -41,8 +41,8 @@ use priority_queue::{create_ackable_action_priority_queue, spawn_priority_queue_
 use pubsub::start_pubsub_subscriber;
 use tokio::join;
 
-use crate::proto::smite_coordinator_service_server::SmiteCoordinatorServiceServer;
-use crate::smite_bidirectional_stream::SmiteCoordinatorServer;
+use crate::proto::osprey_coordinator_service_server::OspreyCoordinatorServiceServer;
+use crate::osprey_bidirectional_stream::OspreyCoordinatorServer;
 
 #[derive(Debug, Parser)]
 struct CliOptions {
@@ -78,14 +78,14 @@ async fn main() -> Result<()> {
     let snowflake_client = Arc::new(SnowflakeClient::new(opts.snowflake_api_endpoint));
 
     let (priority_queue_sender, priority_queue_receiver) = create_ackable_action_priority_queue();
-    let metrics = SmiteCoordinatorMetrics::new();
+    let metrics = OspreyCoordinatorMetrics::new();
     tracing::info!("starting grpc metrics worker");
     let _worker_guard = metrics
         .clone()
         .spawn_emit_worker(new_client("smite_coordinator").unwrap());
 
     let smite_coordinator_grpc_bidi_stream_service =
-        SmiteCoordinatorServiceServer::new(SmiteCoordinatorServer::new(
+        OspreyCoordinatorServiceServer::new(OspreyCoordinatorServer::new(
             priority_queue_sender.clone(),
             priority_queue_receiver.clone(),
             metrics.clone(),
@@ -95,7 +95,7 @@ async fn main() -> Result<()> {
     let label_service_client = LabelServiceClient::new().await?;
 
     let smite_coordinator_sync_action_service =
-        SmiteCoordinatorSyncActionServiceServer::new(sync_action_rpc::SyncActionServer::new(
+        OspreyCoordinatorSyncActionServiceServer::new(sync_action_rpc::SyncActionServer::new(
             snowflake_client.clone(),
             priority_queue_sender.clone(),
             metrics.clone(),

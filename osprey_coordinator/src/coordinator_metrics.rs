@@ -1,6 +1,6 @@
 use crate::metrics::define_metrics;
 
-define_metrics!(SmiteCoordinatorMetrics, [
+define_metrics!(OspreyCoordinatorMetrics, [
     // How long an action has been processed by a worker for before it is acked/nacked
     action_outstanding_duration => StaticHistogram(),
     // How long an action has been held in the async queue for before it is sent to a worker
@@ -13,7 +13,7 @@ define_metrics!(SmiteCoordinatorMetrics, [
     priority_queue_size_async => StaticGauge("priority_queue_size",["type" => "async"]),
 
     // How many receivers are open for the priority queue
-    // can be used as a proxy for number of connections open from the smite worker
+    // can be used as a proxy for number of connections open from the osprey worker
     priority_queue_receiver_count_sync => StaticGauge("priority_queue_receiver_count",["type" => "sync"]),
     priority_queue_receiver_count_async => StaticGauge("priority_queue_receiver_count",["type" => "async"]),
 

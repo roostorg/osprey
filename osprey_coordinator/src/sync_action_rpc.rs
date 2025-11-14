@@ -2,24 +2,24 @@ use crate::metrics::counters::StaticCounter;
 use crate::metrics::histograms::StaticHistogram;
 use crate::snowflake_client::SnowflakeClient;
 use crate::{
-    coordinator_metrics::SmiteCoordinatorMetrics,
+    coordinator_metrics::OspreyCoordinatorMetrics,
     label_service_client::LabelServiceClient,
     priority_queue::AckableAction,
     priority_queue::{AckOrNack, PriorityQueueSender},
-    proto::{self, smite_coordinator_sync_action},
+    proto::{self, osprey_coordinator_sync_action},
 };
 use anyhow::{anyhow, Context, Result};
 use std::sync::Arc;
 use tokio::time::Instant;
 
 use rand::Rng;
-use smite_coordinator_sync_action::smite_coordinator_sync_action_service_server::SmiteCoordinatorSyncActionService;
-use smite_coordinator_sync_action::ProcessActionRequest;
+use osprey_coordinator_sync_action::osprey_coordinator_sync_action_service_server::OspreyCoordinatorSyncActionService;
+use osprey_coordinator_sync_action::ProcessActionRequest;
 
 pub(crate) struct SyncActionServer {
     snowflake_client: Arc<SnowflakeClient>,
     priority_queue_sender: PriorityQueueSender,
-    metrics: Arc<SmiteCoordinatorMetrics>,
+    metrics: Arc<OspreyCoordinatorMetrics>,
     label_service_client: LabelServiceClient,
 }
 
@@ -27,7 +27,7 @@ impl SyncActionServer {
     pub fn new(
         snowflake_client: Arc<SnowflakeClient>,
         priority_queue_sender: PriorityQueueSender,
-        metrics: Arc<SmiteCoordinatorMetrics>,
+        metrics: Arc<OspreyCoordinatorMetrics>,
         label_service_client: LabelServiceClient,
     ) -> SyncActionServer {
         SyncActionServer {
@@ -41,9 +41,9 @@ impl SyncActionServer {
 
 async fn create_smite_coordinator_action(
     ack_id: u64,
-    action_request: &smite_coordinator_sync_action::ProcessActionRequest,
+    action_request: &osprey_coordinator_sync_action::ProcessActionRequest,
     snowflake_client: &SnowflakeClient,
-) -> Result<(proto::SmiteCoordinatorAction, Vec<crate::proto::EntityKey>)> {
+) -> Result<(proto::OspreyCoordinatorAction, Vec<crate::proto::EntityKey>)> {
     // generate snowflake if one is not provided, to match the behaviour in pubsub.rs
     let action_id = match action_request.action_id {
         Some(id) => match id {
@@ -56,11 +56,11 @@ async fn create_smite_coordinator_action(
     if action_request.action_name.is_empty() {
         return Err(anyhow!("`action_name` must not be empty"));
     }
-    let smite_coordinator_action = proto::SmiteCoordinatorAction {
+    let smite_coordinator_action = proto::OspreyCoordinatorAction {
         ack_id,
         action_id,
         action_name: action_request.action_name.clone(),
-        action_data: Some(proto::smite_coordinator_action::ActionData::JsonActionData(
+        action_data: Some(proto::osprey_coordinator_action::ActionData::JsonActionData(
             action_request.action_data_json.clone().into(),
         )),
         secret_data: None,
@@ -84,11 +84,11 @@ impl SyncActionServer {
         &self,
         ack_id: u64,
         action_request: &ProcessActionRequest,
-    ) -> Result<tonic::Response<smite_coordinator_sync_action::ProcessActionResponse>, tonic::Status>
+    ) -> Result<tonic::Response<osprey_coordinator_sync_action::ProcessActionResponse>, tonic::Status>
     {
         let unvalidated_action_id = action_request.action_id;
 
-        let (smite_coordinator_action, requested_entities) = match create_smite_coordinator_action(
+    let (smite_coordinator_action, requested_entities) = match create_smite_coordinator_action(
             ack_id,
             action_request,
             self.snowflake_client.as_ref(),
@@ -146,7 +146,7 @@ impl SyncActionServer {
                     };
 
                     let response =
-                        smite_coordinator_sync_action::ProcessActionResponse { entities, verdicts };
+                        osprey_coordinator_sync_action::ProcessActionResponse { entities, verdicts };
 
                     self.metrics.sync_classification_result_ack.incr();
                     self.metrics
@@ -178,11 +178,11 @@ impl SyncActionServer {
 }
 
 #[tonic::async_trait]
-impl SmiteCoordinatorSyncActionService for SyncActionServer {
+impl OspreyCoordinatorSyncActionService for SyncActionServer {
     async fn process_action(
         &self,
-        request: tonic::Request<smite_coordinator_sync_action::ProcessActionRequest>,
-    ) -> Result<tonic::Response<smite_coordinator_sync_action::ProcessActionResponse>, tonic::Status>
+        request: tonic::Request<osprey_coordinator_sync_action::ProcessActionRequest>,
+    ) -> Result<tonic::Response<osprey_coordinator_sync_action::ProcessActionResponse>, tonic::Status>
     {
         self.metrics.sync_classification_action_received.incr();
         let action_request = request.into_inner();

@@ -1,13 +1,13 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let proto_root = std::path::Path::new("../../proto");
-    let includes = vec!["../../proto/"];
+    let proto_root = std::path::Path::new("../proto");
+    let includes = vec!["../proto/"];
 
     let proto_paths = [
-        proto_root.join("proto/osprey/rpc/actions/v1/action.proto"),
-        proto_root.join("proto/osprey/rpc/smite_coordinator/sync_action/v1/service.proto"),
+        proto_root.join("osprey/rpc/actions/v1/action.proto"),
+        proto_root.join("osprey/rpc/osprey_coordinator/sync_action/v1/service.proto"),
         proto_root
-            .join("proto/osprey/rpc/smite_coordinator/bidirectional_stream/v1/service.proto"),
-        proto_root.join("proto/osprey/rpc/common/v1/*.proto"),
+            .join("osprey/rpc/osprey_coordinator/bidirectional_stream/v1/service.proto"),
+        proto_root.join("osprey/rpc/common/v1/*.proto"),
     ]
     .into_iter()
     .map(|pattern| glob::glob(pattern.to_str().unwrap()))
@@ -37,27 +37,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Compile Google Cloud protos for inlined gcloud module
     tonic_build::configure().build_server(false).compile(
         &[
-            proto_root.join("proto/google/api/annotations.proto"),
-            proto_root.join("proto/google/api/client.proto"),
-            proto_root.join("proto/google/api/field_behavior.proto"),
-            proto_root.join("proto/google/api/http.proto"),
-            proto_root.join("proto/google/api/resource.proto"),
-            proto_root.join("proto/google/iam/v1/iam_policy.proto"),
-            proto_root.join("proto/google/iam/v1/options.proto"),
-            proto_root.join("proto/google/iam/v1/policy.proto"),
-            proto_root.join("proto/google/longrunning/operations.proto"),
-            proto_root.join("proto/google/rpc/status.proto"),
-            proto_root.join("proto/google/type/expr.proto"),
-            proto_root.join("proto/google/pubsub/v1/pubsub.proto"),
-            proto_root.join("proto/google/cloud/kms/v1/service.proto"),
-            proto_root.join("proto/google/cloud/kms/v1/resources.proto"),
-            proto_root.join("proto/google/crypto/tink/aes_gcm.proto"),
+            proto_root.join("google/api/annotations.proto"),
+            proto_root.join("google/api/client.proto"),
+            proto_root.join("google/api/field_behavior.proto"),
+            proto_root.join("google/api/http.proto"),
+            proto_root.join("google/api/resource.proto"),
+            proto_root.join("google/iam/v1/iam_policy.proto"),
+            proto_root.join("google/iam/v1/options.proto"),
+            proto_root.join("google/iam/v1/policy.proto"),
+            proto_root.join("google/longrunning/operations.proto"),
+            proto_root.join("google/rpc/status.proto"),
+            proto_root.join("google/type/expr.proto"),
+            proto_root.join("google/pubsub/v1/pubsub.proto"),
+            proto_root.join("google/cloud/kms/v1/service.proto"),
+            proto_root.join("google/cloud/kms/v1/resources.proto"),
+            proto_root.join("google/crypto/tink/aes_gcm.proto"),
         ],
         &[proto_root],
     )?;
 
     tonic_build::configure().compile(
-        &[proto_root.join("proto/etcd_watcherd/v1/etcd_watcherd.proto")],
+        &[proto_root.join("etcd_watcherd/v1/etcd_watcherd.proto")],
         &[proto_root],
     )?;
 

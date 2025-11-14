@@ -1,14 +1,14 @@
 syntax = "proto3";
 
-package discord_smite_rpc.actions.v1;
+package osprey.rpc.actions.v1;
 
-import "discord_smite_rpc/actions/v1/application.proto";
-import "discord_smite_rpc/actions/v1/captcha.proto";
-import "discord_smite_rpc/actions/v1/channel.proto";
-import "discord_smite_rpc/actions/v1/guild.proto";
-import "discord_smite_rpc/actions/v1/invite.proto";
-import "discord_smite_rpc/actions/v1/metadata.proto";
-import "discord_smite_rpc/actions/v1/user.proto";
+import "osprey/rpc/actions/v1/application.proto";
+import "osprey/rpc/actions/v1/captcha.proto";
+import "osprey/rpc/actions/v1/channel.proto";
+import "osprey/rpc/actions/v1/guild.proto";
+import "osprey/rpc/actions/v1/invite.proto";
+import "osprey/rpc/actions/v1/metadata.proto";
+import "osprey/rpc/actions/v1/user.proto";
 
 message GuildCreated {
   User user = 1;
