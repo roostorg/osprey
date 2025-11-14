@@ -30,7 +30,7 @@ from osprey.worker.lib.storage import (  # noqa: E402
     labels,
     stored_execution_result,
 )
-from osprey.worker.lib.utils.click_utils import EnumChoicePb2  # noqa: E402
+from osprey.worker.lib.utils.click_utils import EnumChoice  # noqa: E402
 
 
 @click.group()
@@ -204,7 +204,7 @@ def get_lines_from_file_as_set(file_path: str) -> Set[str]:
 @click.argument('entity_type')
 @click.argument('entity_id')
 @click.argument('label_name')
-@click.argument('label_status', type=EnumChoicePb2(LabelStatus))
+@click.argument('label_status', type=EnumChoice(LabelStatus))
 @click.option(
     '--reason',
     help=(
@@ -267,7 +267,7 @@ def apply_label(
 @click.argument('entity_type')
 @click.argument('entity_ids_file_path')
 @click.argument('label_name')
-@click.argument('label_status', type=EnumChoicePb2(LabelStatus))
+@click.argument('label_status', type=EnumChoice(LabelStatus))
 @click.option(
     '--reason',
     help=(

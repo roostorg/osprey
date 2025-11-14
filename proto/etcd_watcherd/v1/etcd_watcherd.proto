@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package discord_common.etcd_watcherd.v1;
+
+import "google/protobuf/wrappers.proto";
+
+service EtcdWatcherdService
+{
+    rpc WatchKey(WatchKeyRequest) returns (stream WatchKeyResponse);
+    rpc WatchKeyRecursive(WatchKeyRecursiveRequest) returns (stream WatchKeyRecursiveResponse);
+}
+
+message WatchKeyRequest
+{
+    string key = 1;
+}
+
+message WatchKeyResponse
+{
+    google.protobuf.StringValue value = 1;
+}
+message WatchKeyRecursiveRequest
+{
+    string key = 1;
+}
+
+message WatchKeyRecursiveResponse
+{
+    message FullSync { map<string, string> items = 1; }
+
+    message SyncOne
+    {
+        string key = 1;
+        string value = 2;
+    }
+
+    message DeleteOne
+    {
+        string key = 1;
+        string prev_value = 2;
+    }
+
+    oneof event
+    {
+        FullSync full_sync = 1;
+        SyncOne sync_one = 2;
+        DeleteOne delete_one = 3;
+    }
+}

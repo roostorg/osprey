@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "osprey-worker"
 version = "0.1.0"
@@ -8,5 +12,14 @@ dependencies = [
     "flask-cors>=6.0.1",
     "osprey_rpc",
 ]
+[project.scripts]
+osprey-cli = "osprey.worker.lib.cli:cli"
+
 [project.entry-points."osprey_plugin"]
 stdlib = "osprey.worker._stdlibplugin"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"*" = ["*.json", "*.yaml", "*.yml"]
