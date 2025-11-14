@@ -1,13 +1,12 @@
 syntax = "proto3";
 
-package discord_smite_rpc.actions.v1;
+package osprey.rpc.actions.v1;
 
-import "discord_protos/users/v1/user.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
 message User {
-  reserved 10;
+  reserved 10, 23;
 
   fixed64 id = 1;
   bool mfa_enabled = 2;
@@ -31,5 +30,4 @@ message User {
   google.protobuf.StringValue global_name = 21;
   // Used by guild automation GUILD_JOINED event
   google.protobuf.StringValue hub_email = 22;
-  discord_protos.users.v1.UserAvatarDecoration avatar_decoration_data = 23;
 }

@@ -14,9 +14,9 @@ use crate::metrics::counters::StaticCounter;
 use crate::metrics::histograms::StaticHistogram;
 use crate::metrics::MetricsClientBuilder;
 use crate::{
-    coordinator_metrics::SmiteCoordinatorMetrics,
+    coordinator_metrics::OspreyCoordinatorMetrics,
     priority_queue::{AckOrNack, AckableAction, PriorityQueueSender},
-    proto::{self, smite_coordinator_action::SecretData},
+    proto::{self, osprey_coordinator_action::SecretData},
     pub_sub_streaming_pull::DetachedMessage,
     pub_sub_streaming_pull::{FlowControl, SpawnTaskPerMessageHandler, StreamingPullManager},
 };
@@ -34,15 +34,15 @@ use crate::proto::Action as SmiteProtoAction;
 use crate::signals::exit_signal;
 use crate::snowflake_client::SnowflakeClient;
 use convert_case::{Case, Casing};
-use proto::smite_coordinator_action::ActionData;
+use proto::osprey_coordinator_action::ActionData;
 
 async fn decode_proto_message(
     message_data: &[u8],
     ack_id: u64,
     message_timestamp: Timestamp,
     snowflake_client: &SnowflakeClient,
-    metrics: &SmiteCoordinatorMetrics,
-) -> Result<proto::SmiteCoordinatorAction> {
+    metrics: &OspreyCoordinatorMetrics,
+) -> Result<proto::OspreyCoordinatorAction> {
     let smite_proto_action = SmiteProtoAction::decode(message_data).unwrap();
     let action_id = if smite_proto_action.id == 0 {
         metrics.action_id_snowflake_generation_proto.incr();
@@ -55,7 +55,7 @@ async fn decode_proto_message(
         .unwrap()
         .to_string()
         .to_case(Case::Snake);
-    Ok(proto::SmiteCoordinatorAction {
+    Ok(proto::OspreyCoordinatorAction {
         ack_id,
         action_id,
         action_name,
@@ -70,8 +70,8 @@ async fn decode_msgpack_json_message(
     ack_id: u64,
     message_timestamp: Timestamp,
     snowflake_client: &SnowflakeClient,
-    metrics: &SmiteCoordinatorMetrics,
-) -> Result<proto::SmiteCoordinatorAction> {
+    metrics: &OspreyCoordinatorMetrics,
+) -> Result<proto::OspreyCoordinatorAction> {
     // This whole function can probably be optimized way better, but in the interest of time I am leaving
     // it in a working state for now.
     #[derive(Deserialize, Debug)]
@@ -106,7 +106,7 @@ async fn decode_msgpack_json_message(
         }
     };
 
-    Ok(proto::SmiteCoordinatorAction {
+    Ok(proto::OspreyCoordinatorAction {
         ack_id,
         action_id,
         action_name: pubsub_action.name,
@@ -133,8 +133,8 @@ async fn create_action_from_pubsub_message(
     ack_id: u64,
     message_timestamp: Timestamp,
     snowflake_client: &SnowflakeClient,
-    metrics: &SmiteCoordinatorMetrics,
-) -> Result<proto::SmiteCoordinatorAction> {
+    metrics: &OspreyCoordinatorMetrics,
+) -> Result<proto::OspreyCoordinatorAction> {
     let decrypted_message_vector = match message_attributes.get("encrypted") {
         Some(is_encrypted) if is_encrypted == "true" => {
             Some(decrypt_pubsub_message(kms_envelope, message_data).await?)
@@ -202,7 +202,7 @@ async fn create_pubsub_subscription_client(
 pub async fn start_pubsub_subscriber(
     snowflake_client: Arc<SnowflakeClient>,
     priority_queue_sender: PriorityQueueSender,
-    metrics: Arc<SmiteCoordinatorMetrics>,
+    metrics: Arc<OspreyCoordinatorMetrics>,
 ) -> Result<()> {
     let subscriber_client = create_pubsub_subscription_client().await;
     let subscription_name = if std::env::var("PUBSUB_EMULATOR_HOST").is_ok() {

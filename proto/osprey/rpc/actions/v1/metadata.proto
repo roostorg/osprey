@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package discord_smite_rpc.actions.v1;
+package osprey.rpc.actions.v1;
 
 import "google/protobuf/wrappers.proto";
 

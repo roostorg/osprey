@@ -5,7 +5,7 @@ use tokio::{
     time::{interval, Duration, Instant, MissedTickBehavior},
 };
 
-use crate::{coordinator_metrics::SmiteCoordinatorMetrics, proto};
+use crate::{coordinator_metrics::OspreyCoordinatorMetrics, proto};
 
 use crate::tokio_utils::AbortOnDrop;
 use std::{cell::Cell, sync::Arc};
@@ -26,7 +26,7 @@ impl From<proto::ack_or_nack::AckOrNack> for AckOrNack {
 }
 
 pub struct AckableAction {
-    pub action: proto::SmiteCoordinatorAction,
+    pub action: proto::OspreyCoordinatorAction,
     acking_oneshot_sender: oneshot::Sender<AckOrNack>,
     local_retry_count: Cell<u32>,
     pub created_at: Instant,
@@ -34,7 +34,7 @@ pub struct AckableAction {
 
 impl AckableAction {
     pub fn new(
-        action: proto::SmiteCoordinatorAction,
+        action: proto::OspreyCoordinatorAction,
     ) -> (
         AckableAction,
         oneshot::Receiver<crate::priority_queue::AckOrNack>,
@@ -49,7 +49,7 @@ impl AckableAction {
         (ackable_action, acking_oneshot_receiver)
     }
 
-    pub fn into_action(self) -> (proto::SmiteCoordinatorAction, ActionAcker) {
+    pub fn into_action(self) -> (proto::OspreyCoordinatorAction, ActionAcker) {
         (
             self.action,
             ActionAcker {
@@ -167,7 +167,7 @@ impl PriorityQueueReceiver {
     }
     pub async fn recv(
         &self,
-        metrics: Arc<SmiteCoordinatorMetrics>,
+        metrics: Arc<OspreyCoordinatorMetrics>,
     ) -> Result<AckableAction, async_channel::RecvError> {
         loop {
             let result = tokio::select! {
@@ -223,7 +223,7 @@ pub fn create_ackable_action_priority_queue() -> (PriorityQueueSender, PriorityQ
 
 pub fn spawn_priority_queue_metrics_worker(
     queue_sender: PriorityQueueSender,
-    metrics: Arc<SmiteCoordinatorMetrics>,
+    metrics: Arc<OspreyCoordinatorMetrics>,
 ) -> AbortOnDrop<()> {
     let mut interval = interval(Duration::from_millis(100));
     interval.set_missed_tick_behavior(MissedTickBehavior::Skip);

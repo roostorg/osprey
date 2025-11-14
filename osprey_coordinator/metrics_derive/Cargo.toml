@@ -1,5 +1,5 @@
 [package]
-name = "smite_coordinator_metrics_derive"
+name = "osprey_coordinator_metrics_derive"
 version = "0.1.0"
 authors = ["osprey"]
 edition = "2021"

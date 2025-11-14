@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package osprey.rpc.labels.v1;
+
+// Mock proto file for deprecated labels functionality
+// These are marked as DEPRECATED in sync_action service
+// and will be removed once labels are replaced with verdicts
+
+message EntityKey {
+  string entity_type = 1;
+  string entity_id = 2;
+}
+
+message Label {
+  string name = 1;
+  int64 version = 2;
+  int64 expires_at = 3;
+}
+
+message Entity {
+  EntityKey key = 1;
+  repeated Label labels = 2;
+}
+
+message GetEntityRequest {
+  string routing_key = 1;
+  EntityKey key = 2;
+}
+
+message GetEntityResponse {
+  Entity entity = 1;
+}
+
+service LabelService {
+  rpc GetEntity(GetEntityRequest) returns (GetEntityResponse);
+}

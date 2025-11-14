@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-package discord_smite_rpc.actions.v1;
+package osprey.rpc.actions.v1;
 
-import "discord_protos/discord_authentication/v1/session.proto";
-import "discord_smite_rpc/actions/v1/action_types.proto";
+
+import "osprey/rpc/actions/v1/action_types.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
@@ -140,14 +140,12 @@ message BatchMLCluster {
 }
 
 message UserSession {
+  reserved 2, 6, 7;
+
   bytes id_hash = 1;
-  discord_protos.discord_authentication.v1.UserSessionData.Version session_version = 2;
   google.protobuf.Timestamp creation_time = 3;
   google.protobuf.Timestamp expiration_time = 4;
   google.protobuf.Timestamp approx_last_used_time = 5;
-  discord_protos.discord_authentication.v1.UserSessionData.ClientInfo client_info = 6;
-  // Previous client info of the session if a change was detected
-  discord_protos.discord_authentication.v1.UserSessionData.ClientInfo prev_client_info = 7;
   google.protobuf.Timestamp prev_approx_last_used_time = 8;
 }
 
