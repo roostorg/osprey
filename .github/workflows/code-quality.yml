@@ -98,7 +98,9 @@ jobs:
         continue-on-error: true
 
       - name: Build Rust project
-        run: cargo build --verbose
+        run: |
+          apt-get install protobuf-compiler
+          cargo build --verbose
         working-directory: osprey_coordinator
 
       - name: Run Rust tests
