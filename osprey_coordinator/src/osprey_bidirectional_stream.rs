@@ -168,7 +168,9 @@ async fn handle_request(
 }
 
 #[tonic::async_trait]
-impl proto::osprey_coordinator_service_server::OspreyCoordinatorService for OspreyCoordinatorServer {
+impl proto::osprey_coordinator_service_server::OspreyCoordinatorService
+    for OspreyCoordinatorServer
+{
     type OspreyBidirectionalStreamStream =
         ReceiverStream<Result<proto::OspreyCoordinatorAction, tonic::Status>>;
 

@@ -5,8 +5,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let proto_paths = [
         proto_root.join("osprey/rpc/actions/v1/action.proto"),
         proto_root.join("osprey/rpc/osprey_coordinator/sync_action/v1/service.proto"),
-        proto_root
-            .join("osprey/rpc/osprey_coordinator/bidirectional_stream/v1/service.proto"),
+        proto_root.join("osprey/rpc/osprey_coordinator/bidirectional_stream/v1/service.proto"),
         proto_root.join("osprey/rpc/common/v1/*.proto"),
     ]
     .into_iter()

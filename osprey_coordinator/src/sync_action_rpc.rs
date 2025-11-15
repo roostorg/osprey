@@ -12,9 +12,9 @@ use anyhow::{anyhow, Context, Result};
 use std::sync::Arc;
 use tokio::time::Instant;
 
-use rand::Rng;
 use osprey_coordinator_sync_action::osprey_coordinator_sync_action_service_server::OspreyCoordinatorSyncActionService;
 use osprey_coordinator_sync_action::ProcessActionRequest;
+use rand::Rng;
 
 pub(crate) struct SyncActionServer {
     snowflake_client: Arc<SnowflakeClient>,
@@ -60,9 +60,11 @@ async fn create_smite_coordinator_action(
         ack_id,
         action_id,
         action_name: action_request.action_name.clone(),
-        action_data: Some(proto::osprey_coordinator_action::ActionData::JsonActionData(
-            action_request.action_data_json.clone().into(),
-        )),
+        action_data: Some(
+            proto::osprey_coordinator_action::ActionData::JsonActionData(
+                action_request.action_data_json.clone().into(),
+            ),
+        ),
         secret_data: None,
         timestamp: Some(
             action_request
@@ -88,7 +90,7 @@ impl SyncActionServer {
     {
         let unvalidated_action_id = action_request.action_id;
 
-    let (smite_coordinator_action, requested_entities) = match create_smite_coordinator_action(
+        let (smite_coordinator_action, requested_entities) = match create_smite_coordinator_action(
             ack_id,
             action_request,
             self.snowflake_client.as_ref(),
@@ -145,8 +147,10 @@ impl SyncActionServer {
                         }
                     };
 
-                    let response =
-                        osprey_coordinator_sync_action::ProcessActionResponse { entities, verdicts };
+                    let response = osprey_coordinator_sync_action::ProcessActionResponse {
+                        entities,
+                        verdicts,
+                    };
 
                     self.metrics.sync_classification_result_ack.incr();
                     self.metrics

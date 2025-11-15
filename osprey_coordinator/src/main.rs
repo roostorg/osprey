@@ -10,6 +10,7 @@ mod gcloud;
 mod hashring;
 mod label_service_client;
 mod metrics;
+mod osprey_bidirectional_stream;
 mod pigeon;
 mod priority_queue;
 mod proto;
@@ -17,7 +18,6 @@ mod pub_sub_streaming_pull;
 mod pubsub;
 mod shutdown_handler;
 mod signals;
-mod osprey_bidirectional_stream;
 mod snowflake_client;
 mod sync_action_rpc;
 mod tokio_utils;
@@ -41,8 +41,8 @@ use priority_queue::{create_ackable_action_priority_queue, spawn_priority_queue_
 use pubsub::start_pubsub_subscriber;
 use tokio::join;
 
-use crate::proto::osprey_coordinator_service_server::OspreyCoordinatorServiceServer;
 use crate::osprey_bidirectional_stream::OspreyCoordinatorServer;
+use crate::proto::osprey_coordinator_service_server::OspreyCoordinatorServiceServer;
 
 #[derive(Debug, Parser)]
 struct CliOptions {
