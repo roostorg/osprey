@@ -99,7 +99,7 @@ jobs:
 
       - name: Build Rust project
         run: |
-          apt-get install protobuf-compiler
+          sudo apt-get install protobuf-compiler
           cargo build --verbose
         working-directory: osprey_coordinator
 
