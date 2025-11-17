@@ -41,7 +41,6 @@ pub mod osprey {
     }
 }
 
-
 pub use osprey::rpc::actions::v1::*;
 pub use osprey::rpc::common::v1::*;
 pub use osprey::rpc::labels::v1::*;
