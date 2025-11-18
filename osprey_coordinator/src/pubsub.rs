@@ -30,7 +30,7 @@ use serde_json::Value;
 use tokio::time::{timeout, Duration as TokioDuration, Instant};
 use tonic::{codegen::InterceptedService, transport::Channel};
 
-use crate::proto::Action as SmiteProtoAction;
+use crate::proto::Action as OspreyProtoAction;
 use crate::signals::exit_signal;
 use crate::snowflake_client::SnowflakeClient;
 use convert_case::{Case, Casing};
@@ -43,14 +43,14 @@ async fn decode_proto_message(
     snowflake_client: &SnowflakeClient,
     metrics: &OspreyCoordinatorMetrics,
 ) -> Result<proto::OspreyCoordinatorAction> {
-    let smite_proto_action = SmiteProtoAction::decode(message_data).unwrap();
-    let action_id = if smite_proto_action.id == 0 {
+    let osprey_proto_action = OspreyProtoAction::decode(message_data).unwrap();
+    let action_id = if osprey_proto_action.id == 0 {
         metrics.action_id_snowflake_generation_proto.incr();
         snowflake_client.generate_id().await?
     } else {
-        smite_proto_action.id
+        osprey_proto_action.id
     };
-    let action_name = smite_proto_action
+    let action_name = osprey_proto_action
         .data
         .unwrap()
         .to_string()
@@ -185,7 +185,7 @@ async fn create_pubsub_subscription_client(
     } else {
         tracing::info!("Creating subscription client to real pubsub");
         let service_account =
-            std::env::var("SMITE_COORDINATOR_SERVICE_ACCOUNT").unwrap_or("default".to_string());
+            std::env::var("OSPREY_COORDINATOR_SERVICE_ACCOUNT").unwrap_or("default".to_string());
         let client = GCPMetadataClient::new(service_account).unwrap();
         Connection::from_metadata_client(
             client,
@@ -211,8 +211,8 @@ pub async fn start_pubsub_subscriber(
         let project_id = std::env::var("PUBSUB_SUBSCRIPTION_PROJECT_ID")
             .unwrap_or("discord-anti-abuse-prd".to_string());
 
-        let subscription_id =
-            std::env::var("PUBSUB_SUBSCRIPTION_ID").unwrap_or("smite-coordinator-test".to_string());
+        let subscription_id = std::env::var("PUBSUB_SUBSCRIPTION_ID")
+            .unwrap_or("osprey-coordinator-test".to_string());
 
         PubSubSubscription::new(project_id, subscription_id)
     };
@@ -334,7 +334,7 @@ pub async fn start_pubsub_subscriber(
                 }
             }
         }),
-        MetricsClientBuilder::new("smite_coordinator.pull"),
+        MetricsClientBuilder::new("osprey_coordinator.pull"),
     )
     .gracefully_stop_on_signal(exit_signal(), Duration::from_secs(30))
     .await;

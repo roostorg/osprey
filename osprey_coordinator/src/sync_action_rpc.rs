@@ -35,7 +35,7 @@ impl SyncActionServer {
     }
 }
 
-async fn create_smite_coordinator_action(
+async fn create_osprey_coordinator_action(
     ack_id: u64,
     action_request: &osprey_coordinator_sync_action::ProcessActionRequest,
     snowflake_client: &SnowflakeClient,
@@ -52,7 +52,7 @@ async fn create_smite_coordinator_action(
     if action_request.action_name.is_empty() {
         return Err(anyhow!("`action_name` must not be empty"));
     }
-    let smite_coordinator_action = proto::OspreyCoordinatorAction {
+    let osprey_coordinator_action = proto::OspreyCoordinatorAction {
         ack_id,
         action_id,
         action_name: action_request.action_name.clone(),
@@ -71,7 +71,7 @@ async fn create_smite_coordinator_action(
         ),
     };
 
-    Ok(smite_coordinator_action)
+    Ok(osprey_coordinator_action)
 }
 
 impl SyncActionServer {
@@ -83,7 +83,7 @@ impl SyncActionServer {
     {
         let unvalidated_action_id = action_request.action_id;
 
-        let smite_coordinator_action = match create_smite_coordinator_action(
+        let osprey_coordinator_action = match create_osprey_coordinator_action(
             ack_id,
             action_request,
             self.snowflake_client.as_ref(),
@@ -100,9 +100,9 @@ impl SyncActionServer {
             }
         };
 
-        let action_id = smite_coordinator_action.action_id;
+        let action_id = osprey_coordinator_action.action_id;
 
-        let (ackable_action, acking_receiver) = AckableAction::new(smite_coordinator_action);
+        let (ackable_action, acking_receiver) = AckableAction::new(osprey_coordinator_action);
 
         let send_start_time = Instant::now();
         match self.priority_queue_sender.send_sync(ackable_action).await {

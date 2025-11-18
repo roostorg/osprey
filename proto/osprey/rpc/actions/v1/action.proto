@@ -13,7 +13,7 @@ message Action {
   fixed64 id = 1;
 
   // This oneof denotes the type of action this message is.
-  // Each field name in this this oneof should match the name of an action that Smite expects.
+  // Each field name in this this oneof should match the name of an action that Osprey expects.
   oneof data {
     AuthSessionCreated auth_session_created = 2;
     AuthSessionModified auth_session_modified = 3;
@@ -23,8 +23,8 @@ message Action {
     UserBatchMLScore user_batch_ml_score = 7;
     UserBlocked user_blocked = 8;
     GuildJoined guild_joined = 9;
-    SmiteAutoClusteringUser smite_auto_clustering_user = 10;
-    SmiteAutoClusteringKey smite_auto_clustering_key = 11;
+    OspreyAutoClusteringUser osprey_auto_clustering_user = 10;
+    OspreyAutoClusteringKey osprey_auto_clustering_key = 11;
     HashMatcherIconMatched hash_matcher_icon_matched = 12;
     SafetyVisualPrediction safety_visual_prediction = 13;
   }
@@ -76,14 +76,14 @@ message UserBatchMLScore {
   BatchMLSourceEvent source_event = 8;
 }
 
-message SmiteAutoClusteringUser {
+message OspreyAutoClusteringUser {
   google.protobuf.Timestamp timestamp = 1;
   uint64 user_id = 2;
   string pipeline_name = 3;
   string cluster_id = 4;
 }
 
-message SmiteAutoClusteringKey {
+message OspreyAutoClusteringKey {
   google.protobuf.Timestamp timestamp = 1;
   string key = 2;
   string value = 3;

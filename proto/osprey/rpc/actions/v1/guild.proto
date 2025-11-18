@@ -5,7 +5,7 @@ package osprey.rpc.actions.v1;
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
-// Smite representation of a guild object
+// Osprey representation of a guild object
 message Guild {
     fixed64 id = 1;
     GuildOwner owner = 2;

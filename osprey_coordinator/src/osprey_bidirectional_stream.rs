@@ -311,7 +311,7 @@ mod tests {
         let metrics = OspreyCoordinatorMetrics::new();
         let _worker_guard = metrics
             .clone()
-            .spawn_emit_worker(new_client("smite_coordinator").unwrap());
+            .spawn_emit_worker(new_client("osprey_coordinator").unwrap());
 
         let ackable_action = proto::OspreyCoordinatorAction {
             ack_id: 1,
