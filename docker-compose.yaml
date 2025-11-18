@@ -377,3 +377,32 @@ services:
       - ./druid/specs:/specs
     command: ["/bin/sh", "/specs/submit-specs.sh"]
     restart: "no"
+
+  osprey_coordinator:
+    container_name: osprey_coordinator
+    build:
+      context: .
+      dockerfile: osprey_coordinator/Dockerfile
+    ports:
+      - "19950:19950"
+      - "19951:19951"
+    environment:
+      - RUST_LOG=info
+      - ETCD_PEERS=http://etcd:2379
+      - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
+      - POD_IP=127.0.0.1
+      - PUBSUB_EMULATOR_HOST=127.0.0.1:8085
+    depends_on:
+      - etcd
+      - snowflake-id-worker
+
+  etcd:
+    image: gcr.io/etcd-development/etcd:v3.5.0
+    container_name: etcd
+    ports:
+      - "2379:2379"
+    command: >
+      /usr/local/bin/etcd
+      --listen-client-urls http://0.0.0.0:2379
+      --advertise-client-urls http://etcd:2379
+      --enable-v2=true
