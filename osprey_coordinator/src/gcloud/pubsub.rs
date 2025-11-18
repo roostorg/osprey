@@ -582,6 +582,6 @@ impl SynchronousTopicPublisher {
 }
 
 define_metrics!(PubsubStats, [
-    publish_failed => DynamicCounter("discord_gcloud.pubsub.publish.failed", [project, topic]),
-    publish_sends => DynamicCounter("discord_gcloud.pubsub.publish.sends", [project, topic]),
+    publish_failed => DynamicCounter("osprey_gcloud.pubsub.publish.failed", [project, topic]),
+    publish_sends => DynamicCounter("osprey_gcloud.pubsub.publish.sends", [project, topic]),
 ]);

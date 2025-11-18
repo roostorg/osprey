@@ -9,7 +9,7 @@ use tonic_health::pb::{
     HealthCheckResponse,
 };
 
-const HEALTH_CHECK_ALL_PSEUDO_SERVICE: &str = "discord.v1.HealthCheckAll";
+const HEALTH_CHECK_ALL_PSEUDO_SERVICE: &str = "osprey.v1.HealthCheckAll";
 
 pub trait HealthChecker: Send + Sync + 'static {
     fn is_healthy(&self) -> bool;
