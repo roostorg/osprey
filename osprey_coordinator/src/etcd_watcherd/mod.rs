@@ -7,8 +7,7 @@ mod watcher_impl;
 pub mod rpc;
 mod stats;
 
-pub use self::api::{WatchHandle, Watcher, WatcherEvents};
-pub use self::metrics::{WatcherMetrics, WatcherMetricsGuard};
+pub use self::api::{WatchHandle, Watcher};
 pub use self::watcher_impl::{
     key_watcher::KeyWatchEvents, recursive_key_watcher::RecursiveKeyWatchEvents,
 };

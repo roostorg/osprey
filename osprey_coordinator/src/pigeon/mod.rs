@@ -47,7 +47,6 @@ mod utils;
 use self::utils::Error;
 use router::Router;
 
-pub use self::utils::Connector;
 pub use tonic::server::NamedService;
 
 pub async fn serve<GS>(

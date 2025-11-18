@@ -1,9 +1,7 @@
-use crate::backoff_utils::{AsyncBackoff, Config as BackoffConfig};
 use crate::discovery::error::DiscoveryError;
 use crate::discovery::ring::{Config as RingConfig, Ring, DEFAULT_NUM_REPLICAS};
 use crate::discovery::service::ServiceRegistration;
 use crate::etcd::{Action, Client, Node, WatchEvent, Watcher};
-use crate::tokio_utils::{AbortOnDrop, UnboundedReceiverChunker};
 use anyhow::Result;
 use arc_swap::ArcSwap;
 use indexmap::IndexMap;
