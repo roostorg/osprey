@@ -205,14 +205,12 @@ pub async fn start_pubsub_subscriber(
     metrics: Arc<OspreyCoordinatorMetrics>,
 ) -> Result<()> {
     let subscriber_client = create_pubsub_subscription_client().await;
-    let subscription_name = if std::env::var("PUBSUB_EMULATOR_HOST").is_ok() {
-        PubSubSubscription::new("discord-dev", "rules-sink")
-    } else {
-        let project_id = std::env::var("PUBSUB_SUBSCRIPTION_PROJECT_ID")
-            .unwrap_or("discord-anti-abuse-prd".to_string());
+    let subscription_name = {
+        let project_id =
+            std::env::var("PUBSUB_SUBSCRIPTION_PROJECT_ID").unwrap_or("osprey-dev".to_string());
 
         let subscription_id = std::env::var("PUBSUB_SUBSCRIPTION_ID")
-            .unwrap_or("osprey-coordinator-test".to_string());
+            .unwrap_or("osprey-coordinator-actions".to_string());
 
         PubSubSubscription::new(project_id, subscription_id)
     };

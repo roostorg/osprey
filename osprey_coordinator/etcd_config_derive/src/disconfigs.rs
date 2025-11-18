@@ -29,7 +29,7 @@ impl Disconfig {
             .meta;
 
         let config_name = ConfigName::from_meta(config_name_meta)?.name.value();
-        let key_root = format!("/discord_configs/{config_name}/v1/");
+        let key_root = format!("/osprey_configs/{config_name}/v1/");
         // Inside Disconfig struct, there should be one and only one ArcSwap field.
         let fields = self.fields();
         let mut arc_swap_field_count = 0;
