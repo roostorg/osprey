@@ -187,12 +187,17 @@ class OspreyCoordinatorInputStream(BaseInputStream[BaseAckingContext[OspreyEngin
 
     _STOP_STREAMING_SIGNAL = object()
 
-    def __init__(self, client_id: str, input_stream_ready_signaler: Optional[InputStreamReadySignaler] = None) -> None:
+    def __init__(
+        self,
+        client_id: str,
+        input_stream_ready_signaler: Optional[InputStreamReadySignaler] = None,
+        coordinator_service_name: str = 'osprey_coordinator',
+    ) -> None:
         super().__init__()
 
         self._outgoing_request_queue: Queue[Request] = Queue()
         self._soft_shutdown_signal_received = False
-        self._channel_pool = GrpcConnectionDiscoveryPool('osprey_coordinator')
+        self._channel_pool = GrpcConnectionDiscoveryPool(coordinator_service_name)
         self._client_id = client_id
         self._input_stream_ready_signaler = input_stream_ready_signaler
         self._current_execution_result: Optional[ExecutionResult] = None
