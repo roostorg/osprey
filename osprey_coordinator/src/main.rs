@@ -8,7 +8,6 @@ mod etcd_watcherd;
 mod future_utils;
 mod gcloud;
 mod hashring;
-mod label_service_client;
 mod metrics;
 mod osprey_bidirectional_stream;
 mod pigeon;
@@ -29,10 +28,8 @@ use proto::osprey_coordinator_sync_action::osprey_coordinator_sync_action_servic
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::coordinator_metrics::OspreyCoordinatorMetrics;
 use crate::snowflake_client::SnowflakeClient;
-use crate::{
-    coordinator_metrics::OspreyCoordinatorMetrics, label_service_client::LabelServiceClient,
-};
 
 use crate::metrics::emit_worker::SpawnEmitWorker;
 use crate::metrics::new_client;
@@ -91,15 +88,11 @@ async fn main() -> Result<()> {
             metrics.clone(),
         ));
 
-    tracing::info!("starting label service client");
-    let label_service_client = LabelServiceClient::new().await?;
-
     let smite_coordinator_sync_action_service =
         OspreyCoordinatorSyncActionServiceServer::new(sync_action_rpc::SyncActionServer::new(
             snowflake_client.clone(),
             priority_queue_sender.clone(),
             metrics.clone(),
-            label_service_client,
         ));
 
     let pubsub_fut = start_pubsub_subscriber(
