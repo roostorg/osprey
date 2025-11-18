@@ -5,7 +5,6 @@ use crate::etcd_watcherd::{RecursiveKeyWatchEvents, Watcher};
 use anyhow::Result;
 
 use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
-pub use etcd_config_derive::{Disconfig, FeatureFlags};
 
 use prost::Message;
 

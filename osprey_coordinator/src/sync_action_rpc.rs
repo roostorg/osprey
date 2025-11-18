@@ -3,7 +3,6 @@ use crate::metrics::histograms::StaticHistogram;
 use crate::snowflake_client::SnowflakeClient;
 use crate::{
     coordinator_metrics::OspreyCoordinatorMetrics,
-    label_service_client::LabelServiceClient,
     priority_queue::AckableAction,
     priority_queue::{AckOrNack, PriorityQueueSender},
     proto::{self, osprey_coordinator_sync_action},
@@ -20,7 +19,6 @@ pub(crate) struct SyncActionServer {
     snowflake_client: Arc<SnowflakeClient>,
     priority_queue_sender: PriorityQueueSender,
     metrics: Arc<OspreyCoordinatorMetrics>,
-    label_service_client: LabelServiceClient,
 }
 
 impl SyncActionServer {
@@ -28,22 +26,20 @@ impl SyncActionServer {
         snowflake_client: Arc<SnowflakeClient>,
         priority_queue_sender: PriorityQueueSender,
         metrics: Arc<OspreyCoordinatorMetrics>,
-        label_service_client: LabelServiceClient,
     ) -> SyncActionServer {
         SyncActionServer {
             snowflake_client,
             priority_queue_sender,
             metrics,
-            label_service_client,
         }
     }
 }
 
-async fn create_smite_coordinator_action(
+async fn create_osprey_coordinator_action(
     ack_id: u64,
     action_request: &osprey_coordinator_sync_action::ProcessActionRequest,
     snowflake_client: &SnowflakeClient,
-) -> Result<(proto::OspreyCoordinatorAction, Vec<crate::proto::EntityKey>)> {
+) -> Result<proto::OspreyCoordinatorAction> {
     // generate snowflake if one is not provided, to match the behaviour in pubsub.rs
     let action_id = match action_request.action_id {
         Some(id) => match id {
@@ -56,7 +52,7 @@ async fn create_smite_coordinator_action(
     if action_request.action_name.is_empty() {
         return Err(anyhow!("`action_name` must not be empty"));
     }
-    let smite_coordinator_action = proto::OspreyCoordinatorAction {
+    let osprey_coordinator_action = proto::OspreyCoordinatorAction {
         ack_id,
         action_id,
         action_name: action_request.action_name.clone(),
@@ -75,10 +71,7 @@ async fn create_smite_coordinator_action(
         ),
     };
 
-    Ok((
-        smite_coordinator_action,
-        action_request.requested_entities.clone(),
-    ))
+    Ok(osprey_coordinator_action)
 }
 
 impl SyncActionServer {
@@ -90,7 +83,7 @@ impl SyncActionServer {
     {
         let unvalidated_action_id = action_request.action_id;
 
-        let (smite_coordinator_action, requested_entities) = match create_smite_coordinator_action(
+        let osprey_coordinator_action = match create_osprey_coordinator_action(
             ack_id,
             action_request,
             self.snowflake_client.as_ref(),
@@ -107,9 +100,9 @@ impl SyncActionServer {
             }
         };
 
-        let action_id = smite_coordinator_action.action_id;
+        let action_id = osprey_coordinator_action.action_id;
 
-        let (ackable_action, acking_receiver) = AckableAction::new(smite_coordinator_action);
+        let (ackable_action, acking_receiver) = AckableAction::new(osprey_coordinator_action);
 
         let send_start_time = Instant::now();
         match self.priority_queue_sender.send_sync(ackable_action).await {
@@ -132,25 +125,9 @@ impl SyncActionServer {
             Ok(ack_or_nack) => match ack_or_nack {
                 AckOrNack::Ack(verdicts) => {
                     tracing::debug!({action_id=%action_id, ack_id=ack_id},"[rpc] acking message");
-                    let entities = match self
-                        .label_service_client
-                        .get_entities(requested_entities)
-                        .await
-                    {
-                        Ok(entities) => entities,
-                        Err(error) => {
-                            tracing::error!({error=%error},"label service call failed");
-                            self.metrics
-                                .sync_classification_failure_label_service
-                                .incr();
-                            return Err(tonic::Status::aborted("label service call failed"));
-                        }
-                    };
 
-                    let response = osprey_coordinator_sync_action::ProcessActionResponse {
-                        entities,
-                        verdicts,
-                    };
+                    let response =
+                        osprey_coordinator_sync_action::ProcessActionResponse { verdicts };
 
                     self.metrics.sync_classification_result_ack.incr();
                     self.metrics

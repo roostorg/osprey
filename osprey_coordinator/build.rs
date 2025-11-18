@@ -55,10 +55,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &[proto_root],
     )?;
 
-    tonic_build::configure().compile(
-        &[proto_root.join("etcd_watcherd/v1/etcd_watcherd.proto")],
-        &[proto_root],
-    )?;
-
     Ok(())
 }

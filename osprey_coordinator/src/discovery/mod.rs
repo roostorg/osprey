@@ -12,7 +12,5 @@ mod watcher;
 
 pub use announcer::ServiceAnnouncer;
 pub use error::DiscoveryError;
-pub use limits::{GlobalLimiter, Member, Normal};
-pub use ring::{Config as RingConfig, Ring};
 pub use service::ServiceRegistration;
 pub use watcher::ServiceWatcher;

@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use base64::engine::{general_purpose, Engine as _};
+use base64::engine::Engine as _;
 use prost::Message;
 use tink_aead::subtle::AesGcm;
 use tink_core::Aead;

@@ -8,10 +8,6 @@ use tokio::task::{JoinError, JoinHandle};
 
 mod unbounded_receiver_chunker;
 
-pub use unbounded_receiver_chunker::{
-    ChunkSizeConfig as UnboundedReceiverChunkSizeConfig, UnboundedReceiverChunker,
-};
-
 /// A helper struct that will invoke [`JoinHandle::abort`] when dropped.
 #[derive(Debug)]
 pub struct AbortOnDrop<T = ()> {
