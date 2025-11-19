@@ -24,7 +24,7 @@ Most engineers who are interested in potentially using Osprey are like Alice –
 
 - Limited flexibility in adapting rules (e.g., online to offline toggle) or initiating non T&S workflows
 
-- Immediate enforcement of preset rules enables bad actors to iterate approaches until successful 
+- Immediate enforcement of preset rules enables bad actors to iterate approaches until successful
 
 *Desired capabilities from Osprey include:*
 
@@ -63,7 +63,7 @@ T&S analysts like Bob are primarily concerned with their ability to (1) intuitiv
 
 *Desired capabilities from Osprey include:*
 
-- Facilitate creative investigations by enabling users to easily query on multiple element types (e.g., event, account age, user history) 
+- Facilitate creative investigations by enabling users to easily query on multiple element types (e.g., event, account age, user history)
 
 - Empower non-technical users to make quick changes (e.g., add or edit rules, events, etc.)
 
