@@ -23,8 +23,11 @@ export async function copyText(text: string): Promise<void> {
       document.execCommand('copy');
     } catch (err) {
       console.error(`copyText: fallback failed: ${err}`);
+      // still throw the error so that calling code can optionally alert the user that the copy
+      // failed
+      throw err;
+    } finally {
+      textarea.remove();
     }
-
-    textarea.remove();
   }
 }

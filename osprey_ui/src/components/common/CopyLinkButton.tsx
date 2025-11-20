@@ -26,7 +26,12 @@ const CopyLinkButton = ({ link }: CopyLinkButtonProps) => {
   }, [showCopySuccess]);
 
   const handleCopyLink = async () => {
-    await copyText(link);
+    try {
+      await copyText(link);
+    } catch (err) {
+      message.error(`Error copying text to clipboard: ${err}`);
+      return;
+    }
     message.success('Link copied to clipboard', 1);
     setShowCopySuccess(true);
   };
