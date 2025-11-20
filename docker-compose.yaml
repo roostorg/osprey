@@ -102,14 +102,22 @@ services:
         condition: service_healthy
       minio-bucket-init:
         condition: service_completed_successfully
+      etcd:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      osprey_coordinator:
+        condition: service_started
     ports:
       - "5001:5000"
     command: ["osprey-worker"]
     environment:
       - PYTHONPATH=/osprey
       - PORT=5000
+      - ETCD_PEERS=http://etcd:2379
       - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
-      - OSPREY_INPUT_STREAM_SOURCE=kafka
+      # - OSPREY_INPUT_STREAM_SOURCE=kafka
+      - OSPREY_INPUT_STREAM_SOURCE=osprey_coordinator
       - OSPREY_STDOUT_OUTPUT_SINK=True
       - OSPREY_KAFKA_BOOTSTRAP_SERVERS=["kafka:29092"]
       - OSPREY_KAFKA_INPUT_STREAM_TOPIC=osprey.actions_input
@@ -251,6 +259,30 @@ services:
       - /bin/bash
     command: ["/osprey/example_data/generate_test_data.sh"]
 
+  # Optional coordinator test data generator - run with:
+  # docker compose --profile coordinator_test_data up coordinator-test-data-producer -d
+  coordinator-test-data-producer:
+    image: alpine:latest
+    hostname: coordinator-test-data-producer
+    container_name: coordinator-test-data-producer
+    depends_on:
+      osprey_coordinator:
+        condition: service_started
+    profiles:
+      - coordinator_test_data
+      - coordinator-test-data
+    environment:
+      COORDINATOR_HOST: "osprey_coordinator:19951"
+    volumes:
+      - ./example_data:/osprey/example_data
+    command:
+      - /bin/sh
+      - -c
+      - |
+        apk add --no-cache bash jq curl &&
+        wget -qO- https://github.com/fullstorydev/grpcurl/releases/download/v1.8.7/grpcurl_1.8.7_linux_x86_64.tar.gz | tar xz -C /usr/local/bin &&
+        /osprey/example_data/generate_coordinator_test_data.sh
+
   postgres:
     hostname: postgres
     container_name: postgres
@@ -380,6 +412,7 @@ services:
 
   osprey_coordinator:
     container_name: osprey_coordinator
+    hostname: osprey_coordinator
     build:
       context: .
       dockerfile: osprey_coordinator/Dockerfile
@@ -390,7 +423,9 @@ services:
       - RUST_LOG=info
       - ETCD_PEERS=http://etcd:2379
       - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
-      - POD_IP=127.0.0.1
+      - OSPREY_COORDINATOR_BIDI_STREAM_PORT=19950
+      - OSPREY_COORDINATOR_SYNC_ACTION_PORT=19951
+      - POD_IP=osprey_coordinator
       - PUBSUB_EMULATOR_HOST=127.0.0.1:8085
     depends_on:
       etcd:
