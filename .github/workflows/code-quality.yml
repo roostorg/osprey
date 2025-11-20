@@ -29,6 +29,14 @@ jobs:
           version: "latest"
           enable-cache: true
 
+      - name: Set PY env variable
+        run: echo "PY=$(python -VV | sha256sum | cut -d' ' -f1)" >> $GITHUB_ENV
+      - name: Setup cache for pre-commit
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit|${{ env.PY }}|${{ hashFiles('.pre-commit-config.yaml') }}
+
       - name: Install dependencies
         run: uv sync --dev
 
@@ -40,6 +48,16 @@ jobs:
 
       - name: Run mypy type checking
         run: uv run mypy .
+
+      - name: Run precommit
+        env:
+          # We already ran these; omit them from this precommit check
+          SKIP: mypy,ruff,ruff-format
+        run: |
+          uv run pre-commit install
+          uv run pre-commit run --all-files &>/dev/null || true
+          # ^^ First run just installs Prettier & then fails smh
+          uv run pre-commit run --all-files
 
   ui-quality:
     runs-on: ubuntu-24.04
