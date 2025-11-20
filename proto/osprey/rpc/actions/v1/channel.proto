@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package osprey.rpc.actions.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+message PrivateChannelRecipient {
+    fixed64 id = 1;
+}
+
+message Channel {
+    fixed64 id = 1;
+    string name = 2;
+    int32 type = 3;
+    bool is_nsfw = 4;
+    int32 message_count = 5;
+    repeated PrivateChannelRecipient recipients = 6;
+}

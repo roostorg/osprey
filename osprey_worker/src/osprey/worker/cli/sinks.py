@@ -182,8 +182,11 @@ def _run_rules_worker_process() -> None:
 
     # Input Stream
     input_stream_ready_signaler = InputStreamReadySignaler()
+    coordinator_service_name = config.get_str('OSPREY_COORDINATOR_SERVICE_NAME', 'osprey_coordinator')
     input_stream = OspreyCoordinatorInputStream(
-        client_id=f'{uuid1()}', input_stream_ready_signaler=input_stream_ready_signaler
+        client_id=f'{uuid1()}',
+        input_stream_ready_signaler=input_stream_ready_signaler,
+        coordinator_service_name=coordinator_service_name,
     )
     signal.signal(signal.SIGTERM, lambda *args: input_stream.stop())
     signal.signal(signal.SIGINT, lambda *args: input_stream.stop())

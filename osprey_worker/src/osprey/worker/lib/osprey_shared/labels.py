@@ -32,6 +32,10 @@ class MutationDropReason(IntEnum):
     CONFLICTING_MUTATION = 0
     # If the existing label status was manual and the attempted mutation was not
     CANNOT_OVERRIDE_MANUAL = 1
+    # if the label name was an empty string
+    INVALID_LABEL_NAME = 2
+    # if the entity id was an empty string
+    INVALID_ENTITY_ID = 3
 
 
 class LabelStatus(IntEnum):
@@ -109,6 +113,10 @@ class LabelReason:
     is considered expired, too.
     """
 
+    def __post_init__(self) -> None:
+        self.created_at = _guarantee_utc_timezone_awareness(self.created_at)
+        self.expires_at = _guarantee_utc_timezone_awareness(self.expires_at)
+
     def is_expired(self) -> bool:
         return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=5) < datetime.now(timezone.utc))
 
@@ -117,14 +125,12 @@ class LabelReason:
         serialize LabelReason to a JSON-compatible dict.
         converts datetime objects to ISO format strings.
         """
-        created_at = _guarantee_utc_timezone_awareness(self.created_at)
-        expires_at = _guarantee_utc_timezone_awareness(self.expires_at)
         return {
             'pending': self.pending,
             'description': self.description,
             'features': self.features,
-            'created_at': created_at.isoformat() if created_at else None,
-            'expires_at': expires_at.isoformat() if expires_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
         }
 
     @classmethod
@@ -133,12 +139,8 @@ class LabelReason:
         deserialize a dict into a LabelReason object.
         converts ISO format strings back to datetime objects.
         """
-        created_at = _guarantee_utc_timezone_awareness(
-            datetime.fromisoformat(d['created_at']) if d.get('created_at') else None
-        )
-        expires_at = _guarantee_utc_timezone_awareness(
-            datetime.fromisoformat(d['expires_at']) if d.get('expires_at') else None
-        )
+        created_at = datetime.fromisoformat(d['created_at']) if d.get('created_at') else None
+        expires_at = datetime.fromisoformat(d['expires_at']) if d.get('expires_at') else None
         return cls(
             pending=d.get('pending', False),
             description=d.get('description', ''),
@@ -425,7 +427,7 @@ class EntityLabelMutation:
             description=self.description,
             features=self.features,
             created_at=datetime.now(timezone.utc),
-            expires_at=_guarantee_utc_timezone_awareness(self.expires_at),
+            expires_at=self.expires_at,
         )
 
     def serialize(self) -> dict[str, Any]:

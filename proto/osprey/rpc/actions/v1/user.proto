@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package osprey.rpc.actions.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+message User {
+  reserved 10, 23;
+
+  fixed64 id = 1;
+  bool mfa_enabled = 2;
+  bool bot = 3;
+  string username = 4;
+  string discriminator = 5;
+  google.protobuf.StringValue email = 6;
+  bool email_verified = 7;
+  google.protobuf.StringValue phone = 8;
+  google.protobuf.StringValue avatar = 9;
+  string bio = 11;
+  google.protobuf.StringValue ip = 12;
+  bool ip_is_whitelisted = 13;
+  google.protobuf.UInt32Value premium_type = 14;
+  google.protobuf.Timestamp premium_until = 15;
+  fixed64 flags = 16;
+  fixed64 public_flags = 17;
+  int32 suspicious_activity_flags = 18;
+  google.protobuf.StringValue required_action = 19;
+  bool is_unique_username = 20;
+  google.protobuf.StringValue global_name = 21;
+  // Used by guild automation GUILD_JOINED event
+  google.protobuf.StringValue hub_email = 22;
+}

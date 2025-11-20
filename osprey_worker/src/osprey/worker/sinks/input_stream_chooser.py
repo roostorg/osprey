@@ -43,7 +43,11 @@ def get_rules_sink_input_stream(
         )
 
     elif input_stream_source == InputStreamSource.OSPREY_COORDINATOR:
-        return OspreyCoordinatorInputStream(client_id='meow')
+        coordinator_service_name = config.get_str('OSPREY_COORDINATOR_SERVICE_NAME', 'osprey_coordinator')
+        return OspreyCoordinatorInputStream(
+            client_id='meow',
+            coordinator_service_name=coordinator_service_name,
+        )
 
     elif input_stream_source == InputStreamSource.SYNTHETIC:
         random_actions = []

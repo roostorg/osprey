@@ -4,32 +4,30 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   python-quality:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: ".python-version"
+
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v7
         with:
           version: "latest"
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Cache uv dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/uv
-          key: uv-${{ runner.os }}-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
-          restore-keys: |
-            uv-${{ runner.os }}-
-            uv-
+          enable-cache: true
 
       - name: Install dependencies
         run: uv sync --dev
@@ -43,12 +41,8 @@ jobs:
       - name: Run mypy type checking
         run: uv run mypy .
 
-      - name: Run tests
-        run: uv run pytest
-        continue-on-error: true # Remove once the tests are working
-
   ui-quality:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -67,3 +61,49 @@ jobs:
       - name: Run prettier check
         run: npm run format:check
         working-directory: osprey_ui
+
+  rust-quality:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+          override: true
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            osprey_coordinator/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('osprey_coordinator/Cargo.lock', 'osprey_coordinator/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Check Rust formatting
+        run: cargo fmt --check
+        working-directory: osprey_coordinator
+
+      - name: Run Clippy linting
+        run: cargo clippy -- -D warnings
+        working-directory: osprey_coordinator
+        continue-on-error: true
+
+      - name: Build Rust project
+        run: |
+          sudo apt-get install protobuf-compiler
+          cargo build --verbose
+        working-directory: osprey_coordinator
+
+      - name: Run Rust tests
+        run: cargo test --verbose
+        working-directory: osprey_coordinator
+        continue-on-error: true

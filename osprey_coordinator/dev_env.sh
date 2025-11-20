@@ -1,0 +1,3 @@
+export ETCD_PEERS=http://127.0.0.1:2379
+export PUBSUB_EMULATOR_HOST=127.0.0.1:8085
+export POD_IP=127.0.0.1

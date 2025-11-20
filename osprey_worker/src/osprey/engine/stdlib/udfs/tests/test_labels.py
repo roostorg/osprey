@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set
 
 import gevent
@@ -99,7 +99,7 @@ def source_with_labels_config(source: str, labels: Set[str]) -> Dict[str, str]:
             'added',
             None,
             LabelStatus.ADDED,
-            LabelReasons({'ExpiredReason': LabelReason(expires_at=(datetime.now() - timedelta(hours=1)))}),
+            LabelReasons({'ExpiredReason': LabelReason(expires_at=(datetime.now(timezone.utc) - timedelta(hours=1)))}),
             False,
         ),
         (
@@ -108,7 +108,7 @@ def source_with_labels_config(source: str, labels: Set[str]) -> Dict[str, str]:
             LabelStatus.ADDED,
             LabelReasons(
                 {
-                    'ExpiredReason': LabelReason(expires_at=(datetime.now() - timedelta(hours=1))),
+                    'ExpiredReason': LabelReason(expires_at=(datetime.now(timezone.utc) - timedelta(hours=1))),
                     'TestReason': LabelReason(),
                 }
             ),
@@ -120,8 +120,8 @@ def source_with_labels_config(source: str, labels: Set[str]) -> Dict[str, str]:
             LabelStatus.ADDED,
             LabelReasons(
                 {
-                    'ExpiredReason': LabelReason(expires_at=(datetime.now() - timedelta(hours=1))),
-                    'ExpiringReason': LabelReason(expires_at=(datetime.now() + timedelta(hours=1))),
+                    'ExpiredReason': LabelReason(expires_at=(datetime.now(timezone.utc) - timedelta(hours=1))),
+                    'ExpiringReason': LabelReason(expires_at=(datetime.now(timezone.utc) + timedelta(hours=1))),
                 }
             ),
             True,
@@ -130,7 +130,7 @@ def source_with_labels_config(source: str, labels: Set[str]) -> Dict[str, str]:
             'added',
             None,
             LabelStatus.ADDED,
-            LabelReasons({'ExpiringReason': LabelReason(expires_at=(datetime.now() + timedelta(hours=1)))}),
+            LabelReasons({'ExpiringReason': LabelReason(expires_at=(datetime.now(timezone.utc) + timedelta(hours=1)))}),
             True,
         ),
         ('added', None, LabelStatus.MANUALLY_ADDED, LabelReasons({'TestReason': LabelReason()}), True),
@@ -201,7 +201,7 @@ def test_get_labels_retrieves_data(
             'added',
             None,
             LabelStatus.ADDED,
-            LabelReasons({'TestReason': LabelReason(created_at=(datetime.now() - timedelta(days=1)))}),
+            LabelReasons({'TestReason': LabelReason(created_at=(datetime.now(timezone.utc) - timedelta(days=1)))}),
             timedelta(days=1),
             True,
         ),
@@ -209,7 +209,7 @@ def test_get_labels_retrieves_data(
             'added',
             None,
             LabelStatus.ADDED,
-            LabelReasons({'TestReason': LabelReason(created_at=(datetime.now()))}),
+            LabelReasons({'TestReason': LabelReason(created_at=(datetime.now(timezone.utc)))}),
             timedelta(days=1),
             False,
         ),
@@ -413,8 +413,8 @@ def test_suggests_similar_labels(check_failure: CheckFailureFunction, run_valida
 @pytest.mark.parametrize(
     'entity_type, label_name, label_udf, entity_label_mutation',
     (
-        ('EntityA', 'label_a', 'LabelAdd', 'EntityA/label_a/1'),
-        ('EntityB', 'label_b', 'LabelRemove', 'EntityB/label_b/0'),
+        ('EntityA', 'label_a', 'LabelAdd', f'EntityA/label_a/{LabelStatus.ADDED.value}'),
+        ('EntityB', 'label_b', 'LabelRemove', f'EntityB/label_b/{LabelStatus.REMOVED.value}'),
     ),
 )
 def test_label_effects_are_exported_to_extracted_features(
@@ -445,8 +445,8 @@ def test_label_effects_are_exported_to_extracted_features(
 @pytest.mark.parametrize(
     'entity_type, label_name, label_udf, entity_label_mutation',
     (
-        ('EntityA', 'label_a', 'LabelAdd', 'EntityA/label_a/1'),
-        ('EntityB', 'label_b', 'LabelRemove', 'EntityB/label_b/0'),
+        ('EntityA', 'label_a', 'LabelAdd', f'EntityA/label_a/{LabelStatus.ADDED.value}'),
+        ('EntityB', 'label_b', 'LabelRemove', f'EntityB/label_b/{LabelStatus.REMOVED.value}'),
     ),
 )
 def test_label_effects_are_exported_to_extracted_features_multi_rule(
@@ -484,8 +484,16 @@ def test_label_effects_are_exported_to_extracted_features_multi_rule(
 @pytest.mark.parametrize(
     'entity_type, label_name, entity_label_mutation',
     (
-        ('EntityA', 'label_a', ['EntityA/label_a/1', 'EntityA/label_a/0']),
-        ('EntityB', 'label_b', ['EntityB/label_b/1', 'EntityB/label_b/0']),
+        (
+            'EntityA',
+            'label_a',
+            [f'EntityA/label_a/{LabelStatus.ADDED.value}', f'EntityA/label_a/{LabelStatus.REMOVED.value}'],
+        ),
+        (
+            'EntityB',
+            'label_b',
+            [f'EntityB/label_b/{LabelStatus.ADDED.value}', f'EntityB/label_b/{LabelStatus.REMOVED.value}'],
+        ),
     ),
 )
 def test_label_effects_are_exported_to_extracted_features_multi_rule_add_and_remove(
@@ -522,8 +530,16 @@ def test_label_effects_are_exported_to_extracted_features_multi_rule_add_and_rem
 @pytest.mark.parametrize(
     'entity_type, label_name, entity_label_mutation',
     (
-        ('EntityA', 'label_a', ['EntityA/label_a/0', 'EntityA/other_label/0']),
-        ('EntityB', 'label_b', ['EntityB/label_b/0', 'EntityB/other_label/0']),
+        (
+            'EntityA',
+            'label_a',
+            [f'EntityA/label_a/{LabelStatus.ADDED.value}', f'EntityA/other_label/{LabelStatus.ADDED.value}'],
+        ),
+        (
+            'EntityB',
+            'label_b',
+            [f'EntityB/label_b/{LabelStatus.ADDED.value}', f'EntityB/other_label/{LabelStatus.ADDED.value}'],
+        ),
     ),
 )
 def test_label_effects_are_exported_to_extracted_features_multi_add(

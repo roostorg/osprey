@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package osprey.rpc.actions.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+message GuildInvite {
+    string code = 1;
+    int32 max_age = 2;
+    google.protobuf.Timestamp created_at = 3;
+    int32 max_uses = 4;
+    bool temporary = 5;
+    bool custom = 6;
+}

@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package osprey.rpc.actions.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+message CaptchaResponse {
+    string captcha_service = 1;
+    bool success = 2;
+    google.protobuf.Timestamp challenge_ts = 3;
+    repeated string error_codes = 4;
+    map<string, string> sigs = 5;
+    google.protobuf.StringValue solve_token = 6;
+
+    // HCaptcha and RECaptcha
+    google.protobuf.StringValue hostname = 7;
+
+    // HCaptcha-only fields
+    google.protobuf.FloatValue score = 8;
+    repeated string score_reason = 9;
+    google.protobuf.StringValue sitekey = 10;
+    google.protobuf.StringValue scoped_uid_0 = 11;
+    google.protobuf.StringValue scoped_uid_1 = 12;
+}
