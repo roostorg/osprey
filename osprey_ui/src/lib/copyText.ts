@@ -10,6 +10,7 @@ export async function copyText(text: string): Promise<void> {
     // create a textarea that gets appended to the body, then focus+copy text
     const body = document.body;
     const textarea = document.createElement('textarea');
+    textarea.setAttribute('aria-hidden', 'true');
     body.appendChild(textarea);
     textarea.value = text;
     textarea.focus();
