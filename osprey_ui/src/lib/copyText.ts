@@ -15,7 +15,16 @@ export async function copyText(text: string): Promise<void> {
     textarea.value = text;
     textarea.focus();
     textarea.select();
-    document.execCommand('copy');
+
+    // NOTE: execCommand is actually deprecated, so this might break in future browser versions
+    // unfortunately. we'll log an error in the event that things do fail.
+    // see: https://developer.mozilla.org/en-US/docs/Web/API/Document/execCommand
+    try {
+      document.execCommand('copy');
+    } catch (err) {
+      console.error(`copyText: fallback failed: ${err}`);
+    }
+
     textarea.remove();
   }
 }
