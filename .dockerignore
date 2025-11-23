@@ -1,0 +1,39 @@
+# Rust build artifacts
+**/target/
+**/Cargo.lock
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.Python
+**/.venv/
+**/venv/
+**/.pytest_cache/
+**/.coverage
+**/*.egg-info/
+
+# Node
+**/node_modules/
+**/npm-debug.log
+**/yarn-error.log
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Misc
+*.log
+.env

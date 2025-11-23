@@ -8,6 +8,7 @@ mod etcd_watcherd;
 mod future_utils;
 mod gcloud;
 mod hashring;
+mod kafka;
 mod metrics;
 mod osprey_bidirectional_stream;
 mod pigeon;
@@ -96,7 +97,12 @@ async fn main() -> Result<()> {
         ));
 
     let pubsub_fut = start_pubsub_subscriber(
-        snowflake_client,
+        snowflake_client.clone(),
+        priority_queue_sender.clone(),
+        metrics.clone(),
+    );
+    let kafka_fut = kafka::start_kafka_consumer(
+        snowflake_client.clone(),
         priority_queue_sender.clone(),
         metrics.clone(),
     );
@@ -123,13 +129,15 @@ async fn main() -> Result<()> {
     );
 
     tracing::info!("starting pubsub listener/bidi stream/sync classification rpc");
-    let (pubsub_result, grpc_bidi_stream_service_result, sync_action_service_result) = join!(
+    let (pubsub_result, kafka_result, grpc_bidi_stream_service_result, sync_action_service_result) = join!(
         pubsub_fut,
+        kafka_fut,
         grpc_bidi_stream_service_fut,
         sync_action_service_fut
     );
     tracing::info!({
         pubsub_result=?pubsub_result,
+        kafka_result=?kafka_result,
         bidi_stream_result=?grpc_bidi_stream_service_result,
         sync_action_result=?sync_action_service_result},
         "osprey coordinator terminated");
