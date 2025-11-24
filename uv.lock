@@ -1,19 +1,16 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
-    "python_full_version >= '4' and platform_machine == 'x86_64'",
-    "python_full_version >= '3.14' and python_full_version < '4' and platform_machine == 'x86_64'",
+    "python_full_version >= '3.14' and platform_machine == 'x86_64'",
     "python_full_version == '3.13.*' and platform_machine == 'x86_64'",
     "python_full_version == '3.12.*' and platform_machine == 'x86_64'",
     "python_full_version < '3.12' and platform_machine == 'x86_64'",
-    "python_full_version >= '4' and platform_machine == 'aarch64'",
-    "python_full_version >= '3.14' and python_full_version < '4' and platform_machine == 'aarch64'",
+    "python_full_version >= '3.14' and platform_machine == 'aarch64'",
     "python_full_version == '3.13.*' and platform_machine == 'aarch64'",
     "python_full_version == '3.12.*' and platform_machine == 'aarch64'",
     "python_full_version < '3.12' and platform_machine == 'aarch64'",
-    "python_full_version >= '4' and platform_machine != 'aarch64' and platform_machine != 'x86_64'",
-    "python_full_version >= '3.14' and python_full_version < '4' and platform_machine != 'aarch64' and platform_machine != 'x86_64'",
+    "python_full_version >= '3.14' and platform_machine != 'aarch64' and platform_machine != 'x86_64'",
     "python_full_version == '3.13.*' and platform_machine != 'aarch64' and platform_machine != 'x86_64'",
     "python_full_version == '3.12.*' and platform_machine != 'aarch64' and platform_machine != 'x86_64'",
     "python_full_version < '3.12' and platform_machine != 'aarch64' and platform_machine != 'x86_64'",
@@ -236,12 +233,9 @@ name = "argon2-cffi-bindings"
 version = "21.2.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '4' and platform_machine == 'x86_64'",
-    "python_full_version >= '3.14' and python_full_version < '4' and platform_machine == 'x86_64'",
-    "python_full_version >= '4' and platform_machine == 'aarch64'",
-    "python_full_version >= '3.14' and python_full_version < '4' and platform_machine == 'aarch64'",
-    "python_full_version >= '4' and platform_machine != 'aarch64' and platform_machine != 'x86_64'",
-    "python_full_version >= '3.14' and python_full_version < '4' and platform_machine != 'aarch64' and platform_machine != 'x86_64'",
+    "python_full_version >= '3.14' and platform_machine == 'x86_64'",
+    "python_full_version >= '3.14' and platform_machine == 'aarch64'",
+    "python_full_version >= '3.14' and platform_machine != 'aarch64' and platform_machine != 'x86_64'",
 ]
 dependencies = [
     { name = "cffi", marker = "python_full_version >= '3.14'" },
@@ -593,7 +587,7 @@ dependencies = [
 [[package]]
 name = "example-plugins"
 version = "0.1.0"
-source = { virtual = "example_plugins" }
+source = { editable = "example_plugins" }
 dependencies = [
     { name = "pluggy" },
 ]
@@ -1007,8 +1001,7 @@ name = "grpcio"
 version = "1.49.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '4' and platform_machine == 'x86_64'",
-    "python_full_version >= '3.14' and python_full_version < '4' and platform_machine == 'x86_64'",
+    "python_full_version >= '3.14' and platform_machine == 'x86_64'",
     "python_full_version == '3.13.*' and platform_machine == 'x86_64'",
     "python_full_version == '3.12.*' and platform_machine == 'x86_64'",
     "python_full_version < '3.12' and platform_machine == 'x86_64'",
@@ -1030,13 +1023,11 @@ name = "grpcio"
 version = "1.53.2"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '4' and platform_machine == 'aarch64'",
-    "python_full_version >= '3.14' and python_full_version < '4' and platform_machine == 'aarch64'",
+    "python_full_version >= '3.14' and platform_machine == 'aarch64'",
     "python_full_version == '3.13.*' and platform_machine == 'aarch64'",
     "python_full_version == '3.12.*' and platform_machine == 'aarch64'",
     "python_full_version < '3.12' and platform_machine == 'aarch64'",
-    "python_full_version >= '4' and platform_machine != 'aarch64' and platform_machine != 'x86_64'",
-    "python_full_version >= '3.14' and python_full_version < '4' and platform_machine != 'aarch64' and platform_machine != 'x86_64'",
+    "python_full_version >= '3.14' and platform_machine != 'aarch64' and platform_machine != 'x86_64'",
     "python_full_version == '3.13.*' and platform_machine != 'aarch64' and platform_machine != 'x86_64'",
     "python_full_version == '3.12.*' and platform_machine != 'aarch64' and platform_machine != 'x86_64'",
     "python_full_version < '3.12' and platform_machine != 'aarch64' and platform_machine != 'x86_64'",
@@ -1640,7 +1631,7 @@ wheels = [
 [[package]]
 name = "osprey-rpc"
 version = "0.1.0"
-source = { virtual = "osprey_rpc" }
+source = { editable = "osprey_rpc" }
 
 [[package]]
 name = "osprey-worker"
@@ -1654,7 +1645,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "flask-cors", specifier = ">=6.0.1" },
-    { name = "osprey-rpc", virtual = "osprey_rpc" },
+    { name = "osprey-rpc", editable = "osprey_rpc" },
 ]
 
 [[package]]
