@@ -7,10 +7,6 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
-      - id: trailing-whitespace
-        exclude: .*/tests?/.*\.txt
-      - id: end-of-file-fixer
-        exclude: .*/tests?/.*\.txt
       - id: check-case-conflict
       - id: check-merge-conflict
       - id: debug-statements
