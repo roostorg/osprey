@@ -102,22 +102,14 @@ services:
         condition: service_healthy
       minio-bucket-init:
         condition: service_completed_successfully
-      etcd:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      osprey-coordinator:
-        condition: service_started
     ports:
       - "5001:5000"
     command: ["osprey-worker"]
     environment:
       - PYTHONPATH=/osprey
       - PORT=5000
-      - ETCD_PEERS=http://etcd:2379
       - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
-      # - OSPREY_INPUT_STREAM_SOURCE=kafka
-      - OSPREY_INPUT_STREAM_SOURCE=osprey_coordinator
+      - OSPREY_INPUT_STREAM_SOURCE=kafka
       - OSPREY_STDOUT_OUTPUT_SINK=True
       - OSPREY_KAFKA_BOOTSTRAP_SERVERS=["kafka:29092"]
       - OSPREY_KAFKA_INPUT_STREAM_TOPIC=osprey.actions_input
@@ -259,30 +251,6 @@ services:
       - /bin/bash
     command: ["/osprey/example_data/generate_test_data.sh"]
 
-  # Optional coordinator test data generator - run with:
-  # docker compose --profile coordinator_test_data up coordinator-test-data-producer -d
-  coordinator-test-data-producer:
-    image: alpine:latest
-    hostname: coordinator-test-data-producer
-    container_name: coordinator-test-data-producer
-    depends_on:
-      osprey-coordinator:
-        condition: service_started
-    profiles:
-      - coordinator_test_data
-      - coordinator-test-data
-    environment:
-      COORDINATOR_HOST: "osprey-coordinator:19951"
-    volumes:
-      - ./example_data:/osprey/example_data
-    command:
-      - /bin/sh
-      - -c
-      - |
-        apk add --no-cache bash jq curl &&
-        wget -qO- https://github.com/fullstorydev/grpcurl/releases/download/v1.8.7/grpcurl_1.8.7_linux_x86_64.tar.gz | tar xz -C /usr/local/bin &&
-        /osprey/example_data/generate_coordinator_test_data.sh
-
   postgres:
     hostname: postgres
     container_name: postgres
@@ -290,7 +258,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - metadata_data:/var/lib/postgresql
+      - metadata_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_PASSWORD=FoolishPassword
       - POSTGRES_USER=osprey
@@ -409,56 +377,3 @@ services:
       - ./druid/specs:/specs
     command: ["/bin/sh", "/specs/submit-specs.sh"]
     restart: "no"
-
-  osprey-coordinator:
-    container_name: osprey-coordinator
-    hostname: osprey-coordinator
-    build:
-      context: .
-      dockerfile: osprey_coordinator/Dockerfile
-    ports:
-      - "19950:19950"
-      - "19951:19951"
-    environment:
-      - RUST_LOG=info
-      - ETCD_PEERS=http://etcd:2379
-      - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
-      - OSPREY_COORDINATOR_BIDI_STREAM_PORT=19950
-      - OSPREY_COORDINATOR_SYNC_ACTION_PORT=19951
-      - POD_IP=osprey-coordinator
-      - PUBSUB_EMULATOR_HOST=127.0.0.1:8085
-      - OSPREY_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - OSPREY_KAFKA_INPUT_STREAM_TOPIC=osprey.actions_input
-      - OSPREY_KAFKA_GROUP_ID=osprey_coordinator_group
-      - MAX_TIME_TO_SEND_TO_ASYNC_QUEUE_MS=500
-      - MAX_ACKING_RECEIVER_WAIT_TIME_MS=60000
-    depends_on:
-      etcd:
-        condition: service_healthy
-      snowflake-id-worker:
-        condition: service_started
-      kafka:
-        condition: service_healthy
-      kafka-topic-creator:
-        condition: service_completed_successfully
-
-  etcd:
-    image: quay.io/coreos/etcd:v3.5.15
-    ports:
-      - "2379:2379"
-    environment:
-      - ETCD_ENABLE_V2=true
-      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
-      - ETCD_ADVERTISE_CLIENT_URLS=http://0.0.0.0:2379
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "etcdctl",
-          "--endpoints=http://localhost:2379",
-          "endpoint",
-          "health",
-        ]
-      interval: 5s
-      timeout: 3s
-      retries: 3
