@@ -116,7 +116,6 @@ services:
       - PORT=5000
       - ETCD_PEERS=http://etcd:2379
       - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
-      # - OSPREY_INPUT_STREAM_SOURCE=kafka
       - OSPREY_INPUT_STREAM_SOURCE=osprey_coordinator
       - OSPREY_STDOUT_OUTPUT_SINK=True
       - OSPREY_KAFKA_BOOTSTRAP_SERVERS=["kafka:29092"]
@@ -286,7 +285,7 @@ services:
   postgres:
     hostname: postgres
     container_name: postgres
-    image: postgres:18
+    image: postgres:latest
     ports:
       - "5432:5432"
     volumes:
