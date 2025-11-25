@@ -14,23 +14,23 @@ The coordinator can consume actions from Kafka, Pubsub and/or receives them via 
 ### Components
 
 ```
-┌─────────────────────┐
-│   Kafka Topics      │
-│  (actions_input)    │
-└──────────┬──────────┘
+┌───────────────────────────────┐
+│   Kafka Topics and/or Pubsub  │
+│  (actions_input)              │ 
+└──────────┬────────────────────┘
            │
            ▼
 ┌─────────────────────────────────────────────┐
 │        Osprey Coordinator (Rust)            │
-│  ┌─────────────────────────────────────┐   │
-│  │  Priority Queue                     │   │
-│  │  - Sync Actions (high priority)     │   │
-│  │  - Async Actions (lower priority)   │   │
-│  └─────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────┐    │
+│  │  Priority Queue                     │    │
+│  │  - Sync Actions (high priority)     │    │
+│  │  - Async Actions (lower priority)   │    │
+│  └─────────────────────────────────────┘    │
 │                                             │
 │  gRPC Services:                             │
-│  - Bidirectional Stream (port 19950)       │
-│  - Sync Action API (port 19951)            │
+│  - Bidirectional Stream (port 19950)        │
+│  - Sync Action API (port 19951)             │
 └──────────────┬──────────────────────────────┘
                │
                ▼
