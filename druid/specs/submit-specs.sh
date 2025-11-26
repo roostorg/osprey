@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "Waiting for Coordinator-Overlord to be ready..."
-while ! curl -f http://coordinator:8081/status >/dev/null 2>&1; do
+while ! curl -f http://druid-coordinator:8081 >/dev/null 2>&1; do
   sleep 5
 done
 echo "Coordinator-Overlord is ready!"
@@ -18,7 +18,7 @@ for spec in /specs/*.json; do
       -H "Content-Type: application/json" \
       -d @"$spec" \
       -v \
-      http://coordinator:8081/druid/indexer/v1/supervisor
+      http://druid-coordinator:8081/druid/indexer/v1/supervisor
 
     echo ""
     echo "========================="
