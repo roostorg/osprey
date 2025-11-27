@@ -41,8 +41,9 @@ class LabelArguments(ArgumentsBase):
     #               that a better abstraction would be to have any sort of "external impact" come
     #               from verdicts, which were created to be an output (whereas labels were created
     #               to simply store state, thus making label webhooks a leaky abstraction)
-    # delay_action_by: Optional[TimeDeltaT] = None
-    # """Optional: Delays a label action by a specified `TimeDeltaT` time."""
+    # NOTE(@elijaharita): this is being re-added because removing it breaks backwards compatibility.
+    delay_action_by: Optional[TimeDeltaT] = None
+    """Optional: Delays a label action by a specified `TimeDeltaT` time."""
     apply_if: Optional[RuleT] = None
     """Optional: Conditions that must be met for the label mutation to succeed."""
     expires_after: Optional[TimeDeltaT] = None
@@ -55,7 +56,7 @@ def synthesize_effect(status: LabelStatus, arguments: LabelArguments) -> LabelEf
         status=status,
         name=arguments.label.value,
         expires_after=TimeDeltaT.inner_from_optional(arguments.expires_after),
-        # delay_action_by=TimeDeltaT.inner_from_optional(arguments.delay_action_by),
+        delay_action_by=TimeDeltaT.inner_from_optional(arguments.delay_action_by),
         dependent_rule=arguments.apply_if,
         # NOTE: This is fairly significant, if this call node has an `apply_if` ast, but
         # the resolved apply_if is None, that means that the evaluation of the rule failed.
