@@ -43,7 +43,7 @@ class LabelArguments(ArgumentsBase):
     #               to simply store state, thus making label webhooks a leaky abstraction)
     # NOTE(@elijaharita): this is being re-added because removing it breaks backwards compatibility.
     delay_action_by: Optional[TimeDeltaT] = None
-    """Optional: Delays a label action by a specified `TimeDeltaT` time."""
+    """Optional: Delays a label action by a specified `TimeDeltaT` time if Osprey is configured to."""
     apply_if: Optional[RuleT] = None
     """Optional: Conditions that must be met for the label mutation to succeed."""
     expires_after: Optional[TimeDeltaT] = None
