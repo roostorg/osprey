@@ -57,6 +57,7 @@ Configure the coordinator via environment variables in `docker-compose.yaml`:
 | `OSPREY_KAFKA_BOOTSTRAP_SERVERS` | `kafka:29092` | Kafka broker addresses |
 | `OSPREY_KAFKA_INPUT_STREAM_TOPIC` | `osprey.actions_input` | Kafka topic to consume |
 | `OSPREY_KAFKA_GROUP_ID` | `osprey_coordinator_group` | Kafka consumer group ID |
+| `OSPREY_COORDINATOR_CONSUMER_TYPE` | `kafka` | Consumer type: `kafka` or `pubsub` |
 | `MAX_TIME_TO_SEND_TO_ASYNC_QUEUE_MS` | `500` | Max time to wait before queuing async actions |
 | `MAX_ACKING_RECEIVER_WAIT_TIME_MS` | `60000` | Max time to wait for worker ack/nack |
 
@@ -75,6 +76,10 @@ osprey_coordinator:
 ```
 
 ## Using the Coordinator
+
+### Replace the docker-compose.yaml
+
+Replace the docker-compose.yaml file in the main root directory with the one under this directory
 
 **Worker Configuration:**
 
@@ -119,14 +124,28 @@ grpcurl -plaintext \
   osprey.rpc.osprey_coordinator.sync_action.v1.OspreyCoordinatorSyncActionService/ProcessAction
 ```
 
+or Use the test data producer:
+
+```bash
+docker compose --profile coordinator_test_data up coordinator-test-data-producer
+```
+
 ### Kafka/Pubsub Integration
 
-The coordinator can also automatically consumes from the configured Kafka topic and/or Pubsub subscription if relavant env vars are set:
+The coordinator can automatically consume from either Kafka or PubSub (but not both simultaneously). Set `OSPREY_COORDINATOR_CONSUMER_TYPE` to choose:
+
+- `kafka` (default) - Consume from Kafka
+- `pubsub` - Consume from Google Cloud PubSub
+
+Configure the appropriate environment variables for your chosen consumer:
 
 ```yaml
 osprey-coordinator:
   environment:
-    # Kafka
+    # Consumer selection (kafka or pubsub)
+    - OSPREY_COORDINATOR_CONSUMER_TYPE=kafka
+    
+    # Kafka configuration (when using kafka)
     - OSPREY_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
     - OSPREY_KAFKA_INPUT_STREAM_TOPIC=osprey.actions_input
     - OSPREY_KAFKA_GROUP_ID=osprey_coordinator_group

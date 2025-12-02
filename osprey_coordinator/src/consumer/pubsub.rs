@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::consumer::message_consumer::{ConsumerConfig, ConsumerMessage};
 use crate::gcloud::grpc::connection::Connection;
 use crate::gcloud::{
     auth::AuthorizationHeaderInterceptor,
@@ -14,106 +15,48 @@ use crate::metrics::counters::StaticCounter;
 use crate::metrics::histograms::StaticHistogram;
 use crate::metrics::MetricsClientBuilder;
 use crate::{
+    consumer::message_decoder,
     coordinator_metrics::OspreyCoordinatorMetrics,
     priority_queue::{AckOrNack, AckableAction, PriorityQueueSender},
-    proto::{self, osprey_coordinator_action::SecretData},
+    proto,
     pub_sub_streaming_pull::DetachedMessage,
     pub_sub_streaming_pull::{FlowControl, SpawnTaskPerMessageHandler, StreamingPullManager},
 };
 use anyhow::{anyhow, Result};
-use msgpack_simple::MsgPack;
-use prost::Message;
 use prost_types::Timestamp;
 use rand::Rng;
-use serde::Deserialize;
-use serde_json::Value;
-use tokio::time::{timeout, Duration as TokioDuration, Instant};
+use tokio::time::{timeout, Instant};
 use tonic::{codegen::InterceptedService, transport::Channel};
 
-use crate::proto::Action as OspreyProtoAction;
 use crate::signals::exit_signal;
 use crate::snowflake_client::SnowflakeClient;
-use convert_case::{Case, Casing};
-use proto::osprey_coordinator_action::ActionData;
 
-async fn decode_proto_message(
-    message_data: &[u8],
-    ack_id: u64,
-    message_timestamp: Timestamp,
-    snowflake_client: &SnowflakeClient,
-    metrics: &OspreyCoordinatorMetrics,
-) -> Result<proto::OspreyCoordinatorAction> {
-    let osprey_proto_action = OspreyProtoAction::decode(message_data).unwrap();
-    let action_id = if osprey_proto_action.id == 0 {
-        metrics.action_id_snowflake_generation_proto.incr();
-        snowflake_client.generate_id().await?
-    } else {
-        osprey_proto_action.id
-    };
-    let action_name = osprey_proto_action
-        .data
-        .unwrap()
-        .to_string()
-        .to_case(Case::Snake);
-    Ok(proto::OspreyCoordinatorAction {
-        ack_id,
-        action_id,
-        action_name,
-        action_data: Some(ActionData::ProtoActionData(message_data.into())),
-        secret_data: None,
-        timestamp: Some(message_timestamp),
-    })
+pub struct PubSubMessage {
+    inner: DetachedMessage,
 }
 
-async fn decode_msgpack_json_message(
-    message_data: &[u8],
-    ack_id: u64,
-    message_timestamp: Timestamp,
-    snowflake_client: &SnowflakeClient,
-    metrics: &OspreyCoordinatorMetrics,
-) -> Result<proto::OspreyCoordinatorAction> {
-    // This whole function can probably be optimized way better, but in the interest of time I am leaving
-    // it in a working state for now.
-    #[derive(Deserialize, Debug)]
-    struct PubsubAction {
-        id: Option<String>,
-        name: String,
-        data: Value,
-        secret_data: Option<Value>,
+impl ConsumerMessage for PubSubMessage {
+    fn data(&self) -> &[u8] {
+        &self.inner.data
     }
 
-    let decoded = MsgPack::parse(message_data)?;
-    let decoded = decoded.as_string()?;
-    let pubsub_action: PubsubAction = serde_json::from_str(decoded.as_str())?;
+    fn attributes(&self) -> &HashMap<String, String> {
+        self.inner.attributes()
+    }
 
-    let serde_json_vec = serde_json::to_vec(&pubsub_action.data)?;
-    let optional_secret_data = match &pubsub_action.secret_data {
-        Some(secret_data) => Some(SecretData::JsonSecretData(serde_json::to_vec(secret_data)?)),
-        _ => None,
-    };
+    fn timestamp(&self) -> Timestamp {
+        self.inner.publish_time()
+    }
 
-    // old msgpack parsing
-    // let mut out = Vec::with_capacity(1024 * 6);
-    // let mut de = serde_json::Deserializer::from_slice(serde_json_vec.as_slice());
-    // let mut se = rmp_serde::Serializer::new(&mut out);
-    // serde_transcode::transcode(&mut de, &mut se).unwrap();
+    fn id(&self) -> String {
+        self.inner.message_id.clone()
+    }
+}
 
-    let action_id = match pubsub_action.id {
-        Some(id) => id.parse::<u64>()?,
-        None => {
-            metrics.action_id_snowflake_generation_json.incr();
-            snowflake_client.generate_id().await?
-        }
-    };
-
-    Ok(proto::OspreyCoordinatorAction {
-        ack_id,
-        action_id,
-        action_name: pubsub_action.name,
-        action_data: Some(ActionData::JsonActionData(serde_json_vec)),
-        secret_data: optional_secret_data,
-        timestamp: Some(message_timestamp),
-    })
+impl From<DetachedMessage> for PubSubMessage {
+    fn from(msg: DetachedMessage) -> Self {
+        PubSubMessage { inner: msg }
+    }
 }
 
 async fn decrypt_pubsub_message(
@@ -145,9 +88,10 @@ async fn create_action_from_pubsub_message(
         Some(data) => &data[..],
         None => message_data,
     };
+
     match message_attributes.get("encoding") {
         Some(encoding) if encoding == "proto" => {
-            decode_proto_message(
+            message_decoder::decode_proto_message(
                 message_data,
                 ack_id,
                 message_timestamp,
@@ -157,7 +101,7 @@ async fn create_action_from_pubsub_message(
             .await
         }
         _ => {
-            decode_msgpack_json_message(
+            message_decoder::decode_msgpack_json_message(
                 message_data,
                 ack_id,
                 message_timestamp,
@@ -235,18 +179,10 @@ pub async fn start_pubsub_subscriber(
         .unwrap_or("5000".to_string())
         .parse::<usize>()
         .unwrap();
-    let max_time_to_send_to_async_queue = TokioDuration::from_millis(
-        std::env::var("MAX_TIME_TO_SEND_TO_ASYNC_QUEUE_MS")
-            .unwrap_or("500".to_string())
-            .parse::<u64>()
-            .unwrap(),
-    );
-    let max_acking_receiver_wait_time = TokioDuration::from_millis(
-        std::env::var("MAX_ACKING_RECEIVER_WAIT_TIME_MS")
-            .unwrap_or("60000".to_string())
-            .parse::<u64>()
-            .unwrap(),
-    );
+
+    let config = ConsumerConfig::default();
+    let max_time_to_send_to_async_queue = config.max_time_to_send_to_async_queue;
+    let max_acking_receiver_wait_time = config.max_acking_receiver_wait_time;
 
     tracing::info!(
         {subscription_name = %subscription_name},
@@ -262,73 +198,118 @@ pub async fn start_pubsub_subscriber(
         flow_control,
         SpawnTaskPerMessageHandler::new(move |message: DetachedMessage| {
             let metrics = metrics.clone();
-            let message_id = message.message_id.clone();
+            let pubsub_message = PubSubMessage::from(message);
+            let message_id = pubsub_message.id();
             let priority_queue_sender = priority_queue_sender.clone();
             let snowflake_client = snowflake_client.clone();
             let kms_envelope = kms_envelope.clone();
-            async move {
-                let message_attributes = message.attributes();
 
-                let ack_id: u64 = {
-                    let mut rng = rand::thread_rng();
-                    rng.gen()
-                };
+            async move {
+                let ack_id: u64 = rand::thread_rng().gen();
 
                 let action = create_action_from_pubsub_message(
                     kms_envelope,
-                    message.data.as_slice(),
-                    message_attributes,
+                    pubsub_message.data(),
+                    pubsub_message.attributes(),
                     ack_id,
-                    message.publish_time(),
+                    pubsub_message.timestamp(),
                     snowflake_client.as_ref(),
                     &metrics,
-                ).await
+                )
+                .await
                 .map_err(|_| ())?;
+
                 let (ackable_action, acking_receiver) = AckableAction::new(action);
 
-                tracing::debug!({ack_id = %ack_id, message_id=%message_id}, "[pubsub] received pubsub message");
+                tracing::debug!(
+                    {ack_id = %ack_id, message_id = %message_id},
+                    "[pubsub] received message"
+                );
+
                 let send_start_time = Instant::now();
-                match timeout(max_time_to_send_to_async_queue, priority_queue_sender.send_async(ackable_action)).await {
+                match timeout(
+                    max_time_to_send_to_async_queue,
+                    priority_queue_sender.send_async(ackable_action),
+                )
+                .await
+                {
                     Ok(Ok(())) => {
-                        tracing::debug!({message_id=%message_id, ack_id=ack_id}, "[pubsub] sent pubsub message to priority queue");
+                        tracing::debug!(
+                            {message_id = %message_id, ack_id = %ack_id},
+                            "[pubsub] sent message to priority queue"
+                        );
                         metrics.async_classification_added_to_queue.incr();
-                    },
-                    Ok(Err(e)) => {
-                        tracing::error!({error=%e},"[pubsub] priority queue send error");
-                    },
-                    Err(_) => {
-                        tracing::error!({message_id=%message_id}, "[pubsub] sending to priority queue timed out");
                     }
-                };
-                metrics.priority_queue_send_time_async.record(send_start_time.elapsed());
-                tracing::debug!({message_id=%message_id, ack_id=ack_id},"[pubsub] waiting on ack or nack");
+                    Ok(Err(e)) => {
+                        tracing::error!(
+                            {error = %e, message_id = %message_id},
+                            "[pubsub] priority queue send error"
+                        );
+                        return Err(());
+                    }
+                    Err(_) => {
+                        tracing::error!(
+                            {message_id = %message_id},
+                            "[pubsub] sending to priority queue timed out"
+                        );
+                        return Err(());
+                    }
+                }
+                metrics
+                    .priority_queue_send_time_async
+                    .record(send_start_time.elapsed());
+
+                tracing::debug!(
+                    {message_id = %message_id, ack_id = %ack_id},
+                    "[pubsub] waiting on ack or nack"
+                );
 
                 let receive_start_time = Instant::now();
-                match timeout(max_acking_receiver_wait_time, acking_receiver).await { // 5 Minutes to return
+                match timeout(max_acking_receiver_wait_time, acking_receiver).await {
                     Ok(Ok(ack_or_nack)) => match ack_or_nack {
-                        AckOrNack::Ack(_optional_execution_result) => {
-                            tracing::debug!({message_id=%message_id, ack_id=ack_id},"[pubsub] acking message");
+                        AckOrNack::Ack(_) => {
+                            tracing::debug!(
+                                {message_id = %message_id, ack_id = %ack_id},
+                                "[pubsub] acking message"
+                            );
                             metrics.async_classification_result_ack.incr();
-                            metrics.receiver_ack_time_async.record(receive_start_time.elapsed());
+                            metrics
+                                .receiver_ack_time_async
+                                .record(receive_start_time.elapsed());
                             Ok(())
-                        },
+                        }
                         AckOrNack::Nack => {
-                            tracing::debug!({message_id=%message_id, ack_id=ack_id},"[pubsub] nacking message");
+                            tracing::debug!(
+                                {message_id = %message_id, ack_id = %ack_id},
+                                "[pubsub] nacking message"
+                            );
                             metrics.async_classification_result_nack.incr();
-                            metrics.receiver_ack_time_async.record(receive_start_time.elapsed());
+                            metrics
+                                .receiver_ack_time_async
+                                .record(receive_start_time.elapsed());
                             Err(())
-                        },
+                        }
                     },
                     Ok(Err(recv_error)) => {
-                        tracing::error!({message_id=%message_id, recv_error=%recv_error, ack_id=ack_id},"[pubsub] acking sender dropped");
-                        metrics.receiver_ack_time_async.record(receive_start_time.elapsed());
+                        tracing::error!(
+                            {message_id = %message_id, recv_error = %recv_error, ack_id = %ack_id},
+                            "[pubsub] acking sender dropped"
+                        );
+                        metrics
+                            .receiver_ack_time_async
+                            .record(receive_start_time.elapsed());
                         Err(())
-                    },
+                    }
                     Err(_) => {
-                        tracing::error!({message_id=%message_id, ack_id=ack_id}, "[pubsub] waiting for ack/nack timed out");
-                        metrics.receiver_ack_time_async.record(receive_start_time.elapsed());
+                        tracing::error!(
+                            {message_id = %message_id, ack_id = %ack_id},
+                            "[pubsub] waiting for ack/nack timed out"
+                        );
+                        metrics
+                            .receiver_ack_time_async
+                            .record(receive_start_time.elapsed());
                         Err(())
-                    },
+                    }
                 }
             }
         }),

@@ -87,7 +87,7 @@ services:
     container_name: osprey-worker
     hostname: osprey-worker
     build:
-      context: ../..
+      context: .
       dockerfile: osprey_worker/Dockerfile
     depends_on:
       kafka:
@@ -146,7 +146,7 @@ services:
   osprey-ui-api:
     container_name: osprey-ui-api
     build:
-      context: ../..
+      context: .
       dockerfile: osprey_worker/Dockerfile
     depends_on:
       - osprey-worker
@@ -182,7 +182,7 @@ services:
     container_name: osprey-ui
     hostname: osprey-ui
     build:
-      context: ../..
+      context: .
       dockerfile: osprey_ui/Dockerfile
     depends_on:
       - osprey-ui-api
@@ -413,7 +413,7 @@ services:
     container_name: osprey-coordinator
     hostname: osprey-coordinator
     build:
-      context: ../..
+      context: .
       dockerfile: osprey_coordinator/Dockerfile
     ports:
       - "19950:19950"
@@ -422,10 +422,10 @@ services:
       - RUST_LOG=info
       - ETCD_PEERS=http://etcd:2379
       - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
+      - OSPREY_COORDINATOR_CONSUMER_TYPE=kafka
       - OSPREY_COORDINATOR_BIDI_STREAM_PORT=19950
       - OSPREY_COORDINATOR_SYNC_ACTION_PORT=19951
       - POD_IP=osprey-coordinator
-      - PUBSUB_EMULATOR_HOST=127.0.0.1:8085
       - OSPREY_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - OSPREY_KAFKA_INPUT_STREAM_TOPIC=osprey.actions_input
       - OSPREY_KAFKA_GROUP_ID=osprey_coordinator_group
