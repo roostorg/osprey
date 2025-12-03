@@ -79,6 +79,11 @@ const QueryInput = ({
 
   React.useEffect(() => {
     setQueryFilter(executedQuery.queryFilter);
+    // if the user has selected a new query to execute from the saved queries list, make sure that
+    // we update the selected interval to reflect the correct one
+    if (executedQuery.interval != selectedInterval) {
+      setSelectedInterval(executedQuery.interval);
+    }
   }, [executedQuery]);
 
   const handleSelectAutoComplete = (value: SelectValue) => {
