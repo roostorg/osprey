@@ -62,7 +62,7 @@ const QueryInput = ({
 
   const handleSelectChange = (value: DefaultIntervals) => {
     // only update the active query's interval if the user has not made any changes to their query input
-    if (executedQuery.queryFilter == queryFilter) {
+    if (executedQuery.queryFilter === queryFilter) {
       onActiveQueryInterval(value);
     }
     setSelectedInterval(value);
@@ -81,7 +81,7 @@ const QueryInput = ({
     setQueryFilter(executedQuery.queryFilter);
     // if the user has selected a new query to execute from the saved queries list, make sure that
     // we update the selected interval to reflect the correct one
-    if (executedQuery.interval != selectedInterval) {
+    if (executedQuery.interval !== selectedInterval) {
       setSelectedInterval(executedQuery.interval);
     }
   }, [executedQuery]);
