@@ -95,12 +95,10 @@ async fn main() -> Result<()> {
             metrics.clone(),
         ));
 
-    let consumer_type = std::env::var("OSPREY_COORDINATOR_CONSUMER_TYPE")
-        .unwrap_or("kafka".to_string())
-        .to_lowercase();
+    let consumer_type = std::env::var("OSPREY_COORDINATOR_CONSUMER_TYPE").ok();
 
-    let consumer_fut = match consumer_type.as_str() {
-        "kafka" => {
+    let consumer_fut = match consumer_type.as_deref() {
+        Some("kafka") => {
             tracing::info!("starting Kafka consumer");
             Box::pin(start_kafka_consumer(
                 snowflake_client.clone(),
@@ -109,7 +107,7 @@ async fn main() -> Result<()> {
             ))
                 as std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>>
         }
-        "pubsub" => {
+        Some("pubsub") => {
             tracing::info!("starting PubSub subscriber");
             Box::pin(start_pubsub_subscriber(
                 snowflake_client.clone(),
@@ -118,10 +116,15 @@ async fn main() -> Result<()> {
             ))
                 as std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>>
         }
-        _ => {
-            tracing::warn!(
-                "invalid OSPREY_COORDINATOR_CONSUMER_TYPE '{}', defaulting to Kafka",
-                consumer_type
+        Some(invalid) => {
+            anyhow::bail!(
+                "invalid OSPREY_COORDINATOR_CONSUMER_TYPE '{}', must be 'kafka' or 'pubsub'",
+                invalid
+            );
+        }
+        None => {
+            tracing::info!(
+                "OSPREY_COORDINATOR_CONSUMER_TYPE not set, defaulting to Kafka consumer"
             );
             Box::pin(start_kafka_consumer(
                 snowflake_client.clone(),

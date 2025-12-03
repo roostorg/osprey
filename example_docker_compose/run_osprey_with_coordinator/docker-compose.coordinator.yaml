@@ -1,0 +1,109 @@
+# Docker Compose override for running Osprey with Coordinator
+# Use with: docker compose -f docker-compose.yaml -f docker-compose.coordinator.yaml up
+# Or use the helper script: ./start.sh --with-coordinator
+
+services:
+  # Override worker to connect to coordinator instead of Kafka directly
+  osprey-worker:
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-topic-creator:
+        condition: service_completed_successfully
+      bigtable:
+        condition: service_healthy
+      bigtable-initializer:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+      minio-bucket-init:
+        condition: service_completed_successfully
+      etcd:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      osprey-coordinator:
+        condition: service_started
+    environment:
+      - ETCD_PEERS=http://etcd:2379
+      - OSPREY_INPUT_STREAM_SOURCE=osprey_coordinator
+      - OSPREY_COORDINATOR_SERVICE_NAME=osprey_coordinator
+
+  # Add Osprey Coordinator service
+  osprey-coordinator:
+    container_name: osprey-coordinator
+    hostname: osprey-coordinator
+    build:
+      context: .
+      dockerfile: osprey_coordinator/Dockerfile
+    ports:
+      - "19950:19950"
+      - "19951:19951"
+    environment:
+      - RUST_LOG=info
+      - ETCD_PEERS=http://etcd:2379
+      - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
+      - OSPREY_COORDINATOR_CONSUMER_TYPE=kafka
+      - OSPREY_COORDINATOR_BIDI_STREAM_PORT=19950
+      - OSPREY_COORDINATOR_SYNC_ACTION_PORT=19951
+      - POD_IP=osprey-coordinator
+      - OSPREY_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - OSPREY_KAFKA_INPUT_STREAM_TOPIC=osprey.actions_input
+      - OSPREY_KAFKA_GROUP_ID=osprey_coordinator_group
+      - MAX_TIME_TO_SEND_TO_ASYNC_QUEUE_MS=500
+      - MAX_ACKING_RECEIVER_WAIT_TIME_MS=60000
+    depends_on:
+      etcd:
+        condition: service_healthy
+      snowflake-id-worker:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+      kafka-topic-creator:
+        condition: service_completed_successfully
+
+  # Add etcd service (required by coordinator)
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.15
+    ports:
+      - "2379:2379"
+    environment:
+      - ETCD_ENABLE_V2=true
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://0.0.0.0:2379
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "etcdctl",
+          "--endpoints=http://localhost:2379",
+          "endpoint",
+          "health",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  # Optional coordinator test data generator
+  # Run with: docker compose -f docker-compose.yaml -f docker-compose.coordinator.yaml --profile coordinator_test_data up coordinator-test-data-producer
+  coordinator-test-data-producer:
+    image: alpine:latest
+    hostname: coordinator-test-data-producer
+    container_name: coordinator-test-data-producer
+    depends_on:
+      osprey-coordinator:
+        condition: service_started
+    profiles:
+      - coordinator_test_data
+      - coordinator-test-data
+    environment:
+      COORDINATOR_HOST: "osprey-coordinator:19951"
+    volumes:
+      - ./example_data:/osprey/example_data
+    command:
+      - /bin/sh
+      - -c
+      - |
+        apk add --no-cache bash jq curl &&
+        wget -qO- https://github.com/fullstorydev/grpcurl/releases/download/v1.8.7/grpcurl_1.8.7_linux_x86_64.tar.gz | tar xz -C /usr/local/bin &&
+        /osprey/example_data/generate_coordinator_test_data.sh
