@@ -320,156 +320,201 @@ pub async fn start_pubsub_subscriber(
     Result::Ok(())
 }
 
-// TODO: Fix these tests
+#[cfg(test)]
+mod tests {
+    use base64::Engine;
+    use prost_types::Timestamp;
+    use serde_json::json;
+    use std::collections::HashMap;
+    use std::sync::Arc;
 
-// #[cfg(test)]
-// mod tests {
-//     use std::{collections::HashMap, fs::File, io::Read};
+    use super::create_action_from_pubsub_message;
+    use crate::coordinator_metrics::OspreyCoordinatorMetrics;
+    use crate::proto;
+    use crate::snowflake_client::SnowflakeClient;
 
-//     use msgpack_simple::MsgPack;
-//     use prost::Message;
-//     use prost_types::Timestamp;
-//     // use protobuf_json_mapping;
-//     use serde_json::json;
+    #[tokio::test]
+    async fn test_create_action_from_pubsub_message_1() {
+        use crate::gcloud::grpc::connection::Connection;
+        use msgpack_simple::MsgPack;
 
-//     // use discord_smite_rpc_actions_proto::SmiteCoordinatorAction as SmiteRpcAction;
-//     use crate::proto;
-//     use std::io::Cursor;
-//     use std::str;
+        let action_json = json!({
+            "id": "123456789",
+            "name": "guild_invite_created",
+            "data": {
+                "char": "abc",
+                "int": 1i64,
+                "float2": 1.1_f64
+            },
+        });
+        let encoded = MsgPack::String(action_json.to_string()).encode();
 
-//     use super::create_action_from_pubsub_message;
+        let snowflake = SnowflakeClient::new("http://localhost:8088".to_string());
+        let metrics = OspreyCoordinatorMetrics::new();
+        // Create a mock KMS envelope (won't be used since encrypted != true)
+        let connection = Connection::new_no_auth(
+            "http://localhost:8080".try_into().unwrap(),
+            std::time::Duration::from_secs(5),
+        );
+        let kms_envelope = Arc::new(
+            connection
+                .create_kms_aes_gcm_envelope("gcp-kms://test".to_string(), Vec::new(), false)
+                .unwrap(),
+        );
 
-//     // #[test]
-//     // fn test_create_action_from_pubsub_message_1() {
-//     //     let action_json = json!({
-//     //         "id": "123456789",
-//     //         "name": "guild_invite_created",
-//     //         "data": {
-//     //             "char": "abc",
-//     //             "int": 1i64,
-//     //             "float2": 1.1_f64
-//     //         },
+        let attributes = HashMap::new();
 
-//     //     });
-//     //     let encoded = MsgPack::String(action_json.to_string()).encode();
+        let prost_action = create_action_from_pubsub_message(
+            kms_envelope,
+            encoded.as_slice(),
+            &attributes,
+            12344242,
+            Timestamp::default(),
+            &snowflake,
+            &metrics,
+        )
+        .await;
 
-//     //     let prost_action =
-//     //         create_action_from_pubsub_message(encoded.as_slice(), 12344242, Timestamp::default());
-//     //     println!("{:?}", prost_action);
-//     //     assert!(prost_action.is_ok(), "prost action decoding failed");
-//     //     let prost_action = prost_action.unwrap();
-//     //     let data = MsgPack::parse(&prost_action.action_data).unwrap();
-//     //     println!("{:?}", data);
-//     //     let mut data: HashMap<String, MsgPack> = data
-//     //         .as_map()
-//     //         .unwrap()
-//     //         .into_iter()
-//     //         .map(|v| (v.key.as_string().unwrap(), v.value))
-//     //         .collect();
+        println!("{:?}", prost_action);
+        assert!(prost_action.is_ok(), "prost action decoding failed");
+        let prost_action = prost_action.unwrap();
+        assert_eq!(prost_action.action_name, "guild_invite_created");
 
-//     //     let x = data.remove("char").unwrap().as_string().unwrap();
+        let action_data = prost_action
+            .action_data
+            .expect("action_data should be present");
+        let proto::osprey_coordinator_action::ActionData::JsonActionData(json_bytes) = action_data
+        else {
+            panic!()
+        };
+        let data: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+        assert_eq!(data["char"], "abc");
+        assert_eq!(data["int"], 1);
+        assert_eq!(data["float2"], 1.1);
+    }
 
-//     //     assert_eq!(x, "abc".to_string());
-//     // }
+    #[tokio::test]
+    async fn test_create_action_from_pubsub_message_2() {
+        use crate::gcloud::grpc::connection::Connection;
+        use msgpack_simple::MsgPack;
 
-//     // #[test]
-//     // fn test_create_action_from_pubsub_message_2() {
-//     //     let action_json = json!({
-//     //         "id": "123456789",
-//     //         "name": "guild_invite_created",
-//     //         "data": {
-//     //             "char": "abc",
-//     //             "int": 1i64,
-//     //             "float2": 1.1_f64
-//     //         },
+        let action_json = json!({
+            "id": "123456789",
+            "name": "guild_invite_created",
+            "data": {
+                "char": "abc",
+                "int": 1i64,
+                "float2": 1.1_f64
+            },
+        });
 
-//     //     });
-//     //     // let encoded = MsgPack::String(action_json.to_string()).encode();
+        let encoded = MsgPack::String(action_json.to_string()).encode();
 
-//     //     let prost_action = create_action_from_pubsub_message(
-//     //         action_json.to_string().bytes().collect(),
-//     //         12344242,
-//     //         Timestamp::default(),
-//     //     );
-//     //     println!("{:?}", prost_action);
-//     //     assert!(prost_action.is_ok(), "prost action decoding failed");
-//     //     let prost_action = prost_action.unwrap();
-//     //     let data = MsgPack::parse(&prost_action.action_data).unwrap();
-//     //     println!("{:?}", data);
-//     //     let mut data: HashMap<String, MsgPack> = data
-//     //         .as_map()
-//     //         .unwrap()
-//     //         .into_iter()
-//     //         .map(|v| (v.key.as_string().unwrap(), v.value))
-//     //         .collect();
+        let snowflake = SnowflakeClient::new("http://localhost:8088".to_string());
+        let metrics = OspreyCoordinatorMetrics::new();
+        let connection = Connection::new_no_auth(
+            "http://localhost:8080".try_into().unwrap(),
+            std::time::Duration::from_secs(5),
+        );
+        let kms_envelope = Arc::new(
+            connection
+                .create_kms_aes_gcm_envelope("gcp-kms://test".to_string(), Vec::new(), false)
+                .unwrap(),
+        );
+        let attributes = HashMap::new();
 
-//     //     let x = data.remove("char").unwrap().as_string().unwrap();
+        let prost_action = create_action_from_pubsub_message(
+            kms_envelope,
+            encoded.as_slice(),
+            &attributes,
+            12344242,
+            Timestamp::default(),
+            &snowflake,
+            &metrics,
+        )
+        .await;
 
-//     //     assert_eq!(x, "abc".to_string());
-//     // }
-//     #[test]
-//     fn test_create_action_from_pubsub_proto_action() {
-//         let mut file = File::open("pubsub_messages.json").unwrap();
-//         let mut data = String::new();
-//         file.read_to_string(&mut data).unwrap();
-//         let json: serde_json::Value = serde_json::from_str(&data).unwrap();
-//         let action_jsons = json.as_array().expect("was not array");
-//         let action_json = action_jsons[0].as_object().expect("is not map");
-//         println!("{:?}", action_json);
-//         let action_data = action_json
-//             .get("message")
-//             .unwrap()
-//             .as_object()
-//             .unwrap()
-//             .get("data")
-//             .unwrap()
-//             .as_str()
-//             .unwrap();
+        println!("{:?}", prost_action);
+        assert!(prost_action.is_ok(), "prost action decoding failed");
+        let prost_action = prost_action.unwrap();
+        assert_eq!(prost_action.action_name, "guild_invite_created");
 
-//         println!("{:?}", action_data);
-//         let action_data = str::from_utf8(action_data.as_bytes()).unwrap();
-//         println!("{:?}", action_data);
-//         // let action_data = base64::decode(action_data).unwrap();
+        let proto::osprey_coordinator_action::ActionData::JsonActionData(json_bytes) = prost_action
+            .action_data
+            .expect("action_data should be present")
+        else {
+            panic!("Expected JsonActionData variant")
+        };
 
-//         // let mut action_prost: SmiteRpcAction =
-//         //     SmiteRpcAction::decode(&mut Cursor::new(action_data.to_string())).unwrap();
-//         println!("--------");
-//         let test_object_data = "CWUQhNrjpmQOGsgBCgsJCwCCONT0dQYQARK4AQogfnvDH9y83BpR5FraKYJSCxTDrQkSb1axRgl9i82pYwgQARoLCI2fiZYGEPeX1CciCwjksNCbBhC8i4FgKgsI5MaGmwYQvIuBYDItCg0KCzk1LjIuMTIuMTY2EgkKB0FuZHJvaWQaEQoPRGlzY29yZCBBbmRyb2lkOi8KDwoNMTc2LjIxOS40Mi4zNBIJCgdBbmRyb2lkGhEKD0Rpc2NvcmQgQW5kcm9pZEILCPqihpsGEOj7p0c=";
-//         let decoded_base64 = base64::decode(test_object_data).unwrap();
-//         let mut test_action = proto::SmiteCoordinatorAction::default();
-//         test_action.id = 20;
+        let data: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+        assert_eq!(data["char"], "abc");
+        assert_eq!(data["int"], 1);
+        assert_eq!(data["float2"], 1.1);
+    }
 
-//         println!("{:?}", test_action);
-//         let x = test_action.encode_to_vec();
-//         println!("{:?}", x);
-//         println!("--------");
-//         println!("{:?}", decoded_base64);
-//         let mut action_prost: SmiteRpcAction =
-//             SmiteRpcAction::decode(decoded_base64.as_slice()).unwrap();
-//         println!("{:?}", action_prost);
+    #[tokio::test]
+    async fn test_create_action_from_pubsub_proto_action() {
+        use crate::gcloud::grpc::connection::Connection;
+        use std::fs::File;
+        use std::io::Read;
 
-//         let output = protobuf_json_mapping::print_to_string(action_prost);
-//         println!("{:?}", output);
+        let mut file = File::open("test_data/pubsub_proto_message.json").unwrap();
+        let mut data = String::new();
+        file.read_to_string(&mut data).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&data).unwrap();
+        let action_jsons = json.as_array().expect("was not array");
+        let action_json = action_jsons[0].as_object().expect("is not map");
 
-//         // let prost_action = create_action_from_pubsub_message(
-//         //     action_json.to_string().bytes().collect(),
-//         //     12344242,
-//         //     Timestamp::default(),
-//         // );
-//         // println!("{:?}", prost_action);
-//         // assert!(prost_action.is_ok(), "prost action decoding failed");
-//         // let prost_action = prost_action.unwrap();
-//         // let data = MsgPack::parse(&prost_action.action_data).unwrap();
-//         // println!("{:?}", data);
-//         // let mut data: HashMap<String, MsgPack> = data
-//         //     .as_map()
-//         //     .unwrap()
-//         //     .into_iter()
-//         //     .map(|v| (v.key.as_string().unwrap(), v.value))
-//         //     .collect();
+        let action_data_str = action_json
+            .get("message")
+            .unwrap()
+            .as_object()
+            .unwrap()
+            .get("data")
+            .unwrap()
+            .as_str()
+            .unwrap();
 
-//         // let x = data.remove("char").unwrap().as_string().unwrap();
+        let action_bytes = base64::engine::general_purpose::STANDARD
+            .decode(action_data_str)
+            .unwrap();
 
-//         // assert_eq!(x, "abc".to_string());
-//     }
-// }
+        let snowflake = SnowflakeClient::new("http://localhost:8088".to_string());
+        let metrics = OspreyCoordinatorMetrics::new();
+        let connection = Connection::new_no_auth(
+            "http://localhost:8080".try_into().unwrap(),
+            std::time::Duration::from_secs(5),
+        );
+        let kms_envelope = Arc::new(
+            connection
+                .create_kms_aes_gcm_envelope("gcp-kms://test".to_string(), Vec::new(), false)
+                .unwrap(),
+        );
+        let mut attributes = HashMap::new();
+        attributes.insert("encoding".to_string(), "proto".to_string());
+
+        let prost_action = create_action_from_pubsub_message(
+            kms_envelope,
+            action_bytes.as_slice(),
+            &attributes,
+            12344242,
+            Timestamp::default(),
+            &snowflake,
+            &metrics,
+        )
+        .await;
+
+        assert!(prost_action.is_ok(), "proto action decoding failed");
+        let prost_action = prost_action.unwrap();
+
+        // Validate we got ProtoActionData (not JsonActionData) and the bytes match input
+        let proto::osprey_coordinator_action::ActionData::ProtoActionData(proto_bytes) =
+            prost_action
+                .action_data
+                .expect("action_data should be present")
+        else {
+            panic!("Expected ProtoActionData variant")
+        };
+        assert_eq!(proto_bytes, action_bytes);
+    }
+}
