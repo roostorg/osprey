@@ -38,8 +38,8 @@ export interface QueryInputProps {
 }
 
 const QueryInput = ({
-  interval: activeQueryInterval,
-  onIntervalChange: onActiveQueryIntervalChange,
+  interval: executedQueryInterval,
+  onIntervalChange: onExecutedQueryIntervalChange,
   dateRange,
 }: QueryInputProps) => {
   const [executedQuery, updateExecutedQuery] = useQueryStore(
@@ -56,14 +56,14 @@ const QueryInput = ({
 
   // store the selected interval state separate from the current query's interval, so that changes
   // to the interval can be made without losing WIP in the query input field
-  const [selectedInterval, setSelectedInterval] = React.useState(activeQueryInterval);
+  const [selectedInterval, setSelectedInterval] = React.useState(executedQueryInterval);
 
   const [isLoading, setIsLoading] = React.useState(false);
 
   const handleSelectChange = (value: DefaultIntervals) => {
     // only update the active query's interval if the user has not made any changes to their query input
     if (executedQuery.queryFilter === queryFilter) {
-      onActiveQueryIntervalChange(value);
+      onExecutedQueryIntervalChange(value);
     }
     setSelectedInterval(value);
   };
