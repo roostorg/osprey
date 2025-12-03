@@ -39,7 +39,7 @@ export interface QueryInputProps {
 
 const QueryInput = ({
   interval: activeQueryInterval,
-  onIntervalChange: onActiveQueryInterval,
+  onIntervalChange: onActiveQueryIntervalChange,
   dateRange,
 }: QueryInputProps) => {
   const [executedQuery, updateExecutedQuery] = useQueryStore(
@@ -63,7 +63,7 @@ const QueryInput = ({
   const handleSelectChange = (value: DefaultIntervals) => {
     // only update the active query's interval if the user has not made any changes to their query input
     if (executedQuery.queryFilter === queryFilter) {
-      onActiveQueryInterval(value);
+      onActiveQueryIntervalChange(value);
     }
     setSelectedInterval(value);
   };
