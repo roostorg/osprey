@@ -1,0 +1,12 @@
+[
+  {
+    "ackId": "test-ack-id-proto",
+    "message": {
+      "attributes": {
+        "encoding": "proto",
+        "user_id": "987654321"
+      },
+      "data": "CbFo3joAAAAAMgA="
+    }
+  }
+]

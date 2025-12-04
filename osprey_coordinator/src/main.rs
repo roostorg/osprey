@@ -1,5 +1,6 @@
 mod backoff_utils;
 mod cached_futures;
+mod consumer;
 mod coordinator_metrics;
 mod discovery;
 mod etcd;
@@ -14,7 +15,6 @@ mod pigeon;
 mod priority_queue;
 mod proto;
 mod pub_sub_streaming_pull;
-mod pubsub;
 mod shutdown_handler;
 mod signals;
 mod snowflake_client;
@@ -34,8 +34,8 @@ use crate::snowflake_client::SnowflakeClient;
 use crate::metrics::emit_worker::SpawnEmitWorker;
 use crate::metrics::new_client;
 
+use consumer::{start_kafka_consumer, start_pubsub_subscriber};
 use priority_queue::{create_ackable_action_priority_queue, spawn_priority_queue_metrics_worker};
-use pubsub::start_pubsub_subscriber;
 use tokio::join;
 
 use crate::osprey_bidirectional_stream::OspreyCoordinatorServer;
@@ -95,11 +95,46 @@ async fn main() -> Result<()> {
             metrics.clone(),
         ));
 
-    let pubsub_fut = start_pubsub_subscriber(
-        snowflake_client,
-        priority_queue_sender.clone(),
-        metrics.clone(),
-    );
+    let consumer_type = std::env::var("OSPREY_COORDINATOR_CONSUMER_TYPE").ok();
+
+    let consumer_fut = match consumer_type.as_deref() {
+        Some("kafka") => {
+            tracing::info!("starting Kafka consumer");
+            Box::pin(start_kafka_consumer(
+                snowflake_client.clone(),
+                priority_queue_sender.clone(),
+                metrics.clone(),
+            ))
+                as std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>>
+        }
+        Some("pubsub") => {
+            tracing::info!("starting PubSub subscriber");
+            Box::pin(start_pubsub_subscriber(
+                snowflake_client.clone(),
+                priority_queue_sender.clone(),
+                metrics.clone(),
+            ))
+                as std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>>
+        }
+        Some(invalid) => {
+            anyhow::bail!(
+                "invalid OSPREY_COORDINATOR_CONSUMER_TYPE '{}', must be 'kafka' or 'pubsub'",
+                invalid
+            );
+        }
+        None => {
+            tracing::info!(
+                "OSPREY_COORDINATOR_CONSUMER_TYPE not set, defaulting to Kafka consumer"
+            );
+            Box::pin(start_kafka_consumer(
+                snowflake_client.clone(),
+                priority_queue_sender.clone(),
+                metrics.clone(),
+            ))
+                as std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>>
+        }
+    };
+
     let grpc_bidi_stream_service_fut = pigeon::serve(
         osprey_coordinator_grpc_bidi_stream_service,
         "osprey_coordinator",
@@ -122,14 +157,14 @@ async fn main() -> Result<()> {
         priority_queue_receiver.clone(),
     );
 
-    tracing::info!("starting pubsub listener/bidi stream/sync classification rpc");
-    let (pubsub_result, grpc_bidi_stream_service_result, sync_action_service_result) = join!(
-        pubsub_fut,
+    tracing::info!("starting consumer/bidi stream/sync classification rpc");
+    let (consumer_result, grpc_bidi_stream_service_result, sync_action_service_result) = join!(
+        consumer_fut,
         grpc_bidi_stream_service_fut,
         sync_action_service_fut
     );
     tracing::info!({
-        pubsub_result=?pubsub_result,
+        consumer_result=?consumer_result,
         bidi_stream_result=?grpc_bidi_stream_service_result,
         sync_action_result=?sync_action_service_result},
         "osprey coordinator terminated");

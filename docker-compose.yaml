@@ -258,7 +258,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - metadata_data:/var/lib/postgresql
+      - metadata_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_PASSWORD=FoolishPassword
       - POSTGRES_USER=osprey
@@ -377,44 +377,3 @@ services:
       - ./druid/specs:/specs
     command: ["/bin/sh", "/specs/submit-specs.sh"]
     restart: "no"
-
-  osprey_coordinator:
-    container_name: osprey_coordinator
-    build:
-      context: .
-      dockerfile: osprey_coordinator/Dockerfile
-    ports:
-      - "19950:19950"
-      - "19951:19951"
-    environment:
-      - RUST_LOG=info
-      - ETCD_PEERS=http://etcd:2379
-      - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
-      - POD_IP=127.0.0.1
-      - PUBSUB_EMULATOR_HOST=127.0.0.1:8085
-    depends_on:
-      etcd:
-        condition: service_healthy
-      snowflake-id-worker:
-        condition: service_started
-
-  etcd:
-    image: quay.io/coreos/etcd:v3.5.15
-    ports:
-      - "2379:2379"
-    environment:
-      - ETCD_ENABLE_V2=true
-      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
-      - ETCD_ADVERTISE_CLIENT_URLS=http://0.0.0.0:2379
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "etcdctl",
-          "--endpoints=http://localhost:2379",
-          "endpoint",
-          "health",
-        ]
-      interval: 5s
-      timeout: 3s
-      retries: 3
