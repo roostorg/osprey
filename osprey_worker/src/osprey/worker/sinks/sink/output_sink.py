@@ -1,5 +1,4 @@
 import abc
-import re
 from collections import defaultdict
 from datetime import datetime
 from typing import Any, DefaultDict, Dict, Mapping, Optional, Sequence
@@ -22,17 +21,6 @@ from osprey.worker.lib.storage.labels import LabelsProvider
 logger = get_logger()
 
 GEVENT_TIMEOUT = 2
-
-def _class_name_to_kebab(name: str) -> str:
-    """Convert PascalCase class name to kebab-case, removing 'OutputSink' suffix.
-
-    Example: EventEffectsOutputSink -> event-effects-output
-    """
-    # Remove 'OutputSink' or 'Sink' suffix
-    name = re.sub(r'(Output)?Sink$', '', name)
-    # Insert hyphens before uppercase letters and lowercase everything
-    kebab = re.sub(r'(?<!^)(?=[A-Z])', '-', name).lower()
-    return f'{kebab}-output'
 
 
 class BaseOutputSink(abc.ABC):
@@ -67,7 +55,7 @@ class MultiOutputSink(BaseOutputSink):
 
         for sink in self._sinks:
             if sink.will_do_work(result):
-                sink_name = _class_name_to_kebab(sink.__class__.__name__)
+                sink_name = sink.__class__.__name__
                 try:
                     with (
                         trace(f'{sink_name}.push'),
