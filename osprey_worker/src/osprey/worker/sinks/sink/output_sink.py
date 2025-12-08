@@ -5,7 +5,6 @@ from typing import Any, DefaultDict, Dict, Mapping, Optional, Sequence
 
 import gevent
 import sentry_sdk
-
 from osprey.engine.executor.execution_context import (
     ExecutionResult,
 )
