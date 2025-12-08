@@ -70,7 +70,9 @@ class MultiOutputSink(BaseOutputSink):
                     sentry_sdk.capture_exception()
                 except Exception as exc:
                     errors[sink] = exc
-                    metrics.increment('output_sink.error', tags=[f'sink:{sink_name}', f'error:{exc.__class__.__name__}'])
+                    metrics.increment(
+                        'output_sink.error', tags=[f'sink:{sink_name}', f'error:{exc.__class__.__name__}']
+                    )
                     # Capture the current exception for now until we fix PartialSinkFailure
                     sentry_sdk.capture_exception()
 
