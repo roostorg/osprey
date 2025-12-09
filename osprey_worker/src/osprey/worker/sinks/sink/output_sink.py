@@ -19,10 +19,13 @@ from osprey.worker.lib.storage.labels import LabelsProvider
 
 logger = get_logger()
 
-GEVENT_TIMEOUT = 2
+DEFAULT_GEVENT_TIMEOUT = 2
 
 
 class BaseOutputSink(abc.ABC):
+    # Default timeout for sink operations. Subclasses can override this.
+    timeout: float = DEFAULT_GEVENT_TIMEOUT
+
     @abc.abstractmethod
     def will_do_work(self, result: ExecutionResult) -> bool:
         """A quick way to determine if this sink needs to do anything for this result."""
@@ -59,7 +62,7 @@ class MultiOutputSink(BaseOutputSink):
                     with (
                         trace(f'{sink_name}.push'),
                         metrics.timed('handled_message_output', tags=[f'sink:{sink_name}'], use_ms=True),
-                        gevent.Timeout(GEVENT_TIMEOUT),
+                        gevent.Timeout(sink.timeout),
                     ):
                         sink.push(result)
                 except gevent.Timeout as timeout_exc:
