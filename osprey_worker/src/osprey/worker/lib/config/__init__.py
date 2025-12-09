@@ -7,28 +7,6 @@ from osprey.worker.lib.config.callbacks import tracing_callback
 ConfigT = Dict[str, Any]
 ConfigurationCallback = Callable[['Config'], None]
 
-DEFAULT_ENV_PREFIXES = (
-    'ENV',
-    'CASSANDRA_',
-    'CLOUDFLARE_',
-    'DATADOG_',
-    'DD_',
-    'DEBUG',
-    'OSPREY_',
-    'DRUID_',
-    'HM_',  # Hash Match
-    'POSTGRES_',
-    'SENTRY_',
-    'osprey_',
-    'TRACING_',
-    'PUBSUB_',
-    'DATA_',  # For BigTables owned by Data Infra (used in get_bigtable_value.py UDF)
-    'TESTING',
-    'QDRANT_',
-    'VD_',
-    'SAFETY_',
-    'SNOWFLAKE_',
-)
 
 DEFAULT_CONFIGURATION_CALLBACKS: Tuple[ConfigurationCallback] = (tracing_callback,)
 
@@ -56,8 +34,8 @@ class Config:
         for configuration_callback in pending_configuration_callbacks:
             configuration_callback(self)
 
-    def configure_from_env(self, prefixes: Tuple[str, ...] = DEFAULT_ENV_PREFIXES) -> None:
-        parsed = config_from_env(key_filter=lambda k: k.startswith(prefixes))
+    def configure_from_env(self) -> None:
+        parsed = config_from_env()
         self.configure(parsed)
 
     def unconfigure_for_tests(self) -> None:
