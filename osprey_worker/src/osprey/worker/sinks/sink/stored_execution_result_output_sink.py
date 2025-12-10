@@ -6,8 +6,8 @@ from osprey.worker.sinks.sink.output_sink import BaseOutputSink
 class StoredExecutionResultOutputSink(BaseOutputSink):
     """An output sink that persists the execution result to an EventRecord."""
 
-    # BigTable writes can take longer than the default 2s, especially on first connection
-    timeout: float = 10.0
+    # BigTable writes are fast (~50ms) now that we fixed the thread pool hang
+    timeout: float = 5.0
 
     def __init__(self):
         self._service = bootstrap_execution_result_storage_service()

@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
 import gevent
 import google.cloud.storage as storage
 import pytz
-from gevent.threadpool import ThreadPool
 from google.api_core import retry
 from google.cloud.bigtable import row_filters, row_set
 from google.cloud.bigtable.row import Row
@@ -33,9 +32,9 @@ BIGTABLE_CONCURRENCY_LIMIT = 100
 GCS_CONCURRENCY_LIMIT = 100
 MINIO_CONCURRENCY_LIMIT = 100
 
-# Thread pool for BigTable operations to avoid gevent/gRPC conflicts
-# Using a dedicated thread pool ensures gRPC calls run in real OS threads
-_bigtable_threadpool = ThreadPool(maxsize=BIGTABLE_CONCURRENCY_LIMIT)
+# Note: BigTable operations no longer use a thread pool.
+# grpc.experimental.gevent.init_gevent() makes gRPC compatible with gevent,
+# and the thread pool was actually causing hangs.
 
 
 class ExecutionResultStore(ABC):
@@ -187,13 +186,10 @@ class StoredExecutionResultBigTable(ExecutionResultStore):
     retry_policy = retry.Retry(initial=1.0, maximum=2.0, multiplier=1.25, deadline=120.0)
 
     def select_one(self, action_id: int) -> Optional[Dict[str, Any]]:
-        # Run read_row in a real thread to avoid gevent/gRPC conflicts
-        def _read_row():
-            return osprey_bigtable.table('stored_execution_result').read_row(
-                StoredExecutionResultBigTable._encode_action_id(action_id), row_filters.CellsColumnLimitFilter(1)
-            )
-
-        row = _bigtable_threadpool.apply(_read_row)
+        # Call read_row directly - grpc.experimental.gevent.init_gevent() was already called
+        row = osprey_bigtable.table('stored_execution_result').read_row(
+            StoredExecutionResultBigTable._encode_action_id(action_id), row_filters.CellsColumnLimitFilter(1)
+        )
         if not row:
             return None
 
@@ -239,12 +235,9 @@ class StoredExecutionResultBigTable(ExecutionResultStore):
         row.set_cell('execution_result', b'timestamp', timestamp.isoformat().encode(), timestamp=timestamp)
         row.set_cell('execution_result', b'action_data', action_data_json.encode(), timestamp=timestamp)
 
-        # Run mutate_rows in a real thread to avoid gevent/gRPC conflicts
-        # This prevents the greenlet context-switching issue with gRPC streaming calls
-        def _mutate_rows():
-            osprey_bigtable.table('stored_execution_result').mutate_rows([row], retry=self.retry_policy)
-
-        _bigtable_threadpool.apply(_mutate_rows)
+        # Call mutate_rows directly - grpc.experimental.gevent.init_gevent() was already called
+        # The thread pool wrapper was causing hangs with gevent monkey patching
+        osprey_bigtable.table('stored_execution_result').mutate_rows([row], retry=self.retry_policy)
 
     @staticmethod
     def _encode_action_id(action_id_snowflake: int) -> bytes:
