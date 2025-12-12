@@ -77,6 +77,7 @@ tracing-subscriber = "0.2"
 trust-dns-resolver = "0.21"
 uuid = { version = "1.0", features = ["v4"] }
 which = "4.4.0"
+rdkafka = "0.38.0"
 
 [build-dependencies]
 glob = "0.3"

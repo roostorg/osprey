@@ -97,6 +97,16 @@ _ROOST (Robust Open Online Safety Tools), a non-profit organization that brings 
    docker compose up -d
    ```
 
+   or using the wrapper script
+
+   ```bash
+   ./start.sh
+   ```
+
+   this starts the osprey-worker on its own along with all its required dependencies.
+
+   alternatively, you can start Osprey with `osprey-coordinator`, refer to the [Coordinator README](./example_docker_compose/run_osprey_with_coordinator/README.md) for more information
+
 6. (Optional) **Port Forward the UI/UI API:**
 
    If you are running the docker compose on a headless machine, you will need to port forward the UI and UI API.
