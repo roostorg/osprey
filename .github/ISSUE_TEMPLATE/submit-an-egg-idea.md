@@ -20,6 +20,6 @@ _Summarize the core use case and user problems and needs you are trying to solve
 - Security: are there any security concerns?
 
   _Note: Please do not report vulnerabilities here_
-  **See [SECURITY.md](https://github.com/roostorg/osprey/blob/main/SECURITY.md)**
+  **See [SECURITY.md](https://github.com/roostorg/.github/blob/main/SECURITY.md)**
 - Breaking changes: Should any features of the project be integrated?
 - User experience: What will the user experience be?
