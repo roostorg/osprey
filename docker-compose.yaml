@@ -6,8 +6,9 @@ volumes:
   broker_var: {}
   coordinator_var: {}
   router_var: {}
-  druid_shared: {}
+  # druid_shared: {}
   minio_data: {}
+  clickhouse_data: {}
 
 services:
   kafka:
@@ -143,7 +144,7 @@ services:
       dockerfile: osprey_worker/Dockerfile
     depends_on:
       - osprey-worker
-      - druid-broker
+      - clickhouse
       - postgres
       - snowflake-id-worker
       - bigtable
@@ -157,7 +158,7 @@ services:
       - DEBUG=true
       - FLASK_DEBUG=1
       - FLASK_ENV=development
-      - DRUID_URL=http://druid-broker:8082
+      # - DRUID_URL=http://druid-broker:8082
       - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
       - DD_TRACE_ENABLED=False
       - DD_DOGSTATSD_DISABLE=True
@@ -258,7 +259,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - metadata_data:/var/lib/postgresql/data
+      - metadata_data:/var/lib/postgresql
     environment:
       - POSTGRES_PASSWORD=FoolishPassword
       - POSTGRES_USER=osprey
@@ -270,110 +271,176 @@ services:
       timeout: 10s
       retries: 5
 
-  # DRUID, HERE BE DRAGONS
-  # Need 3.5 or later for container nodes
-  druid-zookeeper:
-    hostname: druid-zookeeper
-    container_name: druid-zookeeper
-    image: zookeeper:3.5.10
-    ports:
-      - "2181:2181"
-    environment:
-      - ZOO_MY_ID=1
-
-  druid-coordinator:
-    image: apache/druid:34.0.0
-    hostname: druid-coordinator
-    container_name: druid-coordinator
-    volumes:
-      - druid_shared:/opt/shared
-      - coordinator_var:/opt/druid/var
+  # schema-registry, clickhouse, and kafka-connect are used for streaming execution results into
+  # clickhouse for timeseries data in the osprey-ui
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.5.0
+    hostname: schema-registry
+    container_name: schema-registry
     depends_on:
-      - druid-zookeeper
-      - postgres
+      kafka:
+        condition: service_healthy
     ports:
       - "8081:8081"
-    command:
-      - coordinator
-    env_file:
-      - druid/environment
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:29092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
 
-  druid-broker:
-    image: apache/druid:34.0.0
-    container_name: druid-broker
-    hostname: druid-broker
-    volumes:
-      - broker_var:/opt/druid/var
-    depends_on:
-      - druid-zookeeper
-      - postgres
-      - druid-coordinator
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.1
+    hostname: clickhouse
+    container_name: clickhouse
     ports:
-      - "8082:8082"
-    command:
-      - broker
-    env_file:
-      - druid/environment
-
-  druid-historical:
-    image: apache/druid:34.0.0
-    container_name: druid-historical
-    hostname: druid-historical
+      - "8123:8123"
+      - "9009:9000"
     volumes:
-      - druid_shared:/opt/shared
-      - historical_var:/opt/druid/var
+      - clickhouse_data:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse
+
+  kafka-connect:
+    image: confluentinc/cp-kafka-connect:7.5.0
+    hostname: kafka-connect
+    container_name: kafka-connect
     depends_on:
-      - druid-zookeeper
-      - postgres
-      - druid-coordinator
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_started
+      clickhouse:
+        condition: service_started
     ports:
       - "8083:8083"
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: kafka:29092
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
+      CONNECT_GROUP_ID: kafka-connect-group
+      CONNECT_CONFIG_STORAGE_TOPIC: _connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: _connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: _connect-status
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
     command:
-      - historical
-    env_file:
-      - druid/environment
+      - bash
+      - -c
+      - |
+        echo "Installing ClickHouse Kafka Connect Sink connector..."
+        confluent-hub install --no-prompt clickhouse/clickhouse-kafka-connect:latest
+        echo "Starting Kafka Connect..."
+        /etc/confluent/docker/run
 
-  druid-middlemanager:
-    image: apache/druid:34.0.0
-    container_name: druid-middlemanager
-    hostname: druid-middlemanager
-    volumes:
-      - druid_shared:/opt/shared
-      - middle_var:/opt/druid/var
-    depends_on:
-      - druid-zookeeper
-      - postgres
-      - druid-coordinator
-    ports:
-      - "8091:8091"
-      - "8100-8105:8100-8105"
-    command:
-      - middleManager
-    env_file:
-      - druid/environment
-
-  druid-router:
-    image: apache/druid:34.0.0
-    container_name: druid-router
-    hostname: druid-router
-    volumes:
-      - router_var:/opt/druid/var
-    depends_on:
-      - druid-zookeeper
-      - postgres
-      - druid-coordinator
-    ports:
-      - "8888:8888"
-    command:
-      - router
-    env_file:
-      - druid/environment
-
-  druid-spec-submitter:
-    image: curlimages/curl:latest
-    depends_on:
-      - druid-coordinator
-    volumes:
-      - ./druid/specs:/specs
-    command: ["/bin/sh", "/specs/submit-specs.sh"]
-    restart: "no"
+  # DRUID, HERE BE DRAGONS
+  # Need 3.5 or later for container nodes
+  # druid-zookeeper:
+  #   hostname: druid-zookeeper
+  #   container_name: druid-zookeeper
+  #   image: zookeeper:3.5.10
+  #   ports:
+  #     - "2181:2181"
+  #   environment:
+  #     - ZOO_MY_ID=1
+  #
+  # druid-coordinator:
+  #   image: apache/druid:34.0.0
+  #   hostname: druid-coordinator
+  #   container_name: druid-coordinator
+  #   volumes:
+  #     - druid_shared:/opt/shared
+  #     - coordinator_var:/opt/druid/var
+  #   depends_on:
+  #     - druid-zookeeper
+  #     - postgres
+  #   ports:
+  #     - "8081:8081"
+  #   command:
+  #     - coordinator
+  #   env_file:
+  #     - druid/environment
+  #
+  # druid-broker:
+  #   image: apache/druid:34.0.0
+  #   container_name: druid-broker
+  #   hostname: druid-broker
+  #   volumes:
+  #     - broker_var:/opt/druid/var
+  #   depends_on:
+  #     - druid-zookeeper
+  #     - postgres
+  #     - druid-coordinator
+  #   ports:
+  #     - "8082:8082"
+  #   command:
+  #     - broker
+  #   env_file:
+  #     - druid/environment
+  #
+  # druid-historical:
+  #   image: apache/druid:34.0.0
+  #   container_name: druid-historical
+  #   hostname: druid-historical
+  #   volumes:
+  #     - druid_shared:/opt/shared
+  #     - historical_var:/opt/druid/var
+  #   depends_on:
+  #     - druid-zookeeper
+  #     - postgres
+  #     - druid-coordinator
+  #   ports:
+  #     - "8083:8083"
+  #   command:
+  #     - historical
+  #   env_file:
+  #     - druid/environment
+  #
+  # druid-middlemanager:
+  #   image: apache/druid:34.0.0
+  #   container_name: druid-middlemanager
+  #   hostname: druid-middlemanager
+  #   volumes:
+  #     - druid_shared:/opt/shared
+  #     - middle_var:/opt/druid/var
+  #   depends_on:
+  #     - druid-zookeeper
+  #     - postgres
+  #     - druid-coordinator
+  #   ports:
+  #     - "8091:8091"
+  #     - "8100-8105:8100-8105"
+  #   command:
+  #     - middleManager
+  #   env_file:
+  #     - druid/environment
+  #
+  # druid-router:
+  #   image: apache/druid:34.0.0
+  #   container_name: druid-router
+  #   hostname: druid-router
+  #   volumes:
+  #     - router_var:/opt/druid/var
+  #   depends_on:
+  #     - druid-zookeeper
+  #     - postgres
+  #     - druid-coordinator
+  #   ports:
+  #     - "8888:8888"
+  #   command:
+  #     - router
+  #   env_file:
+  #     - druid/environment
+  #
+  # druid-spec-submitter:
+  #   image: curlimages/curl:latest
+  #   depends_on:
+  #     - druid-coordinator
+  #   volumes:
+  #     - ./druid/specs:/specs
+  #   command: ["/bin/sh", "/specs/submit-specs.sh"]
+  #   restart: "no"
