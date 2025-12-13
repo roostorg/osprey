@@ -116,8 +116,12 @@ services:
       - OSPREY_KAFKA_INPUT_STREAM_TOPIC=osprey.actions_input
       # Client ID will default to the machine hostname if it isn't defined
       - OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID=localhost
+
+      # Whenever OSPREY_KAFKA_OUTPUT_SINK is set to true and the Clickhouse/Kafka-Connect configuration
+      # is present, then Clickhouse will automatically be populated with execution results
       - OSPREY_KAFKA_OUTPUT_SINK=True
       - OSPREY_KAFKA_OUTPUT_TOPIC=osprey.execution_results
+
       - OSPREY_KAFKA_OUTPUT_CLIENT_ID=localhost
       - DD_TRACE_ENABLED=False
       - DD_DOGSTATSD_DISABLE=True
@@ -332,10 +336,50 @@ services:
       - bash
       - -c
       - |
-        echo "Installing ClickHouse Kafka Connect Sink connector..."
+        # start by installing the clickhouse connector
+        echo "Installing ClickHouse connector..."
         confluent-hub install --no-prompt clickhouse/clickhouse-kafka-connect:latest
+       
+        # then start kafka connect
         echo "Starting Kafka Connect..."
-        /etc/confluent/docker/run
+        /etc/confluent/docker/run &
+        
+        echo "Waiting for Kafka Connect to be ready..."
+        while ! curl -s http://localhost:8083/connectors > /dev/null; do
+          sleep 2
+        done
+       
+        # automatically create the connector
+        echo "Deploying ClickHouse sink connector..."
+        curl -X PUT http://localhost:8083/connectors \
+          -H "Content-Type: application/json" \
+          -d '{
+            "name": "clickhouse-sink",
+            "config": {
+              "connector.class": "com.clickhouse.kafka.connect.ClickHouseSinkConnector",
+              "tasks.max": "1",
+              "topics": "osprey.execution_results",
+              "hostname": "clickhouse",
+              "port": "8123",
+              "database": "default",
+              "username": "default",
+              "password": "clickhouse",
+              "ssl": "false",
+              "tableCreateMissing": "true",
+              "tableRefreshInterval": "2000",
+              "tableEngine": "MergeTree()",
+              "tableOrderByColumns": "id",
+              "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+              "value.converter": "io.confluent.connect.avro.AvroConverter",
+              "value.converter.schema.registry.url": "http://schema-registry:8081",
+              "errors.tolerance": "all",
+              "errors.log.enable": "true",
+              "errors.log.include.messages": "true"
+            }
+          }'
+        
+        echo "Connector deployed!"
+        wait
 
   # DRUID, HERE BE DRAGONS
   # Need 3.5 or later for container nodes

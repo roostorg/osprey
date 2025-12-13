@@ -1,5 +1,5 @@
 labels:
   meow:
-    valid_for: [User]
+    valid_for: [UserId]
     connotation: positive
     description: testing label
