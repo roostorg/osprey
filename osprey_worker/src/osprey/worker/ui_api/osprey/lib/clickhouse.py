@@ -1,12 +1,13 @@
 import base64
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
 
 from clickhouse_connect.driver.client import Client
 from osprey.engine.query_language import parse_query_to_validated_ast
 from osprey.engine.query_language.ast_clickhouse_translator import ClickhouseTranslator
-from osprey.worker.lib.singletons import ENGINE
+from osprey.worker.lib.singletons import CONFIG, ENGINE
+from osprey.worker.ui_api.osprey.lib.druid import Ordering, PaginatedScanResult
 from osprey.worker.ui_api.osprey.lib.marshal import JsonBodyMarshaller
 from osprey.worker.ui_api.osprey.singletons import CLICKHOUSE
 from pydantic import BaseModel
@@ -39,11 +40,11 @@ class EntityFilter(BaseModel):
             return '1=1'
 
         # cast all feature columns to STRING to match {entity_id} parameter type
-        conds = [f'toString({feature_name}) = {{entity_id}}' for feature_name in filters]
+        conds = [f'toString({feature_name}) = {{entity_id: String}}' for feature_name in filters]
         return f'({" OR ".join(conds)})'
 
 
-class BaseClickHouseQuery(BaseModel, JsonBodyMarshaller):
+class BaseClickhouseQuery(BaseModel, JsonBodyMarshaller):
     start: datetime
     end: datetime
     query_filter: str
@@ -96,19 +97,19 @@ class BaseClickHouseQuery(BaseModel, JsonBodyMarshaller):
         query_params: Optional[Dict[str, Any]] = None,
         query_filter_abilities: Sequence[Optional['QueryFilterAbility[Any, Any]']] = (),
     ) -> List[Dict[str, Any]]:
-        """Execute the supplied query in ClickHouse"""
+        """Execute the supplied query in Clickhouse"""
         try:
             result = self._client.query(query, parameters=query_params or {})
             return result.result_rows
         except Exception as e:
-            logger.error(f'ClickHouse query failed: {e}')
+            logger.error(f'Clickhouse query failed: {e}')
             raise
 
     def _get_where_conds(self) -> tuple[List[str], Dict[str, Any]]:
         """Put together the WHERE conditions for a query"""
         # create conditions with the initial timestamp filter
         conds: List[str] = [
-            'timestamp >= {start_time} AND timestamp < {end_time}',
+            '__timestamp >= {start_time: DateTime} AND __timestamp < {end_time: DateTime}',
         ]
         # add the start and end times to the parameters
         params: Dict[str, Any] = {
@@ -150,20 +151,20 @@ class TimeseriesResultRow(BaseModel):
     result: Dict[str, Any]
 
 
-class TimeseriesClickHouseQuery(BaseClickHouseQuery):
+class TimeseriesClickhouseQuery(BaseClickhouseQuery):
     granularity: str
     agg_dims: Optional[List[str]] = None
 
     def _get_time_bucket_sql(self) -> str:
         """Return the SQL granularity for the query's granularity"""
         grans = {
-            'minute': 'toStartOfMinute(timestamp)',
-            'hour': 'toStartOfHour(timestamp)',
-            'day': 'toStartOfDay(timestamp)',
-            'week': 'toStartOfWeek(timestamp)',
-            'month': 'toStartOfMonth(timestamp)',
+            'minute': 'toStartOfMinute(__timestamp)',
+            'hour': 'toStartOfHour(__timestamp)',
+            'day': 'toStartOfDay(__timestamp)',
+            'week': 'toStartOfWeek(__timestamp)',
+            'month': 'toStartOfMonth(__timestamp)',
         }
-        return grans.get(self.granularity, 'toStartOfHour(timestamp)')
+        return grans.get(self.granularity, 'toStartOfHour(__timestamp)')
 
     def execute(self) -> List[TimeseriesResultRow]:
         bucket = self._get_time_bucket_sql()
@@ -201,10 +202,10 @@ class TimeseriesClickHouseQuery(BaseClickHouseQuery):
                 )
             )
 
-        return transformed_results
+        return [row.dict() for row in transformed_results]
 
 
-class PaginatedScanClickHouseQuery(BaseClickHouseQuery):
+class PaginatedScanClickhouseQuery(BaseClickhouseQuery):
     limit: int = 100
     next_page: Optional[str] = None
     order: Ordering = Ordering.DESCENDING
@@ -220,19 +221,19 @@ class PaginatedScanClickHouseQuery(BaseClickHouseQuery):
             pagination_datetime = datetime.fromtimestamp(date_in_milliseconds // 1000, tz=timezone.utc)
 
             if self.order == Ordering.ASCENDING:
-                conds.append('timestamp >= {page_cursor}')
+                conds.append('__timestamp >= {page_cursor: DateTime}')
             else:
-                conds.append('timestamp < {page_cursor}')
+                conds.append('__timestamp < {page_cursor: DateTime}')
 
             params['page_cursor'] = pagination_datetime
 
-        select_clause = 'action_id, timestamp'
+        select_clause = '__action_id, __timestamp'
         order_dir = 'ASC' if self.order == Ordering.ASCENDING else 'DESC'
 
         query = self._build_base_query(
             select_clause=select_clause,
             where_conds=conds,
-            order_by=f'timestamp {order_dir}',
+            order_by=f'__timestamp {order_dir}',
             limit=paginated_limit,
         )
 
@@ -254,7 +255,7 @@ class PaginatedScanClickHouseQuery(BaseClickHouseQuery):
         return PaginatedScanResult(action_ids=action_ids, next_page=next_page)
 
 
-class GroupByApproximateCountClickHouseQuery(BaseClickHouseQuery):
+class GroupByApproximateCountClickhouseQuery(BaseClickhouseQuery):
     dim: str
 
     def execute(self) -> int:
@@ -301,3 +302,135 @@ class TopNPoPResponse(BaseModel):
     current_period: List[PeriodData]
     previous_period: List[PeriodData] | None
     comparison: List[ComparisonData] | None
+
+
+class TopNClickhouseQuery(BaseClickhouseQuery):
+    dimension: str
+    limit: int = 100
+
+    def execute(
+        self,
+        query_filter_abilities: Sequence[Optional['QueryFilterAbility[Any, Any]']] = (),
+        calculate_previous_period: bool = True,
+    ) -> TopNPoPResponse:
+        current_results = self._execute_single_period(
+            start=self.start, end=self.end, query_filter_abilities=query_filter_abilities
+        )
+        sanitized_current_results = self._sanitize_results(current_results)
+
+        if not calculate_previous_period:
+            return TopNPoPResponse(current_period=sanitized_current_results, previous_period=None, comparison=None)
+
+        period_duration = self.end - self.start
+        previous_start = self.start - period_duration
+        previous_end = self.start
+
+        config = CONFIG.instance()
+        # i wonder if this default is high? seems okay based on the size of the data we are querying...
+        max_historical_query_window_days = config.get_int('MAX_HISTORICAL_QUERY_WINDOW_DAYS', 90)
+
+        if previous_start.replace(tzinfo=timezone.utc) < (
+            datetime.now(timezone.utc) - timedelta(days=max_historical_query_window_days)
+        ):
+            return TopNPoPResponse(current_period=sanitized_current_results, previous_period=None, comparison=None)
+
+        previous_results = self._execute_single_period(
+            start=previous_start, end=previous_end, query_filter_abilities=query_filter_abilities
+        )
+        sanitized_previous_results = self._sanitize_results(previous_results)
+
+        pop_results = self._analyze_pop_results(sanitized_current_results, sanitized_previous_results)
+
+        return pop_results
+
+    def _execute_single_period(
+        self,
+        start: datetime,
+        end: datetime,
+        query_filter_abilities: Sequence[Optional['QueryFilterAbility[Any, Any]']] = (),
+    ) -> List[Dict[str, Any]]:
+        select_clause = f'{self.dimension}, COUNT(*) AS count'
+
+        original_start, original_end = self.start, self.end
+        self.start, self.end = start, end
+
+        try:
+            conds, params = self._get_where_conds()
+
+            query = self._build_base_query(
+                select_clause=select_clause,
+                where_conds=conds,
+                group_by=self.dimension,
+                order_by='count DESC',
+                limit=self.limit,
+            )
+
+            results = self._execute_query(query, params, query_filter_abilities)
+            return results
+        finally:
+            self.start, self.end = original_start, original_end
+
+    def _sanitize_results(self, results: List[Dict[str, Any]]) -> List[PeriodData]:
+        if not results:
+            return []
+
+        dimension_data = []
+        for result in results:
+            try:
+                dimension_value = result.get(self.dimension)
+                count = result.get('count', 0)
+
+                data_dict = {'count': count, self.dimension: dimension_value}
+                dimension_data.append(DimensionData(**data_dict))
+            except Exception as e:
+                logger.error(f'Failed to parse result: {result}, error: {e}')
+                continue
+
+        if dimension_data:
+            return [PeriodData(timestamp=self.end, result=dimension_data)]
+        return []
+
+    # slop code that seems to work if i use the pop feature
+    def _analyze_pop_results(
+        self, current_results: List[PeriodData], previous_results: List[PeriodData]
+    ) -> TopNPoPResponse:
+        if not previous_results:
+            return TopNPoPResponse(current_period=current_results, previous_period=None, comparison=None)
+
+        dimension_key = self.dimension
+        comparison = []
+
+        for current_result, previous_result in zip(current_results, previous_results):
+            current_map = {getattr(item, dimension_key): item.count for item in current_result.result}
+            previous_map = {getattr(item, dimension_key): item.count for item in previous_result.result}
+            dimension_differences = []
+
+            all_keys = set(current_map.keys()) | set(previous_map.keys())
+
+            for item in all_keys:
+                current_count = current_map.get(item, 0)
+                previous_count = previous_map.get(item, 0)
+
+                if current_count == 0:
+                    continue
+
+                difference = current_count - previous_count
+                pct_change = (difference / previous_count * 100) if previous_count else None
+
+                dimension_differences.append(
+                    DimensionDifference(
+                        dimension_key=item,
+                        current_count=current_count,
+                        previous_count=previous_count,
+                        difference=difference,
+                        percentage_change=pct_change,
+                    )
+                )
+
+            comparison.append(ComparisonData(differences=dimension_differences))
+
+        return TopNPoPResponse(
+            current_period=current_results,
+            previous_period=previous_results,
+            comparison=comparison,
+        )

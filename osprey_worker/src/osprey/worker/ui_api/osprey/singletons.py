@@ -1,10 +1,13 @@
 from osprey.worker.lib.publisher import PubSubPublisher
 from osprey.worker.lib.singleton import Singleton
 from osprey.worker.lib.singletons import CONFIG
+from osprey.worker.ui_api.osprey.lib.clickhouse_client_holder import ClickhouseClientHolder
 
 from .lib.druid_client_holder import DruidClientHolder
 
 DRUID: Singleton[DruidClientHolder] = Singleton(DruidClientHolder)
+
+CLICKHOUSE: Singleton[ClickhouseClientHolder] = Singleton(ClickhouseClientHolder)
 
 
 def _init_analytics_publisher() -> PubSubPublisher:

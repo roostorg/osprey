@@ -1,13 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, get_origin
 
-import clickhouse_connect
-from clickhouse_connect.driver.client import Client
 from osprey.engine.ast import grammar
 from osprey.engine.ast_validator.validation_context import ValidatedSources
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
 from osprey.engine.ast_validator.validators.validate_static_types import ValidateStaticTypes
 from osprey.engine.query_language.ast_druid_translator import get_comparison_dimension, get_comparison_value
+from osprey.worker.ui_api.osprey.singletons import CLICKHOUSE
 
 
 class BaseAstTranslator(ABC):
@@ -59,12 +58,7 @@ class ClickhouseTranslator(BaseAstTranslator):
         except KeyError:
             self._name_types = {}
 
-        self._ch_client: Client = clickhouse_connect.get_client(
-            host='',
-            port=8443,
-            username='',
-            password='',
-        )
+        self._client = CLICKHOUSE.instance().client
 
         # we'll use this to keep track of what paramter we are currently working on
         # and give it a unique name
@@ -95,10 +89,20 @@ class ClickhouseTranslator(BaseAstTranslator):
 
     def _add_param(self, val: Any) -> str:
         name = self._get_next_param_name()
-
         self._params[name] = val
 
-        return f'{{{name}}}'
+        if isinstance(val, str):
+            type_annotation = 'String'
+        elif isinstance(val, int):
+            type_annotation = 'Int64'
+        elif isinstance(val, float):
+            type_annotation = 'Float64'
+        elif isinstance(val, list):
+            type_annotation = 'Array(String)'
+        else:
+            type_annotation = 'String'
+
+        return f'{{{name}: {type_annotation}}}'
 
     def transform_BooleanOperation(self, node: grammar.BooleanOperation) -> str:
         assert isinstance(node.operand, grammar.And) or isinstance(node.operand, grammar.Or)

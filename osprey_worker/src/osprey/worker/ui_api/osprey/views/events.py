@@ -21,12 +21,12 @@ from osprey.worker.ui_api.osprey.lib.abilities import (
 from pydantic.main import BaseModel
 
 from ..lib.auth import get_current_user
-from ..lib.druid import (
+from ..lib.clickhouse import (
     DimensionData,
-    GroupByApproximateCountDruidQuery,
-    PaginatedScanDruidQuery,
-    TimeseriesDruidQuery,
-    TopNDruidQuery,
+    GroupByApproximateCountClickhouseQuery,
+    PaginatedScanClickhouseQuery,
+    TimeseriesClickhouseQuery,
+    TopNClickhouseQuery,
     TopNPoPResponse,
 )
 from ..lib.marshal import marshal_with
@@ -39,8 +39,8 @@ MAX_CSV_ROWS = 100_000
 
 
 @blueprint.route('/events/topn', methods=['POST'])
-@marshal_with(TopNDruidQuery)
-def topn_query(request_model: TopNDruidQuery) -> TopNPoPResponse:
+@marshal_with(TopNClickhouseQuery)
+def topn_query(request_model: TopNClickhouseQuery) -> TopNPoPResponse:
     require_ability_with_request(request_model, CanViewEventsByEntity)
     require_ability_with_request(request_model, CanViewEventsByAction)
     query_filter_ability = get_current_user().get_ability(CanViewEventsByAction)
@@ -57,8 +57,8 @@ def topn_query(request_model: TopNDruidQuery) -> TopNPoPResponse:
 
 
 @blueprint.route('/events/groupby/approximate-count', methods=['POST'])
-@marshal_with(GroupByApproximateCountDruidQuery)
-def groupby_count(request_model: GroupByApproximateCountDruidQuery) -> Any:
+@marshal_with(GroupByApproximateCountClickhouseQuery)
+def groupby_count(request_model: GroupByApproximateCountClickhouseQuery) -> Any:
     require_ability_with_request(request_model, CanViewEventsByEntity)
     require_ability_with_request(request_model, CanViewEventsByAction)
     return jsonify({'count': request_model.execute()})
@@ -102,9 +102,9 @@ def topn_bulk_label(bulk_label_request: BulkLabelTopNRequest) -> Any:
 
 
 @blueprint.route('/events/timeseries', methods=['POST'])
-@marshal_with(TimeseriesDruidQuery)
+@marshal_with(TimeseriesClickhouseQuery)
 @require_ability(CanViewEventsByEntity)
-def timeseries_query(request_model: TimeseriesDruidQuery) -> Any:
+def timeseries_query(request_model: TimeseriesClickhouseQuery) -> Any:
     require_ability_with_request(request_model, CanViewEventsByEntity)
     return jsonify(request_model.execute())
 
@@ -118,10 +118,10 @@ class ScanQueryResult(BaseModel):
 
 
 @blueprint.route('/events/scan', methods=['POST'])
-@marshal_with(PaginatedScanDruidQuery)
+@marshal_with(PaginatedScanClickhouseQuery)
 @require_ability(CanViewEventsByEntity)
 @require_ability(CanViewEventsByAction)
-def scan_query(request_model: PaginatedScanDruidQuery) -> Any:
+def scan_query(request_model: PaginatedScanClickhouseQuery) -> Any:
     require_ability_with_request(request_model, CanViewEventsByEntity)
     require_ability_with_request(request_model, CanViewEventsByAction)
 
@@ -143,9 +143,9 @@ def scan_query(request_model: PaginatedScanDruidQuery) -> Any:
 
 
 @blueprint.route('/events/topn/csv', methods=['POST'])
-@marshal_with(TopNDruidQuery)
+@marshal_with(TopNClickhouseQuery)
 @require_ability(CanViewEventsByEntity)
-def topn_query_csv(topn_druid_query: TopNDruidQuery) -> Any:
+def topn_query_csv(topn_druid_query: TopNClickhouseQuery) -> Any:
     topn_druid_query.limit = min(topn_druid_query.limit, MAX_CSV_ROWS)
     require_ability_with_request(topn_druid_query, CanViewEventsByEntity)
 
