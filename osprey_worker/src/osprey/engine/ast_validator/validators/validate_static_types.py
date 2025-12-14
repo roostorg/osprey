@@ -335,8 +335,9 @@ class ValidateStaticTypes(SourceValidator, HasInput[Dict[str, _TypeAndSpan]], Ha
                         continue
 
                     # If the arg is an Optional (e.g. the return value from a JsonData() call), then we perform
-                    # substitution as normal
-                    if self._is_optional_type(arg_value_type):
+                    # substitution as normal. Note: we use _is_actual_optional_type here to avoid treating EntityT
+                    # as Optional, which would cause get_typevar_substitution to fail due to different origins.
+                    if self._is_actual_optional_type(arg_value_type):
                         next_resolved_typevar_type = get_typevar_substitution(generic_arg, arg_value_type)
                     else:
                         # Otherwise, we treat the arg_value_type as if it is the T in Optional[T]
@@ -451,6 +452,17 @@ class ValidateStaticTypes(SourceValidator, HasInput[Dict[str, _TypeAndSpan]], Ha
         # We allow Entities to typecheck as optional in order to avoid having to update the type system
         # to support Optional[Entity[str]]
         if origin is Optional or origin is EntityT:
+            return True
+        elif origin is Union:
+            return type(None) in t.__args__  # type: ignore[attr-defined]
+
+        return False
+
+    def _is_actual_optional_type(self, t: type) -> bool:
+        """Check if a type is actually Optional/Union with None, not just treated as optional (like EntityT)."""
+        origin = get_origin(t)
+
+        if origin is Optional:
             return True
         elif origin is Union:
             return type(None) in t.__args__  # type: ignore[attr-defined]

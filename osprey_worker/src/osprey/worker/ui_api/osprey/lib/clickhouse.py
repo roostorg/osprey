@@ -377,8 +377,12 @@ class TopNClickhouseQuery(BaseClickhouseQuery):
         dimension_data = []
         for result in results:
             try:
-                dimension_value = result.get(self.dimension)
-                count = result.get('count', 0)
+                if isinstance(result, dict):
+                    dimension_value = result.get(self.dimension)
+                    count = result.get('count', 0)
+                else:
+                    dimension_value = result[0]
+                    count = result[1]
 
                 data_dict = {'count': count, self.dimension: dimension_value}
                 dimension_data.append(DimensionData(**data_dict))

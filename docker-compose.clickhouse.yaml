@@ -89,10 +89,6 @@ services:
         condition: service_healthy
       kafka-topic-creator:
         condition: service_completed_successfully
-      bigtable:
-        condition: service_healthy
-      bigtable-initializer:
-        condition: service_completed_successfully
       minio:
         condition: service_healthy
       minio-bucket-init:
@@ -118,7 +114,6 @@ services:
       - DD_TRACE_ENABLED=False
       - DD_DOGSTATSD_DISABLE=True
       - OSPREY_RULES_SINK_NUM_WORKERS=1
-      - BIGTABLE_EMULATOR_HOST=bigtable:8361
       - OSPREY_EXECUTION_RESULT_STORAGE_BACKEND=minio
       - OSPREY_MINIO_ENDPOINT=minio:9000
       - OSPREY_MINIO_ACCESS_KEY=minioadmin
@@ -151,8 +146,6 @@ services:
       - clickhouse
       - postgres
       - snowflake-id-worker
-      - bigtable
-      - bigtable-initializer
     ports:
       - "5004:5004"
     command: ["osprey-ui-api"]
@@ -167,7 +160,6 @@ services:
       - DD_DOGSTATSD_DISABLE=True
       - OSPREY_RULES_PATH=/osprey/example_rules
       - OSPREY_DISABLE_VALIDATION_EXPORTER=true
-      - BIGTABLE_EMULATOR_HOST=bigtable:8361
       - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
       - SNOWFLAKE_EPOCH=1420070400000
 
@@ -211,33 +203,6 @@ services:
       - EPOCH=1420070400000
       - PORT=8088
     restart: unless-stopped
-
-  bigtable:
-    hostname: bigtable
-    container_name: bigtable
-    image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
-    ports:
-      - "8361:8361"
-    command: >
-      bash -c "
-        gcloud beta emulators bigtable start --host-port=0.0.0.0:8361 --project=osprey-dev
-      "
-    healthcheck:
-      test: ["CMD", "bash", "-c", "pgrep -f cbtemulator > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  bigtable-initializer:
-    container_name: bigtable-initializer
-    image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
-    depends_on:
-      bigtable:
-        condition: service_healthy
-    volumes:
-      - ./init-bigtable.sh:/init-bigtable.sh
-    command: ["/bin/bash", "/init-bigtable.sh"]
 
   # Optional test data generator - run with:
   # docker compose --profile test_data up kafka-test-data-producer -d

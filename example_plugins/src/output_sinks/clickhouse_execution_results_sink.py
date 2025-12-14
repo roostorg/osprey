@@ -159,7 +159,7 @@ class ClickhouseExecutionResultsSink(BaseOutputSink):
             return 'Nullable(String)'
 
         if isinstance(sample_value, bool):
-            return 'UInt8'
+            return 'Nullable(UInt8)'
         elif isinstance(sample_value, int):
             return 'Nullable(Int64)'
         elif isinstance(sample_value, float):
