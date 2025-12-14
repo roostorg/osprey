@@ -9,8 +9,10 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "clickhouse-connect>=0.10.0",
     "flask-cors>=6.0.1",
     "osprey_rpc",
+    "python-snappy>=0.7.3",
 ]
 [project.scripts]
 osprey-cli = "osprey.worker.lib.cli:cli"

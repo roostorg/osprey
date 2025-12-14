@@ -14,6 +14,7 @@ from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
     from osprey.worker.lib.storage.stored_execution_result import ExecutionResultStore
+    from osprey.worker.lib.storage.timeseries_execution_result import TimeseriesExecutionResult
     from osprey.worker.sinks.sink.input_stream import BaseInputStream
     from osprey.worker.sinks.sink.output_sink import BaseOutputSink
 
@@ -53,6 +54,11 @@ def register_input_stream(config: Config) -> BaseInputStream[BaseAckingContext[A
 def register_execution_result_store(config: Config) -> ExecutionResultStore:
     """Register an execution result storage backend instance."""
     raise NotImplementedError('register_execution_result_store must be implemented by the plugin')
+
+
+@hookspec(firstresult=True)
+def register_timeseries_result_store(config: Config) -> TimeseriesResultStore:
+    """Register a timeseries result storage backend instance."""
 
 
 @hookspec(firstresult=True)

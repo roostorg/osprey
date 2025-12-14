@@ -1,0 +1,314 @@
+volumes:
+  metadata_data: {}
+  router_var: {}
+  minio_data: {}
+  clickhouse_data: {}
+
+services:
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    hostname: kafka
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:29093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      KAFKA_LISTENERS: "INTERNAL://kafka:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://kafka:29093"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka:29092,EXTERNAL://localhost:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: "P45WxmmWSe2CrdGoeJMcKg"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bash",
+          "-c",
+          "kafka-topics --bootstrap-server kafka:29092 --list",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    hostname: minio
+    ports:
+      - "9000:9000" # minio API
+      - "9001:9001" # minio Console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio_data:/data
+    command: server --console-address ":9001" /data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  minio-bucket-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "/init-minio-bucket.sh"]
+    volumes:
+      - ./init-minio-bucket.sh:/init-minio-bucket.sh
+    restart: "no"
+
+  kafka-topic-creator:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: >
+      bash -c "
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic osprey.actions_input --partitions 3 --replication-factor 1 &&
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic osprey.execution_results --partitions 3 --replication-factor 1 &&
+        kafka-topics --bootstrap-server kafka:29092 --list
+      "
+
+  osprey-worker:
+    container_name: osprey-worker
+    hostname: osprey-worker
+    build:
+      context: .
+      dockerfile: osprey_worker/Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-topic-creator:
+        condition: service_completed_successfully
+      bigtable:
+        condition: service_healthy
+      bigtable-initializer:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+      minio-bucket-init:
+        condition: service_completed_successfully
+      clickhouse:
+        condition: service_healthy
+    ports:
+      - "5001:5000"
+    command: ["osprey-worker"]
+    environment:
+      - PYTHONPATH=/osprey
+      - PORT=5000
+      - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
+      - OSPREY_INPUT_STREAM_SOURCE=kafka
+      - OSPREY_STDOUT_OUTPUT_SINK=False
+      - OSPREY_KAFKA_BOOTSTRAP_SERVERS=["kafka:29092"]
+      - OSPREY_KAFKA_INPUT_STREAM_TOPIC=osprey.actions_input
+      # Client ID will default to the machine hostname if it isn't defined
+      - OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID=localhost
+      - OSPREY_KAFKA_OUTPUT_SINK=True
+      - OSPREY_KAFKA_OUTPUT_TOPIC=osprey.execution_results
+      - OSPREY_KAFKA_OUTPUT_CLIENT_ID=localhost
+      - DD_TRACE_ENABLED=False
+      - DD_DOGSTATSD_DISABLE=True
+      - OSPREY_RULES_SINK_NUM_WORKERS=1
+      - BIGTABLE_EMULATOR_HOST=bigtable:8361
+      - OSPREY_EXECUTION_RESULT_STORAGE_BACKEND=minio
+      - OSPREY_MINIO_ENDPOINT=minio:9000
+      - OSPREY_MINIO_ACCESS_KEY=minioadmin
+      - OSPREY_MINIO_SECRET_KEY=minioadmin123
+      - OSPREY_MINIO_SECURE=false
+      - OSPREY_MINIO_EXECUTION_RESULTS_BUCKET=execution-output
+      - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
+      - OSPREY_RULES_PATH=./example_rules
+
+      - OSPREY_CLICKHOUSE_HOST=clickhouse
+      - OSPREY_CLICKHOUSE_PORT=8123
+      - OSPREY_CLICKHOUSE_USER=default
+      - OSPREY_CLICKHOUSE_PASSWORD=clickhouse
+      - OSPREY_CLICKHOUSE_DB=default
+      - OSPREY_CLICKHOUSE_TABLE=osprey_execution_results
+      - OSPREY_CLICKHOUSE_BATCH_SIZE=500
+    volumes:
+      - ./osprey_worker:/osprey/osprey_worker
+      - ./osprey_rpc:/osprey/osprey_rpc
+      - ./example_rules:/osprey/example_rules
+      - ./entrypoint.sh:/osprey/entrypoint.sh
+
+  osprey-ui-api:
+    container_name: osprey-ui-api
+    build:
+      context: .
+      dockerfile: osprey_worker/Dockerfile
+    depends_on:
+      - osprey-worker
+      - clickhouse
+      - postgres
+      - snowflake-id-worker
+      - bigtable
+      - bigtable-initializer
+    ports:
+      - "5004:5004"
+    command: ["osprey-ui-api"]
+    environment:
+      - PYTHONPATH=/osprey
+      - PORT=5004
+      - DEBUG=true
+      - FLASK_DEBUG=1
+      - FLASK_ENV=development
+      - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
+      - DD_TRACE_ENABLED=False
+      - DD_DOGSTATSD_DISABLE=True
+      - OSPREY_RULES_PATH=/osprey/example_rules
+      - OSPREY_DISABLE_VALIDATION_EXPORTER=true
+      - BIGTABLE_EMULATOR_HOST=bigtable:8361
+      - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
+      - SNOWFLAKE_EPOCH=1420070400000
+
+      - OSPREY_CLICKHOUSE_HOST=clickhouse
+      - OSPREY_CLICKHOUSE_PORT=8123
+      - OSPREY_CLICKHOUSE_USER=default
+      - OSPREY_CLICKHOUSE_PASSWORD=clickhouse
+      - OSPREY_CLICKHOUSE_DB=default
+      - OSPREY_CLICKHOUSE_TABLE=osprey_execution_results
+    volumes:
+      - ./osprey_worker:/osprey/osprey_worker
+      - ./osprey_rpc:/osprey/osprey_rpc
+      - ./example_rules:/osprey/example_rules
+
+  osprey-ui:
+    container_name: osprey-ui
+    hostname: osprey-ui
+    build:
+      context: .
+      dockerfile: osprey_ui/Dockerfile
+    depends_on:
+      - osprey-ui-api
+    ports:
+      - "5002:5002"
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_BASE_URL=http://localhost:5004
+    volumes:
+      - ./osprey_ui:/app
+      - /app/node_modules
+
+  snowflake-id-worker:
+    hostname: snowflake-id-worker
+    container_name: snowflake-id-worker
+    image: ghcr.io/ayubun/snowflake-id-worker:0
+    ports:
+      - "8088:8088"
+    environment:
+      - WORKER_ID=0
+      - DATA_CENTER_ID=0
+      - EPOCH=1420070400000
+      - PORT=8088
+    restart: unless-stopped
+
+  bigtable:
+    hostname: bigtable
+    container_name: bigtable
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+    ports:
+      - "8361:8361"
+    command: >
+      bash -c "
+        gcloud beta emulators bigtable start --host-port=0.0.0.0:8361 --project=osprey-dev
+      "
+    healthcheck:
+      test: ["CMD", "bash", "-c", "pgrep -f cbtemulator > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  bigtable-initializer:
+    container_name: bigtable-initializer
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+    depends_on:
+      bigtable:
+        condition: service_healthy
+    volumes:
+      - ./init-bigtable.sh:/init-bigtable.sh
+    command: ["/bin/bash", "/init-bigtable.sh"]
+
+  # Optional test data generator - run with:
+  # docker compose --profile test_data up kafka-test-data-producer -d
+  kafka-test-data-producer:
+    image: confluentinc/cp-kafka:7.4.0
+    hostname: kafka-test-data-producer
+    container_name: kafka-test-data-producer
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-topic-creator:
+        condition: service_completed_successfully
+    profiles:
+      - test_data
+      - test-data
+    environment:
+      KAFKA_TOPIC: "osprey.actions_input"
+      KAFKA_BROKER: "kafka:29092"
+    volumes:
+      - ./example_data:/osprey/example_data
+    entrypoint:
+      - /bin/bash
+    command: ["/osprey/example_data/generate_test_data.sh"]
+
+  postgres:
+    hostname: postgres
+    container_name: postgres
+    image: postgres:18
+    ports:
+      - "5432:5432"
+    volumes:
+      - metadata_data:/var/lib/postgresql
+    environment:
+      - POSTGRES_PASSWORD=FoolishPassword
+      - POSTGRES_USER=osprey
+      - POSTGRES_DB=osprey
+    healthcheck:
+      test: pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB
+      start_period: 30s
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.1
+    hostname: clickhouse
+    container_name: clickhouse
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8123:8123"
+      - "9009:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  clickhouse-init:
+    image: clickhouse/clickhouse-server:24.1
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    volumes:
+      - ./clickhouse-init/01-init.sql:/init.sql:ro
+    entrypoint: ["clickhouse-client", "--host", "clickhouse", "--password", "clickhouse", "--queries-file", "/init.sql"]
+    restart: "no"
