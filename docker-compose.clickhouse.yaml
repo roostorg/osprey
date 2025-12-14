@@ -312,3 +312,19 @@ services:
       - ./clickhouse-init/01-init.sql:/init.sql:ro
     entrypoint: ["clickhouse-client", "--host", "clickhouse", "--password", "clickhouse", "--queries-file", "/init.sql"]
     restart: "no"
+
+  at-kafka:
+    image: ghcr.io/haileyok/at-kafka:main-931e3ed
+    depends_on:
+      kafka:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    container_name: atkafka
+    environment:
+      ATKAFKA_RELAY_HOST: "wss://bsky.network"
+      ATKAFKA_BOOTSTRAP_SERVERS: "kafka:29092"
+      ATKAFKA_OUTPUT_TOPIC: "osprey.actions_input"
+      ATKAFKA_OSPREY_COMPATIBLE: "true"
+      ATKAFKA_PLC_HOST: "https://plc.directory"
+    restart: unless-stopped
