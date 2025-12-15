@@ -279,13 +279,15 @@ services:
     restart: "no"
 
   at-kafka:
-    image: ghcr.io/haileyok/at-kafka:main-af43895
+    image: ghcr.io/haileyok/at-kafka:main-85372d9
     depends_on:
       kafka:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
     container_name: atkafka
+    ports:
+      - "6010:6009"
     environment:
       ATKAFKA_RELAY_HOST: "wss://bsky.network"
       ATKAFKA_BOOTSTRAP_SERVERS: "kafka:29092"
