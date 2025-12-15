@@ -23,7 +23,7 @@ AccountCreatedAt: Optional[str] = JsonData(
   required=False,
 )
 
-AccountAgeSeconds: Optional[str] = JsonData(
+AccountAgeSeconds: Optional[int] = JsonData(
   path='$.eventMetadata.accountAge',
   required=False,
 )
