@@ -413,7 +413,7 @@ uv sync
 
 ## Next Steps
 
-- Check the [contributing guidelines](./docs/CONTRIBUTING.md) for project-specific rules
+- Check the [contributing guidelines](https://github.com/roostorg/.github/blob/main/CONTRIBUTING.md) for project-specific rules
 - Explore the codebase structure in `osprey_worker/`, `osprey_common/`, and `osprey_rpc/`
 
 ## IDE Setup Recommendations
