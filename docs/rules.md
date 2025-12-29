@@ -60,7 +60,7 @@ My_Rule_Name_v2 = Rule(
 
 ### Instrumenting Rules with WhenRules
 
-The `WhenRules()` function allows for the connection of rules with external services, declarations or internal label modifications by listing Rule objects in sequence within the `rules_any=[]` parameter and `EffectBase`. By default, operators and designers can utilize UDFs with predefined effects such as `DeclareVerdict()`, `LabelAdd()`, and `LabelRemote()` on positive rule evaluations.
+The `WhenRules()` function allows for the connection of rules with external services, declarations or internal label modifications by listing Rule objects in sequence within the `rules_any=[]` parameter and `EffectBase`. By default, operators and designers can utilize UDFs with predefined effects such as `DeclareVerdict()`, `LabelAdd()`, and `LabelRemove()` on positive rule evaluations.
 
 Below is an example of the use of a WhenRules() block to verify and email and reject a request.
 
