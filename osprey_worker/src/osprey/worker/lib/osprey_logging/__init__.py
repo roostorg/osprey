@@ -7,7 +7,7 @@ import os
 import sys
 import types
 from logging.handlers import SysLogHandler
-from typing import Dict, List, Optional, Tuple, Union, cast
+from typing import Optional, Tuple, Union, cast
 
 import pythonjsonlogger.jsonlogger
 import pytz
@@ -142,7 +142,7 @@ class PrettyLogFormatter(logging.Formatter):
 
 
 class JsonLogFormatter(pythonjsonlogger.jsonlogger.JsonFormatter):  # type: ignore
-    def __init__(self, *args, rename_fields: Optional[Dict[str, str]] = None, **kwargs):
+    def __init__(self, *args, rename_fields: Optional[dict[str, str]] = None, **kwargs):
         """Support renaming fields in python-json-logger<2.0.1 and python_json_logger>=2.0.1
 
         In the latter version, `rename_fields` is supported in the superclass's constructor parameters. In
@@ -170,7 +170,7 @@ class JsonLogFormatter(pythonjsonlogger.jsonlogger.JsonFormatter):  # type: igno
             s = '%s.%03d' % (t, record.msecs)
         return s
 
-    def add_fields(self, log_record: Dict, record: logging.LogRecord, message_dict: Dict) -> None:  # type: ignore
+    def add_fields(self, log_record: dict, record: logging.LogRecord, message_dict: dict) -> None:  # type: ignore
         # backport rename_fields from v2.0.1+ of python-json-logger into py2-compatible versions of JsonFormatter.
         for field in self._required_fields:
             if field in self.rename_fields:
@@ -212,14 +212,14 @@ def _remove_handlers_except(name: str, logger: logging.Logger) -> None:
             logger.removeHandler(handler)
 
 
-def get_route_metadata_logging_tags() -> List[Tuple[str, Optional[str]]]:
+def get_route_metadata_logging_tags() -> list[Tuple[str, Optional[str]]]:
     """Fetches route metadata from the Flask global context so it can be added as log tags.
 
     Returns an empty array if no metadata exists. Else, returns a list of tuples of tag name and tag value.
     """
     if not has_request_context() or not hasattr(flask_global, DATADOG_ROUTE_METADATA_ATTR):
         return []
-    return cast(List[Tuple[str, Optional[str]]], flask_global.get(DATADOG_ROUTE_METADATA_ATTR).items())
+    return cast(list[Tuple[str, Optional[str]]], flask_global.get(DATADOG_ROUTE_METADATA_ATTR).items())
 
 
 def configure_logging(

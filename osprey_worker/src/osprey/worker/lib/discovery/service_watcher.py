@@ -5,7 +5,7 @@ import logging
 import weakref
 from random import choice, randint, uniform
 from time import time
-from typing import TYPE_CHECKING, Callable, Deque, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, Deque, Optional, Union
 
 import gevent
 import six
@@ -74,7 +74,7 @@ class ServiceWatcher:
 
         self._lock = RLock()
 
-        self._instances: Dict[str, ServiceWrapper] = {}
+        self._instances: dict[str, ServiceWrapper] = {}
         self._rotation: Deque[str] = collections.deque()
         self._ring = ring
 
@@ -149,7 +149,7 @@ class ServiceWatcher:
         selector: Optional[SelectorFunctionType] = None,
         include_not_yet_visible: bool = False,
         tolerate_draining: bool = False,
-    ) -> List[Service]:
+    ) -> list[Service]:
         """Selects all instances of a service based on a selector."""
         self.ensure_watching()
 

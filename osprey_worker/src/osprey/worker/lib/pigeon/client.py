@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import partial
 from time import time_ns
-from typing import Any, Callable, Dict, Generic, List, Optional, Set, Tuple, Type, TypeVar, Union, cast
+from typing import Any, Callable, Generic, Optional, Set, Tuple, Type, TypeVar, Union, cast
 
 import grpc
 from ddtrace.constants import ERROR_MSG
@@ -103,8 +103,8 @@ class RoutedClient(Generic[T]):
         self._request_field = request_field
         self._request_field_routing_value_transform = request_field_routing_value_transform
         self._routing_type = routing_type
-        self._open_channels: Dict[Tuple[Tuple[str, Optional[str]], int], weakref.ReferenceType[Channel]] = {}
-        self._clients: Dict[Tuple[Tuple[str, Optional[str]], int], T] = {}
+        self._open_channels: dict[Tuple[Tuple[str, Optional[str]], int], weakref.ReferenceType[Channel]] = {}
+        self._clients: dict[Tuple[Tuple[str, Optional[str]], int], T] = {}
         self._secondaries = secondaries
         self._chunk_size = chunk_size
         self._pool = Pool(size=pool_size)
@@ -113,7 +113,7 @@ class RoutedClient(Generic[T]):
         self._grpc_options = list(grpc_options.items())
         self._connect_eagerly = False
         self._acceptable_duration_ms: Optional[int] = acceptable_duration_ms
-        self._interceptors: List[Any] = [BaggageInterceptor(baggage_header=baggage_header, baggage=baggage)]
+        self._interceptors: list[Any] = [BaggageInterceptor(baggage_header=baggage_header, baggage=baggage)]
 
         if metadata:
             self._interceptors.append(MetadataInterceptor(metadata))
@@ -154,7 +154,7 @@ class RoutedClient(Generic[T]):
         request_field: Optional[str] = None,
         routing_type: Optional[int] = None,
         timeout: Optional[float] = None,
-        metadata: Optional[List[Tuple[str, str]]] = None,
+        metadata: Optional[list[Tuple[str, str]]] = None,
         instances_to_skip: int = 0,
     ):
         routing_type = routing_type if routing_type is not None else self._routing_type
@@ -185,8 +185,8 @@ class RoutedClient(Generic[T]):
         request_field: Optional[str] = None,
         routing_type: Optional[int] = None,
         timeout: Optional[float] = None,
-        metadata: Optional[List[Tuple[str, str]]] = None,
-    ) -> List['grpc.futures.Future']:
+        metadata: Optional[list[Tuple[str, str]]] = None,
+    ) -> list['grpc.futures.Future']:
         routing_type = routing_type if routing_type is not None else self._routing_type
         request_field = request_field if request_field is not None else self._request_field
         timeout = timeout or self._read_timeout
@@ -206,7 +206,7 @@ class RoutedClient(Generic[T]):
         message: Message,
         request_field: str,
         timeout: Optional[float] = None,
-        metadata: Optional[List[Tuple[str, str]]] = None,
+        metadata: Optional[list[Tuple[str, str]]] = None,
     ):
         """Call a remote service concurrently. Route based on a routing key."""
         calls = self._generate_routed_calls(request_field, message)
@@ -240,7 +240,7 @@ class RoutedClient(Generic[T]):
         request_field: str,
         routing_type: int,
         timeout: Optional[float] = None,
-        metadata: Optional[List[Tuple[str, str]]] = None,
+        metadata: Optional[list[Tuple[str, str]]] = None,
         instances_to_skip: int = 0,
     ):
         """Request from a remote service."""
@@ -255,7 +255,7 @@ class RoutedClient(Generic[T]):
         message_template: Message,
         request_field: str,
         timeout: Optional[float],
-        metadata: Optional[List[Tuple[str, str]]],
+        metadata: Optional[list[Tuple[str, str]]],
         service_and_routing_values,
     ) -> Optional[Message]:
         """Request from remote service."""
@@ -286,8 +286,8 @@ class RoutedClient(Generic[T]):
         message: Message,
         request_field: str,
         timeout: Optional[float] = None,
-        metadata: Optional[List[Tuple[str, str]]] = None,
-    ) -> List['grpc.futures.Future']:
+        metadata: Optional[list[Tuple[str, str]]] = None,
+    ) -> list['grpc.futures.Future']:
         calls = self._generate_routed_calls(request_field, message)
         futures = []
         for call in calls.items():
@@ -302,8 +302,8 @@ class RoutedClient(Generic[T]):
         request_field: str,
         routing_type: int,
         timeout: Optional[float] = None,
-        metadata: Optional[List[Tuple[str, str]]] = None,
-    ) -> List['grpc.futures.Future']:
+        metadata: Optional[list[Tuple[str, str]]] = None,
+    ) -> list['grpc.futures.Future']:
         service = self._select_service(message, request_field, routing_type)
         client = self._get_client(service)
         method = getattr(client, method_name)
@@ -315,9 +315,9 @@ class RoutedClient(Generic[T]):
         message_template: Message,
         request_field: str,
         timeout: Optional[float],
-        metadata: Optional[List[Tuple[str, str]]],
+        metadata: Optional[list[Tuple[str, str]]],
         service_and_routing_values,
-    ) -> List['grpc.futures.Future']:
+    ) -> list['grpc.futures.Future']:
         (service, routing_values) = service_and_routing_values
         with maybe_start_span('pigeon.async_routed_request', self._peer_service, method_name):
             span = current_span()
@@ -435,8 +435,8 @@ class RoutedClient(Generic[T]):
 def _make_message(
     message_template: Message,
     request_field: str,
-    routing_values: Union[List[Any], Dict[Any, Any]],
-    routing_values_chunk: List[Any],
+    routing_values: Union[list[Any], dict[Any, Any]],
+    routing_values_chunk: list[Any],
 ):
     message = copy.copy(message_template)
     field = getattr(message, request_field)
@@ -474,7 +474,7 @@ class UnaryUnaryRpcCallable(Generic[T, Request, Response]):
         routing_type: Optional[int] = None,
         timeout: Optional[float] = None,
         acceptable_duration_ms: Optional[int] = None,
-        metadata: Optional[List[Tuple[str, str]]] = None,
+        metadata: Optional[list[Tuple[str, str]]] = None,
         retry_policy: Optional[RetryPolicy] = None,
     ) -> Response:
         try_count = 0
@@ -517,7 +517,7 @@ class UnaryUnaryRpcCallable(Generic[T, Request, Response]):
         routing_type: Optional[int] = None,
         timeout: Optional[float] = None,
         acceptable_duration_ms: Optional[int] = None,
-        metadata: Optional[List[Tuple[str, str]]] = None,
+        metadata: Optional[list[Tuple[str, str]]] = None,
         instances_to_skip: int = 0,
     ) -> Response:
         pb2_message = self._to_proto(message)
@@ -613,7 +613,7 @@ class UnaryUnaryRpcCallable(Generic[T, Request, Response]):
         request_field: Optional[str] = None,
         routing_type: Optional[int] = None,
         timeout: Optional[float] = None,
-        metadata: Optional[List[Tuple[str, str]]] = None,
+        metadata: Optional[list[Tuple[str, str]]] = None,
     ) -> 'Future[Response]':
         pb2_message = self._to_proto(message)
 
@@ -660,7 +660,7 @@ class UnaryUnaryRpcCallable(Generic[T, Request, Response]):
 class Future(Generic[Response]):
     service_name: str
     method_name: str
-    futures: List['grpc.futures.Future']
+    futures: list['grpc.futures.Future']
     from_proto: Callable[[Any], Response]
 
     def result(self) -> Response:

@@ -1,13 +1,13 @@
 import gc
 from dataclasses import dataclass, field
 from time import time
-from typing import Dict, List, Optional, Sequence
+from typing import Optional, Sequence
 
 from osprey.worker.lib.instruments import metrics
 from typing_extensions import Literal
 
 PhaseType = Literal['start', 'stop']
-InfoType = Dict[str, int]
+InfoType = dict[str, int]
 
 # these names reflect those collected by ddtrace
 _STAT_PREFIX = 'runtime.python.gc'
@@ -25,7 +25,7 @@ class GCMetrics:
     """
 
     last_gc_start_ms: Optional[int] = None  # TODO: confirm that statd requires integers
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
 
     def configure(self, service_name: str = '', extra_tags: Sequence[str] = ()) -> None:
         self.tags.extend(extra_tags)

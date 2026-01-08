@@ -1,5 +1,5 @@
 import time
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import Any, Optional, Sequence, Union
 from uuid import uuid4
 
 from google.cloud import bigquery
@@ -10,7 +10,7 @@ from osprey.worker.lib.ddtrace_utils import current_span, trace_wrap
 
 AbstractQueryParameterT = Union[bigquery.ScalarQueryParameter, bigquery.ArrayQueryParameter]
 QueryParamsT = Sequence[AbstractQueryParameterT]
-QueryExecutorRetT = List[Dict[str, Any]]
+QueryExecutorRetT = list[dict[str, Any]]
 
 TIMEOUT_MS = 60 * 1000
 TIMEOUT_WAIT_INCREMENT_S = 1

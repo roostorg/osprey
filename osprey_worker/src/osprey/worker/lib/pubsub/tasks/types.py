@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 from typing_extensions import NotRequired, TypedDict
 
@@ -6,8 +6,8 @@ from typing_extensions import NotRequired, TypedDict
 class PubSubTaskMessageData(TypedDict):
     task_name: str
     old_task_name: NotRequired[Optional[str]]
-    task_args: Union[List, Tuple]  # type: ignore[type-arg]
-    task_kwargs: Dict[str, Any]
+    task_args: Union[list, tuple]  # type: ignore[type-arg]
+    task_kwargs: dict[str, Any]
     # The unix timestamps (millis) at which the message was created, even
     # before publishing to pubsub.
     created_at_ms: Optional[int]

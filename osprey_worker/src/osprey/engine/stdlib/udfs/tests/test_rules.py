@@ -1,7 +1,7 @@
 import dataclasses
 import json
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 import pytest
 from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
@@ -37,7 +37,7 @@ class FailingString(UDFBase[ArgumentsBase, str]):
         raise ValueError('intentional failure')
 
 
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_udf_registry(
         UDFRegistry.with_udfs(Entity, Rule, WhenRules, LabelAdd, LabelRemove, TimeDelta, FailingUdf, FailingString)
     ),
@@ -484,10 +484,10 @@ def _sort_entity_mutations(
     return {entity: sorted(mutations, key=sort_key) for entity, mutations in effects.items()}
 
 
-def _to_simple_dict(label_effects: Mapping[EntityT[Any], Sequence[EntityLabelMutation]]) -> Dict[object, object]:
+def _to_simple_dict(label_effects: Mapping[EntityT[Any], Sequence[EntityLabelMutation]]) -> dict[object, object]:
     """Converts effects to bare dicts, so py.test can display them better in failure output!"""
 
-    def entity_mutation_to_dict(mutation: EntityLabelMutation) -> Dict[str, Any]:
+    def entity_mutation_to_dict(mutation: EntityLabelMutation) -> dict[str, Any]:
         # Convert EntityLabelMutation to a comparable dict
         expires_at_timestamp = mutation.expires_at.timestamp() if mutation.expires_at is not None else None
 

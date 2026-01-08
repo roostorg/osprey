@@ -1,5 +1,5 @@
 import json
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable
 
 import pytest
 from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
@@ -9,13 +9,13 @@ from osprey.engine.query_language.udfs.did_mutate_label import DidAddLabel, DidR
 from osprey.engine.stdlib import get_config_registry
 from osprey.engine.udf.registry import UDFRegistry
 
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_validators([ValidateCallKwargs, UniqueStoredNames, get_config_registry().get_validator()]),
     pytest.mark.use_udf_registry(UDFRegistry.with_udfs(DidAddLabel, DidRemoveLabel)),
 ]
 
 
-def source_with_config(source: str) -> Dict[str, str]:
+def source_with_config(source: str) -> dict[str, str]:
     return {'main.sml': source, 'config.yaml': json.dumps({'labels': {'my_label': {'valid_for': ['MyEntity']}}})}
 
 

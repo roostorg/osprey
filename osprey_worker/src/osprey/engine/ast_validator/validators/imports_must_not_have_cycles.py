@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, List, Sequence, Tuple, cast
+from typing import TYPE_CHECKING, Sequence, Tuple, cast
 
 from osprey.engine.ast.ast_utils import filter_nodes
 from osprey.engine.ast.grammar import Call, Source, Span
@@ -33,7 +33,7 @@ class ImportsMustNotHaveCycles(BaseValidator, HasResult[ImportGraphResult]):
     _udf_node_mapping: UDFNodeMapping
     """Cached result of  ValidateCallKwargs"""
 
-    _pairs: Dict[Tuple[Source, Source], Span]
+    _pairs: dict[Tuple[Source, Source], Span]
     """A mapping of XSource imported YSource -> Span, that will be used to build the error message if a cyclic
     dependency is found."""
 
@@ -55,14 +55,14 @@ class ImportsMustNotHaveCycles(BaseValidator, HasResult[ImportGraphResult]):
         except CyclicDependencyError as e:
             # We have our cycle path, and we're going to transform that into a coherent
             # error that can then be displayed to the end user.
-            cycle_path = cast(List[Source], list(e.path))
+            cycle_path = cast(list[Source], list(e.path))
 
             # In order to do that, we need to figure out all the spans we're going to point to
             # in the error message. This means that we need to map the cycle back to the spans
             # which the import happened. The mapping of "x imported y" -> span is maintained in `_pairs` and
             # is built as we're iterating over the sources.
 
-            spans: List[Span] = []
+            spans: list[Span] = []
 
             # So, we're going to loop over the cycle. Assuming we have the sources "foo", "bar" and "baz", and the
             # path is: foo -> bar -> baz, we want to get the spans that show where:

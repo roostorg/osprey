@@ -1,5 +1,5 @@
 from collections import defaultdict, deque
-from typing import DefaultDict, Deque, Dict, Generic, Hashable, Iterator, List, Sequence, Set, TypeVar
+from typing import DefaultDict, Deque, Generic, Hashable, Iterator, Sequence, Set, TypeVar
 
 T = TypeVar('T', bound=Hashable)
 
@@ -30,11 +30,11 @@ class Graph(Generic[T]):
         # A path set - for O(1) lookups of nodes within the path.
         path: Set[T] = set()
         # A path list - to allow us to preserve path ordering for error reporting.
-        sorted_path: List[T] = []
+        sorted_path: list[T] = []
         # A set of node we've visited - to assure this sort is O(N + E) where N = Nodes, E = Edges
         visited: Set[T] = set()
         # The output of sorted nodes.
-        sorted_nodes: List[T] = []
+        sorted_nodes: list[T] = []
 
         def visit(node: T) -> None:
             # Node has already been visited, so we don't need to do anything.
@@ -59,8 +59,8 @@ class Graph(Generic[T]):
 
         return sorted_nodes
 
-    def bfs(self, start: T, end: T) -> List[T]:
-        prev_ptrs: Dict[T, T] = {}
+    def bfs(self, start: T, end: T) -> list[T]:
+        prev_ptrs: dict[T, T] = {}
 
         to_visit: Deque[T] = deque()
         to_visit.append(start)
@@ -73,7 +73,7 @@ class Graph(Generic[T]):
                 prev_ptrs[neighbor] = node
                 to_visit.append(neighbor)
 
-        def construct_path() -> List[T]:
+        def construct_path() -> list[T]:
             path_reversed = []
             curr_node = end
             while curr_node != start:

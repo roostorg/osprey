@@ -4,7 +4,7 @@ import logging
 import math
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
 
 from osprey.engine.query_language import parse_query_to_validated_ast
 from osprey.engine.query_language.ast_druid_translator import DruidQueryTransformer
@@ -39,16 +39,16 @@ class Ordering(str, Enum):
 
 
 class PaginatedScanResult(BaseModel):
-    action_ids: List[int]
+    action_ids: list[int]
     next_page: Optional[str]
 
 
 class EntityFilter(BaseModel):
     id: str
     type: str
-    feature_filters: Optional[List[str]]
+    feature_filters: Optional[list[str]]
 
-    def wrap_filter(self, query_filter: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    def wrap_filter(self, query_filter: Optional[dict[str, Any]]) -> dict[str, Any]:
         feature_to_entity_mapping = ENGINE.instance().get_feature_name_to_entity_type_mapping()
         filters = (
             feature_name
@@ -146,7 +146,7 @@ class BaseDruidQuery(BaseModel, JsonBodyMarshaller):
 
 class TimeseriesDruidQuery(BaseDruidQuery):
     granularity: str
-    aggregation_dimensions: Optional[List[str]] = None
+    aggregation_dimensions: Optional[list[str]] = None
 
     def execute(self) -> Any:
         aggregations = {'count': {'type': 'count'}}
@@ -200,7 +200,7 @@ class DimensionData(BaseModel):
 
 class PeriodData(BaseModel):
     timestamp: datetime
-    result: List[DimensionData]
+    result: list[DimensionData]
 
 
 class DimensionDifference(BaseModel):
@@ -212,13 +212,13 @@ class DimensionDifference(BaseModel):
 
 
 class ComparisonData(BaseModel):
-    differences: List[DimensionDifference]
+    differences: list[DimensionDifference]
 
 
 class TopNPoPResponse(BaseModel):
-    current_period: List[PeriodData]
-    previous_period: List[PeriodData] | None
-    comparison: List[ComparisonData] | None
+    current_period: list[PeriodData]
+    previous_period: list[PeriodData] | None
+    comparison: list[ComparisonData] | None
 
 
 class TopNDruidQuery(BaseDruidQuery):
@@ -258,7 +258,7 @@ class TopNDruidQuery(BaseDruidQuery):
 
         return pop_results
 
-    def _sanitize_results(self, results: List[Dict[str, Any]]) -> List[PeriodData]:
+    def _sanitize_results(self, results: list[dict[str, Any]]) -> list[PeriodData]:
         """
         Sanitizes raw Druid query results into PeriodData objects.
 
@@ -296,7 +296,7 @@ class TopNDruidQuery(BaseDruidQuery):
         return sanitized_results
 
     def _analyze_pop_results(
-        self, current_results: List[PeriodData], previous_results: List[PeriodData]
+        self, current_results: list[PeriodData], previous_results: list[PeriodData]
     ) -> TopNPoPResponse:
         # Extract the list of rows from the first (and only) element of each results list.
         current_data = current_results if current_results else []
@@ -349,7 +349,7 @@ class TopNDruidQuery(BaseDruidQuery):
 
     def _execute_single_period(
         self, start: Optional[datetime] = None, end: Optional[datetime] = None, **kwargs: Any
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         assert self.precision >= 0 and self.precision < 1, (
             'Precision specified was not valid; Must be a float between 0 and 1!'
         )
@@ -368,9 +368,9 @@ class TopNDruidQuery(BaseDruidQuery):
             **kwargs,
         )
 
-    def _get_dimension_parameter(self) -> Union[str, Dict[str, Any]]:
+    def _get_dimension_parameter(self) -> Union[str, dict[str, Any]]:
         dimension_type: Optional[str] = ENGINE.instance().get_feature_name_to_entity_type_mapping().get(self.dimension)
-        dimension_parameter: Union[str, Dict[str, Any]] = self.dimension
+        dimension_parameter: Union[str, dict[str, Any]] = self.dimension
 
         # If dimension is not a float type, return as-is
         if (dimension_type is not None and dimension_type.lower() != 'float') or self.precision == 0:
@@ -413,7 +413,7 @@ class PaginatedScanDruidQuery(BaseDruidQuery):
         self, query_filter_abilities: Sequence[Optional['QueryFilterAbility[Any, Any]']] = ()
     ) -> PaginatedScanResult:
         paginated_limit = self.limit + 1
-        kwargs: Dict[str, Any] = {'resultFormat': 'compactedList'}
+        kwargs: dict[str, Any] = {'resultFormat': 'compactedList'}
 
         if self.next_page:
             date_in_milliseconds = int(base64.b64decode(self.next_page.encode('utf-8')))
@@ -438,7 +438,7 @@ class PaginatedScanDruidQuery(BaseDruidQuery):
         if not results:
             return PaginatedScanResult(action_ids=[], next_page=None)
 
-        events: List[Any] = []
+        events: list[Any] = []
         for result in results:
             events += result['events']
 
@@ -453,7 +453,7 @@ class PaginatedScanDruidQuery(BaseDruidQuery):
         return PaginatedScanResult(action_ids=action_ids, next_page=next_page)
 
 
-def parse_query_filter(query_filter: str) -> Optional[Dict[str, Any]]:
+def parse_query_filter(query_filter: str) -> Optional[dict[str, Any]]:
     if query_filter == '':
         return None
 

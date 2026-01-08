@@ -1,6 +1,6 @@
 from dataclasses import dataclass, replace
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Set, Type, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, Sequence, Set, Type, Union, cast
 
 from osprey.engine.ast import grammar
 from osprey.engine.ast.error_utils import SpanWithHint
@@ -46,7 +46,7 @@ class _TypeAndSpan:
 @add_slots
 @dataclass
 class ValidateStaticTypesResult:
-    name_type_and_span_cache: Dict[str, _TypeAndSpan]
+    name_type_and_span_cache: dict[str, _TypeAndSpan]
     nodes_to_unwrap: Set[int]
 
 
@@ -61,11 +61,11 @@ class _ValidTwoArgTypeTransition:
 _INT_OR_FLOAT_T = cast(type, Union[int, float])
 
 
-class ValidateStaticTypes(SourceValidator, HasInput[Dict[str, _TypeAndSpan]], HasResult[ValidateStaticTypesResult]):
+class ValidateStaticTypes(SourceValidator, HasInput[dict[str, _TypeAndSpan]], HasResult[ValidateStaticTypesResult]):
     def __init__(self, context: 'ValidationContext'):
         super().__init__(context)
         # Get type information passed in from previous runs, used to type check queries.
-        self._name_type_and_span_cache: Dict[str, _TypeAndSpan] = context.get_validator_input(type(self), {})
+        self._name_type_and_span_cache: dict[str, _TypeAndSpan] = context.get_validator_input(type(self), {})
         self._nodes_to_unwrap: Set[int] = set()
         self._checked_sources: Set[grammar.Source] = set()
         self._udf_node_mapping: UDFNodeMapping = context.get_validator_result(ValidateCallKwargs)
@@ -81,7 +81,7 @@ class ValidateStaticTypes(SourceValidator, HasInput[Dict[str, _TypeAndSpan]], Ha
         )
 
     @classmethod
-    def to_post_execution_types(cls, result: ValidateStaticTypesResult) -> Dict[str, _TypeAndSpan]:
+    def to_post_execution_types(cls, result: ValidateStaticTypesResult) -> dict[str, _TypeAndSpan]:
         """Converts a given result with the assumption that we are no longer in the primary rules execution context.
         Useful for type checking queries that run on execution results."""
         types = result.name_type_and_span_cache
@@ -281,7 +281,7 @@ class ValidateStaticTypes(SourceValidator, HasInput[Dict[str, _TypeAndSpan]], Ha
                 list_.span,
                 hint=f'has types {child_type_strs}',
             )
-            return List[Any]
+            return list[Any]
         if len(child_types) == 0:
             # Can be list of any type, it's empty
             # If we're assigning this to a variable, make sure that has an annotation.
@@ -293,12 +293,12 @@ class ValidateStaticTypes(SourceValidator, HasInput[Dict[str, _TypeAndSpan]], Ha
                     ),
                     span=list_.parent.span,
                     hint=(
-                        f'give this variable a type annotation, eg:\n`{list_.parent.target.identifier}: List[str] = []`'
+                        f'give this variable a type annotation, eg:\n`{list_.parent.target.identifier}: list[str] = []`'
                     ),
                 )
-            return List[Any]
+            return list[Any]
         (child_type,) = child_types
-        return List[child_type]  # type: ignore # Doesn't like runtime types like this
+        return list[child_type]  # type: ignore # Doesn't like runtime types like this
 
     def _validate_call(self, call: grammar.Call) -> type:
         udf, arguments = self._udf_node_mapping[id(call)]
@@ -637,7 +637,7 @@ class ValidateStaticTypes(SourceValidator, HasInput[Dict[str, _TypeAndSpan]], Ha
         transitioner: str,
         left: grammar.Expression,
         right: grammar.Expression,
-        valid_type_transitions_by_transitioner: Dict[str, Sequence[_ValidTwoArgTypeTransition]],
+        valid_type_transitions_by_transitioner: dict[str, Sequence[_ValidTwoArgTypeTransition]],
         allow_any: bool,
         valid_transition_hook: Optional[Callable[[type, type], None]] = None,
     ) -> type:
@@ -707,7 +707,7 @@ class ValidateStaticTypes(SourceValidator, HasInput[Dict[str, _TypeAndSpan]], Ha
 
 
 @lru_cache()
-def _get_binary_operation_transitions() -> Dict[str, Sequence[_ValidTwoArgTypeTransition]]:
+def _get_binary_operation_transitions() -> dict[str, Sequence[_ValidTwoArgTypeTransition]]:
     # Both ints yields an int
     int_transition = _ValidTwoArgTypeTransition(valid_left_type=int, valid_right_type=int, resulting_type=int)
     # At least one float yields a float
@@ -745,7 +745,7 @@ def _get_binary_operation_transitions() -> Dict[str, Sequence[_ValidTwoArgTypeTr
 
 
 @lru_cache()
-def _get_binary_comparison_transitions() -> Dict[str, Sequence[_ValidTwoArgTypeTransition]]:
+def _get_binary_comparison_transitions() -> dict[str, Sequence[_ValidTwoArgTypeTransition]]:
     any_to_bool_transition = _ValidTwoArgTypeTransition(
         valid_left_type=AnyType, valid_right_type=AnyType, resulting_type=bool
     )
@@ -756,7 +756,7 @@ def _get_binary_comparison_transitions() -> Dict[str, Sequence[_ValidTwoArgTypeT
     in_transitions = [
         _ValidTwoArgTypeTransition(valid_left_type=str, valid_right_type=str, resulting_type=bool),
         _ValidTwoArgTypeTransition(
-            valid_left_type=AnyType, valid_right_type=cast(type, List[Any]), resulting_type=bool
+            valid_left_type=AnyType, valid_right_type=cast(type, list[Any]), resulting_type=bool
         ),
     ]
 

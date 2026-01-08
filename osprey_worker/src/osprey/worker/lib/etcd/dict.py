@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 import json
 from multiprocessing import RLock
-from typing import Callable, Dict, List, Mapping, MutableMapping, Optional, TypeVar
+from typing import Callable, Mapping, MutableMapping, Optional, TypeVar
 
 import gevent
 from osprey.worker.lib import etcd
@@ -11,7 +11,7 @@ from osprey.worker.lib import etcd
 # Use the magic MYPY variable to get around this: https://mypy.readthedocs.io/en/stable/common_issues.html#import-cycles
 MYPY = False
 if MYPY:
-    from typing import Callable, Dict, List, Optional
+    from typing import Callable, Optional
 
 K = TypeVar('K')
 V = TypeVar('V')
@@ -26,9 +26,9 @@ class ReadOnlyEtcdDict(Mapping[K, V]):
         self._watcher = None
         self._watcher_greenlet: Optional[gevent.Greenlet] = None
         self._serializer = serializer
-        self._internal_dict: Dict[str, str] = {}
+        self._internal_dict: dict[str, str] = {}
         self._load_lock = RLock()
-        self._watchers: List[Callable[[Dict[str, str]], None]] = []
+        self._watchers: list[Callable[[dict[str, str]], None]] = []
 
         if not lazy:
             self._load()
@@ -104,7 +104,7 @@ class ReadOnlyEtcdDict(Mapping[K, V]):
         for watcher in self._watchers:
             watcher(self._dict)
 
-    def add_watcher(self, watcher: Callable[[Dict[str, str]], None]):
+    def add_watcher(self, watcher: Callable[[dict[str, str]], None]):
         self._watchers.append(watcher)
 
     def __len__(self):
@@ -142,7 +142,7 @@ class EtcdDict(ReadOnlyEtcdDict[K, V], MutableMapping[K, V]):
     def clear(self):
         self._cas_atomic_update(lambda _: {})
 
-    def replace_with(self, new_dict: Dict[str, str]):
+    def replace_with(self, new_dict: dict[str, str]):
         assert isinstance(new_dict, dict)
         self._cas_atomic_update(lambda _: new_dict)
 
