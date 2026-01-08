@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Set
+from typing import Any
 
 import typing_inspect
 from flask import Blueprint
@@ -22,13 +22,13 @@ class UIConfigMerged(UIConfig):
     """Contains everything in the base ui config, as well as additional fields that are relevant
     to configuring the UI"""
 
-    feature_name_to_entity_type_mapping: Dict[str, str]
-    feature_name_to_value_type_mapping: Dict[str, str]
-    label_info_mapping: Dict[str, LabelInfo]
-    known_feature_locations: List[FeatureLocation]
-    known_action_names: Set[str]
+    feature_name_to_entity_type_mapping: dict[str, str]
+    feature_name_to_value_type_mapping: dict[str, str]
+    label_info_mapping: dict[str, LabelInfo]
+    known_feature_locations: list[FeatureLocation]
+    known_action_names: set[str]
     current_user: User
-    rule_info_mapping: Dict[str, str]
+    rule_info_mapping: dict[str, str]
 
 
 _SIMPLE_TYPE_CONVERTIBLE = {str, int, bool, float}
@@ -59,7 +59,7 @@ def _serialize_type_for_ui(t: type) -> str:
     raise AssertionError(f"Don't know how to serialize {to_display_str(t)}")
 
 
-def _get_feature_name_to_value_type_mapping(engine: OspreyEngine) -> Dict[str, str]:
+def _get_feature_name_to_value_type_mapping(engine: OspreyEngine) -> dict[str, str]:
     return {
         name: _serialize_type_for_ui(t)
         for name, t in engine.get_post_execution_feature_name_to_value_type_mapping().items()
