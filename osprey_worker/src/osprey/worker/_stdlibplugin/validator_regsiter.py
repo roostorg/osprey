@@ -12,6 +12,7 @@ from osprey.engine.ast_validator.validators.validate_dynamic_calls_have_annotate
     ValidateDynamicCallsHaveAnnotatedRValue,
 )
 from osprey.engine.ast_validator.validators.validate_experiments import ValidateExperiments
+from osprey.engine.ast_validator.validators.validate_extractable_feature_types import ValidateExtractableFeatureTypes
 from osprey.engine.ast_validator.validators.validate_labels import ValidateLabels
 from osprey.engine.ast_validator.validators.validate_static_types import ValidateStaticTypes
 from osprey.engine.ast_validator.validators.variables_must_be_defined import VariablesMustBeDefined
@@ -33,4 +34,5 @@ def register_ast_validators() -> Sequence[Type[BaseValidator]]:
         UniqueStoredNames,
         VariablesMustBeDefined,
         ValidateDynamicCallsHaveAnnotatedRValue,
+        ValidateExtractableFeatureTypes,
     ]
