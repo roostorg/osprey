@@ -73,10 +73,17 @@ def bootstrap_output_sinks(config: Config) -> BaseOutputSink:
     load_all_osprey_plugins()
     sinks = flatten(plugin_manager.hook.register_output_sinks(config=config))
 
-    # Label udfs should only be registered if the labels provider is available
+    # Label output sink should only be added if the labels provider is available
     labels_provider = LABELS_PROVIDER.instance()
     if labels_provider:
-        sinks.append(LabelOutputSink(labels_provider))
+        # Check if a custom label output sink is provided by plugins
+        custom_label_sink = plugin_manager.hook.register_label_output_sink(
+            config=config, labels_provider=labels_provider
+        )
+        if custom_label_sink:
+            sinks.append(custom_label_sink)
+        else:
+            sinks.append(LabelOutputSink(labels_provider))
 
     return MultiOutputSink(sinks)
 

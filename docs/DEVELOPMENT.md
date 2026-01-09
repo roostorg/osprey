@@ -155,7 +155,7 @@ def register_ast_validators() -> None:
 Rules are written in SML, some examples are provided in `example_rules/` with YAML config, the rules are mounted to the worker processes when the containers start via environment variables. ex:
 
 ```bash
-OSPREY_RULES=./example_rules uv run python3.11 osprey_worker/src/osprey/worker/sinks/cli.py run-rules-sink
+OSPREY_RULES=./example_rules uv run python3.11 osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink
 ```
 
 #### Test Data
@@ -413,7 +413,7 @@ uv sync
 
 ## Next Steps
 
-- Check the [contributing guidelines](./docs/CONTRIBUTING.md) for project-specific rules
+- Check the [contributing guidelines](https://github.com/roostorg/.github/blob/main/CONTRIBUTING.md) for project-specific rules
 - Explore the codebase structure in `osprey_worker/`, `osprey_common/`, and `osprey_rpc/`
 
 ## IDE Setup Recommendations

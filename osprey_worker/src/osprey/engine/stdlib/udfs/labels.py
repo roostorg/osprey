@@ -239,6 +239,15 @@ class HasLabel(
             desired_status=self.desired_status,
         )
 
+    def get_batch_routing_key(self, arguments: BatchableHasLabelArguments) -> str:
+        """
+        Returns routing key based on entity to ensure same-entity labels are batched together.
+
+        This ensures that execute_batch() always receives arguments for a single unique entity,
+        avoiding the NotImplementedError for multiple entities.
+        """
+        return arguments.entity.type + '/' + str(arguments.entity.id)
+
     def execute_batch(
         self,
         execution_context: ExecutionContext,
