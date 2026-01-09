@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional, Type
+from typing import Optional, Type
 
 from flask import Request
 from osprey.engine.language_types.entities import EntityT
@@ -36,4 +36,4 @@ class EntityLabelMutation(BaseModel):
 
 class ManualEntityLabelMutationRequest(BaseModel, EntityMarshaller):
     entity: EntityT[str]
-    mutations: List[EntityLabelMutation]
+    mutations: list[EntityLabelMutation]

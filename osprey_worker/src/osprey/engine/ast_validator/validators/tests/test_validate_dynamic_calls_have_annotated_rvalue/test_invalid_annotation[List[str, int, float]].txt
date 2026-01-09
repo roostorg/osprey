@@ -1,4 +1,4 @@
-error: unexpected additional variants to `List[...]`
+error: unexpected additional variants to `list[...]`
 --> main.sml:1:15
      |
    1 | Foo: List[str, int, float] = JsonData(path='$.foo')

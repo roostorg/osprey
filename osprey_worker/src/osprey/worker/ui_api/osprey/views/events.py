@@ -2,7 +2,7 @@ import csv
 import logging
 import tempfile
 from http.client import NOT_FOUND
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Optional, Set
 
 from flask import Blueprint, Response, abort, jsonify
 from osprey.worker.lib.storage.stored_execution_result import (
@@ -110,7 +110,7 @@ def timeseries_query(request_model: TimeseriesDruidQuery) -> Any:
 
 
 class ScanQueryResult(BaseModel):
-    events: List[Dict[str, object]]
+    events: list[dict[str, object]]
     next_page: Optional[str]
 
     class Config:
@@ -151,7 +151,7 @@ def topn_query_csv(topn_druid_query: TopNDruidQuery) -> Any:
 
     topn_results: TopNPoPResponse = topn_druid_query.execute()
 
-    topn_rows: List[Any] = []
+    topn_rows: list[Any] = []
     fieldnames = [
         topn_druid_query.dimension,
         'current_count',
@@ -186,7 +186,7 @@ def topn_query_csv(topn_druid_query: TopNDruidQuery) -> Any:
     # now, regardless of whether we have a comparison or not, we want to include any remaining results that
     # have not been included yet. i.e. a comparison query may have some results that do not have diffs.
     for current_period in topn_results.current_period:
-        result: List[DimensionData] = current_period.result
+        result: list[DimensionData] = current_period.result
         for current_result in result:
             # this is not a beautiful solution, but it should work to snag the dimensions
             # for non-pop based on how we sanitize the results into DimensionData models

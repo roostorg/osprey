@@ -8,7 +8,7 @@ import os
 import random
 import socket
 from email.message import Message
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import gevent
 import six
@@ -273,7 +273,7 @@ class EtcdClient(object):
         :type directory: bool
         :rtype: EtcdEvent
         """
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if ttl is not None:
             params['ttl'] = ttl
             if value is not None:
@@ -349,7 +349,7 @@ class EtcdClient(object):
         :type directory: bool
         :rtype: EtcdEvent
         """
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if prev_exist is not None:
             params['prevExist'] = prev_exist
         if ttl:
@@ -408,7 +408,7 @@ class EtcdClient(object):
         :type recursive: bool
         :rtype: EtcdEvent
         """
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if prev_value is not None:
             params['prevValue'] = prev_value
         if prev_index is not None:
@@ -548,7 +548,7 @@ def walk_etcd_tree(
         List of results from action_fn for all matching nodes
     """
     etcd_client = EtcdClient()
-    results: List[Any] = []
+    results: list[Any] = []
 
     if max_depth is not None and _current_depth > max_depth:
         return results

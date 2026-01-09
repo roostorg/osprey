@@ -1,5 +1,5 @@
 import enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from osprey.worker.lib.snowflake import Snowflake, generate_snowflake
 from sqlalchemy import ARRAY, BigInteger, Column, Text, select
@@ -50,7 +50,7 @@ class Query(Model):
             return session.query(cls).filter(cls.id == query_id).limit(1).first()
 
     @classmethod
-    def get_all(cls, before: Optional[int] = None, limit: int = 100) -> List['Query']:
+    def get_all(cls, before: Optional[int] = None, limit: int = 100) -> list['Query']:
         table = cls.__table__
         query = table.select().limit(limit).order_by(table.c.id.desc())
 
@@ -61,7 +61,7 @@ class Query(Model):
             return [cls(**result) for result in session.execute(query)]
 
     @classmethod
-    def get_all_for_user(cls, user_email: str, before: Optional[int] = None, limit: int = 100) -> List['Query']:
+    def get_all_for_user(cls, user_email: str, before: Optional[int] = None, limit: int = 100) -> list['Query']:
         table = cls.__table__
         query = table.select().where(table.c.executed_by == user_email).limit(limit).order_by(table.c.id.desc())
 
@@ -72,7 +72,7 @@ class Query(Model):
             return session.query(cls).from_statement(query).all()
 
     @classmethod
-    def get_all_user_emails(cls) -> List[str]:
+    def get_all_user_emails(cls) -> list[str]:
         table = cls.__table__
 
         with scoped_session() as session:
@@ -80,7 +80,7 @@ class Query(Model):
             return [user_email[0] for user_email in emails]
 
     @classmethod
-    def get_all_for_saved_query(cls, query_id: int, limit: int = 10) -> List['Query']:
+    def get_all_for_saved_query(cls, query_id: int, limit: int = 10) -> list['Query']:
         table = cls.__table__
 
         queries_cte = select([table]).where(table.c.id == query_id).cte(recursive=True, name='queries_cte')
@@ -99,7 +99,7 @@ class Query(Model):
             self.id = generate_snowflake().to_int()
             session.add(self)
 
-    def serialize(self) -> Dict[str, Any]:
+    def serialize(self) -> dict[str, Any]:
         assert self.sort_order is not None
         assert self.id is not None
         return {
@@ -155,7 +155,7 @@ class SavedQuery(Model):
             return session.query(SavedQuery).options(selectinload(SavedQuery.query)).from_statement(query).all()
 
     @classmethod
-    def get_all_for_user(cls, user_email: str, before: Optional[int] = None, limit: int = 100) -> List['Query']:
+    def get_all_for_user(cls, user_email: str, before: Optional[int] = None, limit: int = 100) -> list['Query']:
         table = cls.__table__
         query = table.select().where(table.c.saved_by == user_email).limit(limit).order_by(table.c.id.desc())
 
@@ -166,7 +166,7 @@ class SavedQuery(Model):
             return session.query(cls).from_statement(query).all()
 
     @classmethod
-    def get_all_user_emails(cls) -> List[str]:
+    def get_all_user_emails(cls) -> list[str]:
         table = cls.__table__
 
         with scoped_session() as session:
@@ -199,7 +199,7 @@ class SavedQuery(Model):
         with scoped_session(commit=True) as session:
             session.delete(self)
 
-    def serialize(self) -> Dict[str, Any]:
+    def serialize(self) -> dict[str, Any]:
         assert self.id is not None
         return {
             'id': str(self.id),

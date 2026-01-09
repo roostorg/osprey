@@ -1,7 +1,7 @@
 import abc
 import logging
 from concurrent.futures import ProcessPoolExecutor
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import gevent
 
@@ -31,7 +31,7 @@ class PooledSink(BaseSink):
     def __init__(self, factory: Callable[[], BaseSink], num_workers: int):
         self._num_workers = num_workers
         self._factory = factory
-        self._children_sinks: List[BaseSink] = []  # set, never append
+        self._children_sinks: list[BaseSink] = []  # set, never append
 
     def run(self) -> None:
         self._children_sinks = [self._factory() for _ in range(self._num_workers)]
@@ -57,7 +57,7 @@ class ProcessPoolSink(BaseSink):
         self,
         factory: Callable[..., BaseSink],
         num_workers: int,
-        args: Optional[Dict[str, Any]] = None,
+        args: Optional[dict[str, Any]] = None,
     ):
         self._num_workers = num_workers
         self._factory = factory
@@ -80,7 +80,7 @@ class ProcessPoolSink(BaseSink):
                 self._executor = None
 
     @staticmethod
-    def _run_sink(factory: Callable[..., BaseSink], args: Dict[str, Any]) -> None:
+    def _run_sink(factory: Callable[..., BaseSink], args: dict[str, Any]) -> None:
         try:
             sink = factory(**args)  # Instantiate the sink within the worker
             sink.run()

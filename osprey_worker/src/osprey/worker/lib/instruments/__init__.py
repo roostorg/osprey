@@ -4,7 +4,7 @@ import contextlib
 import os
 import re
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Pattern, Sequence, Type, Union
+from typing import TYPE_CHECKING, Any, Optional, Pattern, Sequence, Type, Union
 
 from datadog.dogstatsd.base import DogStatsd
 
@@ -56,7 +56,7 @@ class _DogStatsd(DogStatsd):
         host: str = 'localhost',
         port: int = 8125,
         max_buffer_size: int = 50,
-        constant_tags: Optional[List[str]] = None,
+        constant_tags: Optional[list[str]] = None,
         use_ms: bool = False,
     ):
         # If not None, this will override host/port
@@ -93,7 +93,7 @@ class _DogStatsd(DogStatsd):
         metric: str,
         metric_type: str,
         value: float,
-        tags: Optional[Union[Dict[str, str], List[str]]],
+        tags: Optional[Union[dict[str, str], list[str]]],
         sample_rate: Optional[float],
         timestamp: Optional[int] = None,
     ) -> None:
@@ -111,7 +111,7 @@ class _DogStatsd(DogStatsd):
         self,
         metric: str,
         value: float = 1,
-        tags: Optional[Union[Dict[str, str], List[str]]] = None,
+        tags: Optional[Union[dict[str, str], list[str]]] = None,
         sample_rate: Optional[float] = None,
     ) -> None:
         """
@@ -128,7 +128,7 @@ class _DogStatsd(DogStatsd):
         self,
         metric: str,
         value: float = 1,
-        tags: Optional[Union[Dict[str, str], List[str]]] = None,
+        tags: Optional[Union[dict[str, str], list[str]]] = None,
         sample_rate: Optional[float] = None,
     ) -> None:
         """
@@ -144,7 +144,7 @@ class _DogStatsd(DogStatsd):
         self,
         metric: str,
         value: float,
-        tags: Optional[Union[Dict[str, str], List[str]]] = None,
+        tags: Optional[Union[dict[str, str], list[str]]] = None,
         sample_rate: Optional[float] = None,
     ) -> None:
         """
@@ -162,7 +162,7 @@ class _DogStatsd(DogStatsd):
         self,
         metric: str,
         value: float,
-        tags: Optional[Union[Dict[str, str], List[str]]] = None,
+        tags: Optional[Union[dict[str, str], list[str]]] = None,
         sample_rate: Optional[float] = None,
     ) -> None:
         super().timing(metric, value, self._transform_tags(tags), sample_rate)
@@ -176,7 +176,7 @@ class _DogStatsd(DogStatsd):
         source_type_name: Any = None,
         date_happened: Any = None,
         priority: Any = None,
-        tags: Optional[List[str]] = None,
+        tags: Optional[list[str]] = None,
         hostname: Optional[str] = None,
     ) -> None:
         """
@@ -195,7 +195,7 @@ class _DogStatsd(DogStatsd):
         )
 
     @staticmethod
-    def _transform_tags(tags: Optional[Union[Dict[str, str], List[str]]] = None) -> Optional[List[str]]:
+    def _transform_tags(tags: Optional[Union[dict[str, str], list[str]]] = None) -> Optional[list[str]]:
         if tags is None:
             return None
         if isinstance(tags, dict):
@@ -212,7 +212,7 @@ class concurrency(contextlib.ContextDecorator):
     NOTE: If this is used on a recursive function, the metrics will likely be garbage
     """
 
-    def __init__(self, metric_name: str, metric_tags: Optional[List[str]] = None):
+    def __init__(self, metric_name: str, metric_tags: Optional[list[str]] = None):
         self.metric_name = metric_name
         self.metric_tags = metric_tags
         self._count = 0

@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from osprey.worker.ui_api.osprey.lib.abilities import Ability
 from pydantic import BaseModel
@@ -15,8 +15,8 @@ DEV_ACL_ASSIGNMENTS_FILE = DIR / 'dev_acl_assignments.json'
 
 
 class ACL(BaseModel):
-    _acls: Dict[str, List[Ability[Any, Any]]] = {}
-    _ability_groups: Dict[str, List[Ability[Any, Any]]] = {}
+    _acls: dict[str, list[Ability[Any, Any]]] = {}
+    _ability_groups: dict[str, list[Ability[Any, Any]]] = {}
 
     @classmethod
     def _load(cls) -> None:
@@ -47,14 +47,14 @@ class ACL(BaseModel):
                     cls._acls[acl_name] = abilities
 
     @classmethod
-    def get_one(cls, name: str) -> List[Ability[Any, Any]]:
+    def get_one(cls, name: str) -> list[Ability[Any, Any]]:
         abilities = cls._acls.get(name)
         if abilities is None:
             logger.warning(f'ACL `{name}` not found.')
         return abilities if abilities else []
 
     @classmethod
-    def get_roles(cls) -> List[str]:
+    def get_roles(cls) -> list[str]:
         return list(cls._acls.keys())
 
 

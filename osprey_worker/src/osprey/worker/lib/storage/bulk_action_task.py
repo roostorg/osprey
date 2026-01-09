@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import logging
 from datetime import datetime, timezone
 from enum import StrEnum
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from sqlalchemy import ARRAY, BigInteger, Column, DateTime, Enum, Integer, Text
 
@@ -107,12 +107,12 @@ class BulkActionJob(Model):
             return session.query(cls).filter(cls.id == job_id).first()
 
     @classmethod
-    def get_all(cls) -> List['BulkActionJob']:
+    def get_all(cls) -> list['BulkActionJob']:
         with scoped_session() as session:
             return session.query(cls).all()
 
     @classmethod
-    def get_all_jobs_by_status(cls, status: BulkActionJobStatus) -> List['BulkActionJob']:
+    def get_all_jobs_by_status(cls, status: BulkActionJobStatus) -> list['BulkActionJob']:
         with scoped_session() as session:
             return session.query(cls).filter(cls.status == status).all()
 
@@ -142,11 +142,11 @@ class BulkActionJob(Model):
 
             session.merge(self)
 
-    def get_all_tasks(self) -> List['BulkActionTask']:
+    def get_all_tasks(self) -> list['BulkActionTask']:
         with scoped_session() as session:
             return session.query(BulkActionTask).filter(BulkActionTask.job_id == self.id).all()
 
-    def serialize(self) -> Dict[str, Any]:
+    def serialize(self) -> dict[str, Any]:
         return {
             'id': str(self.id),
             'status': self.status,
@@ -191,7 +191,7 @@ class BulkActionTask(Model):
             return session.query(cls).filter(cls.id == task_id).first()
 
     @classmethod
-    def get_all_by_job_id_for_status(cls, job_id: int, status: BulkActionTaskStatus) -> List['BulkActionTask']:
+    def get_all_by_job_id_for_status(cls, job_id: int, status: BulkActionTaskStatus) -> list['BulkActionTask']:
         with scoped_session() as session:
             return session.query(cls).filter(cls.job_id == job_id, cls.status == status).all()
 

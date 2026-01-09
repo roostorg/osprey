@@ -1,7 +1,7 @@
 import abc
 import json
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Sequence, Type
+from typing import Any, Optional, Sequence, Type
 
 import gevent
 import gevent.event
@@ -26,7 +26,7 @@ class RecordingArguments(ArgumentsBase):
 class RecordingUdf(UDFBase[RecordingArguments, str], metaclass=abc.ABCMeta):
     @classmethod
     @abc.abstractmethod
-    def order_called(cls) -> List[str]:
+    def order_called(cls) -> list[str]:
         pass
 
     def execute(self, execution_context: ExecutionContext, arguments: RecordingArguments) -> str:
@@ -37,10 +37,10 @@ class RecordingUdf(UDFBase[RecordingArguments, str], metaclass=abc.ABCMeta):
 @pytest.fixture()
 def recording_udf(udf_registry: UDFRegistry) -> Type[RecordingUdf]:
     class RecordingUdfImpl(RecordingUdf):
-        _order_called: List[str] = []
+        _order_called: list[str] = []
 
         @classmethod
-        def order_called(cls) -> List[str]:
+        def order_called(cls) -> list[str]:
             return cls._order_called
 
     RecordingUdfImpl.__name__ = 'RecordingUdf'
@@ -51,7 +51,7 @@ def recording_udf(udf_registry: UDFRegistry) -> Type[RecordingUdf]:
 class BatchRecordingUdf(BatchableUDFBase[RecordingArguments, str, RecordingArguments], metaclass=abc.ABCMeta):
     @classmethod
     @abc.abstractmethod
-    def order_called(cls) -> List[List[str]]:
+    def order_called(cls) -> list[list[str]]:
         pass
 
     def execute(self, execution_context: ExecutionContext, arguments: RecordingArguments) -> str:
@@ -76,10 +76,10 @@ class BatchRecordingUdf(BatchableUDFBase[RecordingArguments, str, RecordingArgum
 @pytest.fixture()
 def batch_recording_udf(udf_registry: UDFRegistry) -> Type[BatchRecordingUdf]:
     class BatchRecordingUdfImpl(BatchRecordingUdf):
-        _order_called: List[List[str]] = []
+        _order_called: list[list[str]] = []
 
         @classmethod
-        def order_called(cls) -> List[List[str]]:
+        def order_called(cls) -> list[list[str]]:
             return cls._order_called
 
     BatchRecordingUdfImpl.__name__ = 'BatchRecordingUdf'
@@ -95,12 +95,12 @@ class BlockingArguments(ArgumentsBase):
 class BlockingUdf(UDFBase[BlockingArguments, str]):
     @classmethod
     @abc.abstractmethod
-    def order_called(cls) -> List[str]:
+    def order_called(cls) -> list[str]:
         pass
 
     @classmethod
     @abc.abstractmethod
-    def blocking(cls) -> Dict['BlockingUdf', 'gevent.Greenlet[object]']:
+    def blocking(cls) -> dict['BlockingUdf', 'gevent.Greenlet[object]']:
         pass
 
     @classmethod
@@ -128,18 +128,18 @@ class BlockingUdf(UDFBase[BlockingArguments, str]):
 @pytest.fixture()
 def blocking_udf(udf_registry: UDFRegistry) -> Type[BlockingUdf]:
     class BlockingUdfImpl(BlockingUdf):
-        _order_called: List[str] = []
-        _blocking: Dict['BlockingUdf', 'gevent.Greenlet[object]'] = {}
+        _order_called: list[str] = []
+        _blocking: dict['BlockingUdf', 'gevent.Greenlet[object]'] = {}
 
         # Put this here (not in base) so it's reset for each test.
         execute_async = True
 
         @classmethod
-        def order_called(cls) -> List[str]:
+        def order_called(cls) -> list[str]:
             return cls._order_called
 
         @classmethod
-        def blocking(cls) -> Dict['BlockingUdf', 'gevent.Greenlet[object]']:
+        def blocking(cls) -> dict['BlockingUdf', 'gevent.Greenlet[object]']:
             return cls._blocking
 
     BlockingUdfImpl.__name__ = 'BlockingUdf'
@@ -168,7 +168,7 @@ class BatchFailingUdf(BatchableUDFBase[BatchFailingUdfArgs, int, BatchFailingUdf
 
     @classmethod
     @abc.abstractmethod
-    def order_called(cls) -> List[List[int]]:
+    def order_called(cls) -> list[list[int]]:
         pass
 
     def execute(self, execution_context: ExecutionContext, arguments: BatchFailingUdfArgs) -> int:
@@ -188,10 +188,10 @@ class BatchFailingUdf(BatchableUDFBase[BatchFailingUdfArgs, int, BatchFailingUdf
 @pytest.fixture()
 def batch_failing_udf(udf_registry: UDFRegistry) -> Type[BatchFailingUdf]:
     class BatchFailingUdfImpl(BatchFailingUdf):
-        _order_called: List[List[int]] = []
+        _order_called: list[list[int]] = []
 
         @classmethod
-        def order_called(cls) -> List[List[int]]:
+        def order_called(cls) -> list[list[int]]:
             return cls._order_called
 
     BatchFailingUdfImpl.__name__ = 'BatchFailingUdf'
