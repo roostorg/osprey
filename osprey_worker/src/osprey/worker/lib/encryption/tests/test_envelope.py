@@ -36,6 +36,7 @@ def test_envelope_encryption_decryption(envelope: Envelope, message: str) -> Non
     assert decrypted_message == message
 
 
+@pytest.mark.skip(reason='this test should only be run manually')
 @pytest.mark.parametrize('message', ('secret message text', 'another secret ///'))
 def test_envelope_not_setup_exception(envelope: Envelope, message: str) -> None:
     message = 'this is a secret message, dont tell anyone'

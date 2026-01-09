@@ -1,6 +1,6 @@
 # ROOST - Osprey
 
-<img width="200" height="64" alt="Copy of ROOST-Mark-Yellow" src="/images/ROOST-Horizontal-Yellow .png" />
+<img width="200" height="64" alt="Copy of ROOST-Mark-Yellow" src="/images/ROOST-Horizontal-Yellow.png" />
 
 # Welcome to Osprey
 
@@ -11,7 +11,7 @@
 
 This repository is home to one of ROOST’s safety tools, the Osprey rules engine. Osprey is an open-source event stream decisions engine and analysis UI designed to investigate and take automatic action on events and their properties as they happen in real-time. Originally developed internally at [Discord](https://discord.com/) to combat spam, abuse, botting, and scripting across its platform, Osprey has now been open-sourced to help other platforms facing similar challenges.
 
-Osprey is a library for processing actions through human written rules and outputting labels, webhooks back to an API and other sinks. It evaluates events using structured logic (SML), user-defined functions (UDFs), and external signals to assign labels, verdicts, and actions.
+Osprey is a library for processing actions through human-written rules and outputting verdicts & custom effects back to configurable output sinks. It evaluates events using structured rule logic (SML) that is extendable via user-defined functions (UDFs). Osprey can also track state across events by labelling entities if implementers provide a labels service backend (see [labels_service.py](./example_plugins/src/services/labels_service.py) for a Postgres-backed labels service example)
 
 This 'Rules \+ Investigation' tool is able to:
 
@@ -83,6 +83,7 @@ _ROOST (Robust Open Online Safety Tools), a non-profit organization that brings 
    ```bash
    # Test linting
    uv run ruff check
+   uv run mypy .
 
    # Test formatting
    uv run ruff format --diff
@@ -91,9 +92,25 @@ _ROOST (Robust Open Online Safety Tools), a non-profit organization that brings 
    uv run pre-commit run --all-files
 
 5. **Start Services:**
+
    ```bash
    docker compose up -d
    ```
+
+   or using the wrapper script
+
+   ```bash
+   ./start.sh
+   ```
+
+   this starts the osprey-worker on its own along with all its required dependencies.
+
+   alternatively, you can start Osprey with `osprey-coordinator`, refer to the [Coordinator README](./example_docker_compose/run_osprey_with_coordinator/README.md) for more information
+
+6. (Optional) **Port Forward the UI/UI API:**
+
+   If you are running the docker compose on a headless machine, you will need to port forward the UI and UI API.
+   Namely, ports `5002` (UI) and `5004` (UI API). Then, you can connect via http://localhost:5002/ :D
 
 
 ### Development Workflow

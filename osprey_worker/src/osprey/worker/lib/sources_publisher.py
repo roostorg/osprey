@@ -52,11 +52,13 @@ def validate_and_push(
 
     Returns False if rules failed validation, True otherwise.
     """
+    # bootstrap validators before instance_with_additional_validators copies the validator registry
+    udf_registry, _ = bootstrap_udfs()
+    bootstrap_ast_validators()
+
     lib_validator_registry = ValidatorRegistry.instance_with_additional_validators(
         get_config_registry().get_validator()
     )
-    udf_registry, _ = bootstrap_udfs()
-    bootstrap_ast_validators()
 
     try:
         validated_sources = validate_sources(
@@ -102,11 +104,13 @@ def upload_dependencies_mapping(
     suppress_warnings: bool = False,
 ) -> bool:
     """Create a mapping of Osprey Rules/UDFs/variables to their dependencies and upload to BigQuery."""
+    # bootstrap validators before instance_with_additional_validators copies the validator registry
+    udf_registry, _ = bootstrap_udfs()
+    bootstrap_ast_validators()
+
     lib_validator_registry = ValidatorRegistry.instance_with_additional_validators(
         get_config_registry().get_validator()
     )
-    udf_registry, _ = bootstrap_udfs()
-    bootstrap_ast_validators()
 
     try:
         validated_sources = validate_sources(

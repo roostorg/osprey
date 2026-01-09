@@ -1,0 +1,180 @@
+syntax = "proto3";
+
+package osprey.rpc.actions.v1;
+
+
+import "osprey/rpc/actions/v1/action_types.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+message Action {
+  // Snowflake id of action message
+  // Currently actions from discord_authentication use a pseudo snowflake to reduce dependencies.
+  fixed64 id = 1;
+
+  // This oneof denotes the type of action this message is.
+  // Each field name in this this oneof should match the name of an action that Osprey expects.
+  oneof data {
+    AuthSessionCreated auth_session_created = 2;
+    AuthSessionModified auth_session_modified = 3;
+    UserFlinkApplicationScored user_flink_application_scored = 4;
+    GuildFlinkApplicationScored guild_flink_application_scored = 5;
+    GuildCreated guild_created = 6;
+    UserBatchMLScore user_batch_ml_score = 7;
+    UserBlocked user_blocked = 8;
+    GuildJoined guild_joined = 9;
+    OspreyAutoClusteringUser osprey_auto_clustering_user = 10;
+    OspreyAutoClusteringKey osprey_auto_clustering_key = 11;
+    HashMatcherIconMatched hash_matcher_icon_matched = 12;
+    SafetyVisualPrediction safety_visual_prediction = 13;
+  }
+}
+
+message AuthSessionCreated {
+  UserAuth user = 1;
+  UserSession user_session = 2;
+}
+
+message AuthSessionModified {
+  UserAuth user = 1;
+  UserSession user_session = 2;
+}
+
+message UserFlinkApplicationScored {
+  google.protobuf.Timestamp timestamp = 1;
+  google.protobuf.UInt64Value source_event_id = 2;
+  google.protobuf.Timestamp source_event_timestamp = 3;
+  UserFlink user = 4;
+  string application_name = 5;
+  string application_version = 6;
+  double score = 7;
+}
+
+message GuildFlinkApplicationScored {
+  google.protobuf.Timestamp timestamp = 1;
+  google.protobuf.UInt64Value source_event_id = 2;
+  google.protobuf.Timestamp source_event_timestamp = 3;
+  uint64 guild_id = 4;
+  string application_name = 5;
+  string application_version = 6;
+  double score = 7;
+}
+
+message OrchestrationJob {
+  string tool_name = 1; // Orchestration tool used (e.g., 'airflow', 'argo', 'dagster')
+  string job_id = 2; // Orchestration tool unique job id (e.g., Airflow run_id, Argo workflow ID, Dagster run ID)
+}
+
+message UserBatchMLScore {
+  google.protobuf.Timestamp timestamp = 1;
+  UserBatchML user = 2;
+  OrchestrationJob orchestration_job = 3;
+  string application_name = 4;
+  string application_version = 5;
+  double score = 6;
+  BatchMLCluster cluster = 7;
+  BatchMLSourceEvent source_event = 8;
+}
+
+message OspreyAutoClusteringUser {
+  google.protobuf.Timestamp timestamp = 1;
+  uint64 user_id = 2;
+  string pipeline_name = 3;
+  string cluster_id = 4;
+}
+
+message OspreyAutoClusteringKey {
+  google.protobuf.Timestamp timestamp = 1;
+  string key = 2;
+  string value = 3;
+  string pipeline_name = 4;
+  string cluster_id = 5;
+  uint64 cluster_size = 6;
+  string entity_type = 7;
+}
+
+message HashMatcherIconMatched {
+  google.protobuf.Timestamp timestamp = 1;
+  string content_id = 2;
+  string hash_algorithm = 3;
+  double distance = 4;
+  string seed_id = 5;
+  string qdrant_collection_name = 6;
+  string md5 = 7;
+  string policy = 8;
+  string seed_gcs_uri = 9;
+  uint64 guild_id = 10;
+  string seed_metadata = 11;
+  UserHashMatcher user = 12;
+}
+
+message SafetyVisualPrediction {
+  google.protobuf.Timestamp timestamp = 1;
+  uint64 guild_id = 2;
+  uint64 channel_id = 3;
+  uint64 message_id = 4;
+  uint64 attachment_id = 5;
+  uint64 user_id = 6;
+  uint64 webhook_id = 7;
+  string prediction_class = 8;
+  float score = 9;
+  bool decision = 10;
+  float decision_threshold = 11;
+  string md5_hash = 12;
+  bool from_bot = 13;
+  string scored_class = 14;
+  string source = 15;
+}
+
+// Cluster ID and metadata for ML clustering batch jobs
+message BatchMLCluster {
+  // cluster_id is a uuid
+  string cluster_id = 1;
+
+  // cluster_features is a list of strings in the format ['featureA:valueA', 'featureB:valueB']
+  repeated string cluster_features = 2;
+
+  // whether we want to apply a label to future actions that match this cluster's cluster_features,
+  // or just act on the individual entities identified in this cluster on this batch run
+  bool apply_label = 3;
+}
+
+message UserSession {
+  reserved 2, 6, 7;
+
+  bytes id_hash = 1;
+  google.protobuf.Timestamp creation_time = 3;
+  google.protobuf.Timestamp expiration_time = 4;
+  google.protobuf.Timestamp approx_last_used_time = 5;
+  google.protobuf.Timestamp prev_approx_last_used_time = 8;
+}
+
+// A subset of user object fields that are populated by the Auth service
+message UserAuth {
+  fixed64 id = 1;
+  bool mfa_enabled = 2;
+  bool bot = 3;
+  int64 flags = 4;
+}
+
+// User field for Flink events
+message UserFlink {
+  fixed64 id = 1;
+}
+
+// User field for Batch ML jobs
+message UserBatchML {
+  fixed64 id = 1;
+}
+
+// User field for HashMatcher events
+message UserHashMatcher {
+  fixed64 id = 1;
+}
+
+// Source event for a UserBatchMLScore
+message BatchMLSourceEvent {
+  google.protobuf.StringValue source_event_id = 1;
+  google.protobuf.Timestamp source_event_timestamp = 2;
+  google.protobuf.UInt64Value source_guild_id = 3;
+}

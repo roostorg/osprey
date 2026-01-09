@@ -5,10 +5,10 @@ from unittest.mock import MagicMock, call
 
 import pytest
 from osprey.engine.ast.sources import Sources
-from osprey.rpc.labels.v1.service_pb2 import EntityKey, LabelStatus
 from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators, bootstrap_udfs
 from osprey.worker.lib.bulk_label import TaskStatus
 from osprey.worker.lib.osprey_engine import OspreyEngine
+from osprey.worker.lib.osprey_shared.labels import LabelStatus
 from osprey.worker.lib.sources_provider import StaticSourcesProvider
 from osprey.worker.lib.storage.bulk_label_task import MAX_ATTEMPTS, BulkLabelTask
 from osprey.worker.sinks.sink.bulk_label_sink import (
@@ -19,9 +19,10 @@ from osprey.worker.sinks.sink.bulk_label_sink import (
     BulkLabelSink,
     UnretryableTaskException,
 )
-from osprey.worker.sinks.sink.input_stream import StaticInputStream
 from osprey.worker.ui_api.osprey.lib.druid import TopNDruidQuery
 from pytest_mock import MockFixture
+
+from ..input_stream import StaticInputStream
 
 # Druid might also return null/empty values, we need to make sure we handle those in our sink.
 _TASK_NULLISH_ENTITIES: List[Dict[str, Optional[str]]] = [{'UserId': None}, {'UserId': ''}]
@@ -44,7 +45,7 @@ class BulkLabelSinkAndMocks:
     task: BulkLabelTask
     heartbeat_mock: MagicMock
     release_mock: MagicMock
-    event_effects_output_sink_mock: MagicMock
+    labels_provider_mock: MagicMock
     analytics_mock: MagicMock
 
 
@@ -96,10 +97,10 @@ def create_bulk_label_sink_with_single_task(
 
     engine = OspreyEngine(sources_provider=provider, udf_registry=udf_registry)
 
-    event_effects_output_sink_mock = MagicMock()
+    labels_provider_mock = MagicMock()
     bulk_label_sink = BulkLabelSink(
         StaticInputStream([task]),
-        event_effects_output_sink=event_effects_output_sink_mock,
+        labels_provider=labels_provider_mock,
         analytics_publisher=MagicMock(),
         engine=engine,
     )
@@ -109,7 +110,7 @@ def create_bulk_label_sink_with_single_task(
         task=task,
         heartbeat_mock=heartbeat_mock,
         release_mock=release_mock,
-        event_effects_output_sink_mock=event_effects_output_sink_mock,
+        labels_provider_mock=labels_provider_mock,
         analytics_mock=analytics_mock,
     )
 
@@ -119,30 +120,28 @@ def test_bulk_label_golden_path() -> None:
 
     sink_and_mocks.sink.run()
 
-    assert (
-        sink_and_mocks.event_effects_output_sink_mock.apply_label_mutations_pb2.call_count == _TASK_TOTAL_VALID_ENTITIES
-    )
-    event_keys = [
-        kwargs['entity_key']
-        for args, kwargs in sink_and_mocks.event_effects_output_sink_mock.apply_label_mutations_pb2.call_args_list
-    ]
+    assert sink_and_mocks.labels_provider_mock.apply_entity_label_mutations.call_count == _TASK_TOTAL_VALID_ENTITIES
+    # Extract entity keys from the mock calls
+    entity_keys = []
+    for call_args in sink_and_mocks.labels_provider_mock.apply_entity_label_mutations.call_args_list:
+        entity = call_args.kwargs['entity']
+        entity_keys.append((entity.type, entity.id))
+
     expected_entity_keys = [
-        EntityKey(type='User', id='0'),
-        EntityKey(type='User', id='1'),
-        EntityKey(type='User', id='2'),
-        EntityKey(type='User', id='3'),
-        EntityKey(type='User', id='4'),
-        EntityKey(type='User', id='5'),
-        EntityKey(type='User', id='6'),
-        EntityKey(type='User', id='7'),
-        EntityKey(type='User', id='8'),
-        EntityKey(type='User', id='9'),
+        ('User', '0'),
+        ('User', '1'),
+        ('User', '2'),
+        ('User', '3'),
+        ('User', '4'),
+        ('User', '5'),
+        ('User', '6'),
+        ('User', '7'),
+        ('User', '8'),
+        ('User', '9'),
     ]
     # We have to check that the lists are equal, but unordered.
-    # We cant use a set because the proto EntityKey object is not
-    # hashable :(
-    expected_keys_as_tuples = {(key.type, key.id) for key in expected_entity_keys}
-    actual_keys_as_tuples = {(key.type, key.id) for key in event_keys}
+    expected_keys_as_tuples = set(expected_entity_keys)
+    actual_keys_as_tuples = set(entity_keys)
     assert actual_keys_as_tuples == expected_keys_as_tuples
 
     sink_and_mocks.release_mock.assert_called_once_with(status=TaskStatus.COMPLETE)
@@ -162,7 +161,7 @@ def test_bulk_label_golden_path() -> None:
 def test_bulk_label_retries() -> None:
     sink_and_mocks = create_bulk_label_sink_with_single_task()
     exc = Exception('fake')
-    sink_and_mocks.event_effects_output_sink_mock.apply_label_mutations_pb2.side_effect = exc
+    sink_and_mocks.labels_provider_mock.apply_entity_label_mutations.side_effect = exc
 
     sink_and_mocks.sink.run()
 
@@ -176,7 +175,7 @@ def test_bulk_label_retries() -> None:
 def test_bulk_label_fails() -> None:
     sink_and_mocks = create_bulk_label_sink_with_single_task(attempts=MAX_ATTEMPTS + 1)
     exc = Exception('fake')
-    sink_and_mocks.event_effects_output_sink_mock.apply_label_mutations_pb2.side_effect = exc
+    sink_and_mocks.labels_provider_mock.apply_entity_label_mutations.side_effect = exc
 
     sink_and_mocks.sink.run()
 
@@ -193,12 +192,19 @@ def test_bulk_label_golden_path_exclude_ids() -> None:
 
     sink_and_mocks.sink.run()
 
-    apply_label_mutations = sink_and_mocks.event_effects_output_sink_mock.apply_label_mutations_pb2
+    assert (
+        sink_and_mocks.labels_provider_mock.apply_entity_label_mutations.call_count
+        == _TASK_TOTAL_VALID_ENTITIES - len(excluded_entities)
+    )
 
-    assert apply_label_mutations.call_count == _TASK_TOTAL_VALID_ENTITIES - len(excluded_entities)
+    # Extract entity keys from the mock calls
+    entity_keys = []
+    for call_args in sink_and_mocks.labels_provider_mock.apply_entity_label_mutations.call_args_list:
+        entity = call_args.kwargs['entity']
+        entity_keys.append(entity.id)
 
     included_entities_set = {'1', '3', '5', '7', '9'}
-    entities_labeled = {k['entity_key'].id for _, k in apply_label_mutations.call_args_list}
+    entities_labeled = set(entity_keys)
     assert included_entities_set == entities_labeled
 
     sink_and_mocks.heartbeat_mock.assert_has_calls(
@@ -241,6 +247,7 @@ def test_bulk_label_no_limit() -> None:
         query_filter=query['query_filter'],
         dimension=sink_and_mocks.task.dimension,
         limit=BULK_LABEL_NO_LIMIT_SIZE,
+        entity=None,
     )
 
     assert sink_and_mocks.sink._build_top_n_queries(sink_and_mocks.task) == [expected_topN_query]
@@ -274,6 +281,7 @@ def test_bulk_label_no_limit_multiple_queries() -> None:
         query_filter=query['query_filter'],
         dimension=sink_and_mocks.task.dimension,
         limit=BULK_LABEL_NO_LIMIT_SIZE,
+        entity=None,
     )
 
     expected_topN_query_two = TopNDruidQuery(
@@ -282,6 +290,7 @@ def test_bulk_label_no_limit_multiple_queries() -> None:
         query_filter=query['query_filter'],
         dimension=sink_and_mocks.task.dimension,
         limit=BULK_LABEL_NO_LIMIT_SIZE,
+        entity=None,
     )
 
     assert sink_and_mocks.sink._build_top_n_queries(sink_and_mocks.task) == [

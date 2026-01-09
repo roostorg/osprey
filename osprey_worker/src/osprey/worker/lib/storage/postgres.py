@@ -8,13 +8,12 @@ from typing import TYPE_CHECKING, Dict, Iterator, Optional  # noqa: E402
 
 from flask import Flask, has_request_context  # noqa: E402
 from osprey.worker.lib.config import Config  # noqa: E402
+from osprey.worker.lib.singletons import CONFIG  # noqa: E402
 from sqlalchemy import MetaData  # noqa: E402
 from sqlalchemy.engine.url import make_url  # noqa: E402
 from sqlalchemy.ext.declarative import declarative_base  # noqa: E402
 from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
 from sqlalchemy.orm.scoping import ThreadLocalRegistry  # type: ignore # missing stub  # noqa: E402
-
-from ..singletons import CONFIG  # noqa: E402
 
 metadata = MetaData()
 Model = declarative_base(name='Model', metadata=metadata)
@@ -49,6 +48,15 @@ def init_from_config(database: str) -> None:
             old_engine.dispose()
         new_engine = sqlalchemy.create_engine(connstr, pool_pre_ping=True, pool_size=30)
         Session.configure(bind=new_engine)
+
+        # Import all models to ensure they're registered with metadata
+        from . import (  # noqa: F401
+            bulk_action_task,
+            bulk_label_task,
+            queries,
+            temporary_ability_token,
+        )
+
         # Create all tables defined in the metadata
         metadata.create_all(new_engine)
 

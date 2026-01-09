@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package osprey.rpc.actions.v1;
+
+import "osprey/rpc/actions/v1/application.proto";
+import "osprey/rpc/actions/v1/captcha.proto";
+import "osprey/rpc/actions/v1/channel.proto";
+import "osprey/rpc/actions/v1/guild.proto";
+import "osprey/rpc/actions/v1/invite.proto";
+import "osprey/rpc/actions/v1/metadata.proto";
+import "osprey/rpc/actions/v1/user.proto";
+
+message GuildCreated {
+  User user = 1;
+  Guild guild = 2;
+  HttpRequestData http_request = 3;
+  Properties properties = 4;
+}
+
+message UserBlocked {
+  User user = 1;
+  User target_user = 2;
+  Guild guild = 3;
+
+  GuildMember guild_member = 4;
+  GuildMember target_guild_member = 5;
+
+  bool did_solve_captcha = 6;
+  int32 num_mutual_guilds = 7;
+  int32 source = 8;
+  int32 user_guild_count = 9;
+
+  HttpRequestData http_request = 10;
+  Properties properties = 11;
+}
+
+message GuildJoined {
+  User user = 1;
+  User inviter = 2;
+  Guild guild = 3;
+  GuildInvite invite = 4;
+  Channel channel = 5;
+  Application application = 6;
+
+  CaptchaResponse captcha_response = 7;
+  bool did_solve_captcha = 8;
+
+  HttpRequestData http_request = 9;
+  Properties properties = 10;
+}

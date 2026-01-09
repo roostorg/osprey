@@ -3,7 +3,7 @@ from typing import List, Self, cast
 
 from osprey.engine.executor.custom_extracted_features import CustomExtractedFeature
 from osprey.engine.executor.execution_context import ExecutionContext
-from osprey.engine.language_types.effects import EffectToCustomExtractedFeatureBase
+from osprey.engine.language_types.effects import EffectBase, EffectToCustomExtractedFeatureBase
 from osprey.engine.stdlib.udfs.categories import UdfCategories
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import UDFBase
@@ -53,8 +53,8 @@ def synthesize_effect(arguments: BanUserArguments) -> BanUserEffect:
     )
 
 
-class BanUser(UDFBase[BanUserArguments, BanUserEffect]):
+class BanUser(UDFBase[BanUserArguments, EffectBase]):
     category = UdfCategories.ENGINE
 
-    def execute(self, execution_context: ExecutionContext, arguments: BanUserArguments) -> BanUserEffect:
+    def execute(self, execution_context: ExecutionContext, arguments: BanUserArguments) -> EffectBase:
         return synthesize_effect(arguments)

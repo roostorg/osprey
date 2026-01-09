@@ -113,20 +113,17 @@ uv run pre-commit run --all-files
 docker compose up -d
 ```
 
-This starts up four services:
-- **Kafka** (KRaft mode): Message streaming for user generated events
+This starts up many services, including:
 - **Osprey Worker**: The main engine that processes input events given the rules and UDFs
-- **Test Data Producer**: Optional with `--profile test_data`
+  - **Test Data Producer**: Optional with `--profile test_data`
+- **Osprey UI**: Frontend service that hosts the react code for the web interface and communicates to the UI API
 - **Osprey UI API**: Backend service that provides data and functionality to the web interface
+- **Kafka** (KRaft mode): Message streaming for user generated events
+- **Postgres**: A database that the Worker, UI API, and Druid use for various reasons, such as the Postgres-backed Labels Service (in the example plugins)
+- **Druid**: A database that consumes Osprey Worker outputs to power the UI API for real-time querying
 
-### 6. Start the UI (in a new terminal):
-``` bash
-cd osprey_ui
-  npm install
-  npm start
-```
 
-### 7. Access the Application
+### 6. Access the Application
 The UI will automatically connect to the backend services running in Docker containers.
 
   - Osprey UI: http://localhost:5002
@@ -158,7 +155,7 @@ def register_ast_validators() -> None:
 Rules are written in SML, some examples are provided in `example_rules/` with YAML config, the rules are mounted to the worker processes when the containers start via environment variables. ex:
 
 ```bash
-OSPREY_RULES=./example_rules uv run python3.11 osprey_worker/src/osprey/worker/sinks/cli.py run-rules-sink
+OSPREY_RULES=./example_rules uv run python3.11 osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink
 ```
 
 #### Test Data
@@ -202,6 +199,8 @@ uv run ruff format
 
 # Type checking (on specific files/modules)
 uv run mypy osprey_worker/src/osprey_worker/lib
+# Or you can type check every module (this will happen in CI)
+uv run mypy .
 
 # Run all pre-commit hooks
 uv run pre-commit run --all-files
@@ -414,7 +413,7 @@ uv sync
 
 ## Next Steps
 
-- Check the [contributing guidelines](./docs/CONTRIBUTING.md) for project-specific rules
+- Check the [contributing guidelines](https://github.com/roostorg/.github/blob/main/CONTRIBUTING.md) for project-specific rules
 - Explore the codebase structure in `osprey_worker/`, `osprey_common/`, and `osprey_rpc/`
 
 ## IDE Setup Recommendations

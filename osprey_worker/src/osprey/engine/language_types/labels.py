@@ -32,8 +32,8 @@ class LabelEffect(EffectToCustomExtractedFeatureBase[List[str]]):
     expires_after: Optional[timedelta] = None
     """If set, the label effect has a timed expiration, which means that the reason will expire after this time."""
 
-    # delay_action_by: Optional[timedelta] = None
-    # """If set, the propagation of the effect to the upstream (if configured via LabelsService.after_add or LabelsService.after_remove) will be delayed."""
+    delay_action_by: Optional[timedelta] = None
+    """Osprey can be configured to respond to this duration downstream to delay when a label is applied and/or causes an effect"""
 
     dependent_rule: Optional[RuleT] = None
     """If set, the effect will only be applied if the dependent rule evaluates to true."""

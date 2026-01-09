@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package osprey.rpc.actions.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Osprey representation of a guild object
+message Guild {
+    fixed64 id = 1;
+    GuildOwner owner = 2;
+    string name = 3;
+    google.protobuf.StringValue description = 4;
+    google.protobuf.StringValue icon_hash = 5;
+    bool is_nsfw = 6;
+    int32 nsfw_level = 7;
+    int32 member_count = 8;
+    int32 premium_subscription_count = 9;
+    repeated string features = 10;
+    bool has_public_stage = 11;
+    repeated string channel_names = 12;
+    repeated string role_names = 13;
+    int32 verification_level = 14;
+    GuildTemplate template = 15;
+}
+
+message GuildOwner {
+    fixed64 id = 1;
+}
+
+message GuildTemplate {
+    string code = 1;
+    string name = 2;
+    google.protobuf.StringValue description = 3;
+    fixed64 creator_id = 4;
+    google.protobuf.Timestamp created_at = 5;
+    google.protobuf.Timestamp updated_at = 6;
+    fixed64 source_guild_id = 7;
+}
+
+message GuildMember {
+    fixed64 guild_id = 1;
+    google.protobuf.Timestamp joined_at = 2;
+    // Maybe this should be a 64
+    fixed64 permissions = 3;
+    fixed64 user_id = 4;
+}

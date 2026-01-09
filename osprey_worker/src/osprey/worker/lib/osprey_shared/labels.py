@@ -1,9 +1,9 @@
 import copy
 from collections import UserDict
 from dataclasses import dataclass, field, replace
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum, IntEnum
-from typing import Dict, Optional
+from typing import Any, Dict, Self
 
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.utils.request_utils import SessionWithRetries
@@ -17,6 +17,14 @@ _REQUEST_TIMEOUT_SECS = 5
 logger = get_logger(__name__)
 
 
+def _guarantee_utc_timezone_awareness(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 class MutationDropReason(IntEnum):
     # If a label mutation was dropped due to another mutation that conflicted & was higher priority
     # (priority of conflicting mutations in a given entity update is determined by the int value of the
@@ -24,6 +32,10 @@ class MutationDropReason(IntEnum):
     CONFLICTING_MUTATION = 0
     # If the existing label status was manual and the attempted mutation was not
     CANNOT_OVERRIDE_MANUAL = 1
+    # if the label name was an empty string
+    INVALID_LABEL_NAME = 2
+    # if the entity id was an empty string
+    INVALID_ENTITY_ID = 3
 
 
 class LabelStatus(IntEnum):
@@ -85,7 +97,7 @@ class LabelReason:
     description: str = ''
     """why the label was mutated"""
     features: dict[str, str] = field(default_factory=dict)
-    """features are injected into the description as k/v's, similar to how fstrings work. for example, 
+    """features are injected into the description as k/v's, similar to how fstrings work. for example,
     the {you} in 'hello {you}' would be substituted as 'person' with a feature dict of {'you': 'person'}"""
     created_at: datetime | None = None
     """
@@ -94,15 +106,48 @@ class LabelReason:
     expires_at: datetime | None = None
     """marks when this label reason 'expires'
 
-    if a LabelState.MANUALLY_REMOVED is applied with a reason that has a 1 day expiration, then 
+    if a LabelState.MANUALLY_REMOVED is applied with a reason that has a 1 day expiration, then
     for 1 day, the label cannot be applied via LabelState.ADDED. all LabelState.ADDED attempts will be dropped.
 
     if a given label state has multiple label reasons, all reasons would need to expire before the status/state
-    is considered expired, too. 
+    is considered expired, too.
     """
 
+    def __post_init__(self) -> None:
+        self.created_at = _guarantee_utc_timezone_awareness(self.created_at)
+        self.expires_at = _guarantee_utc_timezone_awareness(self.expires_at)
+
     def is_expired(self) -> bool:
-        return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=5) < datetime.now())
+        return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=5) < datetime.now(timezone.utc))
+
+    def serialize(self) -> dict[str, Any]:
+        """
+        serialize LabelReason to a JSON-compatible dict.
+        converts datetime objects to ISO format strings.
+        """
+        return {
+            'pending': self.pending,
+            'description': self.description,
+            'features': self.features,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+        }
+
+    @classmethod
+    def deserialize(cls, d: dict[str, Any]) -> Self:
+        """
+        deserialize a dict into a LabelReason object.
+        converts ISO format strings back to datetime objects.
+        """
+        created_at = datetime.fromisoformat(d['created_at']) if d.get('created_at') else None
+        expires_at = datetime.fromisoformat(d['expires_at']) if d.get('expires_at') else None
+        return cls(
+            pending=d.get('pending', False),
+            description=d.get('description', ''),
+            features=d.get('features', {}),
+            created_at=created_at,
+            expires_at=expires_at,
+        )
 
 
 @dataclass
@@ -159,17 +204,61 @@ class LabelReasons(UserDict[str, LabelReason]):
     def __repr__(self):
         return f'LabelReasons({self.data})'
 
+    def serialize(self) -> dict[str, dict[str, Any]]:
+        """
+        serialize LabelReasons to a JSON-compatible dict.
+        returns a dict mapping reason names to serialized LabelReason dicts.
+        """
+        return {reason_name: reason.serialize() for reason_name, reason in self.items()}
+
+    @classmethod
+    def deserialize(cls, d: dict[str, dict[str, Any]]) -> Self:
+        """
+        deserialize a dict into a LabelReasons object.
+        expects a dict mapping reason names to LabelReason dicts.
+        """
+
+        deserialized_reasons: dict[str, LabelReason] = {}
+        for reason_name, reason_data in d.items():
+            try:
+                deserialized_reasons[reason_name] = LabelReason.deserialize(reason_data)
+            except Exception as e:
+                raise TypeError(f'could not create LabelReasons from dict: failed to deserialize {reason_name}', e)
+
+        return cls(deserialized_reasons)
+
 
 @dataclass
 class LabelStateInner:
     status: LabelStatus
     reasons: LabelReasons
 
+    def serialize(self) -> dict[str, Any]:
+        """
+        serialize LabelStateInner to a JSON-compatible dict.
+        """
+        return {
+            'status': self.status.value,
+            'reasons': self.reasons.serialize(),
+        }
+
+    @classmethod
+    def deserialize(cls, d: dict[str, Any]) -> Self:
+        """
+        deserialize a dict into a LabelStateInner object.
+        """
+        try:
+            status = LabelStatus(d['status'])
+            reasons = LabelReasons.deserialize(d['reasons'])
+            return cls(status=status, reasons=reasons)
+        except Exception as e:
+            raise TypeError(f'could not create LabelStateInner from dict: {d}', e)
+
 
 @dataclass
 class LabelState:
     status: LabelStatus
-    """statuses dictate the way the current state behaves; certain statuses have priority over others 
+    """statuses dictate the way the current state behaves; certain statuses have priority over others
     (see LabelStatus for more info)"""
 
     reasons: LabelReasons
@@ -177,7 +266,7 @@ class LabelState:
     reasons are why this label state was applied; it is a dict because there may be multiple,
     with each reason being distinct based on it's reason name.
 
-    reasons applied under the same name are merged (assuming the status has not changed), 
+    reasons applied under the same name are merged (assuming the status has not changed),
     with precedence given to newer creaeted_at timestamps.
     """
 
@@ -199,8 +288,8 @@ class LabelState:
         if the weights are the *same*, then a merge of reasons is performed, which can also cause the expiration to be delayed.
         """
         if not self.reasons:
-            AssertionError(f'invariant: the label state {self} did not have any associated reasons')
-        expires_at = datetime.min
+            raise AssertionError(f'invariant: the label state {self} did not have any associated reasons')
+        expires_at = datetime.min.replace(tzinfo=timezone.utc)
         for reason in self.reasons.values():
             if reason.expires_at is None:
                 return None
@@ -215,7 +304,7 @@ class LabelState:
         )
 
     def is_expired(self) -> bool:
-        return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=5) < datetime.now())
+        return bool(self.expires_at is not None and self.expires_at + timedelta(seconds=5) < datetime.now(timezone.utc))
 
     def _shift_current_state_to_previous_state(self) -> None:
         if not self.reasons:
@@ -253,6 +342,32 @@ class LabelState:
 
         return None
 
+    def serialize(self) -> dict[str, Any]:
+        """
+        serialize LabelState to a JSON-compatible dict.
+        """
+        return {
+            'status': self.status.value,
+            'reasons': self.reasons.serialize(),
+            'previous_states': [prev_state.serialize() for prev_state in self.previous_states],
+        }
+
+    @classmethod
+    def deserialize(cls, d: dict[str, Any]) -> Self:
+        """
+        deserialize a dict into a LabelState object.
+        """
+
+        try:
+            status = LabelStatus(d['status'])
+            reasons = LabelReasons.deserialize(d['reasons'])
+            previous_states = [
+                LabelStateInner.deserialize(prev_state_data) for prev_state_data in d.get('previous_states', [])
+            ]
+            return cls(status=status, reasons=reasons, previous_states=previous_states)
+        except Exception as e:
+            raise TypeError(f'could not create LabelState from dict: {d}', e)
+
 
 @dataclass
 class EntityLabels:
@@ -260,6 +375,26 @@ class EntityLabels:
 
     labels: Dict[str, LabelState] = field(default_factory=dict)
     """a mapping of label names to their current states'"""
+
+    def serialize(self) -> dict[str, Any]:
+        """
+        given the current EntityLabels object, returns a dict that is
+        json-serializable via json.dumps()
+        """
+        return {'labels': {k: v.serialize() for k, v in self.labels.items()}}
+
+    @classmethod
+    def deserialize(cls, d: dict[str, dict[str, Any]]) -> Self:
+        """
+        given a dict, deserializes it into an EntityLabels object
+        """
+        if 'labels' in d:
+            d = d['labels']
+
+        try:
+            return cls(labels={k: LabelState.deserialize(v) for k, v in d.items()})
+        except Exception as e:
+            raise TypeError(f'could not create EntityLabels from dict: {d};', e)
 
 
 @dataclass
@@ -291,15 +426,33 @@ class EntityLabelMutation:
             pending=self.pending,
             description=self.description,
             features=self.features,
-            created_at=datetime.now(),
+            created_at=datetime.now(timezone.utc),
             expires_at=self.expires_at,
         )
+
+    def serialize(self) -> dict[str, Any]:
+        expires_at = _guarantee_utc_timezone_awareness(self.expires_at)
+        return {
+            'label_name': self.label_name,
+            'reason_name': self.reason_name,
+            'status': self.status,
+            'pending': self.pending,
+            'description': self.description,
+            'features': self.features,
+            'expires_at': expires_at.isoformat() if expires_at else None,
+        }
 
 
 @dataclass
 class DroppedEntityLabelMutation:
     mutation: EntityLabelMutation
     reason: MutationDropReason
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            'mutation': self.mutation.serialize(),
+            'reason': self.reason,
+        }
 
 
 @dataclass
@@ -309,7 +462,7 @@ class EntityLabelMutationsResult:
     all of the entity's labels post-mutation
     """
 
-    old_entity_labels: Optional[EntityLabels] = None
+    old_entity_labels: EntityLabels
     """
     all of the entity's labels pre-mutation
     """
@@ -326,7 +479,7 @@ class EntityLabelMutationsResult:
 
     labels_updated: list[str] = field(default_factory=list)
     """
-    labels that had their state updated. this can include simply updating or 
+    labels that had their state updated. this can include simply updating or
     appending to the reason
     """
 
@@ -335,3 +488,17 @@ class EntityLabelMutationsResult:
     mutations that were dropped for one reason or another. each dropped mutation is
     given a drop reason
     """
+
+    def serialize(self) -> dict[str, Any]:
+        """
+        the only place this is currently needed is for the ui, which expects a specific json blob
+        """
+        return {
+            'mutation_result': {
+                'added': self.labels_added,
+                'removed': self.labels_removed,
+                'updated': self.labels_updated,
+                'unchanged': list(set(mut.mutation.label_name for mut in self.dropped_mutations)),
+            },
+            **self.new_entity_labels.serialize(),
+        }

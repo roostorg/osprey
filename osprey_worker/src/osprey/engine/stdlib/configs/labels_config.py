@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Dict, List
 
 from pydantic import BaseModel, root_validator
 
@@ -25,7 +24,7 @@ class LabelConnotation(Enum):
 
 
 class LabelInfo(BaseModel):
-    valid_for: List[str] = []
+    valid_for: list[str] = []
     connotation: LabelConnotation = LabelConnotation.NEUTRAL
     description: str = ''
 
@@ -35,10 +34,10 @@ LABELS_CONFIG_SUBKEY = 'labels'
 
 @register_config_subkey(LABELS_CONFIG_SUBKEY)
 class LabelsConfig(BaseModel):
-    labels: Dict[str, LabelInfo]
+    labels: dict[str, LabelInfo]
 
     @root_validator(pre=True)
-    def root_validator(cls, values: object) -> Dict[str, object]:
+    def root_validator(cls, values: object) -> dict[str, object]:
         # Remove old values so we can be backward compatible during the deploy
         # TODO - Remove this once the new config handling is fully deployed
         assert isinstance(values, dict)

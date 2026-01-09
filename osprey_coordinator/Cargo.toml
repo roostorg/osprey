@@ -1,0 +1,91 @@
+[package]
+name = "osprey_coordinator"
+version = "0.1.0"
+edition = "2021"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0"
+arc-swap = "1.2"
+async-channel = "2.3.1"
+async-stream = "0.2"
+async-trait = "0.1.22"
+backoff = { version = "0.4", features = ["tokio"] }
+base64 = "0.22"
+bytes = "1.0"
+bytes-utils = "0.1.2"
+cadence = "1.1.0"
+clap = { version = "4.1.8", features = ["derive", "env"] }
+convert_case = "0.6.0"
+dynamic-pool = "0.2.2"
+env_logger = "0.7"
+etcd = { git = "https://github.com/discord/rust-etcd", rev = "e3fc8242de7303582feca89d90230e89e744d06e" }
+etcd_config_derive = { path = "etcd_config_derive", package = "osprey_coordinator_etcd_config_derive" }
+futures = "0.3"
+fxhash = "0.2"
+goauth = "0.10.0"
+h2 = "0.3"
+hdrhistogram = "7.5"
+heck = "0.3"
+hostname = "0.3.1"
+http = "0.2"
+http-body = "0.4.4"
+hyper = { version = "0.14", features = ["backports", "deprecated"] }
+indexmap = "1.9"
+lazy_static = "1.4.0"
+log = "0.4"
+md5 = "0.7.0"
+metrics_derive = { path = "metrics_derive", package = "osprey_coordinator_metrics_derive" }
+msgpack_simple = "1.0.2"
+num_cpus = "1.0"
+opentelemetry = "0.23"
+opentelemetry-http = "0.12"
+paste = "1.0.5"
+
+# metrics & tracing
+parking_lot = "0.12"
+percent-encoding = "2.1"
+pin-project = "1.1.2"
+prost = "0.12"
+prost-types = "0.12"
+rand = "0.8.5"
+reqwest = { version = "0.12.22", features = ["json"] }
+rmp-serde = "1.1.1"
+rmpv = "1.0.0"
+sentry = "0.31.8"
+serde = { version = "1.0", features = ["rc", "derive"] }
+serde-transcode = "1.1.1"
+serde_json = "1.0"
+smpl_jwt = "0.6.0"
+strum_macros = "0.24"
+thiserror = "2.0.12"
+time = "0.2"
+tink-aead = "0.2.4"
+tink-core = "0.2.4"
+tokio = { version = "1.4", features = ["full"] }
+tokio-stream = "0.1"
+tokio-util = { version = "0.7", features = ["time"] }
+tonic = { version = "0.11", features = ["tls", "tls-roots"] }
+tonic-health = "0.11.0"
+tonic-reflection = "0.11.0"
+
+tower = "0.4"
+tracing = "0.1"
+tracing-core = "0.1"
+tracing-opentelemetry = "0.24"
+tracing-subscriber = "0.2"
+trust-dns-resolver = "0.21"
+uuid = { version = "1.0", features = ["v4"] }
+which = "4.4.0"
+rdkafka = "0.38.0"
+
+[build-dependencies]
+glob = "0.3"
+prost-build = { version = "0.12" }
+tonic-build = "0.11"
+
+[dev-dependencies]
+
+[[bin]]
+name = "osprey_coordinator"
+path = "src/main.rs"

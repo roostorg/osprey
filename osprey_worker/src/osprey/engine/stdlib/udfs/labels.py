@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum, auto
 from typing import Any, Optional, Sequence
 
@@ -41,8 +41,9 @@ class LabelArguments(ArgumentsBase):
     #               that a better abstraction would be to have any sort of "external impact" come
     #               from verdicts, which were created to be an output (whereas labels were created
     #               to simply store state, thus making label webhooks a leaky abstraction)
-    # delay_action_by: Optional[TimeDeltaT] = None
-    # """Optional: Delays a label action by a specified `TimeDeltaT` time."""
+    # NOTE(@elijaharita): this is being re-added because removing it breaks backwards compatibility.
+    delay_action_by: Optional[TimeDeltaT] = None
+    """Optional: Delays a label action by a specified `TimeDeltaT` time if Osprey is configured to."""
     apply_if: Optional[RuleT] = None
     """Optional: Conditions that must be met for the label mutation to succeed."""
     expires_after: Optional[TimeDeltaT] = None
@@ -55,7 +56,7 @@ def synthesize_effect(status: LabelStatus, arguments: LabelArguments) -> LabelEf
         status=status,
         name=arguments.label.value,
         expires_after=TimeDeltaT.inner_from_optional(arguments.expires_after),
-        # delay_action_by=TimeDeltaT.inner_from_optional(arguments.delay_action_by),
+        delay_action_by=TimeDeltaT.inner_from_optional(arguments.delay_action_by),
         dependent_rule=arguments.apply_if,
         # NOTE: This is fairly significant, if this call node has an `apply_if` ast, but
         # the resolved apply_if is None, that means that the evaluation of the rule failed.
@@ -170,7 +171,7 @@ class HasLabel(
         desired_manual = _ManualType.get(arguments.manual)
         desired_delay = TimeDeltaT.inner_from_optional(arguments.min_label_age)
         label_state = entity_labels.labels.get(arguments.label)
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
 
         if label_state is not None:
             # Check to see if all reasons have expired, if so, the label should be considered as expired.
@@ -237,6 +238,15 @@ class HasLabel(
             min_label_age=arguments.min_label_age,
             desired_status=self.desired_status,
         )
+
+    def get_batch_routing_key(self, arguments: BatchableHasLabelArguments) -> str:
+        """
+        Returns routing key based on entity to ensure same-entity labels are batched together.
+
+        This ensures that execute_batch() always receives arguments for a single unique entity,
+        avoiding the NotImplementedError for multiple entities.
+        """
+        return arguments.entity.type + '/' + str(arguments.entity.id)
 
     def execute_batch(
         self,

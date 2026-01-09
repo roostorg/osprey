@@ -19,10 +19,13 @@ from osprey.worker.lib.storage.labels import LabelsProvider
 
 logger = get_logger()
 
-GEVENT_TIMEOUT = 2
+DEFAULT_GEVENT_TIMEOUT = 2
 
 
 class BaseOutputSink(abc.ABC):
+    # Default timeout for sink operations. Subclasses can override this.
+    timeout: float = DEFAULT_GEVENT_TIMEOUT
+
     @abc.abstractmethod
     def will_do_work(self, result: ExecutionResult) -> bool:
         """A quick way to determine if this sink needs to do anything for this result."""
@@ -54,21 +57,24 @@ class MultiOutputSink(BaseOutputSink):
 
         for sink in self._sinks:
             if sink.will_do_work(result):
+                sink_name = sink.__class__.__name__
                 try:
-                    with trace(f'{sink.__class__.__name__}.push'), gevent.Timeout(GEVENT_TIMEOUT):
+                    with (
+                        trace(f'{sink_name}.push'),
+                        metrics.timed('handled_message_output', tags=[f'sink:{sink_name}'], use_ms=True),
+                        gevent.Timeout(sink.timeout),
+                    ):
                         sink.push(result)
                 except gevent.Timeout as timeout_exc:
-                    logger.exception(
-                        f'Timeout exception raised when pushing event to sink: {str(sink.__class__.__name__)}'
-                    )
+                    logger.exception(f'Timeout exception raised when pushing event to sink: {sink_name}')
                     errors[sink] = timeout_exc
-                    metrics.increment('output_sink.timeout', tags=[f'sink:{sink.__class__.__name__}'])
+                    metrics.increment('output_sink.timeout', tags=[f'sink:{sink_name}'])
                     # Capture the Timeout exception
                     sentry_sdk.capture_exception()
                 except Exception as exc:
                     errors[sink] = exc
                     metrics.increment(
-                        'output_sink.error', tags=[f'sink:{sink.__class__.__name__}', f'error:{exc.__class__.__name__}']
+                        'output_sink.error', tags=[f'sink:{sink_name}', f'error:{exc.__class__.__name__}']
                     )
                     # Capture the current exception for now until we fix PartialSinkFailure
                     sentry_sdk.capture_exception()

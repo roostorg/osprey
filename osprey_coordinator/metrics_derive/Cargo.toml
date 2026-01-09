@@ -1,0 +1,14 @@
+[package]
+name = "osprey_coordinator_metrics_derive"
+version = "0.1.0"
+authors = ["osprey"]
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+darling = "0.20"
+proc-macro2 = "1.0.46"
+quote = "1.0.35"
+syn = "2"

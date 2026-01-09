@@ -5,7 +5,6 @@ from typing import Any, Iterable, List, Optional, Set
 import sentry_sdk
 from osprey.engine.language_types.entities import EntityT
 from osprey.engine.language_types.labels import LabelStatus
-from osprey.worker.adaptor.plugin_manager import bootstrap_labels_provider
 from osprey.worker.lib.bulk_label import TaskStatus
 from osprey.worker.lib.discovery.exceptions import ServiceUnavailable
 from osprey.worker.lib.instruments import metrics
@@ -14,6 +13,7 @@ from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.pigeon.exceptions import RPCException
 from osprey.worker.lib.publisher import BasePublisher
+from osprey.worker.lib.singletons import LABELS_PROVIDER
 from osprey.worker.lib.storage.bulk_label_task import BASE_DELAY_SECONDS, MAX_ATTEMPTS, BulkLabelTask
 from osprey.worker.lib.storage.labels import LabelsProvider
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
@@ -69,14 +69,12 @@ class BulkLabelSink(BaseSink):
         labels_provider: LabelsProvider,
         engine: OspreyEngine,
         analytics_publisher: BasePublisher,
-        send_status_webhook: bool = True,
     ):
         self._input_stream = input_stream
         self._labels_provider = labels_provider
         self._engine = engine
         self._metric_tags = [f'sink:{self.__class__.__name__}']
         self._analytics_publisher = analytics_publisher
-        self._send_status_webhook = send_status_webhook
 
     def run(self) -> None:
         for task in self._input_stream:
@@ -424,7 +422,11 @@ class BulkLabelSink(BaseSink):
         rows_rolled_back = 0
 
         feature_name_to_entity_type_mapping = engine.get_feature_name_to_entity_type_mapping()
-        labels_provider = bootstrap_labels_provider()
+        labels_provider = LABELS_PROVIDER.instance()
+        if labels_provider is None:
+            raise NotImplementedError(
+                'this code cannot be used because no labels service / provider is supplied for this osprey instance'
+            )
         feature_name = task.dimension
         entity_type = feature_name_to_entity_type_mapping[feature_name]
 

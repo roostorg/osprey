@@ -45,6 +45,7 @@ services:
   minio:
     image: minio/minio:latest
     container_name: minio
+    hostname: minio
     ports:
       - "9000:9000" # minio API
       - "9001:9001" # minio Console
@@ -82,8 +83,9 @@ services:
         kafka-topics --bootstrap-server kafka:29092 --list
       "
 
-  osprey_worker:
-    container_name: osprey_worker
+  osprey-worker:
+    container_name: osprey-worker
+    hostname: osprey-worker
     build:
       context: .
       dockerfile: osprey_worker/Dockerfile
@@ -94,7 +96,7 @@ services:
         condition: service_completed_successfully
       bigtable:
         condition: service_healthy
-      bigtable_initializer:
+      bigtable-initializer:
         condition: service_completed_successfully
       minio:
         condition: service_healthy
@@ -106,6 +108,7 @@ services:
     environment:
       - PYTHONPATH=/osprey
       - PORT=5000
+      - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
       - OSPREY_INPUT_STREAM_SOURCE=kafka
       - OSPREY_STDOUT_OUTPUT_SINK=True
       - OSPREY_KAFKA_BOOTSTRAP_SERVERS=["kafka:29092"]
@@ -125,25 +128,26 @@ services:
       - OSPREY_MINIO_SECRET_KEY=minioadmin123
       - OSPREY_MINIO_SECURE=false
       - OSPREY_MINIO_EXECUTION_RESULTS_BUCKET=execution-output
-      - SNOWFLAKE_API_ENDPOINT=http://snowflake:8080
+      - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
       - OSPREY_RULES_PATH=./example_rules
     volumes:
       - ./osprey_worker:/osprey/osprey_worker
       - ./osprey_rpc:/osprey/osprey_rpc
       - ./example_rules:/osprey/example_rules
       - ./entrypoint.sh:/osprey/entrypoint.sh
-  osprey_ui_api:
-    container_name: osprey_ui_api
+
+  osprey-ui-api:
+    container_name: osprey-ui-api
     build:
       context: .
       dockerfile: osprey_worker/Dockerfile
     depends_on:
-      - osprey_worker
-      - broker
+      - osprey-worker
+      - druid-broker
       - postgres
-      - snowflake
+      - snowflake-id-worker
       - bigtable
-      - bigtable_initializer
+      - bigtable-initializer
     ports:
       - "5004:5004"
     command: ["osprey-ui-api"]
@@ -153,49 +157,53 @@ services:
       - DEBUG=true
       - FLASK_DEBUG=1
       - FLASK_ENV=development
-      - DRUID_URL=http://broker:8082
-      - POSTGRES_HOSTS={"osprey_db":"postgresql://druid:FoolishPassword@postgres:5432/druid"}
+      - DRUID_URL=http://druid-broker:8082
+      - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
       - DD_TRACE_ENABLED=False
       - DD_DOGSTATSD_DISABLE=True
       - OSPREY_RULES_PATH=/osprey/example_rules
       - OSPREY_DISABLE_VALIDATION_EXPORTER=true
       - BIGTABLE_EMULATOR_HOST=bigtable:8361
-      - SNOWFLAKE_API_ENDPOINT=http://snowflake:8080
+      - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
       - SNOWFLAKE_EPOCH=1420070400000
     volumes:
       - ./osprey_worker:/osprey/osprey_worker
       - ./osprey_rpc:/osprey/osprey_rpc
       - ./example_rules:/osprey/example_rules
 
-  osprey_ui:
-    container_name: osprey_ui
+  osprey-ui:
+    container_name: osprey-ui
+    hostname: osprey-ui
     build:
       context: .
       dockerfile: osprey_ui/Dockerfile
     depends_on:
-      - osprey_ui_api
+      - osprey-ui-api
     ports:
       - "5002:5002"
     environment:
       - NODE_ENV=development
-      - REACT_APP_API_URL=http://osprey_ui_api:5004
+      - REACT_APP_API_BASE_URL=http://localhost:5004
     volumes:
       - ./osprey_ui:/app
       - /app/node_modules
 
-  snowflake:
-    container_name: snowflake_id_worker
+  snowflake-id-worker:
+    hostname: snowflake-id-worker
+    container_name: snowflake-id-worker
     image: ghcr.io/ayubun/snowflake-id-worker:0
     ports:
-      - "8080:8080"
+      - "8088:8088"
     environment:
       - WORKER_ID=0
       - DATA_CENTER_ID=0
       - EPOCH=1420070400000
+      - PORT=8088
     restart: unless-stopped
 
   bigtable:
-    container_name: bigtable_emulator
+    hostname: bigtable
+    container_name: bigtable
     image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
     ports:
       - "8361:8361"
@@ -210,8 +218,8 @@ services:
       retries: 5
     restart: unless-stopped
 
-  bigtable_initializer:
-    container_name: bigtable_initializer
+  bigtable-initializer:
+    container_name: bigtable-initializer
     image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
     depends_on:
       bigtable:
@@ -221,10 +229,11 @@ services:
     command: ["/bin/bash", "/init-bigtable.sh"]
 
   # Optional test data generator - run with:
-  # docker compose --profile test_data up kafka_test_data_producer -d
-  kafka_test_data_producer:
+  # docker compose --profile test_data up kafka-test-data-producer -d
+  kafka-test-data-producer:
     image: confluentinc/cp-kafka:7.4.0
-    container_name: kafka_test_data
+    hostname: kafka-test-data-producer
+    container_name: kafka-test-data-producer
     depends_on:
       kafka:
         condition: service_healthy
@@ -232,6 +241,7 @@ services:
         condition: service_completed_successfully
     profiles:
       - test_data
+      - test-data
     environment:
       KAFKA_TOPIC: "osprey.actions_input"
       KAFKA_BROKER: "kafka:29092"
@@ -241,36 +251,45 @@ services:
       - /bin/bash
     command: ["/osprey/example_data/generate_test_data.sh"]
 
-  # DRUID, HERE BE DRAGONS
   postgres:
+    hostname: postgres
     container_name: postgres
-    image: postgres:latest
+    image: postgres:18
     ports:
       - "5432:5432"
     volumes:
-      - metadata_data:/var/lib/postgresql/data
+      - metadata_data:/var/lib/postgresql
     environment:
       - POSTGRES_PASSWORD=FoolishPassword
-      - POSTGRES_USER=druid
-      - POSTGRES_DB=druid
+      - POSTGRES_USER=osprey
+      - POSTGRES_DB=osprey
+    healthcheck:
+      test: pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB
+      start_period: 30s
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
+  # DRUID, HERE BE DRAGONS
   # Need 3.5 or later for container nodes
-  zookeeper:
-    container_name: zookeeper
+  druid-zookeeper:
+    hostname: druid-zookeeper
+    container_name: druid-zookeeper
     image: zookeeper:3.5.10
     ports:
       - "2181:2181"
     environment:
       - ZOO_MY_ID=1
 
-  coordinator:
+  druid-coordinator:
     image: apache/druid:34.0.0
-    container_name: coordinator
+    hostname: druid-coordinator
+    container_name: druid-coordinator
     volumes:
       - druid_shared:/opt/shared
       - coordinator_var:/opt/druid/var
     depends_on:
-      - zookeeper
+      - druid-zookeeper
       - postgres
     ports:
       - "8081:8081"
@@ -279,15 +298,16 @@ services:
     env_file:
       - druid/environment
 
-  broker:
+  druid-broker:
     image: apache/druid:34.0.0
-    container_name: broker
+    container_name: druid-broker
+    hostname: druid-broker
     volumes:
       - broker_var:/opt/druid/var
     depends_on:
-      - zookeeper
+      - druid-zookeeper
       - postgres
-      - coordinator
+      - druid-coordinator
     ports:
       - "8082:8082"
     command:
@@ -295,16 +315,17 @@ services:
     env_file:
       - druid/environment
 
-  historical:
+  druid-historical:
     image: apache/druid:34.0.0
-    container_name: historical
+    container_name: druid-historical
+    hostname: druid-historical
     volumes:
       - druid_shared:/opt/shared
       - historical_var:/opt/druid/var
     depends_on:
-      - zookeeper
+      - druid-zookeeper
       - postgres
-      - coordinator
+      - druid-coordinator
     ports:
       - "8083:8083"
     command:
@@ -312,16 +333,17 @@ services:
     env_file:
       - druid/environment
 
-  middlemanager:
+  druid-middlemanager:
     image: apache/druid:34.0.0
-    container_name: middlemanager
+    container_name: druid-middlemanager
+    hostname: druid-middlemanager
     volumes:
       - druid_shared:/opt/shared
       - middle_var:/opt/druid/var
     depends_on:
-      - zookeeper
+      - druid-zookeeper
       - postgres
-      - coordinator
+      - druid-coordinator
     ports:
       - "8091:8091"
       - "8100-8105:8100-8105"
@@ -330,15 +352,16 @@ services:
     env_file:
       - druid/environment
 
-  router:
+  druid-router:
     image: apache/druid:34.0.0
-    container_name: router
+    container_name: druid-router
+    hostname: druid-router
     volumes:
       - router_var:/opt/druid/var
     depends_on:
-      - zookeeper
+      - druid-zookeeper
       - postgres
-      - coordinator
+      - druid-coordinator
     ports:
       - "8888:8888"
     command:
@@ -346,10 +369,10 @@ services:
     env_file:
       - druid/environment
 
-  spec-submitter:
+  druid-spec-submitter:
     image: curlimages/curl:latest
     depends_on:
-      - coordinator
+      - druid-coordinator
     volumes:
       - ./druid/specs:/specs
     command: ["/bin/sh", "/specs/submit-specs.sh"]

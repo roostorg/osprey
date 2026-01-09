@@ -38,9 +38,9 @@ class TemporaryAbilityToken(Model):
     consumed_by_email = Column(Text, nullable=True)
     abilities_json = Column(JSONB, nullable=False)
     creation_origin = Column(Text, nullable=False)
-    must_be_consumed_before = Column(DateTime, nullable=False)
-    abilities_expire_at = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, nullable=False)
+    must_be_consumed_before = Column(DateTime(timezone=True), nullable=False)
+    abilities_expire_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False)
 
     @classmethod
     def create(cls, abilities: List[Ability[Any, Any]], creation_origin: str) -> 'TemporaryAbilityToken':
