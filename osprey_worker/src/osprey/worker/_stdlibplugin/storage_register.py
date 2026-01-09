@@ -7,7 +7,7 @@ from osprey.worker.lib.storage import ExecutionResultStorageBackendType
 from osprey.worker.lib.storage.stored_execution_result import ExecutionResultStore
 
 
-@hookimpl_osprey
+@hookimpl_osprey(trylast=True)
 def register_execution_result_store(config: Config) -> Optional[ExecutionResultStore]:
     storage_backend_type = ExecutionResultStorageBackendType(
         config.get_str('OSPREY_EXECUTION_RESULT_STORAGE_BACKEND', 'none').lower()
