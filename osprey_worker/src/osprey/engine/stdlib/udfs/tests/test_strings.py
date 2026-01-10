@@ -17,6 +17,7 @@ from osprey.engine.stdlib.udfs.string import (
     StringSplit,
     StringStartsWith,
     StringStrip,
+    StringTokenize,
     StringToLower,
     StringToUpper,
 )
@@ -39,6 +40,7 @@ pytestmark = [
             StringToUpper,
             StringExtractDomains,
             StringExtractURLs,
+            StringTokenize,
         )
     ),
 ]
@@ -319,3 +321,33 @@ def test_extract_urls(execute: ExecuteFunction, text: str, expected_result: List
     result: List[str] = data['Result']
     assert len(expected_result) == len(result)
     assert set(expected_result) == set(result)
+
+
+@pytest.mark.parametrize(
+    'text,expected_result',
+    [
+        ('the cat in the box', ['the', 'cat', 'in', 'the', 'box']),
+        ('the Cat in the bOx', ['the', 'cat', 'in', 'the', 'box']),
+        ("i'm going to the store", ["i'm", 'going', 'to', 'the', 'store']),
+        ('hello. where are you going? over here!', ['hello', 'where', 'are', 'you', 'going', 'over', 'here']),
+        ('hello123world', ['hello123world']),
+        ('test 456 test', ['test', '456', 'test']),
+        ('the   cat', ['the', 'cat']),
+        ('hello\\tworld\\ntest', ['hello', 'world', 'test']),
+        ('hello, world!', ['hello', 'world']),
+        ('end. start', ['end', 'start']),
+        ('café résumé', ['café', 'résumé']),
+        ("don't", ["don't"]),  # curly apostrophe
+        ("cat's", ["cat's"]),
+        ("''hello", ['hello']),
+        ("test''test", ['test', 'test']),
+    ],
+)
+def test_tokenize(execute: ExecuteFunction, text: str, expected_result: List[str]) -> None:
+    data: Dict[str, Any] = execute(f"""
+        Result = StringTokenize(s="{text}")
+    """)
+
+    result: List[str] = data['Result']
+    assert len(expected_result) == len(result)
+    assert expected_result == result
