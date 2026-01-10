@@ -411,5 +411,11 @@ def tokenize_text(s: str) -> list[str]:
 
 
 class StringTokenize(UDFBase[StringArguments, list[str]]):
+    """
+    Used to convert the given string into a list of individual tokens. Returns a list of individual
+    tokens split by spaces and puncuation marks. Note that StringTokenize does not split on apostrophes
+    found in i.e. contractions. For example, the string "don't go" would result in ["don't", "go"]
+    """
+
     def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> list[str]:
         return tokenize_text(arguments.s)

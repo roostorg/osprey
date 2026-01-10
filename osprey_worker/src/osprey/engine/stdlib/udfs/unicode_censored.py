@@ -3,6 +3,7 @@ import unicodedata
 from typing import Dict, List
 
 from osprey.engine.executor.execution_context import ExecutionContext
+from osprey.engine.stdlib.udfs.string import StringArguments
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import UDFBase
 
@@ -1028,12 +1029,7 @@ class CensorCache:
 censor_cache = CensorCache()
 
 
-class CheckCensoredArguments(ArgumentsBase):
-    s: str
-    """
-    The input string to check
-    """
-
+class CheckCensoredArguments(StringArguments):
     pattern: str
     """
     The string to create a regex pattern for.

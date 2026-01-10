@@ -41,6 +41,7 @@ from osprey.engine.stdlib.udfs.string import (
     StringSplit,
     StringStartsWith,
     StringStrip,
+    StringTokenize,
     StringToLower,
     StringToUpper,
 )
@@ -116,6 +117,7 @@ def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
         StringStartsWith,
         StringEndsWith,
         StringStrip,
+        StringTokenize,
         StringRStrip,
         StringLStrip,
         StringReplace,
