@@ -58,6 +58,7 @@ from osprey.engine.stdlib.udfs.time_bucket import (
 )
 from osprey.engine.stdlib.udfs.time_delta import TimeDelta
 from osprey.engine.stdlib.udfs.time_since import TimeSince
+from osprey.engine.stdlib.udfs.unicode_censored import CheckCensored
 from osprey.engine.stdlib.udfs.verdicts import DeclareVerdict
 from osprey.engine.udf.base import UDFBase
 from osprey.worker.adaptor.plugin_manager import hookimpl_osprey
@@ -73,6 +74,7 @@ def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
         DeclareVerdict,
         DomainChopper,
         DomainTld,
+        CheckCensored,
         EmailDomain,
         EmailSubdomain,
         EmailLocalPart,

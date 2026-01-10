@@ -1,0 +1,1085 @@
+import re
+import unicodedata
+from typing import Dict, List
+
+from osprey.engine.executor.execution_context import ExecutionContext
+from osprey.engine.udf.arguments import ArgumentsBase
+from osprey.engine.udf.base import UDFBase
+
+# a big collection of lookalike characters that we have found useful (and have been used in the wild during e.g. raids)
+lookalikes = {
+    'a': [
+        'a',
+        'A',
+        '𝝰',
+        '𝞪',
+        'а',
+        'ɑ',
+        'α',
+        '𝛂',
+        '⍺',
+        '𝜶',
+        '𝛼',
+        'ᗅ',
+        '𝚨',
+        'А',
+        'Α',
+        '𝛢',
+        '𝝖',
+        '𝜜',
+        '𖽀',
+        '𝞐',
+        'Ꭺ',
+        'ꓮ',
+        '𐊠',
+        'а',
+        'ạ',
+        'ą',
+        'ä',
+        'à',
+        'á',
+        'ą',
+        '4',
+        '@',
+        '^',
+        'α',
+        'а',
+        'Ⲁ',
+        'ⲁ',
+        'ᗩ',
+        'x',
+        '*',
+        '_',
+        '-',
+    ],
+    'b': [
+        'b',
+        'B',
+        'Ƅ',
+        'Ь',
+        'Ꮟ',
+        'ᖯ',
+        'ᑲ',
+        '𝚩',
+        'ꓐ',
+        'Β',
+        'В',
+        '𝜝',
+        '𝛣',
+        '𝝗',
+        '𐊂',
+        '𐌁',
+        '𝞑',
+        'Ꞵ',
+        'Ᏼ',
+        'ᗷ',
+        '𐊡',
+        '8',
+        'β',
+        'ϐ',
+    ],
+    'c': [
+        'c',
+        'C',
+        'с',
+        'ᴄ',
+        'ⲥ',
+        '𐐽',
+        'ꮯ',
+        'ϲ',
+        '𐌂',
+        'ꓚ',
+        'Ꮯ',
+        '𐔜',
+        'С',
+        'Ⲥ',
+        '𐐕',
+        '🝌',
+        '𑣲',
+        '𑣩',
+        'Ϲ',
+        '𐊢',
+        'с',
+        'ƈ',
+        'ċ',
+        '(',
+        '<',
+        '©',
+        'k',
+        '[',
+        '{',
+        'ᑕ',
+    ],
+    'd': [
+        'd',
+        'D',
+        'ԁ',
+        'Ꮷ',
+        'ᑯ',
+        'ꓒ',
+        'Ꭰ',
+        'ᗪ',
+        'ꓓ',
+        'ᗞ',
+        'ԁ',
+        'ɗ',
+    ],
+    'e': [
+        'e',
+        'E',
+        '℮',
+        'ꬲ',
+        'е',
+        'ҽ',
+        '𝛦',
+        '𝚬',
+        '𝜠',
+        'Ε',
+        'Е',
+        '𐊆',
+        '𝝚',
+        '𝞔',
+        'Ꭼ',
+        'ꓰ',
+        '𑢮',
+        'ⴹ',
+        '𑢦',
+        '⋿',
+        'е',
+        'ẹ',
+        'ė',
+        'é',
+        'è',
+        '3',
+        '€',
+        'є',
+        '∑',
+        'ε',
+        'ϵ',
+        'x',
+        '*',
+        '_',
+        '-',
+    ],
+    'f': [
+        'f',
+        'F',
+        'ք',
+        'ꬵ',
+        'ꞙ',
+        'ẝ',
+        'ſ',
+        '𝈓',
+        '𑢢',
+        'Ꞙ',
+        'Ϝ',
+        '𐊇',
+        'ꓝ',
+        '𐔥',
+        '𑣂',
+        '𝟊',
+        'ᖴ',
+        '𐊥',
+    ],
+    'g': [
+        'g',
+        'G',
+        'ɡ',
+        'ց',
+        'ᶃ',
+        'ƍ',
+        'Ꮐ',
+        'Ԍ',
+        'Ᏻ',
+        'ꓖ',
+        'ġ',
+        'q',
+        '9',
+        '6',
+        '&',
+        '©',
+    ],
+    'h': [
+        'h',
+        'H',
+        'Ꮒ',
+        'հ',
+        'һ',
+        '𝚮',
+        '𝛨',
+        'Ⲏ',
+        '𐋏',
+        '𝜢',
+        'Η',
+        '𝞖',
+        '𝝜',
+        'Н',
+        'ꓧ',
+        'Ꮋ',
+        'ᕼ',
+        'һ',
+        '#',
+    ],
+    'i': [
+        'i',
+        'I',
+        '𝞲',
+        'ꙇ',
+        'ӏ',
+        '𝚤',
+        'і',
+        '˛',
+        'Ꭵ',
+        '𑣃',
+        'ɩ',
+        'ɪ',
+        '𝛊',
+        'ı',
+        '𝜾',
+        '⍳',
+        '𝜄',
+        'ꭵ',
+        '𝝸',
+        'ι',
+        'ͺ',
+        '𝚰',
+        '𝘭',
+        'І',
+        '𝐥',
+        'ﺍ',
+        'ﺎ',
+        '𝔩',
+        '𐊊',
+        'Ⲓ',
+        '𐌉',
+        'ℓ',
+        '𝜤',
+        'Ɩ',
+        '𝞘',
+        'Ι',
+        '𝚕',
+        '𝟏',
+        '∣',
+        'ا',
+        '𝗅',
+        '1',
+        '𝓁',
+        '𐌠',
+        '𞸀',
+        '𞺀',
+        '׀',
+        'ǀ',
+        'Ӏ',
+        'ᛁ',
+        '𝟭',
+        'ߊ',
+        'ｌ',
+        '𝛪',
+        'ⵏ',
+        '𝝞',
+        '𝕝',
+        '𝟣',
+        'ו',
+        '𞣇',
+        '𝙡',
+        '𝟙',
+        '𝑙',
+        'ן',
+        '١',
+        '𝒍',
+        '𝖑',
+        '￨',
+        '🯱',
+        'l',
+        '۱',
+        'ꓲ',
+        '𖼨',
+        '𝟷',
+        '𝓵',
+        '|',
+        'ⅼ',
+        '⏽',
+        '𝗹',
+        'і',
+        'í',
+        'ï',
+        '1',
+        '!',
+        'l',
+        'x',
+        '|',
+        '∫',
+        '*',
+        '_',
+        '-',
+    ],
+    'j': [
+        'j',
+        'J',
+        'ϳ',
+        'ј',
+        'Ј',
+        'Ꭻ',
+        'ᒍ',
+        'Ʝ',
+        'ꓙ',
+        'Ϳ',
+        'ј',
+        'ʝ',
+    ],
+    'k': [
+        'k',
+        'K',
+        '𝚱',
+        '𝜥',
+        '𝛫',
+        '𝝟',
+        'Ⲕ',
+        'ᛕ',
+        'ꓗ',
+        'Κ',
+        'К',
+        '𝞙',
+        'Ꮶ',
+        '𐔘',
+        'κ',
+        'c',
+        '<',
+        '[',
+        '{',
+        '©',
+    ],
+    'l': [
+        'l',
+        'L',
+        '𝚰',
+        'І',
+        '𝖨',
+        'ﺍ',
+        'ﺎ',
+        'ℐ',
+        'ℑ',
+        '𐊊',
+        'Ⲓ',
+        '𐌉',
+        '𝜤',
+        'Ɩ',
+        '𝞘',
+        'Ι',
+        '𝟏',
+        '∣',
+        'ا',
+        'Ｉ',
+        '𝕀',
+        '1',
+        '𝙄',
+        '𐌠',
+        '𝐼',
+        '𞸀',
+        '𞺀',
+        '׀',
+        '𝑰',
+        'ǀ',
+        'Ӏ',
+        'ᛁ',
+        '𝟭',
+        '𝕴',
+        'I',
+        'ߊ',
+        '𝛪',
+        'ⵏ',
+        '𝝞',
+        '𝟣',
+        'ו',
+        '𞣇',
+        '𝓘',
+        '𝗜',
+        '𝟙',
+        'ן',
+        'Ⅰ',
+        '𝘐',
+        '١',
+        '￨',
+        '🯱',
+        '𝐈',
+        '۱',
+        'ꓲ',
+        '𖼨',
+        '𝙸',
+        '𝟷',
+        '|',
+        '⏽',
+        '𖼖',
+        '𑢣',
+        'Ⳑ',
+        'Ꮮ',
+        '𐔦',
+        'ꓡ',
+        '𐐛',
+        'ᒪ',
+        '𝈪',
+        '𑢲',
+        'ӏ',
+        'ḷ',
+        'i',
+        '1',
+        '!',
+        'x',
+        '|',
+        '∫',
+        '*',
+        '_',
+        '-',
+    ],
+    'm': [
+        'm',
+        'M',
+        '𑜀',
+        '𑣣',
+        'rn',
+        '𝛭',
+        '𝚳',
+        '𝜧',
+        '𐌑',
+        'ᛖ',
+        '𝝡',
+        'Ⲙ',
+        'Μ',
+        'М',
+        '𝞛',
+        'ꓟ',
+        '𐊰',
+        'ᗰ',
+        'Ꮇ',
+        'Ϻ',
+        'ⲙ',
+    ],
+    'n': [
+        'n',
+        'N',
+        'ո',
+        'ռ',
+        'ꓠ',
+        '𝛮',
+        '𝚴',
+        '𝜨',
+        '𐔓',
+        '𝝢',
+        'Ⲛ',
+        '𝞜',
+        'Ν',
+        'ո',
+        'ⲛ',
+    ],
+    'o': [
+        'o',
+        'O',
+        'ం',
+        'ಂ',
+        'ം',
+        'ං',
+        'օ',
+        '𑣗',
+        'ᴏ',
+        'ᴑ',
+        '𞹤',
+        '𐓪',
+        '𑣈',
+        'ဝ',
+        'ⲟ',
+        '𝛐',
+        'ഠ',
+        '𝛔',
+        'ﮦ',
+        'ﮧ',
+        '𝝈',
+        'ﮨ',
+        'ﮩ',
+        'ﮪ',
+        'ﮫ',
+        'ﮬ',
+        'ﮭ',
+        '𞺄',
+        '𝝄',
+        '𝞸',
+        '𝞼',
+        'ꬽ',
+        'о',
+        'ھ',
+        'ο',
+        '၀',
+        'ہ',
+        'σ',
+        'ه',
+        '๐',
+        '໐',
+        '𐐬',
+        '𞸤',
+        'ە',
+        'ס',
+        '𝜎',
+        '٥',
+        '०',
+        '੦',
+        '૦',
+        '௦',
+        '౦',
+        '೦',
+        '൦',
+        'ﻩ',
+        'ﻪ',
+        'ﻫ',
+        'ﻬ',
+        '𝜊',
+        '𝝾',
+        '۵',
+        '𝞂',
+        'ჿ',
+        '߀',
+        '𝛰',
+        '𑣠',
+        '〇',
+        '𐊒',
+        '𝟬',
+        '𝜪',
+        'ዐ',
+        '𝞞',
+        '𝝤',
+        'ⵔ',
+        'Օ',
+        '𝟢',
+        '𝟘',
+        'Ⲟ',
+        'О',
+        'Ο',
+        'ଠ',
+        '𝟎',
+        '০',
+        '୦',
+        '🯰',
+        '𐔖',
+        '0',
+        '𑓐',
+        '𐊫',
+        'ꓳ',
+        '𑢵',
+        '𐐄',
+        '𝟶',
+        '𝚶',
+        '𐓂',
+        'о',
+        'ο',
+        'օ',
+        'ȯ',
+        'ọ',
+        'ỏ',
+        'ơ',
+        'ó',
+        'ò',
+        'ö',
+        '0',
+        'Ω',
+        'θ',
+        'Θ',
+        'x',
+        '*',
+        '_',
+        '-',
+    ],
+    'p': [
+        'p',
+        'P',
+        'р',
+        'ρ',
+        '𝛠',
+        '𝜚',
+        '𝞎',
+        'ⲣ',
+        '𝝔',
+        '𝛒',
+        '𝟈',
+        '𝝆',
+        '𝜌',
+        '𝞀',
+        'ϱ',
+        '⍴',
+        '𝞺',
+        '𝛲',
+        '𝝦',
+        '𝜬',
+        '𐊕',
+        '𝞠',
+        'ꓑ',
+        'Р',
+        'Ρ',
+        'Ⲣ',
+        'Ꮲ',
+        'ᑭ',
+        '𝚸',
+        'р',
+        'ք',
+    ],
+    'q': [
+        'q',
+        'Q',
+        'գ',
+        'զ',
+        'ԛ',
+        'ⵕ',
+        'զ',
+    ],
+    'r': [
+        'r',
+        'R',
+        'ꮁ',
+        'ⲅ',
+        'ᴦ',
+        'ꭇ',
+        'ꭈ',
+        'г',
+        'Ꭱ',
+        '𖼵',
+        'ꓣ',
+        'Ʀ',
+        'ᖇ',
+        '𐒴',
+        'Ꮢ',
+        '𝈖',
+        'Я',
+    ],
+    's': [
+        's',
+        'S',
+        '𑣁',
+        'ꮪ',
+        'ꜱ',
+        'ѕ',
+        '𐑈',
+        'ƽ',
+        'ꓢ',
+        '𖼺',
+        '𐐠',
+        'Ѕ',
+        '𐊖',
+        'Տ',
+        'Ꮥ',
+        'Ꮪ',
+        'ʂ',
+        '5',
+        '$',
+        'z',
+        '§',
+        '2',
+        'ś',
+    ],
+    't': [
+        't',
+        'T',
+        '𝜯',
+        '𐊗',
+        '𐌕',
+        '𝝩',
+        '🝨',
+        'ꓔ',
+        '𖼊',
+        '𝞣',
+        '⟙',
+        'Т',
+        'Ꭲ',
+        '⊤',
+        'Τ',
+        'Ⲧ',
+        '𐊱',
+        '𑢼',
+        '𝛵',
+        '𝚻',
+        '7',
+        '+',
+        '†',
+        'τ',
+        'т',
+        'ⲧ',
+    ],
+    'u': [
+        'u',
+        'U',
+        'υ',
+        '𑣘',
+        'ʋ',
+        'ꭎ',
+        '𐓶',
+        'ꭒ',
+        '𝛖',
+        'ᴜ',
+        'ꞟ',
+        '𝜐',
+        '𝝊',
+        '𝞾',
+        '𝞄',
+        'ս',
+        'ሀ',
+        '⋃',
+        '𑢸',
+        '∪',
+        'ᑌ',
+        'Ս',
+        'ꓴ',
+        '𐓎',
+        '𖽂',
+        'υ',
+        'ս',
+        'ü',
+        'ú',
+        'ù',
+        'v',
+        'µ',
+        'x',
+        '*',
+        '_',
+        '-',
+    ],
+    'v': [
+        'v',
+        'V',
+        '⋁',
+        'ט',
+        'ᴠ',
+        '𑣀',
+        '𝛎',
+        '∨',
+        '𝜈',
+        'ꮩ',
+        'ѵ',
+        '𝝂',
+        '𝞶',
+        '𑜆',
+        '𝝼',
+        'ν',
+        '𑢠',
+        '𝈍',
+        '𖼈',
+        'Ꮩ',
+        'ꛟ',
+        'ꓦ',
+        '٧',
+        '𐔝',
+        'ᐯ',
+        'Ѵ',
+        '۷',
+        'ⴸ',
+        'ν',
+        'ѵ',
+        'u',
+    ],
+    'w': [
+        'w',
+        'W',
+        'ᴡ',
+        'ѡ',
+        'ա',
+        'ꮃ',
+        'ɯ',
+        '𑜏',
+        '𑜎',
+        'ԝ',
+        '𑜊',
+        'ꓪ',
+        '𑣯',
+        'Ꮃ',
+        'Ꮤ',
+        '𑣦',
+        'Ԝ',
+        'ω',
+    ],
+    'x': [
+        'x',
+        'X',
+        'ᕁ',
+        'х',
+        '⤫',
+        '⤬',
+        '᙮',
+        '⨯',
+        '×',
+        'ᕽ',
+        '𝜲',
+        '𝞦',
+        '𐊐',
+        '𝝬',
+        '𐌗',
+        'ⵝ',
+        '𐔧',
+        'Х',
+        'Χ',
+        'ꓫ',
+        'Ⲭ',
+        '᙭',
+        '𐊴',
+        '𝚾',
+        '╳',
+        'Ꭓ',
+        'ᚷ',
+        '𝛸',
+        '𐌢',
+        '𑣬',
+        'х',
+        'ҳ',
+        '×',
+        'χ',
+        'ⲭ',
+    ],
+    'y': [
+        'y',
+        'Y',
+        'у',
+        '𝝲',
+        'ᶌ',
+        '𝞬',
+        '𑣜',
+        'ʏ',
+        'ꭚ',
+        'ɣ',
+        'ყ',
+        'ү',
+        '𝛾',
+        'γ',
+        '𝛄',
+        '𝜸',
+        'ℽ',
+        'ỿ',
+        '𝜰',
+        '𑢤',
+        '𝝪',
+        'ϒ',
+        '𖽃',
+        '𝞤',
+        'У',
+        'Υ',
+        'Ⲩ',
+        'Ꭹ',
+        '𐊲',
+        'ꓬ',
+        'Ү',
+        '𝛶',
+        '𝚼',
+        'Ꮍ',
+        'у',
+        'ý',
+        '¥',
+        'λ',
+        'ʎ',
+    ],
+    'z': [
+        'z',
+        'Z',
+        'ᴢ',
+        '𑣄',
+        'ꮓ',
+        '𝚭',
+        'Ꮓ',
+        '𑣥',
+        '𝛧',
+        'Ζ',
+        '𝜡',
+        '𝞕',
+        'ꓜ',
+        '𝝛',
+        '𐋵',
+        '𑢩',
+        'ʐ',
+        'ż',
+        '2',
+        '≥',
+        's',
+        'ζ',
+    ],
+}
+
+
+def censorize(token: str) -> List[str]:
+    """
+    Generate all variations of a token based on character replacements. Note that `censorize` can become quite expensive
+    to run with extremely large strings. You should always pass in individual tokens to censorize rather than blocks of
+    text.
+
+    This function merely returns a list of patterns and is mostly useful for testing/visualizing what an output would
+    look like.
+    """
+
+    # NOTE: it's probably worth adding some protections here to prevent excessively long strings from being
+    # passed to censorize
+
+    token_variations = ['']
+
+    # example word "cat"
+    # we loop over each character that is in the token
+    for char in token:
+        # we grab the character variations from the provided lookalikes set
+        # for c we'd get c, C, and < (among others above obviously)
+        # for a we'd get a, A, and @
+        # for t we'd get t, T, and 7
+        char_variations = lookalikes.get(char)
+
+        # if there wasn't one, just use the char itself
+        if char_variations is None:
+            char_variations = [char]
+
+        # make a new list that we'll replace the previous one with
+        new_token_variations: List[str] = []
+
+        # for each existing variation, we'll make a new variation with _each_ of the characters in the set
+        # to start, we'll get a list that is 'c', 'C', and '<'
+        # on the next loop, we'll get 'ca', 'cA', 'c@', 'Ca', 'CA', 'C@', '<a', '<cA', '<@'
+        # and so on for each additional token...
+        for tok_variation in token_variations:
+            for char_variation in char_variations:
+                new_token_variations.append(tok_variation + char_variation)
+
+        # replace the previous tokens with the new ones for the next loop
+        token_variations = new_token_variations
+
+    return token_variations
+
+
+def create_censorize_regex(
+    token: str,
+    include_plural: bool,
+    include_substrings: bool,
+) -> re.Pattern[str]:
+    """
+    Create a compiled regex pattern that matches all variations of a token based on character replacement set.
+
+    Args:
+        token: The token to create a censored regex for
+        include_plural: Will allow for each pattern to be compatible with plurals, i.e. if 'cat' is passed, the pattern will be 'cat[sS$]?'
+        include_substrings: Whether substrings of characters are allowed, i.e. if "concatenate" will match "cat" or not
+        char_set: The set of lookalike characters you wish to use. Defaults to the provided lookalike charset
+    """
+
+    token = token.lower()
+
+    regex = ''
+
+    # if we're not including substrings, start with forcing word boundary at the beginning of the string
+    # q: i think we could actually use '\b' in python, but i'm not certain
+    if not include_substrings:
+        regex += r'(^|\W)'
+
+    # start by looping over each character in the token
+    for index, char in enumerate(token):
+        char_variations = lookalikes.get(char)
+        if char_variations is None:
+            char_variations = [char]
+
+        # place each possible character in the pattern
+        regex += '['
+        for char_variation in char_variations:
+            regex += re.escape(char_variation)
+        regex += ']'
+
+        # if this isn't the last character in the token, we want to allow for "space" characters that people
+        # often use, i.e. 'c#a#t' or 'c_a_t', as well as zero-width unicode characters used to evade filters
+        if index < len(token) - 1:
+            regex += r'[,.+/|&%#!@_\u200b\u200c\u200d\u200e\u200f\ufeff]*'
+
+    # once we are at the end of the string, add on any possible s character if we are checking for substrings
+    if include_plural:
+        # start by adding our space characters
+        regex += r'[,.+/|&%#!@_\u200b\u200c\u200d\u200e\u200f\ufeff]*'
+
+        # grab the s variations from the charset
+        s_variations = lookalikes.get('s', ['s', 'S'])
+
+        # append each of the s variations
+        regex += '['
+        for s_variation in s_variations:
+            regex += re.escape(s_variation)
+        regex += ']?'
+
+    # follow up with a word boundary if we are not checking substrings
+    if not include_substrings:
+        regex += r'(\W|$)'
+
+    return re.compile(regex)
+
+
+class CensorCache:
+    def __init__(self) -> None:
+        self._cache: Dict[str, re.Pattern[str]] = {}
+
+    def get_censored_regex(self, term: str, plurals: bool, substrings: bool) -> re.Pattern[str]:
+        """
+        Gets a regex pattern from the regex cache or creates a new one if it is not already in the cache.
+        """
+
+        cache_key = term
+        if plurals:
+            cache_key = f'{cache_key}-yp'
+        if substrings:
+            cache_key = f'{cache_key}-ysbs'
+
+        if cache_key not in self._cache:
+            pattern = create_censorize_regex(term, include_plural=plurals, include_substrings=substrings)
+            self._cache[cache_key] = pattern
+
+        return self._cache[cache_key]
+
+
+censor_cache = CensorCache()
+
+
+class CheckCensoredArguments(ArgumentsBase):
+    s: str
+    """
+    The input string to check
+    """
+
+    pattern: str
+    """
+    The string to create a regex pattern for.
+    """
+
+    plurals: bool = False
+    """
+    Whether to check for plurals of the string as well. I.e. if the input is 'cat', match both 'cat' and 'cats'.
+
+    Default: False
+    """
+
+    substrings: bool = False
+    """
+    Whether to check substrings of the input string. I.e. 'concatenate' would match the pattern created for 'cat'.
+
+    Default: False
+    """
+
+    must_be_censored: bool = False
+    """
+    Whether a string must be censored to return True. For example, 'cat' itself would return false but 'c@t'
+    would return true.
+
+    Default: False
+    """
+
+
+class CheckCensored(UDFBase[CheckCensoredArguments, bool]):
+    """
+    Checks a given string against another string's censored regex.
+    """
+
+    def execute(self, execution_context: ExecutionContext, arguments: CheckCensoredArguments) -> bool:
+        normalized = unicodedata.normalize('NFKC', arguments.s)
+
+        pattern = censor_cache.get_censored_regex(
+            arguments.pattern, plurals=arguments.plurals, substrings=arguments.substrings
+        )
+
+        match = pattern.search(normalized)
+        if match is None:
+            return False
+
+        if arguments.must_be_censored:
+            if match.group().lower() == arguments.pattern.lower():
+                return False
+
+        return True

@@ -400,3 +400,16 @@ class StringExtractURLs(UDFBase[StringArguments, List[str]]):
 
         # return any valid urls encountered in the message
         return list(valid_urls)
+
+
+_TOKEN_PATTERN = re.compile(r"[\w]+(?:'[\w]+)?", re.UNICODE)
+
+
+def tokenize_text(s: str) -> list[str]:
+    s = s.replace("'", "'").replace('ʼ', "'")
+    return _TOKEN_PATTERN.findall(s.lower())
+
+
+class StringTokenize(UDFBase[StringArguments, list[str]]):
+    def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> list[str]:
+        return tokenize_text(arguments.s)
