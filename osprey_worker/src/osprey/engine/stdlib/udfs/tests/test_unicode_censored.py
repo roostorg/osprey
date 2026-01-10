@@ -2,7 +2,7 @@ import pytest
 from osprey.engine.conftest import ExecuteFunction
 from osprey.engine.stdlib.udfs.unicode_censored import (
     CheckCensored,
-    create_censorize_regex,
+    create_censored_regex,
 )
 from osprey.engine.udf.registry import UDFRegistry
 
@@ -16,42 +16,42 @@ pytestmark = [
 
 
 class TestCreateCensorizeRegex:
-    """Tests for the create_censorize_regex() helper function."""
+    """Tests for the create_censored_regex() helper function."""
 
     def test_basic_match(self) -> None:
-        pattern = create_censorize_regex('cat', include_plural=False, include_substrings=True)
+        pattern = create_censored_regex('cat', include_plural=False, include_substrings=True)
         assert pattern.search('cat') is not None
         assert pattern.search('c@t') is not None
         assert pattern.search('C4T') is not None
 
     def test_plural_matching(self) -> None:
-        pattern = create_censorize_regex('cat', include_plural=True, include_substrings=True)
+        pattern = create_censored_regex('cat', include_plural=True, include_substrings=True)
         assert pattern.search('cats') is not None
         assert pattern.search('c@ts') is not None
         assert pattern.search('cat') is not None  # should still match singular
 
     def test_no_plural_matching(self) -> None:
-        pattern = create_censorize_regex('cat', include_plural=False, include_substrings=False)
+        pattern = create_censored_regex('cat', include_plural=False, include_substrings=False)
         match = pattern.search('cats')
         assert match is None
 
     def test_substring_matching(self) -> None:
-        pattern = create_censorize_regex('cat', include_plural=False, include_substrings=True)
+        pattern = create_censored_regex('cat', include_plural=False, include_substrings=True)
         assert pattern.search('concatenate') is not None
 
     def test_no_substring_matching(self) -> None:
-        pattern = create_censorize_regex('cat', include_plural=False, include_substrings=False)
+        pattern = create_censored_regex('cat', include_plural=False, include_substrings=False)
         assert pattern.search('concatenate') is None
 
     def test_word_boundary_matching(self) -> None:
-        pattern = create_censorize_regex('cat', include_plural=False, include_substrings=False)
+        pattern = create_censored_regex('cat', include_plural=False, include_substrings=False)
         assert pattern.search('the cat sat') is not None
         assert pattern.search('cat') is not None
         assert pattern.search(' cat ') is not None
 
     def test_space_character_insertion(self) -> None:
         # the regex allows space-like chars between letters
-        pattern = create_censorize_regex('cat', include_plural=False, include_substrings=True)
+        pattern = create_censored_regex('cat', include_plural=False, include_substrings=True)
         assert pattern.search('c___a__t') is not None
         assert pattern.search('c.a....t') is not None
         assert pattern.search('c@_a@#t') is not None

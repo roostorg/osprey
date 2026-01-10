@@ -897,52 +897,7 @@ lookalikes = {
 }
 
 
-def censorize(token: str) -> List[str]:
-    """
-    Generate all variations of a token based on character replacements. Note that `censorize` can become quite expensive
-    to run with extremely large strings. You should always pass in individual tokens to censorize rather than blocks of
-    text.
-
-    This function merely returns a list of patterns and is mostly useful for testing/visualizing what an output would
-    look like.
-    """
-
-    # NOTE: it's probably worth adding some protections here to prevent excessively long strings from being
-    # passed to censorize
-
-    token_variations = ['']
-
-    # example word "cat"
-    # we loop over each character that is in the token
-    for char in token:
-        # we grab the character variations from the provided lookalikes set
-        # for c we'd get c, C, and < (among others above obviously)
-        # for a we'd get a, A, and @
-        # for t we'd get t, T, and 7
-        char_variations = lookalikes.get(char)
-
-        # if there wasn't one, just use the char itself
-        if char_variations is None:
-            char_variations = [char]
-
-        # make a new list that we'll replace the previous one with
-        new_token_variations: List[str] = []
-
-        # for each existing variation, we'll make a new variation with _each_ of the characters in the set
-        # to start, we'll get a list that is 'c', 'C', and '<'
-        # on the next loop, we'll get 'ca', 'cA', 'c@', 'Ca', 'CA', 'C@', '<a', '<cA', '<@'
-        # and so on for each additional token...
-        for tok_variation in token_variations:
-            for char_variation in char_variations:
-                new_token_variations.append(tok_variation + char_variation)
-
-        # replace the previous tokens with the new ones for the next loop
-        token_variations = new_token_variations
-
-    return token_variations
-
-
-def create_censorize_regex(
+def create_censored_regex(
     token: str,
     include_plural: bool,
     include_substrings: bool,
@@ -1020,7 +975,7 @@ class CensorCache:
             cache_key = f'{cache_key}-ysbs'
 
         if cache_key not in self._cache:
-            pattern = create_censorize_regex(term, include_plural=plurals, include_substrings=substrings)
+            pattern = create_censored_regex(term, include_plural=plurals, include_substrings=substrings)
             self._cache[cache_key] = pattern
 
         return self._cache[cache_key]
