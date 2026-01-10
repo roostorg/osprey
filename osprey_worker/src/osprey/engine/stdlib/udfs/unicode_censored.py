@@ -1,10 +1,9 @@
 import re
 import unicodedata
-from typing import Dict, List
+from typing import Dict
 
 from osprey.engine.executor.execution_context import ExecutionContext
 from osprey.engine.stdlib.udfs.string import StringArguments
-from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import UDFBase
 
 # a big collection of lookalike characters that we have found useful (and have been used in the wild during e.g. raids)
