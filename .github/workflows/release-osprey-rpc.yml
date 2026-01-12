@@ -1,0 +1,32 @@
+name: Release osprey-rpc
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-osprey-rpc:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+
+      - name: Build osprey-rpc sdist
+        run: |
+          cd osprey_rpc
+          uv build --sdist
+
+      - name: Upload osprey-rpc to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: osprey_rpc/dist/osprey_rpc-*.tar.gz
