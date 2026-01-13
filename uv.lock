@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '4' and platform_machine == 'x86_64'",
@@ -577,7 +577,7 @@ dependencies = [
 [[package]]
 name = "example-plugins"
 version = "0.1.0"
-source = { virtual = "example_plugins" }
+source = { editable = "example_plugins" }
 dependencies = [
     { name = "pluggy" },
 ]
@@ -1002,7 +1002,6 @@ dependencies = [
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a3/1c/c42834d4fee45c5cf2d9546e97e879a1cbcdecfd16eb1a12144dcb91edae/grpcio-1.49.1.tar.gz", hash = "sha256:d4725fc9ec8e8822906ae26bb26f5546891aa7fbc3443de970cc556d43a5c99f", size = 22059239, upload-time = "2022-09-22T03:02:44.376Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2d/e2/aaccddb8b06637625d847dbb5fe76ec3d15a74d89d983f5202f3666706e3/grpcio-1.49.1-cp311-cp311-linux_armv7l.whl", hash = "sha256:9fb17ff8c0d56099ac6ebfa84f670c5a62228d6b5c695cf21c02160c2ac1446b", size = 73399185, upload-time = "2022-09-22T02:57:56.219Z" },
     { url = "https://files.pythonhosted.org/packages/90/0f/4d614d59f500835cbd27cb90743fb6b299098b0f22b8fd058d3586c933c0/grpcio-1.49.1-cp311-cp311-macosx_10_10_x86_64.whl", hash = "sha256:075f2d06e3db6b48a2157a1bcd52d6cbdca980dd18988fe6afdb41795d51625f", size = 4296299, upload-time = "2022-09-22T02:58:01.417Z" },
     { url = "https://files.pythonhosted.org/packages/4d/ea/359a98f8b3b4ff9a2f457a0d20ed81775a64149fbb7617177ed23d9d10c9/grpcio-1.49.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:dc79b2b37d779ac42341ddef40ad5bf0966a64af412c89fc2b062e3ddabb093f", size = 4656437, upload-time = "2022-09-22T02:58:06.23Z" },
     { url = "https://files.pythonhosted.org/packages/fc/89/4952d2dff95f5b95db5943b2d1b55c82a485830b992f52f212b33616b523/grpcio-1.49.1-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:49b301740cf5bc8fed4fee4c877570189ae3951432d79fa8e524b09353659811", size = 4888051, upload-time = "2022-09-22T02:58:11.411Z" },
@@ -1624,7 +1623,7 @@ wheels = [
 [[package]]
 name = "osprey-rpc"
 version = "0.1.0"
-source = { virtual = "osprey_rpc" }
+source = { editable = "osprey_rpc" }
 
 [[package]]
 name = "osprey-worker"
@@ -1638,7 +1637,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "flask-cors", specifier = ">=6.0.1" },
-    { name = "osprey-rpc", virtual = "osprey_rpc" },
+    { name = "osprey-rpc", editable = "osprey_rpc" },
 ]
 
 [[package]]
