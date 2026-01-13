@@ -973,7 +973,6 @@ class CensorCache:
         Gets a regex pattern from the regex cache or creates a new one if it is not already in the cache.
         """
 
-        cache_key = term
         cache_key = (term, plurals, substrings)
 
         if cache_key not in self._cache:
