@@ -89,6 +89,12 @@ class ListCache:
 
         return cast(list[str], data)
 
+    def _add_list(self, list_name: str, case_sensitive: bool, terms: list[str]):
+        """Add list function for tests"""
+
+        cache_key = (list_name, case_sensitive)
+        self._cache[cache_key] = set(terms)
+
     def get_list(self, list_name: str, case_sensitive: bool):
         """Attempt to find the given list inside of the cache, otherwise attempt to load it from sources"""
 
@@ -173,11 +179,15 @@ class ListArgumentsBase(ArgumentsBase):
 
 
 class ListContainsArguments(ListArgumentsBase):
-    case_sensitive = False
+    case_sensitive: bool = False
     """Whether the terms should be checked with exact casing or not"""
 
-    word_boundaries = True
-    """Whether to use word boundaries or not when checking phrases"""
+    substrings: bool = False
+    """
+    Whether to check substrings of the input string. I.e. 'concatenate' would match the pattern created for 'cat'.
+
+    Default: False
+    """
 
 
 class ListContains(UDFBase[ListContainsArguments, bool]):
@@ -195,7 +205,7 @@ class ListContains(UDFBase[ListContainsArguments, bool]):
             if not arguments.case_sensitive:
                 term = term.lower()
 
-            if arguments.word_boundaries:
+            if not arguments.substrings:
                 for item in list_items:
                     if re.search(rf'\b{re.escape(item)}\b', term):
                         return True
@@ -223,7 +233,7 @@ class ListContainsCount(UDFBase[ListContainsArguments, int]):
             if not arguments.case_sensitive:
                 term = term.lower()
 
-            if arguments.word_boundaries:
+            if not arguments.substrings:
                 for item in list_items:
                     if re.search(rf'\b{re.escape(item)}\b', term):
                         count += 1
@@ -252,7 +262,7 @@ class ListContainsItems(UDFBase[ListContainsArguments, list[str]]):
 
             check_term = term.lower() if not arguments.case_sensitive else term
 
-            if arguments.word_boundaries:
+            if not arguments.substrings:
                 for item in list_items:
                     if re.search(rf'\b{re.escape(item)}\b', check_term):
                         found.append(term)
