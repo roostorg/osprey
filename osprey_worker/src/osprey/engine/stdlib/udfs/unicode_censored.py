@@ -5,6 +5,7 @@ from typing import Dict
 from osprey.engine.executor.execution_context import ExecutionContext
 from osprey.engine.stdlib.udfs.string import StringArguments
 from osprey.engine.udf.base import UDFBase
+from osprey.worker.lib.singleton import Singleton
 
 # a big collection of lookalike characters that we have found useful (and have been used in the wild during e.g. raids)
 lookalikes = {
@@ -982,7 +983,11 @@ class CensorCache:
         return self._cache[cache_key]
 
 
-censor_cache = CensorCache()
+def _init_censor_cache() -> CensorCache:
+    return CensorCache()
+
+
+CENSOR_CACHE = Singleton(_init_censor_cache)
 
 
 class CheckCensoredArguments(StringArguments):
