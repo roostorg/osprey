@@ -350,4 +350,4 @@ def test_tokenize(execute: ExecuteFunction, text: str, expected_result: List[str
 
     result: List[str] = data['Result']
     assert len(expected_result) == len(result)
-    assert set(expected_result) == set(result)
+    assert expected_result == result

@@ -114,6 +114,14 @@ class TestCheckCensoredUDF:
         assert data['PlainText'] is False
         assert data['CensoredText'] is True
 
+    def test_must_be_censored_with_surrounding_test(self, execute: ExecuteFunction) -> None:
+        data = execute("""
+            PlainText = CheckCensored(s="the cat sat", pattern="cat", must_be_censored=True)
+            CensoredText = CheckCensored(s="the c@t sat", pattern="cat", must_be_censored=True)
+        """)
+        assert data['PlainText'] is False
+        assert data['CensoredText'] is True
+
     def test_case_insensitive(self, execute: ExecuteFunction) -> None:
         data = execute("""
             Upper = CheckCensored(s="CAT", pattern="cat")

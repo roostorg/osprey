@@ -908,7 +908,8 @@ def create_censored_regex(
         token: The token to create a censored regex for
         include_plural: Will allow for each pattern to be compatible with plurals, i.e. if 'cat' is passed, the pattern will be 'cat[sS$]?'
         include_substrings: Whether substrings of characters are allowed, i.e. if "concatenate" will match "cat" or not
-        char_set: The set of lookalike characters you wish to use. Defaults to the provided lookalike charset
+        char_set: The set of lookalike characters you wish to use. Defaults to the provided lookalike charset. Should be string literals for values,
+            not regex patterns
     """
 
     token = token.lower()
@@ -916,9 +917,11 @@ def create_censored_regex(
     regex = ''
 
     # if we're not including substrings, start with forcing word boundary at the beginning of the string
-    # q: i think we could actually use '\b' in python, but i'm not certain
     if not include_substrings:
-        regex += r'(^|\W)'
+        regex += r'(?:^|\W)'
+
+    # create a capture group for the word
+    regex += '(?P<word>'
 
     # start by looping over each character in the token
     for index, char in enumerate(token):
@@ -951,16 +954,19 @@ def create_censored_regex(
             regex += re.escape(s_variation)
         regex += ']?'
 
+    # close the word capture group
+    regex += ')'
+
     # follow up with a word boundary if we are not checking substrings
     if not include_substrings:
-        regex += r'(\W|$)'
+        regex += r'(?:\W|$)'
 
     return re.compile(regex)
 
 
 class CensorCache:
     def __init__(self) -> None:
-        self._cache: Dict[str, re.Pattern[str]] = {}
+        self._cache: Dict[tuple[str, bool, bool], re.Pattern[str]] = {}
 
     def get_censored_regex(self, term: str, plurals: bool, substrings: bool) -> re.Pattern[str]:
         """
@@ -968,10 +974,7 @@ class CensorCache:
         """
 
         cache_key = term
-        if plurals:
-            cache_key = f'{cache_key}-yp'
-        if substrings:
-            cache_key = f'{cache_key}-ysbs'
+        cache_key = (term, plurals, substrings)
 
         if cache_key not in self._cache:
             pattern = create_censored_regex(term, include_plural=plurals, include_substrings=substrings)
@@ -1029,7 +1032,8 @@ class CheckCensored(UDFBase[CheckCensoredArguments, bool]):
             return False
 
         if arguments.must_be_censored:
-            if match.group().lower() == arguments.pattern.lower():
+            matched_word = match.group('word')
+            if matched_word.lower() == arguments.pattern.lower():
                 return False
 
         return True
