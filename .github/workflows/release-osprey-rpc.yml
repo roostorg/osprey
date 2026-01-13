@@ -26,7 +26,20 @@ jobs:
           cd osprey_rpc
           uv build --sdist
 
+      - name: Create zip from sdist
+        run: |
+          cd osprey_rpc/dist
+          # Extract the tarball and repackage as zip
+          tar -xzf osprey_rpc-*.tar.gz
+          # Get the directory name (e.g., osprey_rpc-0.1.0)
+          SDIST_DIR=$(ls -d osprey_rpc-*/)
+          SDIST_DIR=${SDIST_DIR%/}
+          zip -r "${SDIST_DIR}.zip" "${SDIST_DIR}"
+          rm -rf "${SDIST_DIR}"
+
       - name: Upload osprey-rpc to release
         uses: softprops/action-gh-release@v2
         with:
-          files: osprey_rpc/dist/osprey_rpc-*.tar.gz
+          files: |
+            osprey_rpc/dist/osprey_rpc-*.tar.gz
+            osprey_rpc/dist/osprey_rpc-*.zip
