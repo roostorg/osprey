@@ -219,12 +219,13 @@ class ListContains(UDFBase[ListContainsArguments, bool]):
 
 class ListContainsCount(UDFBase[ListContainsArguments, int]):
     """
-    Find the number of term "hits" found in the given list
+    Find the number of term "hits" found in the given list. If a word in the list is found more than once in the input
+    terms, it will only be counted once for that word.
     """
 
     def execute(self, execution_context: ExecutionContext, arguments: ListContainsArguments) -> int:
         list_items = LIST_CACHE.instance().get_list(arguments.list_name, case_sensitive=arguments.case_sensitive)
-        count = 0
+        found: set[str] = set()
 
         for term in arguments.terms:
             if term is None:
@@ -236,15 +237,15 @@ class ListContainsCount(UDFBase[ListContainsArguments, int]):
             if not arguments.substrings:
                 for item in list_items:
                     if re.search(rf'\b{re.escape(item)}\b', term):
-                        count += 1
+                        found.add(item)
                         break
             else:
                 for item in list_items:
                     if item in term:
-                        count += 1
+                        found.add(item)
                         break
 
-        return count
+        return len(found)
 
 
 class ListContainsItems(UDFBase[ListContainsArguments, list[str]]):
@@ -254,7 +255,7 @@ class ListContainsItems(UDFBase[ListContainsArguments, list[str]]):
 
     def execute(self, execution_context: ExecutionContext, arguments: ListContainsArguments) -> list[str]:
         list_items = LIST_CACHE.instance().get_list(arguments.list_name, case_sensitive=arguments.case_sensitive)
-        found: list[str] = []
+        found: set[str] = set()
 
         for term in arguments.terms:
             if term is None:
@@ -265,15 +266,15 @@ class ListContainsItems(UDFBase[ListContainsArguments, list[str]]):
             if not arguments.substrings:
                 for item in list_items:
                     if re.search(rf'\b{re.escape(item)}\b', check_term):
-                        found.append(term)
+                        found.add(item)
                         break
             else:
                 for item in list_items:
                     if item in check_term:
-                        found.append(term)
+                        found.add(item)
                         break
 
-        return found
+        return list(found)
 
 
 class RegexListContainsArguments(ListArgumentsBase):
