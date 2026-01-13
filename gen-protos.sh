@@ -11,6 +11,6 @@ shopt -s globstar 2>/dev/null || true
 # change to directory of script
 cd "$(dirname "$0")"
 
-glob=(./proto/**/*.proto)
+glob=(./proto/osprey/**/*.proto)
 # Generate protobuf files
 uv run -m grpc_tools.protoc --proto_path=proto --python_out=osprey_rpc/src --mypy_out=osprey_rpc/src --grpc_python_out=osprey_rpc/src "${glob[@]}"

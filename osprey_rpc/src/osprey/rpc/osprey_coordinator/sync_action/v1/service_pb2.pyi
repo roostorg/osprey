@@ -4,14 +4,11 @@ isort:skip_file
 """
 
 import builtins
-import collections.abc
 import google.protobuf.descriptor
-import google.protobuf.internal.containers
 import google.protobuf.message
 import google.protobuf.timestamp_pb2
 import google.protobuf.wrappers_pb2
 import osprey.rpc.common.v1.verdicts_pb2
-import osprey.rpc.labels.v1.service_pb2
 import typing
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
@@ -23,16 +20,11 @@ class ProcessActionRequest(google.protobuf.message.Message):
     ACTION_ID_FIELD_NUMBER: builtins.int
     ACTION_NAME_FIELD_NUMBER: builtins.int
     ACTION_DATA_JSON_FIELD_NUMBER: builtins.int
-    REQUESTED_ENTITIES_FIELD_NUMBER: builtins.int
     TIMESTAMP_FIELD_NUMBER: builtins.int
     action_name: builtins.str
     action_data_json: builtins.str
     @property
     def action_id(self) -> google.protobuf.wrappers_pb2.UInt64Value: ...
-    @property
-    def requested_entities(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[osprey.rpc.labels.v1.service_pb2.EntityKey]:
-        """DEPRECATED: to be removed once labels are replaced with verdicts"""
-
     @property
     def timestamp(self) -> google.protobuf.timestamp_pb2.Timestamp: ...
     def __init__(
@@ -41,11 +33,10 @@ class ProcessActionRequest(google.protobuf.message.Message):
         action_id: google.protobuf.wrappers_pb2.UInt64Value | None = ...,
         action_name: builtins.str = ...,
         action_data_json: builtins.str = ...,
-        requested_entities: collections.abc.Iterable[osprey.rpc.labels.v1.service_pb2.EntityKey] | None = ...,
         timestamp: google.protobuf.timestamp_pb2.Timestamp | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["action_id", b"action_id", "timestamp", b"timestamp"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["action_data_json", b"action_data_json", "action_id", b"action_id", "action_name", b"action_name", "requested_entities", b"requested_entities", "timestamp", b"timestamp"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["action_data_json", b"action_data_json", "action_id", b"action_id", "action_name", b"action_name", "timestamp", b"timestamp"]) -> None: ...
 
 global___ProcessActionRequest = ProcessActionRequest
 
@@ -53,23 +44,15 @@ global___ProcessActionRequest = ProcessActionRequest
 class ProcessActionResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    ENTITIES_FIELD_NUMBER: builtins.int
     VERDICTS_FIELD_NUMBER: builtins.int
     @property
-    def entities(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[osprey.rpc.labels.v1.service_pb2.Entity]:
-        """DEPRECATED: to be removed once labels are replaced with verdicts"""
-
-    @property
-    def verdicts(self) -> osprey.rpc.common.v1.verdicts_pb2.Verdicts:
-        """"""
-
+    def verdicts(self) -> osprey.rpc.common.v1.verdicts_pb2.Verdicts: ...
     def __init__(
         self,
         *,
-        entities: collections.abc.Iterable[osprey.rpc.labels.v1.service_pb2.Entity] | None = ...,
         verdicts: osprey.rpc.common.v1.verdicts_pb2.Verdicts | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["verdicts", b"verdicts"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["entities", b"entities", "verdicts", b"verdicts"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["verdicts", b"verdicts"]) -> None: ...
 
 global___ProcessActionResponse = ProcessActionResponse
