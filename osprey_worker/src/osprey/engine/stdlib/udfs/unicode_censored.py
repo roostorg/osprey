@@ -1027,7 +1027,7 @@ class CheckCensored(UDFBase[CheckCensoredArguments, bool]):
     def execute(self, execution_context: ExecutionContext, arguments: CheckCensoredArguments) -> bool:
         normalized = unicodedata.normalize('NFKC', arguments.s)
 
-        pattern = censor_cache.get_censored_regex(
+        pattern = CENSOR_CACHE.instance().get_censored_regex(
             arguments.pattern, plurals=arguments.plurals, substrings=arguments.substrings
         )
 
