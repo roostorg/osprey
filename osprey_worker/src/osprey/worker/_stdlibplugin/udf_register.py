@@ -72,10 +72,10 @@ def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
     Does not need to be called directly, as its hook is called by the plugin manager.
     """
     return [
+        CheckCensored,
         DeclareVerdict,
         DomainChopper,
         DomainTld,
-        CheckCensored,
         EmailDomain,
         EmailSubdomain,
         EmailLocalPart,
