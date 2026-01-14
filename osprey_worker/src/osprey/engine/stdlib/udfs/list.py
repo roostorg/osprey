@@ -4,7 +4,7 @@ from typing import cast
 import yaml
 from osprey.engine.ast.sources import Sources
 from osprey.engine.executor.execution_context import ExecutionContext
-from osprey.engine.stdlib.udfs.unicode_censored import CENSOR_CACHE
+from osprey.engine.stdlib.udfs.unicode_censored import CENSOR_CACHE, create_censored_regex
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import UDFBase
 from osprey.worker.lib.config import Config
@@ -89,11 +89,37 @@ class ListCache:
 
         return cast(list[str], data)
 
-    def _add_list(self, list_name: str, case_sensitive: bool, terms: list[str]):
+    def _dangerously_add_list(self, list_name: str, case_sensitive: bool, terms: list[str]):
         """Add list function for tests"""
 
         cache_key = (list_name, case_sensitive)
         self._cache[cache_key] = set(terms)
+
+    def _dangerously_add_regex_list(self, list_name: str, case_sensitive: bool, str_patterns: list[str]):
+        """Add a regex pattern list for tests"""
+
+        patterns: list[re.Pattern[str]] = []
+
+        for item in str_patterns:
+            flags = 0 if case_sensitive else re.IGNORECASE
+            item = item.strip()
+            pattern = re.compile(item, flags)
+            patterns.append(pattern)
+
+        cache_key = (list_name, case_sensitive)
+        self._regex_cache[cache_key] = patterns
+
+    def _dangerously_add_censored_list(self, list_name: str, plurals: bool, substrings: bool, terms: list[str]):
+        """Add a censored list for tests"""
+
+        patterns: list[tuple[str, re.Pattern[str]]] = []
+
+        for item in terms:
+            pattern = create_censored_regex(item, include_plural=plurals, include_substrings=substrings)
+            patterns.append((item, pattern))
+
+        cache_key = (list_name, plurals, substrings)
+        self._censored_cache[cache_key] = patterns
 
     def get_list(self, list_name: str, case_sensitive: bool):
         """Attempt to find the given list inside of the cache, otherwise attempt to load it from sources"""
@@ -206,9 +232,8 @@ class ListContains(UDFBase[ListContainsArguments, bool]):
                 term = term.lower()
 
             if not arguments.substrings:
-                for item in list_items:
-                    if re.search(rf'\b{re.escape(item)}\b', term):
-                        return True
+                if term in list_items:
+                    return True
             else:
                 for item in list_items:
                     if item in term:
@@ -235,15 +260,12 @@ class ListContainsCount(UDFBase[ListContainsArguments, int]):
                 term = term.lower()
 
             if not arguments.substrings:
-                for item in list_items:
-                    if re.search(rf'\b{re.escape(item)}\b', term):
-                        found.add(item)
-                        break
+                if term in list_items:
+                    found.add(term)
             else:
                 for item in list_items:
                     if item in term:
                         found.add(item)
-                        break
 
         return len(found)
 
@@ -264,21 +286,18 @@ class ListContainsItems(UDFBase[ListContainsArguments, list[str]]):
             check_term = term.lower() if not arguments.case_sensitive else term
 
             if not arguments.substrings:
-                for item in list_items:
-                    if re.search(rf'\b{re.escape(item)}\b', check_term):
-                        found.add(item)
-                        break
+                if check_term in list_items:
+                    found.add(check_term)
             else:
                 for item in list_items:
                     if item in check_term:
                         found.add(item)
-                        break
 
         return list(found)
 
 
 class RegexListContainsArguments(ListArgumentsBase):
-    case_sensitive = False
+    case_sensitive: bool = False
     """Whether the terms should be checked with exact casing or not"""
 
 
@@ -291,8 +310,6 @@ class RegexListContains(UDFBase[RegexListContainsArguments, bool]):
         patterns = LIST_CACHE.instance().get_regex_list(arguments.list_name, case_sensitive=arguments.case_sensitive)
 
         for term in arguments.terms:
-            if not arguments.case_sensitive:
-                term = term.lower()
             if any(pattern.search(term or '') for pattern in patterns):
                 return True
 
@@ -307,23 +324,17 @@ class RegexListContainsCount(UDFBase[RegexListContainsArguments, int]):
     def execute(self, execution_context: ExecutionContext, arguments: RegexListContainsArguments) -> int:
         patterns = LIST_CACHE.instance().get_regex_list(arguments.list_name, case_sensitive=arguments.case_sensitive)
 
-        if not arguments.case_sensitive:
-            terms = {item.lower() for item in arguments.terms if item is not None}
-        else:
-            terms = set(arguments.terms)
+        found: set[str] = set()
 
-        count = 0
-        for term in terms:
+        for term in arguments.terms:
             if not term:
                 continue
 
             for pattern in patterns:
                 if pattern.search(term):
-                    count += 1
-                    # break out of the pattern loop so we only count once for this term
-                    break
+                    found.add(pattern.pattern)
 
-        return count
+        return len(found)
 
 
 class RegexListContainsItems(UDFBase[RegexListContainsArguments, list[str]]):
@@ -334,23 +345,17 @@ class RegexListContainsItems(UDFBase[RegexListContainsArguments, list[str]]):
     def execute(self, execution_context: ExecutionContext, arguments: RegexListContainsArguments) -> list[str]:
         patterns = LIST_CACHE.instance().get_regex_list(arguments.list_name, case_sensitive=arguments.case_sensitive)
 
-        if not arguments.case_sensitive:
-            terms = {item.lower() for item in arguments.terms if item is not None}
-        else:
-            terms = set(arguments.terms)
+        found: set[str] = set()
 
-        found: list[str] = []
-        for term in terms:
+        for term in arguments.terms:
             if not term:
                 continue
 
             for pattern in patterns:
                 if pattern.search(term or ''):
-                    found.append(term)
-                    # break out of the pattern loop so we only append once for this term
-                    break
+                    found.add(pattern.pattern)
 
-        return found
+        return list(found)
 
 
 class CensoredListContainsArguments(ListArgumentsBase):
