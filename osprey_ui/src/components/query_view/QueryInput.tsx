@@ -84,7 +84,7 @@ const QueryInput = ({
     if (executedQuery.interval !== selectedInterval) {
       setSelectedInterval(executedQuery.interval);
     }
-  }, [executedQuery]);
+  }, [executedQuery, selectedInterval]);
 
   const handleSelectAutoComplete = (value: SelectValue) => {
     let insertValue = String(value);
