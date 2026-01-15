@@ -37,7 +37,11 @@ export interface QueryInputProps {
   onIntervalChange: (interval: DefaultIntervals) => void;
 }
 
-const QueryInput = ({ interval, dateRange, onIntervalChange }: QueryInputProps) => {
+const QueryInput = ({
+  interval: executedQueryInterval,
+  onIntervalChange: onExecutedQueryIntervalChange,
+  dateRange,
+}: QueryInputProps) => {
   const [executedQuery, updateExecutedQuery] = useQueryStore(
     (state) => [state.executedQuery, state.updateExecutedQuery],
     shallow
@@ -50,10 +54,18 @@ const QueryInput = ({ interval, dateRange, onIntervalChange }: QueryInputProps) 
   const [searchOptions, setSearchOptions] = React.useState<OptionData[]>([]);
   const [filteredOptions, setFilteredOptions] = React.useState<OptionData[]>([]);
 
+  // store the selected interval state separate from the current query's interval, so that changes
+  // to the interval can be made without losing WIP in the query input field
+  const [selectedInterval, setSelectedInterval] = React.useState(executedQueryInterval);
+
   const [isLoading, setIsLoading] = React.useState(false);
 
   const handleSelectChange = (value: DefaultIntervals) => {
-    onIntervalChange(value);
+    // only update the active query's interval if the user has not made any changes to their query input
+    if (executedQuery.queryFilter === queryFilter) {
+      onExecutedQueryIntervalChange(value);
+    }
+    setSelectedInterval(value);
   };
 
   React.useEffect(() => {
@@ -67,7 +79,12 @@ const QueryInput = ({ interval, dateRange, onIntervalChange }: QueryInputProps) 
 
   React.useEffect(() => {
     setQueryFilter(executedQuery.queryFilter);
-  }, [executedQuery]);
+    // if the user has selected a new query to execute from the saved queries list, make sure that
+    // we update the selected interval to reflect the correct one
+    if (executedQuery.interval !== selectedInterval) {
+      setSelectedInterval(executedQuery.interval);
+    }
+  }, [executedQuery, selectedInterval]);
 
   const handleSelectAutoComplete = (value: SelectValue) => {
     let insertValue = String(value);
@@ -91,8 +108,8 @@ const QueryInput = ({ interval, dateRange, onIntervalChange }: QueryInputProps) 
     const isValid = queryFilter === '' ? true : await validateQuery(queryFilter);
 
     if (isValid) {
-      const { start, end } = getQueryDateRange(interval, dateRange);
-      updateExecutedQuery({ start, end, queryFilter, interval });
+      const { start, end } = getQueryDateRange(selectedInterval, dateRange);
+      updateExecutedQuery({ start, end, queryFilter, interval: selectedInterval });
     }
 
     setIsLoading(false);
@@ -150,7 +167,7 @@ const QueryInput = ({ interval, dateRange, onIntervalChange }: QueryInputProps) 
           onChange={handleSelectChange}
           placeholder="Select date range"
           style={{ width: 180 }}
-          value={interval ?? undefined}
+          value={selectedInterval ?? undefined}
         >
           {SelectOptions.map((option) => (
             <Select.Option value={option.value} key={option.value}>
@@ -160,7 +177,7 @@ const QueryInput = ({ interval, dateRange, onIntervalChange }: QueryInputProps) 
         </Select>
       </div>
       <OspreyButton
-        disabled={interval === CUSTOM_RANGE_OPTION && isEmptyDateRange(dateRange.start, dateRange.end)}
+        disabled={selectedInterval === CUSTOM_RANGE_OPTION && isEmptyDateRange(dateRange.start, dateRange.end)}
         color={ButtonColors.DARK_BLUE}
         className={styles.submitButton}
         onClick={handleSubmitQuery}
