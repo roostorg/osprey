@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Sequence
+from typing import Any, Sequence
 
 from osprey.engine.language_types.entities import EntityT
 from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation, EntityLabelMutationsResult, EntityLabels
@@ -8,13 +8,13 @@ from result import Result
 
 class LocalLabelProvider(LabelsProvider):
     def __init__(self):
-        self._labels: Dict[str, EntityLabels] = {}
+        self._labels: dict[str, EntityLabels] = {}
 
     def batch_get_from_service(self, keys: Sequence[EntityT[Any]]) -> Sequence[Result[EntityLabels, Exception]]:
         raise NotImplementedError()
 
     def apply_entity_mutation(
-        self, entity_key: EntityT[Any], mutations: List[EntityLabelMutation]
+        self, entity_key: EntityT[Any], mutations: list[EntityLabelMutation]
     ) -> EntityLabelMutationsResult:
         raise NotImplementedError()
 

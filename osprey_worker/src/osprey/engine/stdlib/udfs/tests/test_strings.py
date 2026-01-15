@@ -1,6 +1,6 @@
 import string
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union, cast
+from typing import Any, Callable, Iterable, Optional, Union, cast
 
 import pytest
 from osprey.engine.conftest import ExecuteFunction
@@ -263,14 +263,14 @@ def test_string_normalization(s: Scenario, execute: ExecuteFunction) -> None:
         (f'https:///{QUICK_BROWN_FOX_DOMAIN_1}', []),  # invalid url
     ],
 )
-def test_extract_domains(execute: ExecuteFunction, text: str, expected_result: List[str]) -> None:
-    data: Dict[str, Any] = execute(
+def test_extract_domains(execute: ExecuteFunction, text: str, expected_result: list[str]) -> None:
+    data: dict[str, Any] = execute(
         f"""
         Result = StringExtractDomains(s="{text}")
         """
     )
 
-    result: List[str] = data['Result']
+    result: list[str] = data['Result']
     assert len(expected_result) == len(result)
     assert set(expected_result) == set(result)
 
@@ -309,13 +309,13 @@ def test_extract_domains(execute: ExecuteFunction, text: str, expected_result: L
         (f'https:///{QUICK_BROWN_FOX_DOMAIN_1}', []),  # invalid url
     ],
 )
-def test_extract_urls(execute: ExecuteFunction, text: str, expected_result: List[str]) -> None:
-    data: Dict[str, Any] = execute(
+def test_extract_urls(execute: ExecuteFunction, text: str, expected_result: list[str]) -> None:
+    data: dict[str, Any] = execute(
         f"""
         Result = StringExtractURLs(s="{text}")
         """
     )
 
-    result: List[str] = data['Result']
+    result: list[str] = data['Result']
     assert len(expected_result) == len(result)
     assert set(expected_result) == set(result)

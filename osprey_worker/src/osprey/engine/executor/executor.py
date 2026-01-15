@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Optional, Sequence, Tuple
 
 import gevent
 import gevent.pool
@@ -35,11 +35,11 @@ from .udf_execution_helpers import UDFHelpers
 
 logger = get_logger(__name__)
 
-InProgressSingletsType = Dict['gevent.Greenlet[NodeResult]', DependencyChain]
+InProgressSingletsType = dict['gevent.Greenlet[NodeResult]', DependencyChain]
 """
 A dictionary mapping in-progress async greenlets to the chain that they are executing.
 """
-InProgressBatchesType = Dict['gevent.Greenlet[Sequence[NodeResult]]', Sequence[DependencyChain]]
+InProgressBatchesType = dict['gevent.Greenlet[Sequence[NodeResult]]', Sequence[DependencyChain]]
 """
 A dictionary mapping in-progress batch async greenlets to the sequence of chains that they are executing.
 """
@@ -82,7 +82,7 @@ def _is_spammy_exception(e: Optional[Exception]) -> bool:
 
 def _get_metric_tags(
     context: ExecutionContext, batchable_udf: Optional[BatchableUDFBase[Any, Any, Any]] = None
-) -> List[str]:
+) -> list[str]:
     return [
         f'action:{context.get_action_name()}',
         f'encoding:{context.get_data_encoding()}',
@@ -103,7 +103,7 @@ def _wrapped_batch_execution(
     nodes: Sequence[ASTNode],  # these are passed in for error tracking ^^
     batchable_args: Sequence[Any],
     context: ExecutionContext,
-    error_info_: List[NodeErrorInfo],
+    error_info_: list[NodeErrorInfo],
 ) -> Sequence[NodeResult]:
     """
     Executes a batch of batchable UDFs, and returns an ordered list of the results of the execution.
@@ -193,7 +193,7 @@ def _wrapped_batch_execution(
 def _wrapped_execution(
     chain: DependencyChain,
     context: ExecutionContext,
-    error_info_: List[NodeErrorInfo],
+    error_info_: list[NodeErrorInfo],
 ) -> NodeResult:
     caught_exception: Optional[Exception] = None
 
@@ -240,7 +240,7 @@ def _wrapped_execution(
 
 def _enqueue_batches(
     context: ExecutionContext,
-    error_infos: List[NodeErrorInfo],
+    error_infos: list[NodeErrorInfo],
     async_pool: gevent.pool.Pool,
     in_progress_async_batches: InProgressBatchesType,
     ready_async: Sequence[DependencyChain],
@@ -252,8 +252,8 @@ def _enqueue_batches(
     Returns the remaining ready async chains that could not be batched together.
     """
     # tuple( batch_type, routing_key ) -> list of tuple( chain, args )
-    batch_chains: Dict[Tuple[type, str], List[Tuple[DependencyChain, Any]]] = defaultdict(list)
-    chains_to_remove: List[DependencyChain] = []
+    batch_chains: dict[Tuple[type, str], list[Tuple[DependencyChain, Any]]] = defaultdict(list)
+    chains_to_remove: list[DependencyChain] = []
     for async_chain in ready_async:
         if not isinstance(async_chain.executor, CallExecutor):
             continue
@@ -329,7 +329,7 @@ def execute(
     context = ExecutionContext(execution_graph=execution_graph, helpers=udf_helpers, action=action)
     allow_async = async_pool is not None
     assert async_pool is None or async_pool.size is None or async_pool.size > 0
-    error_infos: List[NodeErrorInfo] = []
+    error_infos: list[NodeErrorInfo] = []
 
     in_progress_async_singlets: InProgressSingletsType = {}
     in_progress_async_batches: InProgressBatchesType = {}

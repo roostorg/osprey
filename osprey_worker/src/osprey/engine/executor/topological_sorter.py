@@ -15,7 +15,7 @@ List of notable changes:
     so we optimize the prepare() step by skipping the cycle check.
 """
 
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
+from typing import Any, Iterable, Iterator, Optional, Tuple
 
 _NODE_OUT = -1
 _NODE_DONE = -2
@@ -35,7 +35,7 @@ class _NodeInfo:
 
         # List of successor nodes. The list can contain duplicated elements as
         # long as they're all reflected in the successor's npredecessors attribute).
-        self.successors: List[Any] = []
+        self.successors: list[Any] = []
 
 
 class CycleError(ValueError):
@@ -55,9 +55,9 @@ class CycleError(ValueError):
 class TopologicalSorter:
     """Provides functionality to topologically sort a graph of hashable nodes"""
 
-    def __init__(self, graph: Optional[Dict[Any, Iterable[Any]]] = None):
-        self._node2info: Dict[Any, _NodeInfo] = {}
-        self._ready_nodes: List[Any] = []
+    def __init__(self, graph: Optional[dict[Any, Iterable[Any]]] = None):
+        self._node2info: dict[Any, _NodeInfo] = {}
+        self._ready_nodes: list[Any] = []
         self._npassedout = 0
         self._nfinished = 0
         self._needs_prepare = True

@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import pytest
 from osprey.engine.conftest import CheckFailureFunction, ExecuteFunction, RunValidationFunction
@@ -7,7 +7,7 @@ from osprey.engine.stdlib.udfs.string import StringClean, StringLength
 from osprey.engine.udf.registry import UDFRegistry
 from typing_extensions import TypedDict
 
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_standard_rules_validators(),
     pytest.mark.use_udf_registry(UDFRegistry.with_udfs(JsonData, StringClean, StringLength)),
 ]
@@ -23,8 +23,8 @@ is_secret_mark = pytest.mark.parametrize(
 
 
 class DataT(TypedDict):
-    data: Optional[Dict[str, object]]
-    secret_data: Optional[Dict[str, str]]
+    data: Optional[dict[str, object]]
+    secret_data: Optional[dict[str, str]]
 
 
 @pytest.mark.use_standard_rules_validators()

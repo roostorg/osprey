@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Sequence, Tuple, Type, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, Sequence, Tuple, Type, Union, cast
 
 from osprey.engine.ast.error_utils import SpanWithHint, render_span_context_with_message
 from osprey.engine.ast.errors import OspreySyntaxError
@@ -26,16 +26,16 @@ class ValidationContext:
     sources: Sources
     """The sources this validator is validating."""
 
-    _validation_results: Dict[Union[Type[BaseValidator], Type[HasResult[Any]]], Any]
+    _validation_results: dict[Union[Type[BaseValidator], Type[HasResult[Any]]], Any]
     """The stored results of a given validator."""
 
-    _errors: List['ValidationError']
+    _errors: list['ValidationError']
     """Errors emitted by the validators that have run."""
 
-    _warnings: List['ValidationWarning']
+    _warnings: list['ValidationWarning']
     """Warnings emitted by the validators that have run."""
 
-    _validator_stack: List[Type[BaseValidator]]
+    _validator_stack: list[Type[BaseValidator]]
     """Stack of the currently running validators."""
 
     _validator_registry: ValidatorRegistry
@@ -44,7 +44,7 @@ class ValidationContext:
     _udf_registry: 'UDFRegistry'
     """The registry holding the user defined functions that may be used by validators."""
 
-    _validator_inputs: Dict[Type[HasInput[Any]], Any]
+    _validator_inputs: dict[Type[HasInput[Any]], Any]
     """Holds any dynamic inputs that the validators might need."""
 
     _warning_as_error: bool
@@ -173,7 +173,7 @@ class ValidationContext:
         if self._errors or (self._warning_as_error and self._warnings):
             raise ValidationFailed(self._errors, self._warnings)
 
-        validation_results: Dict[Type[HasResult[Any]], Any] = {}
+        validation_results: dict[Type[HasResult[Any]], Any] = {}
         for k, v in self._validation_results.items():
             if issubclass(k, HasResult):
                 validation_results[k] = v
@@ -228,7 +228,7 @@ class ValidationContext:
 
         return cast(T_co, result)
 
-    def validator_depends_on(self, validator_classes: List[Type[BaseValidator]]) -> None:
+    def validator_depends_on(self, validator_classes: list[Type[BaseValidator]]) -> None:
         """Call from a validator's `.run()` or `__init__()` function, marking it as being dependent on the provided
         `validator_classes` to have run first."""
 
@@ -367,7 +367,7 @@ class ValidatedSources:
     def __init__(
         self,
         sources: Sources,
-        validation_results: Dict[Type[HasResult[Any]], Any],
+        validation_results: dict[Type[HasResult[Any]], Any],
         warnings: Sequence[ValidationWarning],
     ):
         self.sources = sources
@@ -375,7 +375,7 @@ class ValidatedSources:
         self._validation_results = validation_results
 
     @property
-    def validation_results(self) -> Dict[Type[HasResult[Any]], Any]:
+    def validation_results(self) -> dict[Type[HasResult[Any]], Any]:
         return self._validation_results
 
     def get_validator_result(self, validator_class: Type[HasResult[T_co]]) -> T_co:

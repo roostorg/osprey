@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable, ClassVar, Dict, List, Optional, Sequence, Tuple, Type, TypeVar, Union
+from typing import Callable, ClassVar, Optional, Sequence, Tuple, Type, TypeVar, Union
 
 from osprey.engine.ast.grammar import Annotation, Annotations, AnnotationWithVariants, Assign, Span
 from osprey.engine.language_types.entities import EntityT
@@ -52,8 +52,8 @@ class TypeRegistry:
     """Holds information about generic and non-generic types that can be checked at runtime."""
 
     def __init__(self) -> None:
-        self._non_generic_types: Dict[str, RValueTypeChecker] = {}
-        self._generic_types: Dict[str, Type[GenericTypeChecker]] = {}
+        self._non_generic_types: dict[str, RValueTypeChecker] = {}
+        self._generic_types: dict[str, Type[GenericTypeChecker]] = {}
 
     def register_non_generic(self, name: str, type_checker: RValueTypeChecker) -> None:
         self._non_generic_types[name] = type_checker
@@ -68,7 +68,7 @@ class TypeRegistry:
     def get_generic(self, node: AnnotationWithVariants) -> Optional[Type[GenericTypeChecker]]:
         return self._generic_types.get(node.identifier)
 
-    def generic_names(self) -> List[str]:
+    def generic_names(self) -> list[str]:
         return list(self._generic_types.keys())
 
 
@@ -136,7 +136,7 @@ class UnionTypeChecker(GenericTypeChecker):
                 hint=hint,
             )
 
-        seen_types: Dict[str, Span] = {}
+        seen_types: dict[str, Span] = {}
         inner_types = []
         for variant in node.variants:
             # Check if the variant was already seen for this Union.
@@ -272,7 +272,7 @@ class ListTypeChecker(GenericTypeChecker):
         if unexpected_variants:
             [first, *rest] = [n.span for n in unexpected_variants]
             raise AnnotationConversionError(
-                message='unexpected additional variants to `List[...]`',
+                message='unexpected additional variants to `list[...]`',
                 span=first,
                 additional_spans_message='also:' if rest else '',
                 additional_spans=rest,
@@ -302,7 +302,7 @@ class ListTypeChecker(GenericTypeChecker):
 
     def to_typing_type(self) -> type:
         # noinspection PyTypeChecker
-        return List[self.item_checker.to_typing_type()]  # type: ignore # Doesn't like runtime types like this
+        return list[self.item_checker.to_typing_type()]  # type: ignore # Doesn't like runtime types like this
 
 
 @REGISTRY.register_generic

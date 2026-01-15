@@ -2,4 +2,4 @@ error: argument `unexpected` to `ValidatingUnexpectedArgsUdf` has incompatible t
 --> main.sml:1:60
      |
    1 | Ret = ValidatingUnexpectedArgsUdf(required='hi', unexpected=['hello'])
-     |                                                             ^ has type `List[str]`, expected `str`
+     |                                                             ^ has type `list[str]`, expected `str`
