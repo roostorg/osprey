@@ -400,3 +400,22 @@ class StringExtractURLs(UDFBase[StringArguments, List[str]]):
 
         # return any valid urls encountered in the message
         return list(valid_urls)
+
+
+_TOKEN_PATTERN = re.compile(r"[\w]+(?:'[\w]+)?", re.UNICODE)
+
+
+def tokenize_text(s: str) -> list[str]:
+    s = s.replace("'", "'").replace('ʼ', "'")
+    return _TOKEN_PATTERN.findall(s.lower())
+
+
+class StringTokenize(UDFBase[StringArguments, list[str]]):
+    """
+    Used to convert the given string into a list of individual tokens. Returns a list of individual
+    tokens split by spaces and punctuation marks. Note that StringTokenize does not split on apostrophes
+    found in i.e. contractions. For example, the string "don't go" would result in ["don't", "go"]
+    """
+
+    def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> list[str]:
+        return tokenize_text(arguments.s)

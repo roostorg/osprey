@@ -41,6 +41,7 @@ from osprey.engine.stdlib.udfs.string import (
     StringSplit,
     StringStartsWith,
     StringStrip,
+    StringTokenize,
     StringToLower,
     StringToUpper,
 )
@@ -58,6 +59,7 @@ from osprey.engine.stdlib.udfs.time_bucket import (
 )
 from osprey.engine.stdlib.udfs.time_delta import TimeDelta
 from osprey.engine.stdlib.udfs.time_since import TimeSince
+from osprey.engine.stdlib.udfs.unicode_censored import StringCheckCensored
 from osprey.engine.stdlib.udfs.verdicts import DeclareVerdict
 from osprey.engine.udf.base import UDFBase
 from osprey.worker.adaptor.plugin_manager import hookimpl_osprey
@@ -108,12 +110,14 @@ def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
         HashSha1,
         HashSha256,
         HashSha512,
+        StringCheckCensored,
         StringLength,
         StringToLower,
         StringToUpper,
         StringStartsWith,
         StringEndsWith,
         StringStrip,
+        StringTokenize,
         StringRStrip,
         StringLStrip,
         StringReplace,
