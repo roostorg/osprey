@@ -4,7 +4,7 @@ from typing import cast
 import yaml
 from osprey.engine.ast.sources import Sources
 from osprey.engine.executor.execution_context import ExecutionContext
-from osprey.engine.stdlib.udfs.unicode_censored import CENSOR_CACHE, create_censored_regex
+from osprey.engine.stdlib.udfs.unicode_censored import STRING_CENSOR_CACHE, create_censored_regex
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import UDFBase
 from osprey.worker.lib.config import Config
@@ -179,7 +179,9 @@ class ListCache:
             compiled_patterns: list[tuple[str, re.Pattern[str]]] = []
 
             for item in str_list:
-                pattern = CENSOR_CACHE.instance().get_censored_regex(item, plurals=plurals, substrings=substrings)
+                pattern = STRING_CENSOR_CACHE.instance().get_censored_regex(
+                    item, plurals=plurals, substrings=substrings
+                )
                 compiled_patterns.append((item, pattern))
 
             self._censored_cache[cache_key] = compiled_patterns
