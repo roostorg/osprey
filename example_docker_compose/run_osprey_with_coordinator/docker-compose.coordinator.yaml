@@ -6,9 +6,9 @@ services:
   # Override worker to connect to coordinator instead of Kafka directly
   osprey-worker:
     depends_on:
-      kafka:
+      osprey-kafka:
         condition: service_healthy
-      kafka-topic-creator:
+      osprey-kafka-topic-creator:
         condition: service_completed_successfully
       bigtable:
         condition: service_healthy
@@ -47,7 +47,7 @@ services:
       - OSPREY_COORDINATOR_BIDI_STREAM_PORT=19950
       - OSPREY_COORDINATOR_SYNC_ACTION_PORT=19951
       - POD_IP=osprey-coordinator
-      - OSPREY_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - OSPREY_KAFKA_BOOTSTRAP_SERVERS=osprey-kafka:29092
       - OSPREY_KAFKA_INPUT_STREAM_TOPIC=osprey.actions_input
       - OSPREY_KAFKA_GROUP_ID=osprey_coordinator_group
       - MAX_TIME_TO_SEND_TO_ASYNC_QUEUE_MS=500
@@ -57,9 +57,9 @@ services:
         condition: service_healthy
       snowflake-id-worker:
         condition: service_started
-      kafka:
+      osprey-kafka:
         condition: service_healthy
-      kafka-topic-creator:
+      osprey-kafka-topic-creator:
         condition: service_completed_successfully
 
   # Add etcd service (required by coordinator)
