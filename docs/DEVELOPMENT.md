@@ -1,7 +1,9 @@
 # Development
+
 Welcome to the development guide for Osprey. This document will help you get started with contributing to the project.
 
 ## Reporting a Bug or Issue
+
 Found a bug or have a feature request? We'd love to hear from you! When opening an issue, please use our templates:
 
 * [Bug Report](https://github.com/roostorg/osprey/issues/new?template=bug_report.md)
@@ -18,11 +20,8 @@ This guide provides comprehensive instructions for setting up a development envi
 
 - **Python 3.11 or higher** - Check with `python --version`
 - **Git** - Version control system
+- **[uv](https://docs.astral.sh/uv/)** (Python package manager) or python package manager of choice
 - **Operating System**: macOS, Linux, or Windows (with WSL recommended)
-
-### Package Manager: UV
-
-Osprey uses [uv](https://docs.astral.sh/uv/) as the Python package manager for fast, reliable dependency management.
 
 #### Install UV
 
@@ -113,6 +112,12 @@ uv run pre-commit run --all-files
 docker compose up -d
 ```
 
+or using the wrapper script
+
+```bash
+./start.sh
+```
+
 This starts up many services, including:
 - **Osprey Worker**: The main engine that processes input events given the rules and UDFs
   - **Test Data Producer**: Optional with `--profile test_data`
@@ -122,16 +127,22 @@ This starts up many services, including:
 - **Postgres**: A database that the Worker, UI API, and Druid use for various reasons, such as the Postgres-backed Labels Service (in the example plugins)
 - **Druid**: A database that consumes Osprey Worker outputs to power the UI API for real-time querying
 
+alternatively, you can start Osprey with `osprey-coordinator`, refer to the [Coordinator README](./example_docker_compose/run_osprey_with_coordinator/README.md) for more information
 
-### 6. Access the Application
+### 6. (Optional) Port Forward the UI/UI API
+
+If you are running the docker compose on a headless machine, you will need to port forward the UI and UI API.
+Namely, ports `5002` (UI) and `5004` (UI API). Then, you can connect via http://localhost:5002/ :D
+
+### 7. Access the Application
+
 The UI will automatically connect to the backend services running in Docker containers.
 
-  - Osprey UI: http://localhost:5002
-  - Backend API: http://localhost:5004
-  - Worker Service: http://localhost:5001
+- Osprey UI: http://localhost:5002
+- Backend API: http://localhost:5004
+- Worker Service: http://localhost:5001
 
-
-#### Plugins
+## Plugins
 
 In Osprey, UDFs and output sinks are designed to be easily portable. This is done through a plugin system based on pluggy. An example plugin package has been provided for reference, see `example_plugins/register_plugins.py`:
 
@@ -150,7 +161,7 @@ def register_ast_validators() -> None:
     # Register AST validators
 ```
 
-#### Rules
+## Rules
 
 Rules are written in SML, some examples are provided in `example_rules/` with YAML config, the rules are mounted to the worker processes when the containers start via environment variables. ex:
 
@@ -158,7 +169,7 @@ Rules are written in SML, some examples are provided in `example_rules/` with YA
 OSPREY_RULES=./example_rules uv run python3.11 osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink
 ```
 
-#### Test Data
+## Test Data
 
 Generate sample JSON actions:
 ```bash
@@ -167,17 +178,17 @@ docker compose --profile test_data up kafka_test_data_producer -d
 
 Produces user login events with timestamps, user IDs, and IP addresses to `osprey.actions_input` topic.
 
-## Development Workflow
+# Development Workflow
 
-### Branch Management
+## Branch Management
 
 - **Branch naming convention**: Use `github_username/description` format (e.g., `caidanw/feature-auth`, `caidanw/fix-database-timeout`)
 - **Base branch**: Always branch from `main`
 - **Create new branch**: `git checkout -b username/feature-name`
 
-### Code Quality Standards
+## Code Quality Standards
 
-#### Automated Checks
+### Automated Checks
 
 Every commit automatically runs:
 
@@ -186,7 +197,7 @@ Every commit automatically runs:
 3. **YAML/JSON/TOML validation**
 4. **Ruff linting and formatting**
 
-#### Manual Checks
+### Manual Checks
 
 Before pushing, run:
 
@@ -206,7 +217,7 @@ uv run mypy .
 uv run pre-commit run --all-files
 ```
 
-### Commit Standards
+## Commit Standards
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/) format:
 
@@ -226,7 +237,7 @@ refactor: simplify rule evaluation logic
 - `test:` - Adding or updating tests
 - `chore:` - Maintenance tasks
 
-### Making Changes
+## Making Changes
 
 1. **Create a new branch:**
 
