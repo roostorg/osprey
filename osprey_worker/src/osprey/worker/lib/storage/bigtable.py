@@ -28,6 +28,7 @@ class BigTableClient(ABC):
     _gcp_project: str
     _instance_id: str
     _admin_enabled: bool
+    _cached_instance: Instance | None = None
 
     def _setup_client_instance(self) -> Instance:
         client = Client(project=self._gcp_project, admin=self._admin_enabled)
@@ -37,9 +38,9 @@ class BigTableClient(ABC):
 
     @property
     def _instance(self) -> Instance:
-        if not getattr(self, '__instance', None):
-            self.__instance = self._setup_client_instance()
-        return self.__instance
+        if self._cached_instance is None:
+            self._cached_instance = self._setup_client_instance()
+        return self._cached_instance
 
     @abstractmethod
     def init_from_config(self, config: Config) -> None: ...
