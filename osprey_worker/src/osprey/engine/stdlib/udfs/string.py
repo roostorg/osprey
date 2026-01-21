@@ -406,7 +406,8 @@ _TOKEN_PATTERN = re.compile(r"[\w]+(?:'[\w]+)?", re.UNICODE)
 
 
 def tokenize_text(s: str) -> list[str]:
-    s = s.replace("'", "'").replace('ʼ', "'")
+    #  replaces "curly" apostrophes with a normal apostrophe for a simpler regex
+    s = s.replace('\u2019', "'").replace('\u02bc', "'")
     return _TOKEN_PATTERN.findall(s.lower())
 
 
