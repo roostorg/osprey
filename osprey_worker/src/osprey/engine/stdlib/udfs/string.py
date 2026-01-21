@@ -413,8 +413,12 @@ def tokenize_text(s: str) -> list[str]:
 class StringTokenize(UDFBase[StringArguments, list[str]]):
     """
     Used to convert the given string into a list of individual tokens. Returns a list of individual
-    tokens split by spaces and punctuation marks. Note that StringTokenize does not split on apostrophes
-    found in i.e. contractions. For example, the string "don't go" would result in ["don't", "go"]
+    tokens split by spaces and punctuation marks.
+
+    Note that StringTokenize does not split on a single apostrophe found inside a word (e.g. contractions).
+    For example, the string "don't go" would result in ["don't", "go"]. Tokens are sequences of word
+    characters with at most one internal apostrophe, and the string "do''not''go" would result in
+    ["do", "not", "go"].
     """
 
     category = UdfCategories.STRING
