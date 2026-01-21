@@ -1001,7 +1001,7 @@ _HOMOGLYPH_TABLE = str.maketrans(_HOMOGLYPH_MAP)
 
 def _normalize_for_match(s: str) -> str:
     """
-    Normalize the string with unicodedata then translte any of the homoglyphs we have in our table above
+    Normalize the string with unicodedata then translate any of the homoglyphs we have in our table above
     """
     s = unicodedata.normalize('NFKC', s)
     s = s.translate(_HOMOGLYPH_TABLE)
@@ -1032,7 +1032,7 @@ def _build_pattern(token: str, include_plural: bool, include_substrings: bool) -
     # optionally allow for plurals
     if include_plural:
         regex += _SEPARATOR_PATTERN
-        regex += 's$5?'
+        regex += '[s$5]?'
 
     regex += ')'
 
