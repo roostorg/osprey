@@ -1079,6 +1079,11 @@ class StringCheckCensoredArguments(StringArguments):
 class StringCheckCensored(UDFBase[StringCheckCensoredArguments, bool]):
     """
     Checks a given string, check against another string's censored regex.
+
+    For example, if given the input pattern of "cat", will match tokens like "c4t", "<@t", or "c___a___t".
+
+    It is recommended to use individual tokens to check against. For example, you should not attempt to match against
+    a long string, but rather individual words within that string.
     """
 
     category = UdfCategories.STRING
