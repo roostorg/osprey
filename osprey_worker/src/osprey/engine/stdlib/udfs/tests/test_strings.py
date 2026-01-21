@@ -337,7 +337,8 @@ def test_extract_urls(execute: ExecuteFunction, text: str, expected_result: List
         ('hello, world!', ['hello', 'world']),
         ('end. start', ['end', 'start']),
         ('café résumé', ['café', 'résumé']),
-        ("don't", ["don't"]),  # curly apostrophe
+        ('donʼt', ["don't"]),  # curly apostrophe (u02bc)
+        ('don’t', ["don't"]),  # curly apostrophe (u2019)
         ("cat's", ["cat's"]),
         ("''hello", ['hello']),
         ("test''test", ['test', 'test']),
