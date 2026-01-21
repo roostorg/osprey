@@ -417,5 +417,7 @@ class StringTokenize(UDFBase[StringArguments, list[str]]):
     found in i.e. contractions. For example, the string "don't go" would result in ["don't", "go"]
     """
 
+    category = UdfCategories.STRING
+
     def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> list[str]:
         return tokenize_text(arguments.s)

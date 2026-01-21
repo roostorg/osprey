@@ -1,12 +1,14 @@
 import re
 import unicodedata
-from typing import Dict
 
 from osprey.engine.executor.execution_context import ExecutionContext
+from osprey.engine.stdlib.udfs.categories import UdfCategories
 from osprey.engine.stdlib.udfs.string import StringArguments
-from osprey.engine.stdlib.udfs.unicode_censored_charset import UNICODOE_CENSORED_LOOKALIKES
+from osprey.engine.stdlib.udfs.unicode_censored_charset import UNICODE_CENSORED_LOOKALIKES
 from osprey.engine.udf.base import UDFBase
 from osprey.worker.lib.singleton import Singleton
+
+_SEPARATOR_PATTERN = r'[,.+/|&%#!@_\u200b\u200c\u200d\u200e\u200f\ufeff]{0,20}'
 
 
 def create_censored_regex(
@@ -21,8 +23,6 @@ def create_censored_regex(
         token: The token to create a censored regex for
         include_plural: Will allow for each pattern to be compatible with plurals, i.e. if 'cat' is passed, the pattern will be 'cat[sS$]?'
         include_substrings: Whether substrings of characters are allowed, i.e. if "concatenate" will match "cat" or not
-        char_set: The set of lookalike characters you wish to use. Defaults to the provided lookalike charset. Should be string literals for values,
-            not regex patterns
     """
 
     token = token.lower()
@@ -38,7 +38,7 @@ def create_censored_regex(
 
     # start by looping over each character in the token
     for index, char in enumerate(token):
-        char_variations = UNICODOE_CENSORED_LOOKALIKES.get(char)
+        char_variations = UNICODE_CENSORED_LOOKALIKES.get(char)
         if char_variations is None:
             char_variations = [char]
 
@@ -48,18 +48,18 @@ def create_censored_regex(
             regex += re.escape(char_variation)
         regex += ']'
 
-        # if this isn't the last character in the token, we want to allow for "space" characters that people
-        # often use, i.e. 'c#a#t' or 'c_a_t', as well as zero-width unicode characters used to evade filters
+        # if this isn't the last character in the token, allow separator characters between letters
+        # (e.g., 'c.a.t' or 'c_a_t', as well as zero-width unicode characters used to evade filters)
         if index < len(token) - 1:
-            regex += r'[,.+/|&%#!@_\u200b\u200c\u200d\u200e\u200f\ufeff]*'
+            regex += _SEPARATOR_PATTERN
 
-    # once we are at the end of the string, add on any possible s character if we are checking for substrings
+    # once we are at the end of the string, add on any possible s character if we are checking for plurals
     if include_plural:
-        # start by adding our space characters
-        regex += r'[,.+/|&%#!@_\u200b\u200c\u200d\u200e\u200f\ufeff]*'
+        # allow separators before the plural suffix
+        regex += _SEPARATOR_PATTERN
 
         # grab the s variations from the charset
-        s_variations = UNICODOE_CENSORED_LOOKALIKES.get('s', ['s', 'S'])
+        s_variations = UNICODE_CENSORED_LOOKALIKES.get('s', ['s', 'S'])
 
         # append each of the s variations
         regex += '['
@@ -79,7 +79,7 @@ def create_censored_regex(
 
 class StringCensorCache:
     def __init__(self) -> None:
-        self._cache: Dict[tuple[str, bool, bool], re.Pattern[str]] = {}
+        self._cache: dict[tuple[str, bool, bool], re.Pattern[str]] = {}
 
     def get_censored_regex(self, term: str, plurals: bool, substrings: bool) -> re.Pattern[str]:
         """
@@ -135,6 +135,8 @@ class StringCheckCensored(UDFBase[StringCheckCensoredArguments, bool]):
     """
     Checks a given string against another string's censored regex.
     """
+
+    category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringCheckCensoredArguments) -> bool:
         normalized = unicodedata.normalize('NFKC', arguments.s)

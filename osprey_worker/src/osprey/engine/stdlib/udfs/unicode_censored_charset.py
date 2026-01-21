@@ -1,9 +1,9 @@
 """
 This is a large list of Unicode "lookalike" characters that are not replaced by built in methods such as unicodedata
-unicodedata.normalize NKFC. They are used by the
+unicodedata.normalize NKFC. They are used by the unicode regex builder in unicode_censored.py.
 """
 
-UNICODOE_CENSORED_LOOKALIKES = {
+UNICODE_CENSORED_LOOKALIKES = {
     'a': [
         'a',
         'A',
@@ -34,11 +34,9 @@ UNICODOE_CENSORED_LOOKALIKES = {
         'ä',
         'à',
         'á',
-        'ą',
         '4',
         '@',
         '^',
-        'α',
         'а',
         'Ⲁ',
         'ⲁ',
@@ -95,7 +93,6 @@ UNICODOE_CENSORED_LOOKALIKES = {
         '𑣩',
         'Ϲ',
         '𐊢',
-        'с',
         'ƈ',
         'ċ',
         '(',
@@ -117,7 +114,6 @@ UNICODOE_CENSORED_LOOKALIKES = {
         'ᗪ',
         'ꓓ',
         'ᗞ',
-        'ԁ',
         'ɗ',
     ],
     'e': [
@@ -213,7 +209,6 @@ UNICODOE_CENSORED_LOOKALIKES = {
         'ꓧ',
         'Ꮋ',
         'ᕼ',
-        'һ',
         '#',
     ],
     'i': [
@@ -296,10 +291,8 @@ UNICODOE_CENSORED_LOOKALIKES = {
         'ⅼ',
         '⏽',
         '𝗹',
-        'і',
         'í',
         'ï',
-        '1',
         '!',
         'l',
         'x',
@@ -320,7 +313,6 @@ UNICODOE_CENSORED_LOOKALIKES = {
         'Ʝ',
         'ꓙ',
         'Ϳ',
-        'ј',
         'ʝ',
     ],
     'k': [
@@ -403,7 +395,6 @@ UNICODOE_CENSORED_LOOKALIKES = {
         '𖼨',
         '𝙸',
         '𝟷',
-        '|',
         '⏽',
         '𖼖',
         '𑢣',
@@ -418,7 +409,6 @@ UNICODOE_CENSORED_LOOKALIKES = {
         'ӏ',
         'ḷ',
         'i',
-        '1',
         '!',
         'x',
         '|',
@@ -464,7 +454,6 @@ UNICODOE_CENSORED_LOOKALIKES = {
         'Ⲛ',
         '𝞜',
         'Ν',
-        'ո',
         'ⲛ',
     ],
     'o': [
@@ -563,9 +552,6 @@ UNICODOE_CENSORED_LOOKALIKES = {
         '𝟶',
         '𝚶',
         '𐓂',
-        'о',
-        'ο',
-        'օ',
         'ȯ',
         'ọ',
         'ỏ',
@@ -573,7 +559,6 @@ UNICODOE_CENSORED_LOOKALIKES = {
         'ó',
         'ò',
         'ö',
-        '0',
         'Ω',
         'θ',
         'Θ',
@@ -612,7 +597,6 @@ UNICODOE_CENSORED_LOOKALIKES = {
         'Ꮲ',
         'ᑭ',
         '𝚸',
-        'р',
         'ք',
     ],
     'q': [
@@ -622,7 +606,6 @@ UNICODOE_CENSORED_LOOKALIKES = {
         'զ',
         'ԛ',
         'ⵕ',
-        'զ',
     ],
     'r': [
         'r',
@@ -722,8 +705,6 @@ UNICODOE_CENSORED_LOOKALIKES = {
         'ꓴ',
         '𐓎',
         '𖽂',
-        'υ',
-        'ս',
         'ü',
         'ú',
         'ù',
@@ -763,8 +744,6 @@ UNICODOE_CENSORED_LOOKALIKES = {
         'Ѵ',
         '۷',
         'ⴸ',
-        'ν',
-        'ѵ',
         'u',
     ],
     'w': [
@@ -818,9 +797,7 @@ UNICODOE_CENSORED_LOOKALIKES = {
         '𝛸',
         '𐌢',
         '𑣬',
-        'х',
         'ҳ',
-        '×',
         'χ',
         'ⲭ',
     ],
@@ -859,7 +836,6 @@ UNICODOE_CENSORED_LOOKALIKES = {
         '𝛶',
         '𝚼',
         'Ꮍ',
-        'у',
         'ý',
         '¥',
         'λ',

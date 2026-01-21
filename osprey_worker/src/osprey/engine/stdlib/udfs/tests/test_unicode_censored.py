@@ -15,7 +15,7 @@ pytestmark = [
 ]
 
 
-class TestCreateCensorizeRegex:
+class TestCreateCensoredRegex:
     """Tests for the create_censored_regex() helper function."""
 
     def test_basic_match(self) -> None:
@@ -50,7 +50,7 @@ class TestCreateCensorizeRegex:
         assert pattern.search(' cat ') is not None
 
     def test_space_character_insertion(self) -> None:
-        # the regex allows space-like chars between letters
+        # the regex allows separator chars between letters (limited to 20 to prevent ReDoS)
         pattern = create_censored_regex('cat', include_plural=False, include_substrings=True)
         assert pattern.search('c___a__t') is not None
         assert pattern.search('c.a....t') is not None
