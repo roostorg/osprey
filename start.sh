@@ -55,7 +55,7 @@ if [ "$USE_COORDINATOR" = true ]; then
     echo "Starting Osprey with Coordinator..."
     COMPOSE_FILES="$COMPOSE_FILES -f example_docker_compose/run_osprey_with_coordinator/docker-compose.coordinator.yaml"
 else
-    echo "Starting Osprey without Coordiantor (direct Kafka consumption)..."
+    echo "Starting Osprey without Coordinator (direct Kafka consumption)..."
 fi
 
 # If no compose args provided, default to 'up'

@@ -43,9 +43,9 @@ services:
       context: .
       dockerfile: osprey_worker/Dockerfile
     depends_on:
-      kafka:
+      osprey-kafka:
         condition: service_healthy
-      kafka-topic-creator:
+      osprey-kafka-topic-creator:
         condition: service_completed_successfully
       bigtable:
         condition: service_healthy
@@ -67,7 +67,7 @@ services:
       - PYTHONPATH=/osprey
       - OSPREY_INPUT_STREAM_SOURCE=kafka
       - OSPREY_STDOUT_OUTPUT_SINK=True
-      - OSPREY_KAFKA_BOOTSTRAP_SERVERS=["kafka:29092"]
+      - OSPREY_KAFKA_BOOTSTRAP_SERVERS=["osprey-kafka:29092"]
       - OSPREY_KAFKA_INPUT_STREAM_TOPIC=osprey.actions_input
       - OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID=localhost
       - OSPREY_KAFKA_OUTPUT_SINK=True

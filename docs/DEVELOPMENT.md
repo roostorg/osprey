@@ -173,7 +173,7 @@ OSPREY_RULES=./example_rules uv run python3.11 osprey_worker/src/osprey/worker/c
 
 Generate sample JSON actions:
 ```bash
-docker compose --profile test_data up kafka_test_data_producer -d
+docker compose --profile test_data up kafka-test-data-producer -d
 ```
 
 Produces user login events with timestamps, user IDs, and IP addresses to `osprey.actions_input` topic.
