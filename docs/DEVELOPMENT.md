@@ -130,18 +130,21 @@ This starts up many services, including:
 
 Alternatively, you can start Osprey with `osprey-coordinator`, refer to the [Coordinator README](./example_docker_compose/run_osprey_with_coordinator/README.md) for more information
 
-### 6. (Optional) Port Forward the UI/UI API
+### 6. (Optional) Open ports for the UI/UI API
 
-If you are running the docker compose on a headless machine, you will need to port forward the UI and UI API.
-Namely, ports `5002` (UI) and `5004` (UI API). Then, you can connect via http://localhost:5002/ :D
+By default, the `docker-compose.yaml` binds running services to `127.0.0.1`. If you are running the docker compose on a headless machine, you may need to modify this configuration and/or make changes to your firewall, specifically for ports `5002` and `5004`.
+
+For example, if you use Tailscale to access your Osprey instance, you may change `127.0.0.1:5002:5002` to `<Tailscale IP>:5002:5002`. Alternatively, if you wish for your instance to be accessible from the public internet, you may set it simply to `5002:5002` to bind to `0.0.0.0`.
+
+Be aware that some firewalls like iptables/UFW do _not_ prevent access to ports being used by Docker networking. Not explicitly setting a bind address with only UFW as a firewall will not prevent access from the public internet unless [properly configured](https://github.com/chaifeng/ufw-docker).
 
 ### 7. Access the Application
 
 The UI will automatically connect to the backend services running in Docker containers.
 
-- Osprey UI: http://localhost:5002
-- Backend API: http://localhost:5004
-- Worker Service: http://localhost:5001
+- Osprey UI: [localhost:5002](http://localhost:5002)
+- Backend API: [localhost:5004](http://localhost:5004)
+- Worker Service: [localhost:5001](http://localhost:5001)
 
 ## Plugins
 
