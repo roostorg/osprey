@@ -11,6 +11,14 @@ New to the project? We recommend reading the documentation in this order:
 3. **[Development Guide](DEVELOPMENT.md)** - Set up your development environment and get started using Osprey
 4. **[Osprey UI](UI.md)** - Understand how to use and navigate the UI
 
+## Reporting a Bug or Issue
+
+Found a bug or have a feature request? We'd love to hear from you! When opening an issue, please use our templates:
+
+* [Bug Report](https://github.com/roostorg/osprey/issues/new?template=bug_report.md)
+* [Feature Request](https://github.com/roostorg/osprey/issues/new?template=feature_request.md)
+* [Submit an Egg (new tool idea) to ROOST!](https://github.com/roostorg/osprey/issues/new?template=documentation.md)
+
 ## Need Help?
 
 If you can't find what you're looking for in these documents, please:

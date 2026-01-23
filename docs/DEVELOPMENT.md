@@ -2,21 +2,13 @@
 
 Welcome to the development guide for Osprey. This document will help you get started with contributing to the project.
 
-## Reporting a Bug or Issue
-
-Found a bug or have a feature request? We'd love to hear from you! When opening an issue, please use our templates:
-
-* [Bug Report](https://github.com/roostorg/osprey/issues/new?template=bug_report.md)
-* [Feature Request](https://github.com/roostorg/osprey/issues/new?template=feature_request.md)
-* [Submit an Egg (new tool idea) to ROOST!](https://github.com/roostorg/osprey/issues/new?template=documentation.md)
-
-# Setup Guide
+## Setup Guide
 
 This guide provides comprehensive instructions for setting up a development environment for Osprey.
 
-## Prerequisites
+### Prerequisites
 
-### System Requirements
+#### System Requirements
 
 - **Python 3.11 or higher** - Check with `python --version`
 - **Git** - Version control system
@@ -24,7 +16,7 @@ This guide provides comprehensive instructions for setting up a development envi
 - **npm**
 - **Operating System**: macOS, Linux, or Windows (with WSL recommended)
 
-#### Install UV
+##### Install UV
 
 **macOS/Linux:**
 
@@ -50,16 +42,16 @@ pip install uv
 uv --version
 ```
 
-## Project Setup
+### Project Setup
 
-### 1. Clone the Repository
+#### 1. Clone the Repository
 
 ```bash
 git clone git@github.com:roostorg/osprey.git
 cd osprey
 ```
 
-### 2. Install Dependencies
+#### 2. Install Dependencies
 
 ```bash
 # Install all dependencies including development tools
@@ -75,7 +67,7 @@ This command will:
 
 **Note**: `uv sync` includes development dependencies by default. Use `uv sync --no-dev` if you only want production dependencies.
 
-### 3. Set Up Pre-commit Hooks
+#### 3. Set Up Pre-commit Hooks
 
 ```bash
 uv run pre-commit install
@@ -83,7 +75,7 @@ uv run pre-commit install
 
 This installs git hooks that automatically run code quality checks before each commit.
 
-### 4. Verify Setup
+#### 4. Verify Setup
 
 Run these commands to ensure everything is working correctly:
 
@@ -107,7 +99,7 @@ uv run pre-commit run --all-files
 - MyPy should run without errors
 - Pre-commit should run all hooks successfully
 
-### 5. Getting Started
+#### 5. Getting Started
 
 ```bash
 docker compose up -d
@@ -130,7 +122,7 @@ This starts up many services, including:
 
 Alternatively, you can start Osprey with `osprey-coordinator`, refer to the [Coordinator README](./example_docker_compose/run_osprey_with_coordinator/README.md) for more information
 
-### 6. (Optional) Open ports for the UI/UI API
+#### 6. (Optional) Open ports for the UI/UI API
 
 By default, the `docker-compose.yaml` binds running services to `127.0.0.1`. If you are running the docker compose on a headless machine, you may need to modify this configuration and/or make changes to your firewall, specifically for ports `5002` and `5004`.
 
@@ -138,7 +130,7 @@ For example, if you use Tailscale to access your Osprey instance, you may change
 
 Be aware that some firewalls like iptables/UFW do _not_ prevent access to ports being used by Docker networking. Not explicitly setting a bind address with only UFW as a firewall will not prevent access from the public internet unless [properly configured](https://github.com/chaifeng/ufw-docker).
 
-### 7. Access the Application
+#### 7. Access the Application
 
 The UI will automatically connect to the backend services running in Docker containers.
 
@@ -146,7 +138,7 @@ The UI will automatically connect to the backend services running in Docker cont
 - Backend API: [localhost:5004](http://localhost:5004)
 - Worker Service: [localhost:5001](http://localhost:5001)
 
-## Plugins
+### Plugins
 
 In Osprey, UDFs and output sinks are designed to be easily portable. This is done through a plugin system based on pluggy. An example plugin package has been provided for reference, see `example_plugins/register_plugins.py`:
 
@@ -165,7 +157,7 @@ def register_ast_validators() -> None:
     # Register AST validators
 ```
 
-## Rules
+### Rules
 
 Rules are written in SML, some examples are provided in `example_rules/` with YAML config, the rules are mounted to the worker processes when the containers start via environment variables. ex:
 
@@ -173,7 +165,7 @@ Rules are written in SML, some examples are provided in `example_rules/` with YA
 OSPREY_RULES=./example_rules uv run python3.11 osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink
 ```
 
-## Test Data
+### Test Data
 
 Generate sample JSON actions:
 ```bash
@@ -182,17 +174,17 @@ docker compose --profile test_data up osprey-kafka-test-data-producer -d
 
 Produces user login events with timestamps, user IDs, and IP addresses to `osprey.actions_input` topic.
 
-# Development Workflow
+## Development Workflow
 
-## Branch Management
+### Branch Management
 
 - **Branch naming convention**: Use `github_username/description` format (e.g., `caidanw/feature-auth`, `caidanw/fix-database-timeout`)
 - **Base branch**: Always branch from `main`
 - **Create new branch**: `git checkout -b username/feature-name`
 
-## Code Quality Standards
+### Code Quality Standards
 
-### Automated Checks
+#### Automated Checks
 
 Every commit automatically runs:
 
@@ -201,7 +193,7 @@ Every commit automatically runs:
 3. **YAML/JSON/TOML validation**
 4. **Ruff linting and formatting**
 
-### Manual Checks
+#### Manual Checks
 
 Before pushing, run:
 
@@ -221,7 +213,7 @@ uv run mypy .
 uv run pre-commit run --all-files
 ```
 
-## Commit Standards
+### Commit Standards
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/) format:
 
@@ -241,7 +233,7 @@ refactor: simplify rule evaluation logic
 - `test:` - Adding or updating tests
 - `chore:` - Maintenance tasks
 
-## Making Changes
+### Making Changes
 
 1. **Create a new branch:**
 
@@ -275,9 +267,9 @@ refactor: simplify rule evaluation logic
    git push origin username/feature-name
    ```
 
-## Development Tools Overview
+### Development Tools Overview
 
-### Ruff - Linting and Formatting
+#### Ruff - Linting and Formatting
 
 **Purpose**: Replaces Black, isort, Flake8, and other tools
 
@@ -306,7 +298,7 @@ uv run ruff format
 uv run ruff check path/to/file.py
 ```
 
-### MyPy - Type Checking
+#### MyPy - Type Checking
 
 **Purpose**: Static type checking for Python
 
@@ -335,7 +327,7 @@ uv run mypy osprey_worker/
 uv run mypy --show-traceback path/to/file.py
 ```
 
-### Pre-commit - Git Hooks
+#### Pre-commit - Git Hooks
 
 **Purpose**: Automated quality checks before commits
 
@@ -360,7 +352,7 @@ uv run pre-commit autoupgrade
 git commit --no-verify
 ```
 
-### UV - Package Management
+#### UV - Package Management
 
 **Purpose**: Fast Python package manager and environment management
 
@@ -386,11 +378,11 @@ uv run command-name
 uv lock --upgrade
 ```
 
-## Troubleshooting
+### Troubleshooting
 
-### Common Issues
+#### Common Issues
 
-#### "uv: command not found"
+##### "uv: command not found"
 
 **Solution**: Install uv using the installation script or pip:
 
@@ -399,7 +391,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # Then restart your terminal
 ```
 
-#### Pre-commit hooks failing
+##### Pre-commit hooks failing
 
 **Solution**: Run hooks manually to see detailed errors:
 
@@ -407,11 +399,11 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv run pre-commit run --all-files
 ```
 
-#### MyPy errors on protobuf files
+##### MyPy errors on protobuf files
 
 **Solution**: Protobuf generated files are excluded in configuration. If you see errors, check that files match the exclusion patterns in `pyproject.toml`.
 
-#### Import errors during type checking
+##### Import errors during type checking
 
 **Solution**: Ensure all dependencies are installed:
 
@@ -419,21 +411,21 @@ uv run pre-commit run --all-files
 uv sync
 ```
 
-### Getting Help
+#### Getting Help
 
 1. **Check this documentation** for common setup issues
 2. **Review error messages** carefully - they often contain solutions
 3. **Run commands with verbose flags** for more detailed output
 4. **Check configuration files** (`pyproject.toml`, `.pre-commit-config.yaml`)
 
-## Next Steps
+### Next Steps
 
 - Check the [contributing guidelines](https://github.com/roostorg/.github/blob/main/CONTRIBUTING.md) for project-specific rules
 - Explore the codebase structure in `osprey_worker/`, `osprey_common/`, and `osprey_rpc/`
 
-## IDE Setup Recommendations
+### IDE Setup Recommendations
 
-### VS Code
+#### VS Code
 
 Install these extensions for the best development experience:
 
