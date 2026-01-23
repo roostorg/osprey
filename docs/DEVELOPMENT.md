@@ -6,37 +6,11 @@ This guide provides comprehensive instructions for setting up a development envi
 
 ### System Requirements
 
-- **Python 3.11 or higher** - Check with `python --version`
-- **Git** - Version control system
-- **[uv](https://docs.astral.sh/uv/)** or Python package manager of choice
-- **npm**
 - **Operating System**: macOS, Linux, or Windows (with WSL recommended)
-
-#### Install UV
-
-**macOS/Linux:**
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-**Windows:**
-
-```bash
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-**Alternative (via pip):**
-
-```bash
-pip install uv
-```
-
-**Verify installation:**
-
-```bash
-uv --version
-```
+- **[Python](https://www.python.org/) 3.11 or higher** (check with `python --version`)
+- **[Git](https://git-scm.com/)** for version control
+- **[uv](https://docs.astral.sh/uv/)** for Python package management
+- **[npm](https://nodejs.org/en/download)**
 
 ## Project Setup
 
