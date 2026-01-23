@@ -13,7 +13,7 @@ Osprey is an event stream decisions engine and analysis UI designed to investiga
 
 Osprey is a library for processing actions through human-written rules and outputting verdicts & custom effects back to configurable output sinks. It evaluates events using structured rule logic (SML) that is extendable via user-defined functions (UDFs). Osprey can also track state across events by labelling entities if implementers provide a labels service backend (see [labels_service.py](./example_plugins/src/services/labels_service.py) for a Postgres-backed labels service example).
 
-Osprey is built for engineers and Trust & Safety teams who want to explore, test, and integrate its core capabilities into their platform for incident response and Trust & Safety investigation.
+Osprey is built for engineers and Trust & Safety teams who want to explore, test, and integrate its core capabilities into their platform for incident response and Trust & Safety investigation. [Read more about user research and personas](docs/user_personas.md).
 
 ## Development
 
