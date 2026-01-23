@@ -24,15 +24,6 @@ DEFAULT_GEVENT_TIMEOUT = 2
 DEFAULT_MAX_RETRIES = 0  # No retries by default (1 attempt total)
 
 
-def _log_retry_attempt(retry_state: RetryCallState) -> None:
-    """Log retry attempts for observability."""
-    sink_name = retry_state.args[0].__class__.__name__ if retry_state.args else 'unknown'
-    attempt = retry_state.attempt_number
-    exception = retry_state.outcome.exception() if retry_state.outcome else None
-    logger.warning(f'Retrying sink {sink_name}, attempt {attempt}, error: {exception}')
-    metrics.increment('output_sink.retry', tags=[f'sink:{sink_name}', f'attempt:{attempt}'])
-
-
 class BaseOutputSink(abc.ABC):
     # Default timeout for sink operations. Subclasses can override this.
     timeout: float = DEFAULT_GEVENT_TIMEOUT
@@ -74,16 +65,19 @@ class MultiOutputSink(BaseOutputSink):
         """
         sink_name = sink.__class__.__name__
 
-        # Build retry decorator based on sink's max_retries setting
+        def log_retry_attempt(retry_state: RetryCallState) -> None:
+            attempt = retry_state.attempt_number
+            exception = retry_state.outcome.exception() if retry_state.outcome else None
+            logger.warning(f'Retrying sink {sink_name}, attempt {attempt}, error: {exception}')
+            metrics.increment('output_sink.retry', tags=[f'sink:{sink_name}', f'attempt:{attempt}'])
+
         # stop_after_attempt(1) = no retries, stop_after_attempt(3) = 2 retries
-        retry_decorator = retry(
+        @retry(
             stop=stop_after_attempt(sink.max_retries + 1),
             wait=wait_exponential(multiplier=0.5, min=0.5, max=5),
-            before_sleep=_log_retry_attempt,
+            before_sleep=log_retry_attempt,
             reraise=True,
         )
-
-        @retry_decorator
         def push_with_retry(result: ExecutionResult) -> None:
             with (
                 trace(f'{sink_name}.push'),
