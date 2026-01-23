@@ -1,0 +1,15 @@
+[book]
+title = "Osprey Documentation"
+authors = ["ROOST"]
+language = "en"
+src = "."
+
+[build]
+build-dir = "./book"
+
+[output.html]
+edit-url-template = "https://github.com/roostorg/osprey/edit/main/docs/{path}"
+git-repository-url = "https://github.com/roostorg/osprey"
+
+[output.html.print]
+enable = false
