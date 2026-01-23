@@ -4,5 +4,5 @@
 
 - [Development](DEVELOPMENT.md)
 - [User Interface](UI.md)
-- [User Personas](user_personas.md)
 - [Writing Rules](rules.md)
+- [User Research &amp; Personas](user_personas.md)

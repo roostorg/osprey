@@ -8,7 +8,7 @@ To understand more about how mdBook works, learn about the [anatomy of a book](h
 
 ## Developing locally
 
-To build the site locally, clone this repository and install `mdbook` (follow the [official installation instructions](https://rust-lang.github.io/mdBook/guide/installation.html))[^1].
+To build the site locally, clone this repository and install `mdbook` (follow the [official installation instructions](https://rust-lang.github.io/mdBook/guide/installation.html)).
 
 Once installed, use the `mdbook` command-line tool from the root of this repo. For example, to automatically start watching, building, and serving the site:
 
@@ -18,4 +18,3 @@ mdbook serve
 
 Then make your changes, preview them in your web browser (at [http://localhost:3000](http://localhost:3000) by default), commit, push, and open a pull request like any other git project. 
 
-[^1]: Alternatively, download the binary from the [GitHub releases](https://github.com/rust-lang/mdBook/releases), unpack it, and drop it into `bin/` in this repo (which is .gitignored). Then prefix your `mdbook` commands with the path, e.g. `bin/mdbook serve`.
