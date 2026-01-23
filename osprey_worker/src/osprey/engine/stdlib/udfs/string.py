@@ -354,6 +354,15 @@ class StringClean(UDFBase[StringCleaningArguments, str]):
         return s
 
 
+def _safe_urlparse(url: str) -> Optional[ParseResult]:
+    """Safely parse a URL, returning None for malformed URLs (e.g., invalid IPv6)."""
+    try:
+        return urlparse(url)
+    except ValueError:
+        # urlparse raises ValueError for malformed URLs like invalid IPv6 addresses
+        return None
+
+
 class StringExtractDomains(UDFBase[StringArguments, List[str]]):
     """
     Used to extract a list of potential URL domains from a string of tokens. Returns a list
@@ -366,12 +375,14 @@ class StringExtractDomains(UDFBase[StringArguments, List[str]]):
     def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> List[str]:
         # split the message into individual tokens as based on a modified URL regex from messages_common.
         # should capture space based links and markdown based links without duplication.
-        potential_urls: Iterator[ParseResult] = (
-            urlparse(token) for token in re.findall('(https?:\/\/[^\/\s][^\s\)>]+)', arguments.s)
+        potential_urls: Iterator[Optional[ParseResult]] = (
+            _safe_urlparse(token) for token in re.findall('(https?:\/\/[^\/\s][^\s\)>]+)', arguments.s)
         )
 
-        # filter out any tokens that do not have a scheme or a domain
-        valid_domains: Set[str] = set(url.netloc.split(':')[0] for url in potential_urls if url.scheme and url.netloc)
+        # filter out any tokens that do not have a scheme or a domain (or failed to parse)
+        valid_domains: Set[str] = set(
+            url.netloc.split(':')[0] for url in potential_urls if url is not None and url.scheme and url.netloc
+        )
 
         # return any valid domains encountered in the message
         return list(valid_domains)
@@ -389,13 +400,15 @@ class StringExtractURLs(UDFBase[StringArguments, List[str]]):
     def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> List[str]:
         # split the message into individual tokens as based on a modified URL regex from messages_common.
         # should capture space based links and markdown based links without duplication.
-        potential_urls: Iterator[ParseResult] = (
-            urlparse(token) for token in re.findall('(https?:\/\/[^\/\s][^\s\)>]+)', arguments.s)
+        potential_urls: Iterator[Optional[ParseResult]] = (
+            _safe_urlparse(token) for token in re.findall('(https?:\/\/[^\/\s][^\s\)>]+)', arguments.s)
         )
 
-        # filter out any tokens that do not have a scheme or a domain
+        # filter out any tokens that do not have a scheme or a domain (or failed to parse)
         valid_urls: Set[str] = set(
-            urlunparse(parsed_url) for parsed_url in potential_urls if parsed_url.scheme and parsed_url.netloc
+            urlunparse(parsed_url)
+            for parsed_url in potential_urls
+            if parsed_url is not None and parsed_url.scheme and parsed_url.netloc
         )
 
         # return any valid urls encountered in the message
