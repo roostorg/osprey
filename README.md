@@ -15,16 +15,11 @@ This 'Rules + Investigation' tool is able to:
 
 Osprey is built for engineers and Trust & Safety teams who want to explore, test, and integrate its core capabilities into their platform for incident response and Trust & Safety investigation.
 
-## Feedback Wanted
+## Development
 
-This is a working system, not a prototype. Try it locally, connect your data, write some rules, and tell us what's missing for your use case. We're particularly interested in:
-
-- Integration challenges with your existing platform infrastructure
-- Performance characteristics with your event volumes and rule complexity
-- Missing detection capabilities or response actions you need
-- API improvements that would make adoption easier for your team
-
-Your experimentation feedback will directly shape future priorities and help us build the most useful Trust & Safety tooling for the community.
+- See [DEVELOPMENT.md](./docs/DEVELOPMENT.md) for comprehensive development setup and workflow documentation
+- All code changes should pass linting (Ruff) and type checking (MyPy)
+- Pre-commit hooks automatically run on each commit to maintain code quality
 
 ## Join Us
 
@@ -36,11 +31,16 @@ Writing code is not the only way to help the project. Reviewing pull requests, a
 
 _[ROOST](https://roost.tools) (Robust Open Online Safety Tools) is a non-profit organization that brings together expertise, resources, and investments from major technology companies and philanthropies to build scalable, interoperable safety infrastructure for the AI era._
 
-## Development
+### Feedback Wanted
 
-- See [DEVELOPMENT.md](./docs/DEVELOPMENT.md) for comprehensive development setup and workflow documentation
-- All code changes should pass linting (Ruff) and type checking (MyPy)
-- Pre-commit hooks automatically run on each commit to maintain code quality
+This is a working system, not a prototype. Try it locally, connect your data, write some rules, and tell us what's missing for your use case. We're particularly interested in:
+
+- Integration challenges with your existing platform infrastructure
+- Performance characteristics with your event volumes and rule complexity
+- Missing detection capabilities or response actions you need
+- API improvements that would make adoption easier for your team
+
+Your experimentation feedback will directly shape future priorities and help us build the most useful Trust & Safety tooling for the community.
 
 ## Recognition
 
