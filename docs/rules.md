@@ -175,7 +175,6 @@ WhenRules(
 UDF outputs can also implement the `CustomExtractedFeature` interface - which get persisted in the outputs for the UI. `EffectToCustomExtractedFeatureBase` can also be used when effects need additional processing for use in the UI.
 
 ## Labels
-**NOTE: Labels are currently not in v0, so users will be unable to add or edit labels via the UI**
 
 Labels are a standard plugin that enable stateful rules, and touch many parts of Osprey. They are effectively tags on various entities, which can be arbitrarily defined.
 

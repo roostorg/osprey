@@ -4,8 +4,6 @@ This guide provides comprehensive instructions for setting up a development envi
 
 ## Prerequisites
 
-### System Requirements
-
 - **Operating System**: macOS, Linux, or Windows (with WSL recommended)
 - **[Python](https://www.python.org/) 3.11 or higher** (check with `python --version`)
 - **[Git](https://git-scm.com/)** for version control

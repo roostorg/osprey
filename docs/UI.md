@@ -77,17 +77,21 @@ The Time Series chart shows a visualization of the results in the query over a p
 * Month
 
 Hovering over a bar in the time series chart shows how many events took place during that time.
+
 ![Time Series](images/hover-time-series.png)
 
 There is also a time and date picker above the time series chart where you can set a custom range:
+
 ![Date Picker](images/time-date-picker.png)
 
 An extra table can be added for another view of a different unit of time. To get rid of the table, you can “[yeet](https://www.urbandictionary.com/define.php?term=Yeet) it”.
+
 ![Multiple Time Series](images/multiple-time-series.png)
 
 #### Top N Results
 
 Adding a Top N Results table populates a table with the top results for the results of the query. You can view and assign labels to a specific entity by hovering over it and clicking “Edit Labels”
+
 ![Top N Charts](images/top-n-charts.png)
 
 ![Add Labels](images/add-labels.png)
@@ -207,7 +211,7 @@ UserId == 12345
 MessageText != Null
 ```
 
-#### **Combining Conditions**
+#### Combining Conditions
 
 Let’s say you’re looking for any matches where a user tried to login more than 3 times. You can create a query to check for two types of data fields: “EventType” and “LoginAttempts”.
 
@@ -226,7 +230,8 @@ If you’re looking for multiple types of events in “EventType” like for pos
 
 UDFs (read more [here](rules.md#user-defined-functions-udfs)) are a powerful part of queries. Once you define a UDF with the specific desired logic, you can reference it in a query.
 
-**NOTE: If you try to query a UDF that doesn’t exist, Osprey will silently fail with a 500 error.**
+> [!NOTE]
+> If you try to query a UDF that doesn’t exist, Osprey will silently fail with a 500 error.
 
 ```py
  # Text search
@@ -241,8 +246,8 @@ UDFs (read more [here](rules.md#user-defined-functions-udfs)) are a powerful par
 
 Since the UI searches across actions/events:
 
-* **Don't use:** HasLabel() \- won't work in Query UI
-* **Use instead**: DidAddLabel() \- shows when an action added a label
+* **Don't use:** HasLabel() - won't work in Query UI
+* **Use instead**: DidAddLabel() - shows when an action added a label
 
 ```py
   # Find actions that added specific labels
