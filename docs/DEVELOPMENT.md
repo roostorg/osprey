@@ -20,7 +20,8 @@ This guide provides comprehensive instructions for setting up a development envi
 
 - **Python 3.11 or higher** - Check with `python --version`
 - **Git** - Version control system
-- **[uv](https://docs.astral.sh/uv/)** (Python package manager) or python package manager of choice
+- **[uv](https://docs.astral.sh/uv/)** or Python package manager of choice
+- **npm**
 - **Operating System**: macOS, Linux, or Windows (with WSL recommended)
 
 #### Install UV
@@ -127,7 +128,7 @@ This starts up many services, including:
 - **Postgres**: A database that the Worker, UI API, and Druid use for various reasons, such as the Postgres-backed Labels Service (in the example plugins)
 - **Druid**: A database that consumes Osprey Worker outputs to power the UI API for real-time querying
 
-alternatively, you can start Osprey with `osprey-coordinator`, refer to the [Coordinator README](./example_docker_compose/run_osprey_with_coordinator/README.md) for more information
+Alternatively, you can start Osprey with `osprey-coordinator`, refer to the [Coordinator README](./example_docker_compose/run_osprey_with_coordinator/README.md) for more information
 
 ### 6. (Optional) Port Forward the UI/UI API
 
