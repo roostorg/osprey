@@ -9,4 +9,8 @@
   - [IDE Setup](development/ide.md)
 - [User Interface](UI.md)
 - [Writing Rules](rules.md)
-- [User Research &amp; Personas](user_personas.md)
+- [User Research & Personas](user_personas.md)
+
+---
+
+[Contribute to these docs](docs.md)

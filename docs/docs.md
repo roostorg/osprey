@@ -2,7 +2,7 @@
 
 This documentation site is built using [mdBook](https://rust-lang.github.io/mdBook/) and deployed to GitHub Pages. Changes merged into the `main` branch will automatically be built and deployed.
 
-Documentation can be edited directly in the GitHub web UI for existing pages. To create a new page, be sure to update `SUMMARY.md` as well. Once you're done with your changes, open a pull request for review.
+Documentation can be edited directly in the GitHub web UI for existing pages, or by selecting the **🖉 Suggest an edit** icon at the top of the docs site. To create a new page, be sure to update `SUMMARY.md` as well. Once you're done with your changes, open a pull request for review.
 
 To understand more about how mdBook works, learn about the [anatomy of a book](https://rust-lang.github.io/mdBook/guide/creating.html#anatomy-of-a-book).
 
