@@ -161,6 +161,8 @@ Rules are written in SML, some examples are provided in `example_rules/` with YA
 OSPREY_RULES=./example_rules uv run python3.11 osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink
 ```
 
+[More about rules →](rules.md)
+
 ## Test Data
 
 Generate sample JSON actions:
