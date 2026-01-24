@@ -1009,7 +1009,7 @@ def _normalize_for_match(s: str) -> str:
 
 
 @lru_cache(maxsize=10_000)
-def _build_pattern(token: str, include_plural: bool, include_substrings: bool) -> re.Pattern[str]:
+def build_censor_pattern(token: str, include_plural: bool, include_substrings: bool) -> re.Pattern[str]:
     regex = ''
 
     # start off by adding a word boundary check if we dont want substrings
@@ -1092,7 +1092,7 @@ class StringCheckCensored(UDFBase[StringCheckCensoredArguments, bool]):
         normalized_token = _normalize_for_match(arguments.s)
 
         pattern_lower = arguments.pattern.lower()
-        regex = _build_pattern(pattern_lower, arguments.plurals, arguments.substrings)
+        regex = build_censor_pattern(pattern_lower, arguments.plurals, arguments.substrings)
 
         match = regex.search(normalized_token)
         if match is None:
