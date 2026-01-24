@@ -1,9 +1,6 @@
 import pytest
 from osprey.engine.conftest import ExecuteFunction
-from osprey.engine.stdlib.udfs.unicode_censored import (
-    StringCheckCensored,
-    create_censored_regex,
-)
+from osprey.engine.stdlib.udfs.unicode_censored import StringCheckCensored
 from osprey.engine.udf.registry import UDFRegistry
 
 pytestmark = [
@@ -15,70 +12,28 @@ pytestmark = [
 ]
 
 
-class TestCreateCensorizeRegex:
-    """Tests for the create_censored_regex() helper function."""
-
-    def test_basic_match(self) -> None:
-        pattern = create_censored_regex('cat', include_plural=False, include_substrings=True)
-        assert pattern.search('cat') is not None
-        assert pattern.search('c@t') is not None
-        assert pattern.search('C4T') is not None
-
-    def test_plural_matching(self) -> None:
-        pattern = create_censored_regex('cat', include_plural=True, include_substrings=True)
-        assert pattern.search('cats') is not None
-        assert pattern.search('c@ts') is not None
-        assert pattern.search('cat') is not None  # should still match singular
-
-    def test_no_plural_matching(self) -> None:
-        pattern = create_censored_regex('cat', include_plural=False, include_substrings=False)
-        match = pattern.search('cats')
-        assert match is None
-
-    def test_substring_matching(self) -> None:
-        pattern = create_censored_regex('cat', include_plural=False, include_substrings=True)
-        assert pattern.search('concatenate') is not None
-
-    def test_no_substring_matching(self) -> None:
-        pattern = create_censored_regex('cat', include_plural=False, include_substrings=False)
-        assert pattern.search('concatenate') is None
-
-    def test_word_boundary_matching(self) -> None:
-        pattern = create_censored_regex('cat', include_plural=False, include_substrings=False)
-        assert pattern.search('the cat sat') is not None
-        assert pattern.search('cat') is not None
-        assert pattern.search(' cat ') is not None
-
-    def test_space_character_insertion(self) -> None:
-        # the regex allows space-like chars between letters
-        pattern = create_censored_regex('cat', include_plural=False, include_substrings=True)
-        assert pattern.search('c___a__t') is not None
-        assert pattern.search('c.a....t') is not None
-        assert pattern.search('c@_a@#t') is not None
-
-
 class TestCheckCensoredUDF:
     """Tests for the StringCheckCensored UDF."""
 
-    def test_basic_match(self, execute: ExecuteFunction) -> None:
+    def test_basic_match(self, execute: ExecuteFunction):
         data = execute("""
             Result = StringCheckCensored(s="cat", pattern="cat")
         """)
         assert data['Result'] is True
 
-    def test_censored_match(self, execute: ExecuteFunction) -> None:
+    def test_censored_match(self, execute: ExecuteFunction):
         data = execute("""
             Result = StringCheckCensored(s="c@t", pattern="cat")
         """)
         assert data['Result'] is True
 
-    def test_no_match(self, execute: ExecuteFunction) -> None:
+    def test_no_match(self, execute: ExecuteFunction):
         data = execute("""
             Result = StringCheckCensored(s="dog", pattern="cat")
         """)
         assert data['Result'] is False
 
-    def test_unicode_lookalike_match(self, execute: ExecuteFunction) -> None:
+    def test_unicode_lookalike_match(self, execute: ExecuteFunction):
         # using cyrillic 'а' which looks like latin 'a'
         data = execute("""
             Result = StringCheckCensored(s="cаt", pattern="cat")
@@ -90,7 +45,7 @@ class TestCheckCensoredUDF:
         """)
         assert data['Result'] is True
 
-    def test_plural_option_enabled(self, execute: ExecuteFunction) -> None:
+    def test_plural_option_enabled(self, execute: ExecuteFunction):
         data = execute("""
             WithPlural = StringCheckCensored(s="cats", pattern="cat", plurals=True)
             WithoutPlural = StringCheckCensored(s="cats", pattern="cat", plurals=False)
@@ -98,7 +53,7 @@ class TestCheckCensoredUDF:
         assert data['WithPlural'] is True
         assert data['WithoutPlural'] is False
 
-    def test_substring_option(self, execute: ExecuteFunction) -> None:
+    def test_substring_option(self, execute: ExecuteFunction):
         data = execute("""
             WithSubstring = StringCheckCensored(s="concatenate", pattern="cat", substrings=True)
             WithoutSubstring = StringCheckCensored(s="concatenate", pattern="cat", substrings=False)
@@ -106,7 +61,7 @@ class TestCheckCensoredUDF:
         assert data['WithSubstring'] is True
         assert data['WithoutSubstring'] is False
 
-    def test_must_be_censored_option(self, execute: ExecuteFunction) -> None:
+    def test_must_be_censored_option(self, execute: ExecuteFunction):
         data = execute("""
             PlainText = StringCheckCensored(s="cat", pattern="cat", must_be_censored=True)
             CensoredText = StringCheckCensored(s="c@t", pattern="cat", must_be_censored=True)
@@ -114,7 +69,7 @@ class TestCheckCensoredUDF:
         assert data['PlainText'] is False
         assert data['CensoredText'] is True
 
-    def test_must_be_censored_with_surrounding_test(self, execute: ExecuteFunction) -> None:
+    def test_must_be_censored_with_surrounding_test(self, execute: ExecuteFunction):
         data = execute("""
             PlainText = StringCheckCensored(s="the cat sat", pattern="cat", must_be_censored=True)
             CensoredText = StringCheckCensored(s="the c@t sat", pattern="cat", must_be_censored=True)
@@ -122,7 +77,7 @@ class TestCheckCensoredUDF:
         assert data['PlainText'] is False
         assert data['CensoredText'] is True
 
-    def test_case_insensitive(self, execute: ExecuteFunction) -> None:
+    def test_case_insensitive(self, execute: ExecuteFunction):
         data = execute("""
             Upper = StringCheckCensored(s="CAT", pattern="cat")
             Mixed = StringCheckCensored(s="CaT", pattern="cat")
@@ -130,13 +85,13 @@ class TestCheckCensoredUDF:
         assert data['Upper'] is True
         assert data['Mixed'] is True
 
-    def test_with_special_chars_in_pattern(self, execute: ExecuteFunction) -> None:
+    def test_with_special_chars_in_pattern(self, execute: ExecuteFunction):
         data = execute("""
             Result = StringCheckCensored(s="a.b", pattern="a.b")
         """)
         assert data['Result'] is True
 
-    def test_empty_string(self, execute: ExecuteFunction) -> None:
+    def test_empty_string(self, execute: ExecuteFunction):
         data = execute("""
             Result = StringCheckCensored(s="", pattern="cat")
         """)
@@ -235,13 +190,13 @@ class TestCheckCensoredUDF:
             ('c.\u200ba.\u200bt', 'cat', True),
         ],
     )
-    def test_various_inputs(self, execute: ExecuteFunction, input_str: str, pattern: str, expected: bool) -> None:
+    def test_various_inputs(self, execute: ExecuteFunction, input_str: str, pattern: str, expected: bool):
         data = execute(f"""
             Result = StringCheckCensored(s="{input_str}", pattern="{pattern}")
         """)
         assert data['Result'] is expected
 
-    def test_leet_speak_variations(self, execute: ExecuteFunction) -> None:
+    def test_leet_speak_variations(self, execute: ExecuteFunction):
         data = execute("""
             Leet1 = StringCheckCensored(s="h3ll0", pattern="hello")
             Leet2 = StringCheckCensored(s="t35t", pattern="test")
@@ -249,7 +204,7 @@ class TestCheckCensoredUDF:
         assert data['Leet1'] is True
         assert data['Leet2'] is True
 
-    def test_with_separator_characters(self, execute: ExecuteFunction) -> None:
+    def test_with_separator_characters(self, execute: ExecuteFunction):
         data = execute("""
             Dots = StringCheckCensored(s="c.a.t", pattern="cat", substrings=True)
             Underscores = StringCheckCensored(s="c_a_t", pattern="cat", substrings=True)

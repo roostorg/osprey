@@ -406,16 +406,22 @@ _TOKEN_PATTERN = re.compile(r"[\w]+(?:'[\w]+)?", re.UNICODE)
 
 
 def tokenize_text(s: str) -> list[str]:
-    s = s.replace("'", "'").replace('ʼ', "'")
+    s = s.replace('\u2019', "'").replace('\u02bc', "'")
     return _TOKEN_PATTERN.findall(s.lower())
 
 
 class StringTokenize(UDFBase[StringArguments, list[str]]):
     """
     Used to convert the given string into a list of individual tokens. Returns a list of individual
-    tokens split by spaces and punctuation marks. Note that StringTokenize does not split on apostrophes
-    found in i.e. contractions. For example, the string "don't go" would result in ["don't", "go"]
+    tokens split by spaces and punctuation marks.
+
+    Note that StringTokenize does not split on a single apostrophe found inside a word (e.g. contractions).
+    For example, the string "don't go" would result in ["don't", "go"]. Tokens are sequences of word
+    characters with at most one internal apostrophe, and the string "do''not''go" would result in
+    ["do", "not", "go"].
     """
+
+    category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> list[str]:
         return tokenize_text(arguments.s)
