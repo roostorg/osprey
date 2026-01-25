@@ -1,10 +1,10 @@
 import json
 import os
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 from osprey.worker.lib.config.callbacks import tracing_callback
 
-ConfigT = Dict[str, Any]
+ConfigT = dict[str, Any]
 ConfigurationCallback = Callable[['Config'], None]
 
 
@@ -15,7 +15,7 @@ class Config:
     """Provides configuration for the rest of the osprey library."""
 
     def __init__(self, underlying_config_dict: Optional[ConfigT] = None):
-        self._pending_configuration_callbacks: List[ConfigurationCallback] = list(DEFAULT_CONFIGURATION_CALLBACKS)
+        self._pending_configuration_callbacks: list[ConfigurationCallback] = list(DEFAULT_CONFIGURATION_CALLBACKS)
         self._underlying_config_dict: Optional[ConfigT] = None
 
         if underlying_config_dict is not None:
@@ -180,9 +180,9 @@ class Config:
         except KeyError:
             return default
 
-    def expect_str_list(self, key: str) -> List[str]:
-        """Gets a List[str] value from the dictionary in a type-safe way, throwing a `TypeError` if the value is not a
-        List[str], and a `KeyError` if the key does not exist."""
+    def expect_str_list(self, key: str) -> list[str]:
+        """Gets a list[str] value from the dictionary in a type-safe way, throwing a `TypeError` if the value is not a
+        list[str], and a `KeyError` if the key does not exist."""
         value = self._config_dict[key]
         if not isinstance(value, list):
             raise TypeError(f'Type of config[{key!r}] is not a list, but a {type(value)}')
@@ -193,9 +193,9 @@ class Config:
 
         return value
 
-    def get_str_list(self, key: str, default: List[str]) -> List[str]:
+    def get_str_list(self, key: str, default: list[str]) -> list[str]:
         """Like `get_str`, returning a default value if the key does not exist.
-        Will still throw a type error, if the value was not a List[str]."""
+        Will still throw a type error, if the value was not a list[str]."""
         try:
             return self.expect_str_list(key)
         except KeyError:
@@ -223,8 +223,8 @@ class Config:
 
 
 def config_from_env(
-    env: Optional[Dict[str, str]] = None, key_filter: Optional[Callable[[str], bool]] = None
-) -> Dict[str, Any]:
+    env: Optional[dict[str, str]] = None, key_filter: Optional[Callable[[str], bool]] = None
+) -> dict[str, Any]:
     """Creates a config dictionary from the process environment. Tries to parse json-like values as JSON, meaning,
     if you had a config value that looks like a JSON object (starts with `{`, `[` or `"`), it will try to be interpreted
     as JSON, and fail loudly if it can't.
@@ -234,7 +234,7 @@ def config_from_env(
     An optional `key_filter` can be provided, that will take the key, and return True if the key should be used in the
     config, or false if it shouldn't. For example, you can make the key filter be: `{'foo', 'bar'}.__contains__`.
     """
-    env_: Dict[str, str] = env if env is not None else os.environ.copy()
+    env_: dict[str, str] = env if env is not None else os.environ.copy()
 
     config = {}
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Iterable, Optional, Tuple, Union
 
 from osprey.worker.lib.discovery.service import Service
 from osprey.worker.lib.discovery.service_watcher import ServiceWatcher
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class Directory:
-    _instances: ClassVar[Dict[_InstancesKeyType, 'Directory']] = {}
+    _instances: ClassVar[dict[_InstancesKeyType, 'Directory']] = {}
 
     @classmethod
     def instance(cls, *args, **kwargs) -> Directory:
@@ -30,7 +30,7 @@ class Directory:
         self.base_key = base_key
         self.etcd_client = etcd_client or EtcdClient(*args, **kwargs)
 
-        self._watchers: Dict[str, ServiceWatcher] = {}
+        self._watchers: dict[str, ServiceWatcher] = {}
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__}: {self.base_key}>'
@@ -56,7 +56,7 @@ class Directory:
         """Selects an instance of a service based on a selector."""
         return self.get_watcher(name).select(selector)
 
-    def select_all(self, name: str, selector: Optional[SelectorFunctionType] = None) -> List[Service]:
+    def select_all(self, name: str, selector: Optional[SelectorFunctionType] = None) -> list[Service]:
         """Selects all instances of a service based on a selector."""
         return self.get_watcher(name).select_all(selector)
 

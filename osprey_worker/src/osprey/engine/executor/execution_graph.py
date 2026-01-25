@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, Hashable, Iterator, List, Optional, Sequence, Set, TypeVar
+from typing import TYPE_CHECKING, Any, Hashable, Iterator, Optional, Sequence, Set, TypeVar
 
 from osprey.engine.ast.grammar import Assign, ASTNode, Load, Name, Source, Statement
 from osprey.engine.utils.periodic_execution_yielder import maybe_periodic_yield
@@ -29,10 +29,10 @@ class ExecutionGraph:
         '_nodes_to_unwrap',
     )
 
-    _root_node_executor_mapping: Dict[int, DependencyChain]
+    _root_node_executor_mapping: dict[int, DependencyChain]
     """This is a mapping of the node to its dependency chain. """
 
-    _assignment_executor_mapping: Dict[str, DependencyChain]
+    _assignment_executor_mapping: dict[str, DependencyChain]
     """This is a mapping of an identifier (stored Name), to the dependency chain which would execute it."""
 
     _node_executor_registry: 'NodeExecutorRegistry'
@@ -42,7 +42,7 @@ class ExecutionGraph:
     _validated_sources: 'ValidatedSources'
     """The validated sources that this execution graph was constructed from."""
 
-    _sorted_dependency_chains: Dict[Source, Sequence[DependencyChain]]
+    _sorted_dependency_chains: dict[Source, Sequence[DependencyChain]]
     """A dict of sources to sorted dependency chains."""
 
     _nodes_to_unwrap: Set[int]
@@ -133,7 +133,7 @@ def compile_execution_graph(
     instance = ExecutionGraph(
         node_executor_registry=node_executor_registry, sources=validated_sources, nodes_to_unwrap=nodes_to_unwrap
     )
-    ordered_sources: List[Source] = list(chain_dedupe(iter(sorted_sources), iter(validated_sources.sources)))
+    ordered_sources: list[Source] = list(chain_dedupe(iter(sorted_sources), iter(validated_sources.sources)))
 
     for source in ordered_sources:
         # noinspection PyProtectedMember

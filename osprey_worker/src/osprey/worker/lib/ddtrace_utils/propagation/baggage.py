@@ -1,5 +1,4 @@
 from re import compile, split, sub
-from typing import Dict, List
 from urllib.parse import quote_plus, unquote_plus
 
 from osprey.worker.lib.ddtrace_utils.constants import BaggagePrefix
@@ -33,7 +32,7 @@ class HTTPBaggagePropagator(object):
         if not baggage_header.lower().startswith('x-'):
             self._possible_headers.append(f'x-{baggage_header}')
 
-    def inject(self, baggage: Baggage, headers: Dict[str, str]) -> None:
+    def inject(self, baggage: Baggage, headers: dict[str, str]) -> None:
         # Extract any existing baggage first so it's not overwridden
         existing_baggage = self.extract(headers)
         existing_baggage.update(baggage)
@@ -50,7 +49,7 @@ class HTTPBaggagePropagator(object):
 
         headers[self._baggage_header] = ','.join([f'{quote_plus(k)}={quote_plus(v)}' for k, v in baggage.items()])
 
-    def extract(self, headers: Dict[str, str]) -> Baggage:
+    def extract(self, headers: dict[str, str]) -> Baggage:
         normalized_headers = {name.lower(): v for name, v in headers.items()}
         header = _extract_header_value(normalized_headers, self._possible_headers)
         entries = split(_DELIMITER_PATTERN, header)
@@ -71,7 +70,7 @@ class HTTPBaggagePropagator(object):
         return baggage
 
 
-def _extract_header_value(headers: Dict[str, str], possible_headers: List[str]) -> str:
+def _extract_header_value(headers: dict[str, str], possible_headers: list[str]) -> str:
     for header in possible_headers:
         try:
             return headers[header]
