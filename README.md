@@ -1,3 +1,5 @@
+<img width="200" height="64" alt="ROOST logo" src="images/ROOST-Horizontal-Yellow.png" />
+
 # Osprey
 
 **Automate the obvious and investigate the ambiguous.** High-performance safety rules engine for real-time event processing at scale. 
