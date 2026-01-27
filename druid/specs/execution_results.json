@@ -4,8 +4,8 @@
     "ioConfig": {
       "type": "kafka",
       "consumerProperties": {
-        "bootstrap.servers": "kafka:29092",
-        "auto.offset.reset": "latest"
+        "bootstrap.servers": "osprey-kafka:29092",
+        "auto.offset.reset": "earliest"
       },
       "topic": "osprey.execution_results",
       "inputFormat": {
@@ -28,8 +28,7 @@
         "segmentGranularity": "hour"
       },
       "dimensionsSpec": {
-        "useSchemaDiscovery": true,
-        "dimensionExclusions": []
+        "useSchemaDiscovery": true
       }
     }
   }

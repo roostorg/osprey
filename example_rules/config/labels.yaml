@@ -3,3 +3,124 @@ labels:
     valid_for: [User]
     connotation: positive
     description: testing label
+
+  # Spam detection labels
+  spam_sender:
+    valid_for: [User, MessageText, IpAddress, IpNetworkValue]
+    connotation: negative
+    description: User sent spam links in direct messages
+
+  spam_poster:
+    valid_for: [User, PostText, IpAddress, IpNetworkValue]
+    connotation: negative
+    description: User posted spam links
+
+  spam_content:
+    valid_for: [MessageText, PostText]
+    connotation: negative
+    description: Content contains spam
+
+  suspicious_new_account:
+    valid_for: [User, IpAddress, IpNetworkValue]
+    connotation: negative
+    description: New account exhibiting suspicious behavior
+
+  # Identity change labels
+  impersonation_attempt:
+    valid_for: [User]
+    connotation: negative
+    description: User attempted to impersonate authority figure
+
+  identity_evasion:
+    valid_for: [User]
+    connotation: negative
+    description: User showing identity evasion patterns
+
+  spam_display_name:
+    valid_for: [User, DisplayName]
+    connotation: negative
+    description: User has promotional/spam display name
+
+  # New account pattern labels
+  suspected_bot:
+    valid_for: [User, IpAddress, IpNetworkValue, UserAgent]
+    connotation: negative
+    description: Account shows bot-like behavior patterns
+
+  mass_messaging:
+    valid_for: [User, IpAddress, IpNetworkValue]
+    connotation: negative
+    description: New account mass messaging users
+
+  automated_client:
+    valid_for: [User, UserAgent, IpAddress, IpNetworkValue]
+    connotation: negative
+    description: Request from automated user agent
+
+  new_account_links:
+    valid_for: [User]
+    connotation: negative
+    description: New account posting links
+
+  # IP/metadata labels
+  proxy_user:
+    valid_for: [User, IpAddress, IpNetworkValue]
+    connotation: neutral
+    description: User accessing from proxy/VPN
+
+  automation_detected:
+    valid_for: [User, UserAgent, IpAddress, IpNetworkValue]
+    connotation: negative
+    description: Headless browser or automation tool detected
+
+  suspicious_client:
+    valid_for: [User, UserAgent]
+    connotation: negative
+    description: Suspicious or spoofed user agent
+
+  # IP-specific labels (IpAddress and IpNetworkValue)
+  suspicious_ip:
+    valid_for: [IpAddress, IpNetworkValue]
+    connotation: negative
+    description: IP address associated with suspicious activity
+
+  blocked_ip:
+    valid_for: [IpAddress, IpNetworkValue]
+    connotation: negative
+    description: IP address has been blocked
+
+  datacenter_ip:
+    valid_for: [IpAddress, IpNetworkValue]
+    connotation: neutral
+    description: IP address belongs to a datacenter/cloud provider
+
+  vpn_ip:
+    valid_for: [IpAddress, IpNetworkValue]
+    connotation: neutral
+    description: IP address belongs to a VPN provider
+
+  tor_exit_node:
+    valid_for: [IpAddress, IpNetworkValue]
+    connotation: negative
+    description: IP address is a known Tor exit node
+
+  high_risk_ip:
+    valid_for: [IpAddress, IpNetworkValue]
+    connotation: negative
+    description: IP address has high abuse score
+
+  # UserAgent-specific labels
+  bot_user_agent:
+    valid_for: [UserAgent]
+    connotation: negative
+    description: User agent indicates automated bot
+
+  headless_browser:
+    valid_for: [UserAgent]
+    connotation: negative
+    description: User agent indicates headless browser
+
+  outdated_client:
+    valid_for: [UserAgent]
+    connotation: neutral
+    description: User agent indicates outdated browser/client

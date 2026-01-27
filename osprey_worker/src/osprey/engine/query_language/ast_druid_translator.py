@@ -167,7 +167,10 @@ def get_ast_node_value(node: grammar.ASTNode) -> Any:
         return [get_ast_node_value(i) for i in node.items]
     elif isinstance(node, grammar.None_):
         return None
-    elif isinstance(node, grammar.String) or isinstance(node, grammar.Number) or isinstance(node, grammar.Boolean):
+    elif isinstance(node, grammar.Boolean):
+        # Convert boolean to integer for Druid queries since rule results are stored as 0/1
+        return 1 if node.value else 0
+    elif isinstance(node, grammar.String) or isinstance(node, grammar.Number):
         return node.value
     else:
         raise DruidQueryTransformException(node, 'Node has no known value attribute')
