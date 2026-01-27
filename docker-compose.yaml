@@ -15,7 +15,7 @@ services:
     hostname: osprey-kafka
     container_name: osprey-kafka
     ports:
-      - "9092:9092"
+      - "127.0.0.1:9092:9092"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: "broker,controller"
@@ -47,8 +47,8 @@ services:
     container_name: minio
     hostname: minio
     ports:
-      - "9000:9000" # minio API
-      - "9001:9001" # minio Console
+      - "127.0.0.1:9000:9000" # minio API
+      - "127.0.0.1:9001:9001" # minio Console
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin123
@@ -103,7 +103,7 @@ services:
       minio-bucket-init:
         condition: service_completed_successfully
     ports:
-      - "5001:5000"
+      - "127.0.0.1:5001:5000"
     command: ["osprey-worker"]
     environment:
       - PYTHONPATH=/osprey
@@ -149,7 +149,7 @@ services:
       - bigtable
       - bigtable-initializer
     ports:
-      - "5004:5004"
+      - "127.0.0.1:5004:5004"
     command: ["osprey-ui-api"]
     environment:
       - PYTHONPATH=/osprey
@@ -180,7 +180,7 @@ services:
     depends_on:
       - osprey-ui-api
     ports:
-      - "5002:5002"
+      - "127.0.0.1:5002:5002"
     environment:
       - NODE_ENV=development
       - REACT_APP_API_BASE_URL=http://localhost:5004
@@ -193,7 +193,7 @@ services:
     container_name: snowflake-id-worker
     image: ghcr.io/ayubun/snowflake-id-worker:0
     ports:
-      - "8088:8088"
+      - "127.0.0.1:8088:8088"
     environment:
       - WORKER_ID=0
       - DATA_CENTER_ID=0
@@ -206,7 +206,7 @@ services:
     container_name: bigtable
     image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
     ports:
-      - "8361:8361"
+      - "127.0.0.1:8361:8361"
     command: >
       bash -c "
         gcloud beta emulators bigtable start --host-port=0.0.0.0:8361 --project=osprey-dev
@@ -256,7 +256,7 @@ services:
     container_name: postgres
     image: postgres:18
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - metadata_data:/var/lib/postgresql
     environment:
@@ -277,7 +277,7 @@ services:
     container_name: druid-zookeeper
     image: zookeeper:3.5.10
     ports:
-      - "2181:2181"
+      - "127.0.0.1:2181:2181"
     environment:
       - ZOO_MY_ID=1
 
@@ -292,7 +292,7 @@ services:
       - druid-zookeeper
       - postgres
     ports:
-      - "8081:8081"
+      - "127.0.0.1:8081:8081"
     command:
       - coordinator
     env_file:
@@ -309,7 +309,7 @@ services:
       - postgres
       - druid-coordinator
     ports:
-      - "8082:8082"
+      - "127.0.0.1:8082:8082"
     command:
       - broker
     env_file:
@@ -327,7 +327,7 @@ services:
       - postgres
       - druid-coordinator
     ports:
-      - "8083:8083"
+      - "127.0.0.1:8083:8083"
     command:
       - historical
     env_file:
@@ -345,8 +345,8 @@ services:
       - postgres
       - druid-coordinator
     ports:
-      - "8091:8091"
-      - "8100-8105:8100-8105"
+      - "127.0.0.1:8091:8091"
+      - "127.0.0.1:8100-8105:8100-8105"
     command:
       - middleManager
     env_file:
@@ -363,7 +363,7 @@ services:
       - postgres
       - druid-coordinator
     ports:
-      - "8888:8888"
+      - "127.0.0.1:8888:8888"
     command:
       - router
     env_file:

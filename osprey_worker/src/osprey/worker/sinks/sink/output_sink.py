@@ -1,7 +1,7 @@
 import abc
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, DefaultDict, Dict, Mapping, Optional, Sequence
+from typing import Any, Callable, DefaultDict, Dict, Mapping, Optional, Sequence
 
 import gevent
 import sentry_sdk
@@ -16,15 +16,21 @@ from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation
 from osprey.worker.lib.osprey_shared.logging import DynamicLogSampler, get_logger
 from osprey.worker.lib.storage.labels import LabelsProvider
+from tenacity import RetryCallState, retry, stop_after_attempt, wait_exponential
 
 logger = get_logger()
 
 DEFAULT_GEVENT_TIMEOUT = 2
+DEFAULT_MAX_RETRIES = 0  # No retries by default (1 attempt total)
 
 
 class BaseOutputSink(abc.ABC):
     # Default timeout for sink operations. Subclasses can override this.
     timeout: float = DEFAULT_GEVENT_TIMEOUT
+
+    # Retry configuration. Subclasses can override this.
+    # 0 = no retries (1 attempt), 2 = up to 3 total attempts
+    max_retries: int = DEFAULT_MAX_RETRIES
 
     @abc.abstractmethod
     def will_do_work(self, result: ExecutionResult) -> bool:
@@ -52,31 +58,55 @@ class MultiOutputSink(BaseOutputSink):
     def will_do_work(self, result: ExecutionResult) -> bool:
         return any(sink.will_do_work(result) for sink in self._sinks)
 
+    def _create_push_with_retry(self, sink: BaseOutputSink) -> Callable[[ExecutionResult], None]:
+        """Create a retry-wrapped push function for a sink.
+
+        Uses tenacity for exponential backoff retries.
+        """
+        sink_name = sink.__class__.__name__
+
+        def log_retry_attempt(retry_state: RetryCallState) -> None:
+            attempt = retry_state.attempt_number
+            exception = retry_state.outcome.exception() if retry_state.outcome else None
+            logger.warning(f'Retrying sink {sink_name}, attempt {attempt}, error: {exception}')
+            metrics.increment('output_sink.retry', tags=[f'sink:{sink_name}', f'attempt:{attempt}'])
+
+        # stop_after_attempt(1) = no retries, stop_after_attempt(3) = 2 retries
+        @retry(
+            stop=stop_after_attempt(sink.max_retries + 1),
+            wait=wait_exponential(multiplier=0.5, min=0.5, max=5),
+            before_sleep=log_retry_attempt,
+            reraise=True,
+        )
+        def push_with_retry(result: ExecutionResult) -> None:
+            with (
+                trace(f'{sink_name}.push'),
+                metrics.timed('handled_message_output', tags=[f'sink:{sink_name}'], use_ms=True),
+                gevent.Timeout(sink.timeout),
+            ):
+                sink.push(result)
+
+        return push_with_retry
+
     def push(self, result: ExecutionResult) -> None:
         errors: Dict[BaseOutputSink, BaseException] = {}
 
         for sink in self._sinks:
             if sink.will_do_work(result):
                 sink_name = sink.__class__.__name__
+                push_fn = self._create_push_with_retry(sink)
                 try:
-                    with (
-                        trace(f'{sink_name}.push'),
-                        metrics.timed('handled_message_output', tags=[f'sink:{sink_name}'], use_ms=True),
-                        gevent.Timeout(sink.timeout),
-                    ):
-                        sink.push(result)
+                    push_fn(result)
                 except gevent.Timeout as timeout_exc:
                     logger.exception(f'Timeout exception raised when pushing event to sink: {sink_name}')
                     errors[sink] = timeout_exc
                     metrics.increment('output_sink.timeout', tags=[f'sink:{sink_name}'])
-                    # Capture the Timeout exception
                     sentry_sdk.capture_exception()
                 except Exception as exc:
                     errors[sink] = exc
                     metrics.increment(
                         'output_sink.error', tags=[f'sink:{sink_name}', f'error:{exc.__class__.__name__}']
                     )
-                    # Capture the current exception for now until we fix PartialSinkFailure
                     sentry_sdk.capture_exception()
 
     def stop(self) -> None:

@@ -1,12 +1,8 @@
-# Osprey Docs
-
-# Osprey Docs
+# Osprey Rules
 
 ![images/rules_architecture.png](images/rules_architecture.png)
 
-## Rules
-
-### Creating Rules
+## Creating Rules
 
 Rules in Osprey are written in `Some Madeup Language (SML)` and follow most syntax conventions present in the Osprey Query UI. SML is a subset of Python with additional restrictions to make the rules simpler to craft.
 
@@ -58,7 +54,7 @@ My_Rule_Name_v2 = Rule(
 )
 ```
 
-### Instrumenting Rules with WhenRules
+## Instrumenting Rules with WhenRules
 
 The `WhenRules()` function allows for the connection of rules with external services, declarations or internal label modifications by listing Rule objects in sequence within the `rules_any=[]` parameter and `EffectBase`. By default, operators and designers can utilize UDFs with predefined effects such as `DeclareVerdict()`, `LabelAdd()`, and `LabelRemove()` on positive rule evaluations.
 
@@ -179,7 +175,6 @@ WhenRules(
 UDF outputs can also implement the `CustomExtractedFeature` interface - which get persisted in the outputs for the UI. `EffectToCustomExtractedFeatureBase` can also be used when effects need additional processing for use in the UI.
 
 ## Labels
-**NOTE: Labels are currently not in v0, so users will be unable to add or edit labels via the UI**
 
 Labels are a standard plugin that enable stateful rules, and touch many parts of Osprey. They are effectively tags on various entities, which can be arbitrarily defined.
 
