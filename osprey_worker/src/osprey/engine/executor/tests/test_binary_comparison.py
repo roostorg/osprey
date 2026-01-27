@@ -167,3 +167,63 @@ def test_and(execute: ExecuteFunction, statement: str, expected: bool) -> None:
     )
 
     assert data == {'Ret': expected}
+
+
+@pytest.mark.parametrize(
+    'opt_val, expected',
+    [
+        (90, True),
+        (80, False),
+        ('None', False),  # None value - condition short-circuits
+    ],
+)
+def test_optional_null_check_before_comparison(
+    execute: ExecuteFunction, opt_val: object, expected: bool
+) -> None:
+    """Test that type narrowing works for X != None and X >= 90 pattern."""
+    data = execute(
+        f"""
+        OptVal: Optional[int] = {opt_val}
+        # Type narrowing: after OptVal != None, OptVal is narrowed from Optional[int] to int
+        Ret = OptVal != None and OptVal >= 90
+        """
+    )
+
+    assert data == {'Ret': expected}
+
+
+def test_optional_null_check_chained_narrowing(execute: ExecuteFunction) -> None:
+    """Test chained type narrowing with multiple optional values."""
+    data = execute(
+        """
+        A: Optional[int] = 100
+        B: Optional[int] = 50
+        # Both A and B get narrowed after their respective null checks
+        Ret = A != None and B != None and A >= 90 and B >= 40
+        """
+    )
+
+    assert data == {'Ret': True}
+
+
+@pytest.mark.parametrize(
+    'opt_val, expected',
+    [
+        (90, True),
+        (80, False),
+        ('None', True),  # None value - first condition is True, so result is True
+    ],
+)
+def test_optional_or_pattern_null_check(
+    execute: ExecuteFunction, opt_val: object, expected: bool
+) -> None:
+    """Test that type narrowing works for X == None or X >= 90 pattern."""
+    data = execute(
+        f"""
+        OptVal: Optional[int] = {opt_val}
+        # Type narrowing: after OptVal == None is false, OptVal is narrowed from Optional[int] to int
+        Ret = OptVal == None or OptVal >= 90
+        """
+    )
+
+    assert data == {'Ret': expected}
