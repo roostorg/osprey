@@ -174,6 +174,58 @@ KAFKA_TOPIC=osprey.actions_input
 KAFKA_CONFIG_FILE=/path/to/producer.config  # Optional
 ```
 
+## Troubleshooting
+
+### Events in logs but not appearing in UI
+
+If you see events being processed in the worker logs (`docker logs osprey-worker`) but the UI shows no data, the Druid supervisor's Kafka offsets are out of sync. This commonly happens after restarting the stack.
+
+**Fix:** Reset the Druid supervisor:
+
+```bash
+curl -X POST "http://localhost:8081/druid/indexer/v1/supervisor/osprey.execution_results/reset"
+```
+
+Then generate new test data:
+
+```bash
+./example_data/generate_test_data.sh
+```
+
+### UI not loading (connection refused on port 5002)
+
+The frontend container may have crashed. Check and restart:
+
+```bash
+# Check container status
+docker ps -a | grep osprey-ui
+
+# Restart if needed
+docker start osprey-ui
+
+# Wait ~30 seconds for build to complete
+```
+
+### Query returns no results
+
+- **Check boolean capitalization:** Use `True`/`False` (Python-style), not `true`/`false`
+  - ✅ `SuspiciousDisplayName == True`
+  - ❌ `SuspiciousDisplayName == true`
+- **Check time range:** Ensure the time picker includes recent data
+- **Verify data exists:** Run the data generator and wait ~10 seconds for ingestion
+
+### Worker not processing events
+
+Check worker logs for errors:
+
+```bash
+docker logs osprey-worker --tail 50
+```
+
+Common issues:
+- JSON parsing errors: Check test data format
+- Rule compilation errors: Check SML syntax in `example_rules/`
+
 ## File Structure
 
 ```
