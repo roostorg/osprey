@@ -66,6 +66,32 @@ check_port_available() {
     return 0
 }
 
+check_existing_services() {
+    echo -e "${YELLOW}Checking for existing Osprey services...${NC}"
+
+    # Check for running containers from this compose project
+    local running_containers=$(docker ps --filter "name=osprey\|kafka\|postgres\|minio\|druid\|zookeeper\|snowflake" --format "{{.Names}}" 2>/dev/null | head -10)
+
+    if [ -n "$running_containers" ]; then
+        echo -e "${YELLOW}Found existing services that may conflict:${NC}"
+        echo "$running_containers" | while read -r container; do
+            echo -e "  • $container"
+        done
+        echo ""
+        echo -e "${YELLOW}Starting the demo will stop these services and remove their volumes (data will be lost).${NC}"
+        echo -n -e "${BLUE}Do you want to continue? [y/N]: ${NC}"
+        read -r response
+        if [[ ! "$response" =~ ^[Yy]$ ]]; then
+            echo -e "${RED}Aborted.${NC}"
+            exit 0
+        fi
+        echo ""
+    else
+        echo -e "${GREEN}✓ No conflicting services found${NC}"
+    fi
+    echo ""
+}
+
 check_required_ports() {
     echo -e "${YELLOW}Checking required ports...${NC}"
 
@@ -139,11 +165,23 @@ setup_repo() {
     echo ""
 }
 
+# Cleanup function for signal handling
+cleanup() {
+    echo ""
+    echo -e "${YELLOW}Caught interrupt signal. Cleaning up...${NC}"
+    DOCKER_CLI_HINTS=false docker compose -f "$COMPOSE_FILE" --progress=quiet --profile test_data down -v 2>/dev/null || true
+    echo -e "${GREEN}✓ Services stopped and volumes removed${NC}"
+    exit 1
+}
+
 # Run the functions we defined above
 print_banner
 check_prerequisites
-check_required_ports
+check_existing_services
 setup_repo
+
+# Set up signal trap after we're in the repo (services may be started after this point)
+trap cleanup INT TERM
 
 # Function to check if a service is healthy via HTTP
 wait_for_http_service() {
@@ -199,6 +237,9 @@ DOCKER_CLI_HINTS=false docker compose --progress=quiet --profile test_data down 
 echo -e "${GREEN}✓ Cleanup complete (volumes removed for fresh start)${NC}"
 echo ""
 
+# Step 1.5: Check ports are available after cleanup
+check_required_ports
+
 # Step 2: Pull Docker images
 echo -e "${YELLOW}Step 2: Pulling Docker images (this may take a few minutes on first run)...${NC}"
 DOCKER_CLI_HINTS=false docker compose -f "$COMPOSE_FILE" --progress=quiet pull --quiet
@@ -216,7 +257,7 @@ echo -e "${YELLOW}Step 4: Waiting for services to be ready...${NC}"
 echo ""
 
 # Wait for infrastructure containers (use Docker health checks)
-wait_for_container "kafka" 90 || exit 1
+wait_for_container "osprey-kafka" 90 || exit 1
 wait_for_container "postgres" 90 || exit 1
 wait_for_container "minio" 90 || exit 1
 
@@ -233,7 +274,7 @@ echo ""
 
 # Step 5: Start test data generator
 echo -e "${YELLOW}Step 5: Starting test data generator...${NC}"
-DOCKER_CLI_HINTS=false docker compose -f "$COMPOSE_FILE" --progress=quiet --profile test_data up -d kafka-test-data-producer
+DOCKER_CLI_HINTS=false docker compose -f "$COMPOSE_FILE" --progress=quiet --profile test_data up -d osprey-kafka-test-data-producer
 echo -e "${GREEN}✓ Test data generator started (1 event/second)${NC}"
 echo ""
 
@@ -285,6 +326,6 @@ fi
 
 echo ""
 echo -e "${BLUE}To stop the demo:${NC}"
-echo -e "  docker compose --profile test_data down -v"
+echo -e "  cd $(pwd) && docker compose --profile test_data down -v"
 echo ""
 echo -e "${GREEN}Demo is running! Press Ctrl+C to exit this script (services will keep running)${NC}"
