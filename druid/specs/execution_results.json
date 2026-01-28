@@ -4,7 +4,7 @@
     "ioConfig": {
       "type": "kafka",
       "consumerProperties": {
-        "bootstrap.servers": "kafka:29092",
+        "bootstrap.servers": "osprey-kafka:29092",
         "auto.offset.reset": "latest"
       },
       "topic": "osprey.execution_results",
