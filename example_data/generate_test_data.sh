@@ -305,6 +305,17 @@ if [ "$USE_DOCKER" = "true" ]; then
     fi
 fi
 
+# Reset Druid supervisor to ensure Kafka offsets are in sync
+# This fixes the common issue where events appear in logs but not in the UI
+echo "Resetting Druid supervisor to sync Kafka offsets..."
+curl -s -X POST "http://localhost:8081/druid/indexer/v1/supervisor/osprey.execution_results/reset" > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    echo "Druid supervisor reset successfully."
+else
+    echo "Warning: Could not reset Druid supervisor (Druid may not be running yet)."
+fi
+echo
+
 # Print banner
 echo "=========================================="
 echo "  Osprey Demo Data Generator"
