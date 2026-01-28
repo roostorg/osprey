@@ -261,6 +261,9 @@ def test_string_normalization(s: Scenario, execute: ExecuteFunction) -> None:
         ),
         (f'https:/{QUICK_BROWN_FOX_DOMAIN_1}', []),  # invalid url
         (f'https:///{QUICK_BROWN_FOX_DOMAIN_1}', []),  # invalid url
+        ('https://[::1]:8080/path', ['[::1]']),  # valid IPv6 URL
+        ('https://[invalid', []),  # invalid IPv6 URL (unclosed bracket) - should not raise ValueError
+        ('check this out https://[bad::ipv6 click here', []),  # malformed IPv6 in text
     ],
 )
 def test_extract_domains(execute: ExecuteFunction, text: str, expected_result: List[str]) -> None:
@@ -307,6 +310,9 @@ def test_extract_domains(execute: ExecuteFunction, text: str, expected_result: L
         ),
         (f'https:/{QUICK_BROWN_FOX_DOMAIN_1}', []),  # invalid url
         (f'https:///{QUICK_BROWN_FOX_DOMAIN_1}', []),  # invalid url
+        ('https://[::1]:8080/path', ['https://[::1]:8080/path']),  # valid IPv6 URL
+        ('https://[invalid', []),  # invalid IPv6 URL (unclosed bracket) - should not raise ValueError
+        ('check this out https://[bad::ipv6 click here', []),  # malformed IPv6 in text
     ],
 )
 def test_extract_urls(execute: ExecuteFunction, text: str, expected_result: List[str]) -> None:
