@@ -603,7 +603,9 @@ def test_error_on_empty_raises_when_entity_has_no_labels(execute_with_result: Ex
 
 def test_error_on_empty_returns_true_when_label_exists(execute: ExecuteFunction) -> None:
     """error_on_empty=True should return True when the entity has labels and the requested label exists."""
-    labels = EntityLabels(labels={'my_label': LabelState(status=LabelStatus.ADDED, reasons=LabelReasons({'TestReason': LabelReason()}))})
+    labels = EntityLabels(
+        labels={'my_label': LabelState(status=LabelStatus.ADDED, reasons=LabelReasons({'TestReason': LabelReason()}))}
+    )
     label_provider = StaticLabelProvider({EntityT('MyEntity', 'my_id'): labels})
 
     data = execute(
@@ -627,7 +629,11 @@ def test_error_on_empty_returns_false_when_label_missing_but_entity_has_other_la
     execute: ExecuteFunction,
 ) -> None:
     """error_on_empty=True should return False when entity has labels but not the requested one."""
-    labels = EntityLabels(labels={'other_label': LabelState(status=LabelStatus.ADDED, reasons=LabelReasons({'TestReason': LabelReason()}))})
+    labels = EntityLabels(
+        labels={
+            'other_label': LabelState(status=LabelStatus.ADDED, reasons=LabelReasons({'TestReason': LabelReason()}))
+        }
+    )
     label_provider = StaticLabelProvider({EntityT('MyEntity', 'my_id'): labels})
 
     data = execute(
