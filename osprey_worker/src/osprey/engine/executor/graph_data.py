@@ -1,6 +1,6 @@
 import copy
 from enum import StrEnum
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Optional, Set, Tuple
 
 from typing_extensions import TypedDict
 
@@ -68,7 +68,7 @@ class Node:
         }
         """
         self.id: int = id
-        self.children: Dict[int, Any] = {}
+        self.children: dict[int, Any] = {}
         self.parents: Set[int] = set()
         self.data: NodeData = {'id': id, 'name': name, 'type': type, 'file_path': file_path, 'value': value}
         self.type: NodeType = type
@@ -128,10 +128,10 @@ class GraphData:
         O(1) insertion and deletion for edges;
         Allows us to store edge data
         """
-        self._data: Dict[int, Node] = {}
+        self._data: dict[int, Node] = {}
         self._auto_increment: int = 1
         # Key: Hash of contents, Value: ID of first node found with those contents
-        self._created_node_id_by_contents: Dict[int, int] = {}
+        self._created_node_id_by_contents: dict[int, int] = {}
         self._created_edges: Set[Tuple[int, int]] = set()
 
     def get_node(self, id: int) -> Node:
@@ -155,12 +155,12 @@ class GraphData:
                 edges.add((node_id, child_id))
         return copy.deepcopy(edges)
 
-    def _get_parents_with_data(self, id: int) -> Dict[int, Any]:
+    def _get_parents_with_data(self, id: int) -> dict[int, Any]:
         """
         Get all parents for the given node (including the edge data)
         """
         parents: Set[int] = self.get_node(id).parents
-        parents_with_data: Dict[int, Any] = {}
+        parents_with_data: dict[int, Any] = {}
         for parent in parents:
             try:
                 parents_with_data[parent] = self.get_node(parent).children[id]
@@ -221,7 +221,7 @@ class GraphData:
         else:
             return hash((type, value, span))
 
-    def create_edge(self, source_id: int, target_id: int, edge_data: Optional[Dict[str, Any]] = None) -> None:
+    def create_edge(self, source_id: int, target_id: int, edge_data: Optional[dict[str, Any]] = None) -> None:
         """
         Attach the provided source node to the provided target node
         """
@@ -284,8 +284,8 @@ class GraphData:
             color_c_decimal = round((color_a_decimal + color_b_decimal) / 2)
             return '#{0:06X}'.format(color_c_decimal).lstrip('0x').rstrip('L')
 
-        parents: Dict[int, Any] = self._get_parents_with_data(id)
-        children: Dict[int, Any] = copy.deepcopy(self._data[id].children)
+        parents: dict[int, Any] = self._get_parents_with_data(id)
+        children: dict[int, Any] = copy.deepcopy(self._data[id].children)
         for child_id in children:
             self.delete_edge(id, child_id)
         for parent_id in parents:
@@ -317,7 +317,7 @@ class GraphData:
 
         return get_num_children_recursively(id, set())
 
-    def get_node_ids_by_num_children(self) -> List[int]:
+    def get_node_ids_by_num_children(self) -> list[int]:
         """
         Returns a list of node IDs sorted in descending order from most-children to least-children
         """
@@ -334,8 +334,8 @@ class GraphData:
             )
         )
 
-    def to_dict(self) -> Dict[str, Any]:
-        output_dict: Dict[str, Any] = {'nodes': [], 'edges': []}
+    def to_dict(self) -> dict[str, Any]:
+        output_dict: dict[str, Any] = {'nodes': [], 'edges': []}
         node_ids = self.get_node_ids_by_num_children()
         for node_id in node_ids:
             node = self.get_node(node_id)
@@ -354,7 +354,7 @@ class GraphData:
         self._clean_edges(output_dict['edges'], output_dict['nodes'])
         return output_dict
 
-    def _clean_edges(self, edges: List[Dict[str, Any]], nodes: List[Dict[str, Any]]) -> None:
+    def _clean_edges(self, edges: list[dict[str, Any]], nodes: list[dict[str, Any]]) -> None:
         for i in range(len(edges) - 1, -1, -1):
             edge_data = edges[i]
             missing_source = True

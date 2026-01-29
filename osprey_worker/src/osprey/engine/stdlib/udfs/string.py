@@ -4,7 +4,7 @@ import re
 import string
 import unicodedata
 from itertools import chain
-from typing import Dict, Iterator, List, Literal, Optional, Set, cast
+from typing import Iterator, Literal, Optional, Set, cast
 from urllib.parse import ParseResult, urlparse, urlunparse
 
 from osprey.engine.stdlib.udfs._prelude import (
@@ -104,7 +104,7 @@ class StringReplace(UDFBase[StringReplaceArguments, str]):
 
 
 class StringJoinArguments(StringArguments):
-    iterable: List[str]
+    iterable: list[str]
 
 
 class StringJoin(UDFBase[StringJoinArguments, str]):
@@ -119,10 +119,10 @@ class StringSplitArguments(StringArguments):
     maxsplit: int = -1
 
 
-class StringSplit(UDFBase[StringSplitArguments, List[str]]):
+class StringSplit(UDFBase[StringSplitArguments, list[str]]):
     category = UdfCategories.STRING
 
-    def execute(self, execution_context: ExecutionContext, arguments: StringSplitArguments) -> List[str]:
+    def execute(self, execution_context: ExecutionContext, arguments: StringSplitArguments) -> list[str]:
         return arguments.s.split(arguments.sep, arguments.maxsplit)
 
 
@@ -160,7 +160,7 @@ class StringCleaningArguments(StringArguments):
     remove_punctuation: bool = False
 
 
-TranslationT = Dict[int, Optional[int]]
+TranslationT = dict[int, Optional[int]]
 
 
 _SPACE_PATTERN: re.Pattern[str] = re.compile(r'\s+')
@@ -354,7 +354,7 @@ class StringClean(UDFBase[StringCleaningArguments, str]):
         return s
 
 
-class StringExtractDomains(UDFBase[StringArguments, List[str]]):
+class StringExtractDomains(UDFBase[StringArguments, list[str]]):
     """
     Used to extract a list of potential URL domains from a string of tokens. Returns a list
     of candidate domains encountered in the input string. Should be used in conjunction with
@@ -363,7 +363,7 @@ class StringExtractDomains(UDFBase[StringArguments, List[str]]):
 
     category = UdfCategories.STRING
 
-    def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> List[str]:
+    def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> list[str]:
         # split the message into individual tokens as based on a modified URL regex from messages_common.
         # should capture space based links and markdown based links without duplication.
         potential_urls: Iterator[ParseResult] = (
@@ -377,7 +377,7 @@ class StringExtractDomains(UDFBase[StringArguments, List[str]]):
         return list(valid_domains)
 
 
-class StringExtractURLs(UDFBase[StringArguments, List[str]]):
+class StringExtractURLs(UDFBase[StringArguments, list[str]]):
     """
     Used to extract a list of potential URLs from a string of tokens. Returns a list
     of candidate URLs encountered in the input string. Should be used in conjunction with
@@ -386,7 +386,7 @@ class StringExtractURLs(UDFBase[StringArguments, List[str]]):
 
     category = UdfCategories.STRING
 
-    def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> List[str]:
+    def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> list[str]:
         # split the message into individual tokens as based on a modified URL regex from messages_common.
         # should capture space based links and markdown based links without duplication.
         potential_urls: Iterator[ParseResult] = (

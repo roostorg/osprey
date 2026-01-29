@@ -1,11 +1,11 @@
-from typing import Dict, List, Optional, Union
+from typing import Optional, Union
 
 from ddtrace.filters import TraceFilter
 from ddtrace.span import Span
 
 from ..constants import BaggagePrefix
 
-Baggage = Dict[str, str]
+Baggage = dict[str, str]
 
 DEFAULT_BAGGAGE_PREFIX = 'baggage.'
 
@@ -120,12 +120,12 @@ class _BaggageFilter(TraceFilter):
     def __init__(self, baggage_prefix: str = DEFAULT_BAGGAGE_PREFIX):
         self._baggage_prefix = baggage_prefix
 
-    def process_trace(self, trace: List[Span]) -> Optional[List[Span]]:
+    def process_trace(self, trace: list[Span]) -> Optional[list[Span]]:
         # Export the baggage to Datadog under the non-prefixed key
         for span in trace:
             # We need a new dictionary because you can't safely mutate a dict
             # while iterating over it
-            tags: Dict[Union[str, bytes], str] = {}
+            tags: dict[Union[str, bytes], str] = {}
 
             for k, v in span.get_tags().items():
                 if isinstance(k, bytes):

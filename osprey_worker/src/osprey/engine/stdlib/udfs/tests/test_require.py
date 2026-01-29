@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import pytest
 from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
@@ -11,7 +11,7 @@ from osprey.engine.stdlib.udfs.json_data import JsonData
 from osprey.engine.stdlib.udfs.require import Require
 from osprey.engine.udf.registry import UDFRegistry
 
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_validators([ValidateCallKwargs, ValidateDynamicCallsHaveAnnotatedRValue, UniqueStoredNames]),
     pytest.mark.use_udf_registry(UDFRegistry.with_udfs(JsonData, Require)),
 ]
@@ -47,7 +47,7 @@ sources = {
         ),
     ],
 )
-def test_require(execute: ExecuteFunction, data: Dict[str, object], expected_result: Dict[str, Optional[str]]) -> None:
+def test_require(execute: ExecuteFunction, data: dict[str, object], expected_result: dict[str, Optional[str]]) -> None:
     result = execute(sources, data=data, allow_errors=True)
 
     assert result == expected_result
@@ -77,7 +77,7 @@ sources_require_if = {
         ),
     ],
 )
-def test_require_if(execute: ExecuteFunction, data: Dict[str, object], expected_result: Dict[str, object]) -> None:
+def test_require_if(execute: ExecuteFunction, data: dict[str, object], expected_result: dict[str, object]) -> None:
     result = execute(sources_require_if, data=data, allow_errors=True)
 
     assert result == expected_result

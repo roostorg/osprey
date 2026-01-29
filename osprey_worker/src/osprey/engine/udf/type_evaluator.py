@@ -1,6 +1,6 @@
 import typing
 from dataclasses import dataclass
-from typing import Any, List, Optional, Sequence, TypeVar
+from typing import Any, Optional, Sequence, TypeVar
 
 from osprey.engine.language_types.osprey_invariant_generic import OspreyInvariantGeneric
 from osprey.engine.language_types.post_execution_convertible import PostExecutionConvertible
@@ -141,7 +141,7 @@ def _is_single_arg_invariant_generic(t: type) -> bool:
     return (
         # NOTE: Treating lists as invariant is the only safe way to handle lists that might be mutated. If we assume
         # no mutation then we could do a `is_compatible_type` check on the list item types.
-        origin == List or (isinstance(origin, type) and issubclass(origin, OspreyInvariantGeneric))
+        origin is list or (isinstance(origin, type) and issubclass(origin, OspreyInvariantGeneric))
     )
 
 
@@ -174,16 +174,24 @@ def _coerce_none_type(type_t: type) -> type:
 
 
 def _is_acceptable_candidate(candidate_t: type, accepted_by_t_candidates: Sequence[type]) -> bool:
-    return any(
-        (
-            (candidate_t is Any or accepted_t is Any)
-            or (
-                issubclass(candidate_t, accepted_t)
-                # bools are subclasses of ints, and that sucks.
-                and not (accepted_t is int and candidate_t is bool)
-                # But we do want to allow putting an int where a float is needed.
-                or (accepted_t is float and candidate_t is int)
-            )
-        )
-        for accepted_t in accepted_by_t_candidates
-    )
+    # Get the origin type for the candidate (e.g., list from list[str])
+    # This is needed because subscripted generics like list[str] cannot be used with issubclass()
+    candidate_origin = get_normalized_origin(candidate_t) or candidate_t
+
+    for accepted_t in accepted_by_t_candidates:
+        if candidate_t is Any or accepted_t is Any:
+            return True
+
+        # Get origin for accepted type as well (e.g., list from list[int])
+        accepted_origin = get_normalized_origin(accepted_t) or accepted_t
+
+        if (
+            issubclass(candidate_origin, accepted_origin)
+            # bools are subclasses of ints, and that sucks.
+            and not (accepted_origin is int and candidate_origin is bool)
+            # But we do want to allow putting an int where a float is needed.
+            or (accepted_origin is float and candidate_origin is int)
+        ):
+            return True
+
+    return False

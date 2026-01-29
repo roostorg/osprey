@@ -2,7 +2,7 @@
 # In order to fix status_code bug
 import re
 import sys
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import flask.templating
 from ddtrace import Span, Tracer
@@ -73,13 +73,13 @@ class TraceMiddleware:
         timing_signals = {
             'got_request_exception': self._request_exception,
         }
-        self._receivers: List[Callable[[Any, Any], None]] = []
+        self._receivers: list[Callable[[Any, Any], None]] = []
         if self.use_signals and _signals_exist(timing_signals):
             self._connect(timing_signals)
 
         _patch_render(tracer)
 
-    def _connect(self, signal_to_handler: Dict[str, Callable[[Any, Any], None]]) -> bool:
+    def _connect(self, signal_to_handler: dict[str, Callable[[Any, Any], None]]) -> bool:
         connected = True
         for name, handler in signal_to_handler.items():
             s = getattr(signals, name, None)
@@ -303,7 +303,7 @@ def _patch_render(tracer: Tracer) -> None:
     flask.templating._render = _traced_render  # type: ignore[attr-defined]
 
 
-def _signals_exist(names: Dict[str, Callable[[Any, Any], None]]) -> bool:
+def _signals_exist(names: dict[str, Callable[[Any, Any], None]]) -> bool:
     """Return true if all of the given signals exist in this version of flask."""
     return all(getattr(signals, n, False) for n in names)
 

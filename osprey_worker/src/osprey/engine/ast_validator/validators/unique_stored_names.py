@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import TYPE_CHECKING, DefaultDict, Dict, List
+from typing import TYPE_CHECKING, DefaultDict
 
 from osprey.engine.ast.ast_utils import filter_nodes
 from osprey.engine.ast.grammar import Name, Span, Store
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from ..validation_context import ValidationContext
 
 
-IdentifierIndex = Dict[str, Span]
+IdentifierIndex = dict[str, Span]
 
 
 class UniqueStoredNames(BaseValidator, HasResult[IdentifierIndex]):
@@ -23,8 +23,8 @@ class UniqueStoredNames(BaseValidator, HasResult[IdentifierIndex]):
         self.identifier_index: IdentifierIndex = {}
 
     def run(self) -> None:
-        stored_global_names: DefaultDict[str, List[Span]] = defaultdict(list)
-        stored_local_names_by_file: DefaultDict[str, DefaultDict[str, List[Span]]] = defaultdict(
+        stored_global_names: DefaultDict[str, list[Span]] = defaultdict(list)
+        stored_local_names_by_file: DefaultDict[str, DefaultDict[str, list[Span]]] = defaultdict(
             lambda: defaultdict(list)
         )
         # Iterate over the ast, finding name nodes that are using the Store context.

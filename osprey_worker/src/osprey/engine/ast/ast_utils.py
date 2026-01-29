@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union
+from typing import Any, Callable, Iterator, Optional, Sequence, Set, Tuple, Type, TypeVar, Union
 
 # from osprey.engine.utils.periodic_execution_yielder import maybe_periodic_yield
 from .grammar import ASTNode, Root, Statement
@@ -41,7 +41,7 @@ def iter_fields(node: 'ASTNode') -> Iterator[str]:
 def _make_memoized_field_values_iterator() -> Callable[
     ['ASTNode'], Iterator[Tuple[str, Union['ASTNode', Sequence['ASTNode']]]]
 ]:
-    _field_cache: Dict[Type['ASTNode'], List[str]] = {}
+    _field_cache: dict[Type['ASTNode'], list[str]] = {}
 
     def _iter_field_values(node: ASTNode) -> Iterator[Tuple[str, Union['ASTNode', Sequence['ASTNode']]]]:
         # To avoid the cost of iterating fields over known node classes,

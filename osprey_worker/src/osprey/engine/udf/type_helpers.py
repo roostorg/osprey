@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, TypeVar, Union, overload
+from typing import TYPE_CHECKING, Any, Optional, Tuple, Type, TypeVar, Union, overload
 
 from osprey.engine.ast.grammar import Span
 from osprey.engine.language_types.osprey_invariant_generic import OspreyInvariantGeneric
@@ -98,13 +98,16 @@ def to_display_str(t: Optional[type], include_quotes: bool = True) -> str:
         return display_str
 
 
-_ORIGIN_TO_NORMALIZED_ORIGIN: Dict[Optional[type], type] = {
-    list: List,
+_ORIGIN_TO_NORMALIZED_ORIGIN: dict[Optional[type], type] = {
+    # Note: Removed list->List normalization as part of Python 3.9+ native types migration
 }
 
 
 def get_normalized_origin(t: type) -> Optional[type]:
-    """Like typing_inspect.get_origin, but normalizes special types, eg `list` -> `List`."""
+    """Like typing_inspect.get_origin, but normalizes special types.
+
+    Note: Previously normalized `list` -> `List` for backwards compatibility,
+    but this has been removed as part of Python 3.9+ native types migration."""
     origin_not_normalized = get_origin_not_normalized(t)
     return _ORIGIN_TO_NORMALIZED_ORIGIN.get(origin_not_normalized, origin_not_normalized)
 
@@ -119,7 +122,7 @@ def get_origin_name(t: type) -> Optional[str]:
 
 def is_list(type_t: type) -> bool:
     """Returns whether or not the given type is a list."""
-    return get_normalized_origin(type_t) == List
+    return get_normalized_origin(type_t) is list
 
 
 def get_list_item_type(t: type) -> type:
@@ -197,7 +200,7 @@ def validate_kwarg_node_type(  # noqa: F811
 AnyType: type = Any  # type: ignore # Mypy thinks Any is an object.
 
 
-def _get_args_excluding_nonetype(t: type) -> List[type]:
+def _get_args_excluding_nonetype(t: type) -> list[type]:
     return [arg for arg in get_args(t) if arg is not type(None)]  # noqa: E721
 
 

@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 from time import time
-from typing import Callable, Dict, Generic, List, Optional, Set, Tuple, Type, TypeVar
+from typing import Callable, Generic, Optional, Set, Tuple, Type, TypeVar
 
 import gevent
 import gevent.pool
@@ -57,7 +57,7 @@ _ModelT = TypeVar('_ModelT', bound=BaseModel)
 @dataclass
 class _ConfigSubkeyHandler(Generic[_ModelT]):
     model_class: Type[_ModelT]
-    callbacks: List[Callable[[_ModelT], None]]
+    callbacks: list[Callable[[_ModelT], None]]
 
 
 @dataclass
@@ -156,7 +156,7 @@ class OspreyEngine:
     def config(self) -> SourcesConfig:
         return self._execution_graph.validated_sources.sources.config
 
-    def get_known_feature_locations(self) -> List[FeatureLocation]:
+    def get_known_feature_locations(self) -> list[FeatureLocation]:
         """Gets the known feature locations from the rules engine."""
 
         def _should_extract(span: Span) -> bool:
@@ -195,7 +195,7 @@ class OspreyEngine:
             Path(source.path).stem for source in self.execution_graph.validated_sources.sources.glob('actions/*.sml')
         }
 
-    def get_rule_to_info_mapping(self) -> Dict[str, str]:
+    def get_rule_to_info_mapping(self) -> dict[str, str]:
         """Returns a mapping from 'rule name' -> 'rule description' for each feature that is a rule declaration."""
         return self._execution_graph.validated_sources.get_validator_result(RuleNameToDescriptionMapping)
 
@@ -230,11 +230,11 @@ class OspreyEngine:
         """
         return self._config_subkey_handler.get_config_subkey(model_class)
 
-    def get_feature_name_to_entity_type_mapping(self) -> Dict[str, str]:
+    def get_feature_name_to_entity_type_mapping(self) -> dict[str, str]:
         """Returns a mapping from 'feature name' -> 'entity type' for each feature that holds an entity."""
         return self._execution_graph.validated_sources.get_validator_result(FeatureNameToEntityTypeMapping)
 
-    def get_post_execution_feature_name_to_value_type_mapping(self) -> Dict[str, type]:
+    def get_post_execution_feature_name_to_value_type_mapping(self) -> dict[str, type]:
         """Returns a mapping from 'feature name' -> 'value type' for each feature."""
         post_execution_name_to_type_and_span = ValidateStaticTypes.to_post_execution_types(
             self._execution_graph.validated_sources.get_validator_result(ValidateStaticTypes)
