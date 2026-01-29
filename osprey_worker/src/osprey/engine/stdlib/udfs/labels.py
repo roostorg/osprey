@@ -132,7 +132,13 @@ class HasLabelArguments(ArgumentsBase):
     min_label_age: Optional[TimeDeltaT] = None
     """Optional: Checks to see if the label was added after a period of time"""
     error_on_empty: bool = False
-    """Optional: If True, raise EmptyEntityError when the entity has no labels at all."""
+    """Optional: If True, raise EmptyEntityError when the entity has no labels at all.
+
+    WARNING: Only use this on entity types that are GUARANTEED to always have at least one
+    label. This is intended for safety-critical rules where a false negative (due to labels
+    service returning empty data on failure) could cause dangerous rule evaluations, such as
+    incorrectly allowing a known-bad entity through. Do not use this for general label checks.
+    """
 
 
 @dataclass
@@ -184,7 +190,13 @@ class HasLabel(
     def _check_error_on_empty(
         self, entity: EntityT[Any], label: str, entity_labels: EntityLabels, error_on_empty: bool
     ) -> None:
-        """Raises EmptyEntityError if error_on_empty is True and entity has no labels."""
+        """Fail-closed check for labels service data integrity.
+
+        When error_on_empty is True, raises EmptyEntityError if the entity has zero labels.
+        This catches cases where the labels service may have failed to fetch data and returned
+        an empty default response. Without this check, `not HasLabel(...)` would incorrectly
+        evaluate to True, potentially allowing dangerous entities through safety rules.
+        """
         if error_on_empty and len(entity_labels.labels) == 0:
             raise EmptyEntityError(entity, label)
 
