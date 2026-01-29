@@ -2,7 +2,18 @@ import axios, { AxiosError, AxiosResponse } from 'axios';
 
 import useErrorStore from '../stores/ErrorStore';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+// Auto-detect Codespaces and construct API URL
+const getApiBaseUrl = () => {
+  if (process.env.REACT_APP_API_BASE_URL) {
+    return process.env.REACT_APP_API_BASE_URL;
+  }
+  // In Codespaces, replace port 5002 with 5004 in the URL
+  if (typeof window !== 'undefined' && window.location.hostname.includes('github.dev')) {
+    return window.location.origin.replace('-5002.', '-5004.') + '/';
+  }
+  return 'http://localhost:5004/';
+};
+const API_BASE_URL = getApiBaseUrl();
 const CORS_HEADER = { 'Access-Control-Allow-Origin': '*' };
 
 const axiosInstance = axios.create({
