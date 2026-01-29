@@ -1,0 +1,30 @@
+{
+  "name": "Osprey Demo",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "forwardPorts": [5002, 5004, 8888],
+  "portsAttributes": {
+    "5002": {
+      "label": "Osprey UI",
+      "onAutoForward": "notify"
+    },
+    "5004": {
+      "label": "Osprey API",
+      "onAutoForward": "silent"
+    },
+    "8888": {
+      "label": "Druid Console",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": ".devcontainer/setup.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  }
+}
