@@ -107,6 +107,19 @@ class _SimpleStatus(Enum):
     REMOVED = 'removed'
 
 
+class EmptyEntityError(Exception):
+    """Raised when an entity has no labels and error_on_empty is True."""
+
+    def __init__(self, entity: EntityT[Any], label: str):
+        self.entity = entity
+        self.label = label
+        super().__init__(
+            f"Entity '{entity.type}/{entity.id}' has no labels. "
+            f'This may indicate the labels service failed to fetch data. '
+            f"(Checked for label: '{label}')"
+        )
+
+
 class HasLabelArguments(ArgumentsBase):
     entity: EntityT[Any]
     """An Entity to check for a label on."""
@@ -118,6 +131,8 @@ class HasLabelArguments(ArgumentsBase):
     """Optional: A specific status to check for. Default is 'added'."""
     min_label_age: Optional[TimeDeltaT] = None
     """Optional: Checks to see if the label was added after a period of time"""
+    error_on_empty: bool = False
+    """Optional: If True, raise EmptyEntityError when the entity has no labels at all."""
 
 
 @dataclass
@@ -128,6 +143,7 @@ class BatchableHasLabelArguments:
     status: str
     min_label_age: Optional[TimeDeltaT]
     desired_status: Optional[_SimpleStatus]
+    error_on_empty: bool
 
 
 class HasLabel(
@@ -165,9 +181,17 @@ class HasLabel(
 
             validation_context.add_error(message='unknown label', span=arguments.label.argument_span, hint=hint)
 
+    def _check_error_on_empty(
+        self, entity: EntityT[Any], label: str, entity_labels: EntityLabels, error_on_empty: bool
+    ) -> None:
+        """Raises EmptyEntityError if error_on_empty is True and entity has no labels."""
+        if error_on_empty and len(entity_labels.labels) == 0:
+            raise EmptyEntityError(entity, label)
+
     def _execute(
         self, execution_context: ExecutionContext, arguments: BatchableHasLabelArguments, entity_labels: EntityLabels
     ) -> bool:
+        self._check_error_on_empty(arguments.entity, arguments.label, entity_labels, arguments.error_on_empty)
         desired_manual = _ManualType.get(arguments.manual)
         desired_delay = TimeDeltaT.inner_from_optional(arguments.min_label_age)
         label_state = entity_labels.labels.get(arguments.label)
@@ -237,6 +261,7 @@ class HasLabel(
             status=arguments.status.value,
             min_label_age=arguments.min_label_age,
             desired_status=self.desired_status,
+            error_on_empty=arguments.error_on_empty,
         )
 
     def get_batch_routing_key(self, arguments: BatchableHasLabelArguments) -> str:

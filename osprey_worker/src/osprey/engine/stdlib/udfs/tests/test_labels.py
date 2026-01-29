@@ -23,7 +23,7 @@ from osprey.engine.language_types.entities import EntityT
 from osprey.engine.language_types.labels import LabelStatus
 from osprey.engine.stdlib import get_config_registry
 from osprey.engine.stdlib.udfs.entity import Entity
-from osprey.engine.stdlib.udfs.labels import HasLabel, LabelAdd, LabelRemove
+from osprey.engine.stdlib.udfs.labels import EmptyEntityError, HasLabel, LabelAdd, LabelRemove
 from osprey.engine.stdlib.udfs.rules import Rule, WhenRules
 from osprey.engine.stdlib.udfs.time_delta import TimeDelta
 from osprey.engine.udf.registry import UDFRegistry
@@ -573,3 +573,97 @@ def test_label_effects_are_exported_to_extracted_features_multi_add(
         }
     )
     assert set(result.extracted_features['__entity_label_mutations']) == set(entity_label_mutation)
+
+
+def test_error_on_empty_raises_when_entity_has_no_labels(execute_with_result: ExecuteWithResultFunction) -> None:
+    """error_on_empty=True should raise EmptyEntityError when entity has no labels at all."""
+    empty_labels = EntityLabels(labels={})
+    label_provider = StaticLabelProvider({EntityT('MyEntity', 'my_id'): empty_labels})
+
+    result = execute_with_result(
+        source_with_labels_config(
+            """
+            L = HasLabel(
+                entity=Entity(type='MyEntity', id='my_id'),
+                label='my_label',
+                error_on_empty=True,
+            )
+            """,
+            labels={'my_label'},
+        ),
+        udf_helpers=UDFHelpers().set_udf_helper(HasLabel, label_provider),
+    )
+
+    assert len(result.error_infos) > 0
+    error = result.error_infos[0].error
+    assert isinstance(error, EmptyEntityError)
+    assert 'MyEntity/my_id' in str(error)
+    assert 'my_label' in str(error)
+
+
+def test_error_on_empty_returns_true_when_label_exists(execute: ExecuteFunction) -> None:
+    """error_on_empty=True should return True when the entity has labels and the requested label exists."""
+    labels = EntityLabels(labels={'my_label': LabelState(status=LabelStatus.ADDED, reasons=LabelReasons({'TestReason': LabelReason()}))})
+    label_provider = StaticLabelProvider({EntityT('MyEntity', 'my_id'): labels})
+
+    data = execute(
+        source_with_labels_config(
+            """
+            L = HasLabel(
+                entity=Entity(type='MyEntity', id='my_id'),
+                label='my_label',
+                error_on_empty=True,
+            )
+            """,
+            labels={'my_label'},
+        ),
+        udf_helpers=UDFHelpers().set_udf_helper(HasLabel, label_provider),
+    )
+
+    assert data == {'L': True}
+
+
+def test_error_on_empty_returns_false_when_label_missing_but_entity_has_other_labels(
+    execute: ExecuteFunction,
+) -> None:
+    """error_on_empty=True should return False when entity has labels but not the requested one."""
+    labels = EntityLabels(labels={'other_label': LabelState(status=LabelStatus.ADDED, reasons=LabelReasons({'TestReason': LabelReason()}))})
+    label_provider = StaticLabelProvider({EntityT('MyEntity', 'my_id'): labels})
+
+    data = execute(
+        source_with_labels_config(
+            """
+            L = HasLabel(
+                entity=Entity(type='MyEntity', id='my_id'),
+                label='my_label',
+                error_on_empty=True,
+            )
+            """,
+            labels={'my_label', 'other_label'},
+        ),
+        udf_helpers=UDFHelpers().set_udf_helper(HasLabel, label_provider),
+    )
+
+    assert data == {'L': False}
+
+
+def test_error_on_empty_false_returns_false_when_entity_has_no_labels(execute: ExecuteFunction) -> None:
+    """error_on_empty=False (default) should return False when entity has no labels."""
+    empty_labels = EntityLabels(labels={})
+    label_provider = StaticLabelProvider({EntityT('MyEntity', 'my_id'): empty_labels})
+
+    data = execute(
+        source_with_labels_config(
+            """
+            L = HasLabel(
+                entity=Entity(type='MyEntity', id='my_id'),
+                label='my_label',
+                error_on_empty=False,
+            )
+            """,
+            labels={'my_label'},
+        ),
+        udf_helpers=UDFHelpers().set_udf_helper(HasLabel, label_provider),
+    )
+
+    assert data == {'L': False}
