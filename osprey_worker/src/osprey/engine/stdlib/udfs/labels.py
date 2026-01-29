@@ -134,8 +134,7 @@ class HasLabelArguments(ArgumentsBase):
     error_on_empty: bool = False
     """Optional: If True, raise EmptyEntityError when the entity has no labels at all.
 
-    WARNING: Only use this on entity types that are GUARANTEED to always have at least one
-    label. This is intended for safety-critical rules where a false negative (due to labels
+    WARNING: Only use this for safety-critical rules where a false negative (due to labels
     service returning empty data on failure) could cause dangerous rule evaluations, such as
     incorrectly allowing a known-bad entity through. Do not use this for general label checks.
     """
