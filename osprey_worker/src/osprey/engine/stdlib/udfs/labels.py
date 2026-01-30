@@ -137,6 +137,10 @@ class HasLabelArguments(ArgumentsBase):
     WARNING: Only use this for safety-critical rules where a false negative (due to labels
     service returning empty data on failure) could cause dangerous rule evaluations, such as
     incorrectly allowing a known-bad entity through. Do not use this for general label checks.
+
+    This parameter should only be used when the entity type is guaranteed to have at least one
+    label in the labels service. If the entity type is not guaranteed to have labels, the rule
+    should add a dummy/sentinel label to the entity before calling HasLabel with error_on_empty=True.
     """
 
 
