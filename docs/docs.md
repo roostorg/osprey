@@ -6,48 +6,9 @@ Documentation can be edited directly in the GitHub web UI for existing pages, or
 
 To understand more about how mdBook works, learn about the [anatomy of a book](https://rust-lang.github.io/mdBook/guide/creating.html#anatomy-of-a-book).
 
-## File names
+## Documentation conventions
 
-Documentation files should typically be named in [kebab-case], except for specially-handled files like `README.md` and `CONTRIBUTING.md`. If a file is considered part of a subsection, it should be placed in a folder; for example:
-
-- `docs/`
-  - `getting-started.md`
-  - `user-guide/`
-    - `README.md`
-    - `faq.md`
-
-Or:
-
-- `docs/`
-  - `getting-started.md`
-  - `user-guide.md`
-  - `user-guide/`
-    - `faq.md`
-
-## Images
-
-Images to be used in the documentation should be stored in `docs/images/` and named as concisely as possible. To make them easier to reference in Markdown, avoid spaces or other special characters and use [kebab-case]. Related images can be places in subfolders; for example:
-
-- `docs/`
-  - `images/`
-    - `overview.png`
-    - `specific-feature/`
-      - `overview.png`
-      - `detail.png`
-
-If there aren't too many images, it may be simpler to keep a more flat directory structure, i.e.:
-
-- `docs/`
-  - `images/`
-    - `overview.png`
-    - `specific-feature.png`
-    - `specific-feature-detail.png`
-   
-Unless there is a need for specific HTML attributes, use Markdown to reference images, e.g.:
-
-```markdown
-![Concise but descriptive alt text](docs/images/overview.png)
-```
+For consistency and ease of contribution across projects, we follow the [ROOST coommunity documentation guidelines](https://roostorg.github.io/community/documentation.html) whenever possible.
 
 ## Developing locally
 
