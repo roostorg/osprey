@@ -6,7 +6,7 @@ Documentation can be edited directly in the GitHub web UI for existing pages, or
 
 To understand more about how mdBook works, learn about the [anatomy of a book](https://rust-lang.github.io/mdBook/guide/creating.html#anatomy-of-a-book).
 
-## Documentation conventions
+## Documentation guidelines
 
 For consistency and ease of contribution across projects, we follow the [ROOST coommunity documentation guidelines](https://roostorg.github.io/community/documentation.html) whenever possible.
 
