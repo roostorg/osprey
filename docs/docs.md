@@ -21,5 +21,3 @@ mdbook serve
 ```
 
 Then make your changes, preview them in your web browser (at [http://localhost:3000](http://localhost:3000) by default), commit, push, and open a pull request like any other git project. 
-
-[kebab-case]: https://developer.mozilla.org/en-US/docs/Glossary/Kebab_case
