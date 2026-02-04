@@ -8,7 +8,7 @@ To understand more about how mdBook works, learn about the [anatomy of a book](h
 
 ## Documentation guidelines
 
-For consistency and ease of contribution across projects, we follow the [ROOST coommunity documentation guidelines](https://roostorg.github.io/community/documentation.html) whenever possible.
+For consistency and ease of contribution across projects, we follow the [ROOST community documentation guidelines](https://roostorg.github.io/community/documentation.html) whenever possible.
 
 ## Developing locally
 
