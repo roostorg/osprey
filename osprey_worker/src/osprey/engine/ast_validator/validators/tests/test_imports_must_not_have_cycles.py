@@ -1,4 +1,5 @@
-from typing import Any, Callable, List
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 from osprey.engine.ast_validator.validators.imports_must_not_have_cycles import ImportsMustNotHaveCycles
@@ -11,7 +12,7 @@ from osprey.engine.conftest import CheckFailureFunction, RunValidationFunction
 from osprey.engine.stdlib.udfs.import_ import Import
 from osprey.engine.udf.registry import UDFRegistry
 
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_validators(
         [ValidateCallKwargs, ImportsMustNotHaveCycles, ValidateDynamicCallsHaveAnnotatedRValue, UniqueStoredNames]
     ),

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Iterable, List, Mapping
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 from osprey.worker.lib.acls.acls import ACL, DEV_ACL_ASSIGNMENTS_FILE
 from osprey.worker.lib.instruments import metrics
@@ -15,8 +16,8 @@ OKTA_GROUP_PREFIX = 'App-Osprey-'
 
 
 class UsersConfig(BaseModel):
-    roles: List[str] = []
-    abilities: List[Ability[Any, Any]] = []
+    roles: list[str] = []
+    abilities: list[Ability[Any, Any]] = []
 
 
 @register_config_subkey('acl')
@@ -27,7 +28,7 @@ class AclConfig(BaseModel):
     Validates that the config is valid on being loaded
     """
 
-    roles: Mapping[str, List[Ability[Any, Any]]] = {}
+    roles: Mapping[str, list[Ability[Any, Any]]] = {}
     users: Mapping[str, UsersConfig] = {}
 
     @validator('users', pre=False)
@@ -44,7 +45,7 @@ class AclConfig(BaseModel):
                     raise ValueError(f'`{role}` is not defined in the `roles` acl config')
         return users
 
-    def get_abilities_for_unregistered_user(self, user_email: str) -> List[Ability[BaseModel, Any]]:
+    def get_abilities_for_unregistered_user(self, user_email: str) -> list[Ability[BaseModel, Any]]:
         user_abilities = TemporaryAbilityToken.get_abilities(user_email)
         if user_abilities:
             metrics.increment('osprey.get_abilities_for_unregistered_user', tags=['success:true'])
@@ -53,7 +54,7 @@ class AclConfig(BaseModel):
         metrics.increment('osprey.get_abilities_for_unregistered_user', tags=['success:false'])
         return []
 
-    def get_abilities_for_dev_user(self, user_email: str) -> List[Ability[BaseModel, Any]]:
+    def get_abilities_for_dev_user(self, user_email: str) -> list[Ability[BaseModel, Any]]:
         try:
             # assign local dev user acls from a file
             with open(DEV_ACL_ASSIGNMENTS_FILE) as acl_assignments_file:
@@ -67,7 +68,7 @@ class AclConfig(BaseModel):
             # otherwise, enforce super user by default if file not found
             return [ability for ability in ACL.get_one('SUPER_USER')]
 
-    def get_abilities_for_user(self, user_email: str) -> List[Ability[BaseModel, Any]]:
+    def get_abilities_for_user(self, user_email: str) -> list[Ability[BaseModel, Any]]:
         # For local dev, read ACLs from a file
         if CONFIG.instance().debug:
             return self.get_abilities_for_dev_user(user_email)
@@ -82,7 +83,7 @@ class AclConfig(BaseModel):
 
     def _get_role_name_from_okta_group(self, okta_role: str) -> str:
         _trim = len(OKTA_GROUP_PREFIX)
-        okta_role_parts: List[str] = []
+        okta_role_parts: list[str] = []
 
         for role_part in okta_role[_trim:].split('-'):
             okta_role_parts.append(role_part.upper())
@@ -94,7 +95,7 @@ class AclConfig(BaseModel):
 
         return role_name
 
-    def get_abilities_for_okta_groups(self, okta_roles: Iterable[str]) -> List[Ability[BaseModel, Any]]:
+    def get_abilities_for_okta_groups(self, okta_roles: Iterable[str]) -> list[Ability[BaseModel, Any]]:
         okta_roles = (
             self._get_role_name_from_okta_group(role)
             for role in okta_roles

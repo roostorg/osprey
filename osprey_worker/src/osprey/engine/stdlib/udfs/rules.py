@@ -1,5 +1,5 @@
 import re
-from typing import List, Optional, cast
+from typing import cast
 
 from osprey.engine.ast import grammar
 from osprey.engine.ast_validator.validation_utils import add_must_assign_to_variable_error
@@ -17,12 +17,12 @@ _HAS_FORMAT_STRING_RE = re.compile(r'\{([^\d\W]\w*)\}')
 
 class RuleArguments(ArgumentsBase):
     # TODO - Should we require that this is a list literal? If so, should we require it be non-empty?
-    when_all: List[bool]
+    when_all: list[bool]
     description: str
 
 
 class Rule(UDFBase[RuleArguments, RuleT]):
-    name: Optional[str] = None
+    name: str | None = None
     category = UdfCategories.ENGINE
 
     def __init__(self, validation_context: ValidationContext, arguments: RuleArguments):
@@ -112,9 +112,9 @@ class Rule(UDFBase[RuleArguments, RuleT]):
 
 class WhenRulesArguments(ArgumentsBase):
     # TODO - Should we require this be non-empty?
-    rules_any: List[RuleT]
+    rules_any: list[RuleT]
     # TODO - Should we require this be non-empty?
-    then: List[EffectBase]
+    then: list[EffectBase]
 
 
 class WhenRules(UDFBase[WhenRulesArguments, None]):

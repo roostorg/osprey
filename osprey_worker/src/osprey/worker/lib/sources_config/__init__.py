@@ -1,4 +1,5 @@
-from typing import Callable, Type
+from collections.abc import Callable
+from typing import Type
 
 from osprey.engine.config.config_registry import ConfigRegistry
 from osprey.engine.config.config_subkey_handler import ModelT

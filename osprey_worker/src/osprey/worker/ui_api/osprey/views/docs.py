@@ -1,5 +1,6 @@
 from collections import defaultdict
-from typing import Any, List, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from flask import Blueprint
 from osprey.engine.udf.base import MethodSpec
@@ -13,7 +14,7 @@ blueprint = Blueprint('docs', __name__)
 
 
 class UdfCategory(BaseModel):
-    name: Optional[str]
+    name: str | None
     udfs: Sequence[MethodSpec]
 
 
@@ -32,8 +33,8 @@ def udf_docs() -> Any:
         specs_by_category[udf.category].append(udf.get_method_spec())
 
     categories = []
-    # Need the extra `list(...)` here to make mypy happy (otherwise it thinks `sorted` outputs a `List[str]`).
-    sorted_category_names: List[Optional[str]] = list(sorted(name for name in specs_by_category if name is not None))
+    # Need the extra `list(...)` here to make mypy happy (otherwise it thinks `sorted` outputs a `list[str]`).
+    sorted_category_names: list[str | None] = list(sorted(name for name in specs_by_category if name is not None))
     if None in specs_by_category:
         sorted_category_names.append(None)
 
@@ -49,7 +50,7 @@ def udf_docs() -> Any:
 
 
 class FeatureLocationsDocsResponse(BaseModel):
-    locations: List[FeatureLocation]
+    locations: list[FeatureLocation]
 
 
 @blueprint.route('/docs/feature-locations', methods=['GET'])
