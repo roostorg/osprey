@@ -350,7 +350,7 @@ class Assign(Statement, IsConstant, IsExtractable):
 
     target: Name
     value: Expression
-    annotation: None | 'Annotation' | 'AnnotationWithVariants' = None
+    annotation: 'Annotation' | 'AnnotationWithVariants' | None = None
 
     @cached_property
     def should_extract(self) -> bool:
@@ -411,7 +411,7 @@ class Call(Expression, Statement):
     func: Name | 'Attribute'
     arguments: Sequence['Keyword']
 
-    def find_argument(self, name: str) -> None | 'Keyword':
+    def find_argument(self, name: str) -> 'Keyword' | None:
         for argument in self.arguments:
             if argument.name == name:
                 return argument
