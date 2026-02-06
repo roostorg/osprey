@@ -2,7 +2,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from functools import lru_cache
 from types import UnionType
-from typing import TYPE_CHECKING, Any, Type, cast
+from typing import TYPE_CHECKING, Any, Optional, Type, Union, cast
 
 from osprey.engine.ast import grammar
 from osprey.engine.ast.error_utils import SpanWithHint
@@ -452,9 +452,9 @@ class ValidateStaticTypes(SourceValidator, HasInput[dict[str, _TypeAndSpan]], Ha
 
         # We allow Entities to typecheck as optional in order to avoid having to update the type system
         # to support Optional[Entity[str]]
-        if origin is None or origin is EntityT:
+        if origin is Optional or origin is EntityT:
             return True
-        elif origin is UnionType:
+        elif origin is Union or origin is UnionType:
             return type(None) in t.__args__  # type: ignore[attr-defined]
 
         return False
@@ -613,7 +613,7 @@ class ValidateStaticTypes(SourceValidator, HasInput[dict[str, _TypeAndSpan]], Ha
             accepted_types_str = ', '.join(to_display_str(arg) for arg in accepted_types)
             self._check_compatible_type(
                 type_t=name_type,
-                accepted_by_t=cast(type, accepted_types),
+                accepted_by_t=cast(type, Union[accepted_types]),
                 message='unsupported type for f-string substitution',
                 node=name,
                 hint=f'has type {name_type_str}, expected one of {accepted_types_str}',
