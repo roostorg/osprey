@@ -6,6 +6,10 @@ Documentation can be edited directly in the GitHub web UI for existing pages, or
 
 To understand more about how mdBook works, learn about the [anatomy of a book](https://rust-lang.github.io/mdBook/guide/creating.html#anatomy-of-a-book).
 
+## Documentation guidelines
+
+For consistency and ease of contribution across projects, we follow the [ROOST community documentation guidelines](https://roostorg.github.io/community/documentation.html) whenever possible.
+
 ## Developing locally
 
 To build the site locally, clone this repository and install `mdbook` (follow the [official installation instructions](https://rust-lang.github.io/mdBook/guide/installation.html)).
@@ -17,4 +21,3 @@ mdbook serve
 ```
 
 Then make your changes, preview them in your web browser (at [http://localhost:3000](http://localhost:3000) by default), commit, push, and open a pull request like any other git project. 
-
