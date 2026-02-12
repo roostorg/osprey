@@ -17,6 +17,15 @@ Osprey is a library for processing actions through human-written rules and outpu
 
 Osprey is built for engineers and Trust & Safety teams who want to explore, test, and integrate its core capabilities into their platform for incident response and Trust & Safety investigation. [Read more about user research and personas](docs/user_personas.md).
 
+## Adopters
+
+Osprey is used by:
+
+[![Bluesky](docs/images/adopters/bluesky.png)](https://bsky.social) | [![Discord](docs/images/adopters/discord.png)](https://discord.com) | [![Matrix.org](docs/images/adopters/matrix.png)](https://matrix.org)
+--- | --- | ---
+
+Using Osprey and want to add your project/organization to this list? [Open a pull request!](https://github.com/roostorg/osprey/edit/main/README.md)
+
 ## Development
 
 - See [DEVELOPMENT.md](./docs/DEVELOPMENT.md) for comprehensive development setup and workflow documentation
