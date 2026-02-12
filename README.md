@@ -24,7 +24,7 @@ Osprey is used by:
 [![Bluesky](docs/images/adopters/bluesky.png)](https://bsky.social) | [![Discord](docs/images/adopters/discord.png)](https://discord.com) | [![Matrix.org](docs/images/adopters/matrix.png)](https://matrix.org)
 --- | --- | ---
 
-Using Osprey and want to add your project/organization to this list? Open a pull request!
+Using Osprey and want to add your project/organization to this list? [Open a pull request!](https://github.com/roostorg/osprey/edit/main/README.md)
 
 ## Development
 
