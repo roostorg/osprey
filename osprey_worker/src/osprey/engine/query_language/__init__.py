@@ -4,7 +4,6 @@ from osprey.engine.ast_validator.validators.unique_stored_names import UniqueSto
 from osprey.engine.ast_validator.validators.validate_static_types import ValidateStaticTypes
 from osprey.engine.ast_validator.validators.variables_must_be_defined import VariablesMustBeDefined
 from osprey.engine.query_language import udfs
-from osprey.engine.query_language.ast_validator import REGISTRY
 from osprey.engine.query_language.udfs.registry import UDF_REGISTRY
 from osprey.engine.utils.imports import import_all_direct_children
 
@@ -16,6 +15,8 @@ def parse_query_to_validated_ast(query: str, rules_sources: ValidatedSources) ->
     """
 
     try:
+        from osprey.engine.query_language.ast_validator import REGISTRY
+
         sources = Sources.from_dict({SOURCE_ENTRY_POINT_PATH: 'Query = ' + query})
         validation_context = (
             ValidationContext(sources=sources, udf_registry=UDF_REGISTRY, validator_registry=REGISTRY)
