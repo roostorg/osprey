@@ -1,5 +1,3 @@
-from typing import Optional
-
 from gevent import sleep
 from gevent.lock import RLock
 
@@ -10,7 +8,7 @@ class FairRLock(RLock):  # type: ignore
     the lock to re-acquire it, even if there is another greenlet waiting to acquire the lock, thus starving all
     other lockers."""
 
-    def acquire(self, blocking: bool = True, timeout: Optional[float] = None) -> bool:
+    def acquire(self, blocking: bool = True, timeout: float | None = None) -> bool:
         if blocking and not self._block.locked() and self._block.linkcount():
             sleep(0)
 

@@ -1,4 +1,5 @@
-from typing import Any, Callable, List
+from collections.abc import Callable
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -7,13 +8,13 @@ from osprey.engine.conftest import ExecuteFunction
 from osprey.engine.stdlib.udfs.mx_lookup import MXLookup
 from osprey.engine.udf.registry import UDFRegistry
 
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_validators([ValidateCallKwargs]),
     pytest.mark.use_udf_registry(UDFRegistry.with_udfs(MXLookup)),
 ]
 
 
-def fake_resolve(domain: str, record_type: str, raise_on_no_answer: bool) -> List[Any]:
+def fake_resolve(domain: str, record_type: str, raise_on_no_answer: bool) -> list[Any]:
     if record_type == 'MX':
         return [MagicMock()]
     if record_type == 'A':

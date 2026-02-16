@@ -1,5 +1,5 @@
-from typing import TYPE_CHECKING, Any, Sequence
-from typing import List as ListT
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any
 
 from osprey.engine.ast.grammar import ASTNode, List
 
@@ -11,10 +11,10 @@ if TYPE_CHECKING:
 
 
 @NodeExecutorRegistry.register_globally
-class ListExecutor(BaseNodeExecutor[List, ListT[Any]]):
+class ListExecutor(BaseNodeExecutor[List, list[Any]]):
     node_type = List
 
-    def execute(self, execution_context: 'ExecutionContext') -> ListT[Any]:
+    def execute(self, execution_context: 'ExecutionContext') -> list[Any]:
         return [execution_context.resolved(n) for n in self._node.items]
 
     def get_dependent_nodes(self) -> Sequence[ASTNode]:

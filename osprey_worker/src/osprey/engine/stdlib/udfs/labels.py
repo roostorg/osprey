@@ -1,7 +1,8 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum, auto
-from typing import Any, Optional, Sequence
+from typing import Any
 
 from osprey.engine.executor.udf_execution_helpers import HasHelperInternal
 from osprey.engine.language_types.effects import (
@@ -42,11 +43,11 @@ class LabelArguments(ArgumentsBase):
     #               from verdicts, which were created to be an output (whereas labels were created
     #               to simply store state, thus making label webhooks a leaky abstraction)
     # NOTE(@elijaharita): this is being re-added because removing it breaks backwards compatibility.
-    delay_action_by: Optional[TimeDeltaT] = None
+    delay_action_by: TimeDeltaT | None = None
     """Optional: Delays a label action by a specified `TimeDeltaT` time if Osprey is configured to."""
-    apply_if: Optional[RuleT] = None
+    apply_if: RuleT | None = None
     """Optional: Conditions that must be met for the label mutation to succeed."""
-    expires_after: Optional[TimeDeltaT] = None
+    expires_after: TimeDeltaT | None = None
     """Optional: Automatically expire the mutation after a specified `TimeDeltaT` time."""
 
 
@@ -91,7 +92,7 @@ class _ManualType(Enum):
     EITHER = auto()
 
     @classmethod
-    def get(cls, manual: Optional[bool]) -> '_ManualType':
+    def get(cls, manual: bool | None) -> '_ManualType':
         if manual is True:
             return _ManualType.YES
         if manual is False:
@@ -125,11 +126,11 @@ class HasLabelArguments(ArgumentsBase):
     """An Entity to check for a label on."""
     label: ConstExpr[str]
     """A label name to check the state of."""
-    manual: Optional[bool] = None
+    manual: bool | None = None
     """Optional: If `True`, only check if the label was manually added by an operator."""
     status: ConstExpr[str] = ConstExpr.for_default('status', _SimpleStatus.ADDED.value)
     """Optional: A specific status to check for. Default is 'added'."""
-    min_label_age: Optional[TimeDeltaT] = None
+    min_label_age: TimeDeltaT | None = None
     """Optional: Checks to see if the label was added after a period of time"""
     error_on_empty: bool = False
     """Optional: If True, raise EmptyEntityError when the entity has no labels at all.
@@ -148,10 +149,10 @@ class HasLabelArguments(ArgumentsBase):
 class BatchableHasLabelArguments:
     entity: EntityT[Any]
     label: str
-    manual: Optional[bool]
+    manual: bool | None
     status: str
-    min_label_age: Optional[TimeDeltaT]
-    desired_status: Optional[_SimpleStatus]
+    min_label_age: TimeDeltaT | None
+    desired_status: _SimpleStatus | None
     error_on_empty: bool
 
 
@@ -166,7 +167,7 @@ class HasLabel(
         super().__init__(validation_context, arguments)
         status_name = arguments.status.value
         try:
-            self.desired_status: Optional[_SimpleStatus] = _SimpleStatus(status_name)
+            self.desired_status: _SimpleStatus | None = _SimpleStatus(status_name)
         except ValueError:
             self.desired_status = None
 

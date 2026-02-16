@@ -3,8 +3,9 @@ import sqlalchemy
 
 psycogreen.gevent.patch_psycopg()  # noqa: E402
 
+from collections.abc import Iterator  # noqa: E402
 from contextlib import contextmanager  # noqa: E402
-from typing import TYPE_CHECKING, Dict, Iterator, Optional  # noqa: E402
+from typing import TYPE_CHECKING  # noqa: E402
 
 from flask import Flask, has_request_context  # noqa: E402
 from osprey.worker.lib.config import Config  # noqa: E402
@@ -23,8 +24,8 @@ if TYPE_CHECKING:
 else:
     SessionMaker = sessionmaker
 
-sessions: Dict[str, SessionMaker] = {}
-session_registries: Dict[str, ThreadLocalRegistry] = {}
+sessions: dict[str, SessionMaker] = {}
+session_registries: dict[str, ThreadLocalRegistry] = {}
 
 
 def _get_or_init_session(database: str) -> SessionMaker:
@@ -65,7 +66,7 @@ def init_from_config(database: str) -> None:
 
 def init_app(app: Flask) -> None:
     @app.teardown_request
-    def cleanup_session(_exception: Optional[BaseException]) -> None:
+    def cleanup_session(_exception: BaseException | None) -> None:
         for session_registry in session_registries.values():
             if session_registry.has():
                 session_registry().close()

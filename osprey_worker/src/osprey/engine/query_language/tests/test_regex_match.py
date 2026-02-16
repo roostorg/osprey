@@ -1,4 +1,5 @@
-from typing import Any, Callable, List
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
@@ -10,7 +11,7 @@ from osprey.engine.conftest import CheckFailureFunction, RunValidationFunction
 from osprey.engine.query_language.udfs.regex_match import RegexMatch
 from osprey.engine.udf.registry import UDFRegistry
 
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_validators([ValidateCallKwargs, ValidateDynamicCallsHaveAnnotatedRValue, UniqueStoredNames]),
     pytest.mark.use_udf_registry(UDFRegistry.with_udfs(RegexMatch)),
 ]

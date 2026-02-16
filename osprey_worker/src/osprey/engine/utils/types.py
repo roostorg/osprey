@@ -1,7 +1,8 @@
 import dataclasses
 import weakref
+from collections.abc import Callable, Sequence
 from functools import wraps
-from typing import Callable, Dict, Optional, Sequence, Type, TypeVar
+from typing import Type, TypeVar
 
 from typing_extensions import Protocol
 
@@ -20,7 +21,7 @@ def _weakref_inherited(cls: type) -> bool:
     return False
 
 
-def _add_state_functions(cls_dict: Dict[str, object], field_names: Sequence[str]) -> None:
+def _add_state_functions(cls_dict: dict[str, object], field_names: Sequence[str]) -> None:
     # Taken from:
     # https://github.com/python-attrs/attrs/blob/33b61316f8fd97d78374818e5ecc21068cf69ae3/src/attr/_make.py#L660-L689
 
@@ -87,14 +88,14 @@ ReturnT = TypeVar('ReturnT', covariant=True)
 # An estimation of what a readonly `@property` looks like. Can be extended to support the rest of the methods that
 # descriptors/properties have as necessary.
 class Property(Protocol[SelfT, ReturnT]):
-    def __get__(self, obj: SelfT, type: Optional[Type[SelfT]] = None) -> ReturnT: ...
+    def __get__(self, obj: SelfT, type: Type[SelfT] | None = None) -> ReturnT: ...
 
 
 def cached_property(func: Callable[[SelfT], ReturnT]) -> Property[SelfT, ReturnT]:
     """Caches a property's value based on the instance."""
     # Like a WeakKeyDictionary, but keyed on instance ID instead of the instance itself (in case the instance
     # isn't hashable).
-    value_cache: Dict[int, ReturnT] = {}
+    value_cache: dict[int, ReturnT] = {}
 
     @wraps(func)
     def cached_caller(self: SelfT) -> ReturnT:

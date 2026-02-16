@@ -1,4 +1,4 @@
-from typing import List, Sequence
+from collections.abc import Sequence
 
 from kafka import KafkaProducer
 from osprey.worker.adaptor.plugin_manager import bootstrap_execution_result_store, hookimpl_osprey
@@ -10,7 +10,7 @@ from osprey.worker.sinks.sink.stored_execution_result_output_sink import StoredE
 
 @hookimpl_osprey
 def register_output_sinks(config: Config) -> Sequence[BaseOutputSink]:
-    sinks: List[BaseOutputSink] = []
+    sinks: list[BaseOutputSink] = []
     if config.get_bool('OSPREY_STDOUT_OUTPUT_SINK', False):
         sinks.append(StdoutOutputSink())
     if config.get_bool('OSPREY_KAFKA_OUTPUT_SINK', False):

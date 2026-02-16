@@ -1,5 +1,6 @@
 from abc import ABC
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Sequence, Tuple, Type, Union, cast
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, ClassVar, Type, cast
 
 from osprey.engine.ast.error_utils import SpanWithHint, render_span_context_with_message
 from osprey.engine.ast.errors import OspreySyntaxError
@@ -26,16 +27,16 @@ class ValidationContext:
     sources: Sources
     """The sources this validator is validating."""
 
-    _validation_results: Dict[Union[Type[BaseValidator], Type[HasResult[Any]]], Any]
+    _validation_results: dict[Type[BaseValidator] | Type[HasResult[Any]], Any]
     """The stored results of a given validator."""
 
-    _errors: List['ValidationError']
+    _errors: list['ValidationError']
     """Errors emitted by the validators that have run."""
 
-    _warnings: List['ValidationWarning']
+    _warnings: list['ValidationWarning']
     """Warnings emitted by the validators that have run."""
 
-    _validator_stack: List[Type[BaseValidator]]
+    _validator_stack: list[Type[BaseValidator]]
     """Stack of the currently running validators."""
 
     _validator_registry: ValidatorRegistry
@@ -44,7 +45,7 @@ class ValidationContext:
     _udf_registry: 'UDFRegistry'
     """The registry holding the user defined functions that may be used by validators."""
 
-    _validator_inputs: Dict[Type[HasInput[Any]], Any]
+    _validator_inputs: dict[Type[HasInput[Any]], Any]
     """Holds any dynamic inputs that the validators might need."""
 
     _warning_as_error: bool
@@ -54,7 +55,7 @@ class ValidationContext:
         self,
         sources: Sources,
         udf_registry: 'UDFRegistry',
-        validator_registry: Optional[ValidatorRegistry] = None,
+        validator_registry: ValidatorRegistry | None = None,
         warning_as_error: bool = False,
     ):
         self.sources = sources
@@ -83,7 +84,7 @@ class ValidationContext:
         span: Span,
         hint: str = '',
         additional_spans_message: str = '',
-        additional_spans: Sequence[Union[Span, SpanWithHint]] = tuple(),
+        additional_spans: Sequence[Span | SpanWithHint] = tuple(),
     ) -> None:
         """Adds an error message from the currently running validator. A validator can add many errors. Once an error
         is added, the validation is considered as failed. This means that any dependent validators will not run,
@@ -104,7 +105,7 @@ class ValidationContext:
         span: Span,
         hint: str = '',
         additional_spans_message: str = '',
-        additional_spans: Sequence[Union[Span, SpanWithHint]] = tuple(),
+        additional_spans: Sequence[Span | SpanWithHint] = tuple(),
     ) -> None:
         """Adds a warning from the current running validator. A validator can add many warnings. Warnings are not fatal,
         and will not mark the validation as failed."""
@@ -118,7 +119,7 @@ class ValidationContext:
             )
         )
 
-    def add_message(self, message: Union['ValidationWarning', 'ValidationError']) -> None:
+    def add_message(self, message: 'ValidationWarning' | 'ValidationError') -> None:
         """Adds a given validation message to the validation context. It's preferred to use
         `add_warning` or `add_error` instead."""
         # If we have a currently running validator at the top of the stack, we'll tag the
@@ -135,7 +136,7 @@ class ValidationContext:
             raise ValueError(f'Unexpected message: {message!r}')
 
     @property
-    def current_validator(self) -> Optional[Type[BaseValidator]]:
+    def current_validator(self) -> Type[BaseValidator] | None:
         """Returns the currently running validator, or None if there is no current validator."""
         if not self._validator_stack:
             return None
@@ -173,7 +174,7 @@ class ValidationContext:
         if self._errors or (self._warning_as_error and self._warnings):
             raise ValidationFailed(self._errors, self._warnings)
 
-        validation_results: Dict[Type[HasResult[Any]], Any] = {}
+        validation_results: dict[Type[HasResult[Any]], Any] = {}
         for k, v in self._validation_results.items():
             if issubclass(k, HasResult):
                 validation_results[k] = v
@@ -228,7 +229,7 @@ class ValidationContext:
 
         return cast(T_co, result)
 
-    def validator_depends_on(self, validator_classes: List[Type[BaseValidator]]) -> None:
+    def validator_depends_on(self, validator_classes: list[Type[BaseValidator]]) -> None:
         """Call from a validator's `.run()` or `__init__()` function, marking it as being dependent on the provided
         `validator_classes` to have run first."""
 
@@ -294,9 +295,9 @@ class _ValidationMessage(ABC):
         message: str,
         hint: str,
         span: Span,
-        source: Optional[Source] = None,
+        source: Source | None = None,
         additional_spans_message: str = '',
-        additional_spans: Sequence[Union[Span, SpanWithHint]] = tuple(),
+        additional_spans: Sequence[Span | SpanWithHint] = tuple(),
     ):
         if source is None:
             source = span.source
@@ -307,7 +308,7 @@ class _ValidationMessage(ABC):
         self.source = source
         self.additional_spans_message = additional_spans_message
         self.additional_spans = additional_spans
-        self.validator_class: Optional[Type[BaseValidator]] = None
+        self.validator_class: Type[BaseValidator] | None = None
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__} message={self.message!r} hint={self.hint!r} span={self.span!r}>'
@@ -367,7 +368,7 @@ class ValidatedSources:
     def __init__(
         self,
         sources: Sources,
-        validation_results: Dict[Type[HasResult[Any]], Any],
+        validation_results: dict[Type[HasResult[Any]], Any],
         warnings: Sequence[ValidationWarning],
     ):
         self.sources = sources
@@ -375,7 +376,7 @@ class ValidatedSources:
         self._validation_results = validation_results
 
     @property
-    def validation_results(self) -> Dict[Type[HasResult[Any]], Any]:
+    def validation_results(self) -> dict[Type[HasResult[Any]], Any]:
         return self._validation_results
 
     def get_validator_result(self, validator_class: Type[HasResult[T_co]]) -> T_co:
@@ -403,7 +404,7 @@ def _render_validation_messages(messages: Sequence[_ValidationMessage], message_
 
     parts = [f'{total} {message_type}s occurred while validating:']
 
-    def sorting_key(validation_message: _ValidationMessage) -> Tuple[Union[str, int], ...]:
+    def sorting_key(validation_message: _ValidationMessage) -> tuple[str | int, ...]:
         return (
             validation_message.source.path,
             validation_message.span.start_line,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Type
+from collections.abc import Callable
+from typing import Any, Type
 
 import pytest
 from osprey.engine.ast_validator.validation_context import ValidationContext
@@ -12,7 +13,7 @@ from osprey.engine.udf.arguments import ArgumentsBase, ConstExpr
 from osprey.engine.udf.base import UDFBase
 from osprey.engine.udf.registry import UDFRegistry
 
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_validators([ValidateCallKwargs, UniqueStoredNames]),
     pytest.mark.use_osprey_stdlib,
 ]
@@ -113,11 +114,11 @@ def test_missing_keyword_argument(run_validation: RunValidationFunction, check_f
 class UnexpectedArgsArguments(ArgumentsBase):
     required: str
     optional: str = 'hello'
-    extra_arguments: Dict[str, str]
+    extra_arguments: dict[str, str]
 
 
 class UnexpectedArgsUdfBase:
-    def execute(self, execution_context: ExecutionContext, arguments: UnexpectedArgsArguments) -> List[str]:
+    def execute(self, execution_context: ExecutionContext, arguments: UnexpectedArgsArguments) -> list[str]:
         return [
             i
             for kv in {
@@ -134,10 +135,10 @@ class UnexpectedArgsUdfBase:
     [{'required': 'hi'}, {'required': 'hi', 'optional': 'hi'}, {'required': 'hi', 'unexpected': 'world'}],
 )
 def test_allow_unexpected_args(
-    extra_arguments: Dict[str, str], execute: ExecuteFunction, udf_registry: UDFRegistry
+    extra_arguments: dict[str, str], execute: ExecuteFunction, udf_registry: UDFRegistry
 ) -> None:
     @udf_registry.register
-    class UnexpectedArgsUdf(UnexpectedArgsUdfBase, UDFBase[UnexpectedArgsArguments, List[str]]):
+    class UnexpectedArgsUdf(UnexpectedArgsUdfBase, UDFBase[UnexpectedArgsArguments, list[str]]):
         pass
 
     extra_arguments_str = ', '.join(f'{k}={v!r}' for k, v in extra_arguments.items())
@@ -160,13 +161,13 @@ def test_allow_unexpected_args(
     ],
 )
 def test_allow_unexpected_respects_type(
-    extra_arguments: Dict[str, str],
+    extra_arguments: dict[str, str],
     execute: ExecuteFunction,
     check_failure: CheckFailureFunction,
     udf_registry: UDFRegistry,
 ) -> None:
     @udf_registry.register
-    class ValidatingUnexpectedArgsUdf(UnexpectedArgsUdfBase, UDFBase[UnexpectedArgsArguments, List[str]]):
+    class ValidatingUnexpectedArgsUdf(UnexpectedArgsUdfBase, UDFBase[UnexpectedArgsArguments, list[str]]):
         def __init__(self, validation_context: ValidationContext, arguments: UnexpectedArgsArguments):
             assert set(arguments.get_extra_arguments_ast().keys()) == {'unexpected'}
 

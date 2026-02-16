@@ -1,4 +1,4 @@
-from typing import Optional, cast
+from typing import cast
 
 import grpc
 
@@ -58,7 +58,7 @@ class RPCException(PigeonException, grpc.RpcError, grpc.Call):  # type: ignore[m
     def is_active(self) -> bool:
         return cast(bool, self.inner.is_active())
 
-    def time_remaining(self) -> Optional[float]:
+    def time_remaining(self) -> float | None:
         return self.inner.time_remaining()
 
     def cancel(self):
