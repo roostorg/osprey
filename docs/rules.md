@@ -407,3 +407,86 @@ Require(rule=f'actions/{ActionName}.sml')  # will execute 'actions/foo.sml'
 
 Require(rule='ai_services/my_ai_service.sml', require_if=ActionName == "register")
 ```
+
+## Full Example
+
+The following is a complete walkthrough of writing a rule using the project structure described above. The goal is to flag accounts whose first post mentions at least one user and includes a link.
+
+### Writing the Rule
+
+We'll create `rules/record/post/first_post_link.sml` for the rule logic. This file defines both the conditions that cause the rule to evaluate to `True` and the actions to take when it does.
+
+```python
+# First, import the models that you will need inside of this rule
+Import(
+    rules=[
+        'models/base.sml',
+        'models/record/post.sml',
+    ],
+)
+
+# Next, define a variable that uses the `Rule` UDF
+FirstPostLinkRule = Rule(
+    # Set the conditions in which this rule will be `True`
+    when_all=[
+        PostCount == 1, # if this is the user's first post
+        EmbedLink != None, # if there is a link inside of the post
+        ListLength(list=MentionIds) >= 1, # if there is at least one mention in the post
+    ],
+    description='First post for user includes a link embed',
+)
+
+# Finally, set which effect UDFs will be triggered
+WhenRules(
+    rules_any=[FirstPostLinkRule],
+    then=[
+        ReportRecord(
+            entity=PostId,
+            comment='This was the first post by a user and included a link',
+            severity=3,
+        ),
+    ],
+)
+```
+
+### Wiring Up the Rule
+
+We want this rule to run *only* when the event is a post event. Using the project structure described above, this involves three files.
+
+First, `main.sml` at the project root includes a single `Require` statement pointing to the top-level rules index:
+
+```python
+Require(
+    rule='rules/index.sml',
+)
+```
+
+Next, `rules/index.sml` conditionally requires the post rules when the event type matches:
+
+```python
+Import(
+    rules=[
+        'models/base.sml',
+    ],
+)
+
+Require(
+    rule='rules/record/post/index.sml',
+    require_if=EventType == 'userPost',
+)
+```
+
+Finally, `rules/record/post/index.sml` requires the new rule:
+
+```python
+Import(
+    rules=[
+        'models/base.sml',
+        'models/record/post.sml',
+    ],
+)
+
+Require(
+    rule='rules/record/post/first_post_link.sml',
+)
+```
