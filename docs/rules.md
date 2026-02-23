@@ -9,11 +9,11 @@ single event types on a network, or ones that are applied to multiple event type
 
 By themselves, rules only create variables, and without a corresponding `WhenRules()` function call, the rule will have no effects outside of evaluation and query functionality.
 
-Rules currently support the following concepts through the `Rule()` function of the same name.
+Rules currently support the following concepts through the `Rule(...)` function of the same name.
 
 - Name
 
-    `Rule_Name = Rule()`
+    `Rule_Name = Rule(...)`
 
     The name of the rule also functions as a conventional "RuleId" and the name of the bool that can be used to query individual rule hits in the Osprey Query UI. As a result, changing the name of a rule after activation may affect historical query results in the UI if not logged externally.
 
@@ -21,7 +21,7 @@ Rules currently support the following concepts through the `Rule()` function of 
 
     `when_all=[]`
 
-    The actual logic that will be used to evaluate Osprey rules is all encompassed as single comma-delimited list of signals within the `when_all` parameter of the Rule() function and supports the use of Labels, Plugins, UDFs and other values to help enrich heuristics.
+    The actual logic that will be used to evaluate Osprey rules is all encompassed as single comma-delimited list of signals within the `when_all` parameter of the `Rule(...)` function and supports the use of Labels, Plugins, UDFs and other values to help enrich heuristics.
 
     At present, when evaluating UDFs or abstracted variables, any `NULL` evaluations in the series will cause the entire rule function to evaluate as `NULL`, which may be undesirable.
 
@@ -163,7 +163,7 @@ AccountAgeSeconds: int = JsonData(
 )
 ```
 
-Here, instead of simply using `JsonData`, we instead use the `EntityJson` UDF. More on this later, but as a rule of thumb, you likely will want to have values for things like a user's ID set to be entities. This will help more later, such as when doing data explorations within the Osprey UI.
+Here, instead of simply using `JsonData`, we instead use the `EntityJson` UDF for the `UserID`. More on this later, but as a rule of thumb, you likely will want to have values for things like a user's ID set to be entities. This will help more later, such as when doing data explorations within the Osprey UI.
 
 ### Model Hierarchy
 
@@ -187,7 +187,7 @@ WhenRules(
     rules_any=[
         Enabled_Rule_1,
         Enabled_Rule_2,
-        # Staged_Rule_1,
+        # Disabled_Rule_1,
     ],
     then=[
         # Verdicts
@@ -440,6 +440,7 @@ FirstPostLinkRule = Rule(
 WhenRules(
     rules_any=[FirstPostLinkRule],
     then=[
+        # This is a custom effect UDF that we have implemented
         ReportRecord(
             entity=PostId,
             comment='This was the first post by a user and included a link',
