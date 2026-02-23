@@ -177,9 +177,7 @@ def test_and(execute: ExecuteFunction, statement: str, expected: bool) -> None:
         ('None', False),  # None value - condition short-circuits
     ],
 )
-def test_optional_null_check_before_comparison(
-    execute: ExecuteFunction, opt_val: object, expected: bool
-) -> None:
+def test_optional_null_check_before_comparison(execute: ExecuteFunction, opt_val: object, expected: bool) -> None:
     """Test that type narrowing works for X != None and X >= 90 pattern."""
     data = execute(
         f"""
@@ -214,9 +212,7 @@ def test_optional_null_check_chained_narrowing(execute: ExecuteFunction) -> None
         ('None', True),  # None value - first condition is True, so result is True
     ],
 )
-def test_optional_or_pattern_null_check(
-    execute: ExecuteFunction, opt_val: object, expected: bool
-) -> None:
+def test_optional_or_pattern_null_check(execute: ExecuteFunction, opt_val: object, expected: bool) -> None:
     """Test that type narrowing works for X == None or X >= 90 pattern."""
     data = execute(
         f"""
