@@ -1,11 +1,11 @@
 import abc
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 
 @dataclass
 class ActionProtoDeserializeResult:
-    data: Dict[str, Any]
+    data: dict[str, Any]
     action_id: int
     action_name: str
 

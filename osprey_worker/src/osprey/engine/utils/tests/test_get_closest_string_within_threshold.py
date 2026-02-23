@@ -1,5 +1,3 @@
-from typing import List, Optional
-
 import pytest
 from osprey.engine.utils.get_closest_string_within_threshold import get_closest_string_within_threshold
 
@@ -17,5 +15,5 @@ from osprey.engine.utils.get_closest_string_within_threshold import get_closest_
         ('Foo', ['GuildId', 'Food'], None),
     ],
 )
-def test_get_closest_string_within_threshold(string: str, candidates: List[str], expected: Optional[str]) -> None:
+def test_get_closest_string_within_threshold(string: str, candidates: list[str], expected: str | None) -> None:
     assert get_closest_string_within_threshold(string, candidate_strings=candidates) == expected

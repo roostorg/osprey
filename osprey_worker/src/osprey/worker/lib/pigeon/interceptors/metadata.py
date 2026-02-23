@@ -1,5 +1,5 @@
 import collections
-from typing import Dict, Text
+from typing import Text
 
 import grpc
 
@@ -10,7 +10,7 @@ class MetadataInterceptor(
     grpc.StreamUnaryClientInterceptor,  # type: ignore[misc]
     grpc.StreamStreamClientInterceptor,  # type: ignore[misc]
 ):
-    def __init__(self, metadata: Dict[Text, Text]):
+    def __init__(self, metadata: dict[Text, Text]):
         self._metadata = metadata
 
     def intercept_unary_unary(self, continuation, client_call_details, request):

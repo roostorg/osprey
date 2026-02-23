@@ -1,9 +1,10 @@
 import ast
 import inspect
 import textwrap
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from functools import lru_cache
-from typing import Any, Dict, Generic, Iterator, List, Optional, Sequence, Type, TypeVar, Union, cast, get_type_hints
+from typing import Any, Generic, Type, TypeVar, cast, get_type_hints
 
 import typing_inspect
 from osprey.engine.ast import grammar
@@ -16,7 +17,7 @@ DefaultT = TypeVar('DefaultT', None, bool, int, float, str)
 _dummy_span = grammar.Span(source=grammar.Source(path='<NOT A REAL PATH>', contents=''), start_line=1, start_pos=0)
 
 # If an Arguments class has this attribute as a dict then extra arguments (otherwise unspecified on the arguments class)
-# will be collected in it. The arguments will be typechecked against the value type, e.g. extra_args: Dict[str, int]
+# will be collected in it. The arguments will be typechecked against the value type, e.g. extra_args: dict[str, int]
 # would require all extra arguments to be ints
 EXTRA_ARGS_ATTR = 'extra_arguments'
 
@@ -54,14 +55,14 @@ class ConstExpr(Generic[T]):
         return cast(Type[T], origin or type_class)
 
     @staticmethod
-    def get_item_type_class(cls: 'Type[ConstExpr[T]]') -> Type[Union[str, float, int, bool, None]]:
+    def get_item_type_class(cls: 'Type[ConstExpr[T]]') -> Type[str | float | int | bool | None]:
         type_class = ConstExpr.get_type_class(cls)
         assert type_class is list
         list_ty = typing_inspect.get_args(cls)[0]
         item_ty = typing_inspect.get_args(list_ty)[0]
         assert item_ty in (str, float, int, bool, type(None))
         # Mypy isn't smart enough to downcast with the above assert.
-        return cast(Type[Union[str, float, int, bool, None]], item_ty)
+        return cast(Type[str | float | int | bool | None], item_ty)
 
     @staticmethod
     def get_item_literal_node_type(cls: 'Type[ConstExpr[T]]') -> Type[grammar.Literal]:
@@ -96,7 +97,7 @@ class ConstExpr(Generic[T]):
         )
         return ret  # type: ignore
 
-    def raise_for(self, exception: Exception, message: Optional[str] = None) -> None:
+    def raise_for(self, exception: Exception, message: str | None = None) -> None:
         """
         Raises an exception on behalf of an argument. Use this if you wish to implement more bespoke
         error handling than that provided by `attribute_errors`.
@@ -104,7 +105,7 @@ class ConstExpr(Generic[T]):
         raise ConstExprArgumentException(const_expr=self, wrapped_exception=exception, message_override=message)
 
     @contextmanager
-    def attribute_errors(self, message: Optional[str] = None) -> Iterator[None]:
+    def attribute_errors(self, message: str | None = None) -> Iterator[None]:
         """
         A context manager wraps something that might throw during the compilation/validation phase, allowing
         the error to point to the specific argument, with a specific exception.
@@ -132,9 +133,7 @@ class ConstExprArgumentException(Exception):
     NOTE: This is not thrown when the type does not match, but simply when the value is invalid, e.g. a JSON
     string is expected, but it cannot be parsed."""
 
-    def __init__(
-        self, const_expr: ConstExpr[Any], wrapped_exception: Exception, message_override: Optional[str] = None
-    ):
+    def __init__(self, const_expr: ConstExpr[Any], wrapped_exception: Exception, message_override: str | None = None):
         self.const_expr = const_expr
         self.wrapped_exception = wrapped_exception
         self.message_override = message_override
@@ -149,7 +148,7 @@ _LITERAL_TO_RUNTIME_TYPE_TRANSLATIONS = {
     grammar.None_: type(None),
 }
 
-_RUNTIME_TO_LITERAL_TYPE_TRANSLATIONS: Dict[Any, Type[grammar.Literal]] = {}
+_RUNTIME_TO_LITERAL_TYPE_TRANSLATIONS: dict[Any, Type[grammar.Literal]] = {}
 for k, v in _LITERAL_TO_RUNTIME_TYPE_TRANSLATIONS.items():
     if isinstance(v, tuple):
         for it in v:
@@ -165,8 +164,8 @@ T_arguments = TypeVar('T_arguments', bound='ArgumentsBase')
 class ArgumentSpec(BaseModel):
     name: str
     type: str
-    default: Optional[str]
-    doc: Optional[str]
+    default: str | None
+    doc: str | None
 
     def declaration(self) -> str:
         if self.default is None:
@@ -176,7 +175,7 @@ class ArgumentSpec(BaseModel):
 
         return f'{self.name}: {self.type}{default}'
 
-    def param_docstring(self) -> Optional[str]:
+    def param_docstring(self) -> str | None:
         if not self.doc:
             return None
         # Clean it up a bit
@@ -199,7 +198,7 @@ class ArgumentsBase:
     def __init__(
         self,
         call_node: grammar.Call,
-        arguments: Dict[str, Any],
+        arguments: dict[str, Any],
         resolved: bool = False,
     ):
         self._call_node = call_node
@@ -234,7 +233,7 @@ class ArgumentsBase:
     def get_argument_ast(self, key: str) -> grammar.Expression:
         return self._arguments_ast[key]
 
-    def get_extra_arguments_ast(self) -> Dict[str, grammar.Expression]:
+    def get_extra_arguments_ast(self) -> dict[str, grammar.Expression]:
         """returns a dict of keys that are unexpected kwargs and their expressions"""
         keys = set(self._arguments_ast.keys() - self.items().keys())
         return {k: v for k, v in self._arguments_ast.items() if k in keys}
@@ -242,7 +241,7 @@ class ArgumentsBase:
     def has_argument_ast(self, key: str) -> bool:
         return key in self._arguments_ast
 
-    def update_with_resolved(self: T_arguments, resolved: Dict[str, Any]) -> T_arguments:
+    def update_with_resolved(self: T_arguments, resolved: dict[str, Any]) -> T_arguments:
         assert not self._resolved
         return self.__class__(call_node=self._call_node, arguments={**self._arguments, **resolved}, resolved=True)
 
@@ -265,8 +264,8 @@ class ArgumentsBase:
 
     @classmethod
     @lru_cache(1)
-    def items(cls) -> Dict[str, type]:
-        fields: Dict[str, type] = {}
+    def items(cls) -> dict[str, type]:
+        fields: dict[str, type] = {}
 
         for klass in cls._traverse_mro():
             for field, value in get_type_hints(klass).items():
@@ -275,7 +274,7 @@ class ArgumentsBase:
         return fields
 
     @classmethod
-    def get_generic_param(cls) -> Optional[type]:
+    def get_generic_param(cls) -> type | None:
         """Returns the `TypeVar` used if this class is generic, otherwise `None`.
 
         If it *is* generic, asserts that it inherits from `OspreyInvariantGeneric`.
@@ -283,12 +282,12 @@ class ArgumentsBase:
         return get_osprey_generic_param(cls, kind='arguments')
 
     @classmethod
-    def get_generic_item_names(cls, func_name: str) -> List[str]:
+    def get_generic_item_names(cls, func_name: str) -> list[str]:
         """
         Get the list of generic argument names.
 
         Asserts that we only have one type variable. For each generic item, also asserts that it only has one type
-        parameter (so Optional[T] is okay, but Dict[T, T] is not).
+        parameter (so T | None is okay, but dict[T, T] is not).
         """
         generic_args = []
         for arg_name, arg_type in cls.items().items():
@@ -352,7 +351,7 @@ class ArgumentsBase:
         # If this value is set on the class, then that's the default.
         return hasattr(cls, name)
 
-    def get_dependent_node_dict(self) -> Dict[str, grammar.ASTNode]:
+    def get_dependent_node_dict(self) -> dict[str, grammar.ASTNode]:
         assert not self._resolved
 
         items = self.items()
@@ -371,8 +370,8 @@ class ArgumentsBase:
         seen_specs = set()
         items = cls.items()
 
-        def add_argument(name: str, doc: Optional[str]) -> None:
-            default: Optional[str]
+        def add_argument(name: str, doc: str | None) -> None:
+            default: str | None
             if hasattr(cls, name):
                 default_value = getattr(cls, name)
                 if isinstance(default_value, ConstExpr):
@@ -399,16 +398,16 @@ class ArgumentsBase:
             klass_ast = parsed.body[0]
             assert isinstance(klass_ast, ast.ClassDef)
 
-            previous_variable: Optional[str] = None
+            previous_variable: str | None = None
             for statement in klass_ast.body:
-                current_variable: Optional[str]
+                current_variable: str | None
                 if isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name):
                     current_variable = statement.target.id
                 else:
                     current_variable = None
 
                 if previous_variable is not None and previous_variable not in seen_specs and previous_variable in items:
-                    doc: Optional[str]
+                    doc: str | None
                     if isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Str):
                         doc = inspect.cleandoc(statement.value.s)
                     else:
@@ -446,7 +445,7 @@ def type_invariant(node: grammar.ASTNode, expected: Type[LiteralT]) -> LiteralT:
     return node
 
 
-def literal_value(literal: grammar.Literal) -> Union[str, int, float, bool, None]:
+def literal_value(literal: grammar.Literal) -> str | int | float | bool | None:
     if isinstance(literal, (grammar.String, grammar.Number, grammar.Boolean)):
         return literal.value
 

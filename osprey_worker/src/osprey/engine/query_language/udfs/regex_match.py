@@ -1,5 +1,4 @@
 import re
-from typing import Dict
 
 from osprey.engine.ast import grammar
 from osprey.engine.ast_validator.validation_context import ValidationContext
@@ -39,5 +38,5 @@ class RegexMatch(QueryUdfBase[Arguments, bool]):
                 message='expected variable', span=item_node.span, hint='argument `item` must be a variable'
             )
 
-    def to_druid_query(self) -> Dict[str, object]:
+    def to_druid_query(self) -> dict[str, object]:
         return {'type': 'regex', 'dimension': self.item, 'pattern': self.regex}

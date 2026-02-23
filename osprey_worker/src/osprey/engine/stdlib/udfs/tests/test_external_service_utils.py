@@ -1,5 +1,3 @@
-from typing import List
-
 import gevent
 from gevent.event import Event
 from osprey.engine.executor.external_service_utils import ExternalService, ExternalServiceAccessor
@@ -7,9 +5,7 @@ from osprey.engine.executor.external_service_utils import ExternalService, Exter
 
 class CountingService(ExternalService[str, int]):
     def __init__(self) -> None:
-        from typing import List
-
-        self.calls: List[str] = []
+        self.calls: list[str] = []
 
     def get_from_service(self, key: str) -> int:
         self.calls.append(key)
@@ -19,7 +15,7 @@ class CountingService(ExternalService[str, int]):
 class BlockingService(CountingService):
     def __init__(self) -> None:
         super().__init__()
-        self.blocking_events: List[Event] = []
+        self.blocking_events: list[Event] = []
 
     def get_from_service(self, key: str) -> int:
         event = Event()

@@ -1,4 +1,4 @@
-from typing import Any, Generic, Tuple, TypeVar, Union
+from typing import Any, Generic, TypeVar
 
 _T = TypeVar('_T')
 
@@ -12,10 +12,10 @@ class OspreyInvariantGeneric(Generic[_T]):
     """
 
     # Enforce that any TypeVar used in this class actually is invariant.
-    def __class_getitem__(cls, args: Union[type, Tuple[type, ...]]) -> type:
+    def __class_getitem__(cls, args: type | tuple[type, ...]) -> type:
         # Mypy is super unhappy with all this runtime stuff, so lots of `Any`s and ignores
         generic_alias: Any = super().__class_getitem__(args)  # type: ignore # Missing from Generic stub
-        params: Tuple[Any, ...] = generic_alias.__parameters__
+        params: tuple[Any, ...] = generic_alias.__parameters__
         if len(params) > 0:
             if len(params) != 1:
                 raise TypeError(f'Expected one or zero parameters, got ({params})')

@@ -1,6 +1,5 @@
 from datetime import timedelta
 from enum import Enum
-from typing import List
 
 import requests
 from osprey.worker.lib.utils.flask_signing import Signer
@@ -44,7 +43,7 @@ class BulkReadCounterRequest(BaseModel):
     Used to request many counters at once
     """
 
-    read_counter_requests: List[ReadCounterRequest]
+    read_counter_requests: list[ReadCounterRequest]
 
 
 class BulkReadCounterResponse(BaseModel):
@@ -52,7 +51,7 @@ class BulkReadCounterResponse(BaseModel):
     Each index in the list is the response associated with the request at the index in `BulkReadCounterRequest`
     """
 
-    read_counter_responses: List[ReadCounterResponse]
+    read_counter_responses: list[ReadCounterResponse]
 
 
 def read_counter(endpoint: str, signer: Signer, key: str, window: timedelta, count_service: CountService) -> int:
@@ -69,12 +68,12 @@ def read_counter(endpoint: str, signer: Signer, key: str, window: timedelta, cou
 def bulk_read_counters(
     endpoint: str,
     signer: Signer,
-    read_counter_requests: List[ReadCounterRequest],
+    read_counter_requests: list[ReadCounterRequest],
     timeout: int = BULK_READ_COUNTER_TIMEOUT,
-) -> List[ReadCounterResponse]:
+) -> list[ReadCounterResponse]:
     """
     returns a list of `ReadCounterResponse` associated index-by-index
-    with `read_counter_requests: List[ReadCounterRequest]`
+    with `read_counter_requests: list[ReadCounterRequest]`
     """
     bulk_read_counter_request = BulkReadCounterRequest(read_counter_requests=read_counter_requests)
     data = bulk_read_counter_request.json().encode()

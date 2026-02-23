@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, Type
+from typing import TYPE_CHECKING, Any, ClassVar, Type
 
 from osprey.engine.ast.grammar import ASTNode
 
@@ -12,7 +12,7 @@ class NodeExecutorRegistry:
     """Holds a mapping of ASTNode -> BaseNodeExecutor, which will be used by the execution graph to build the
     dependency chains."""
 
-    _instance: ClassVar[Optional['NodeExecutorRegistry']] = None
+    _instance: ClassVar['NodeExecutorRegistry' | None] = None
 
     @classmethod
     def get_instance(cls) -> 'NodeExecutorRegistry':
@@ -28,7 +28,7 @@ class NodeExecutorRegistry:
         return cls.get_instance().register(node_executor)
 
     def __init__(self) -> None:
-        self._registered_executors: Dict[Type[ASTNode], Type['BaseNodeExecutor[Any, Any]']] = {}
+        self._registered_executors: dict[Type[ASTNode], Type['BaseNodeExecutor[Any, Any]']] = {}
 
     def register(self, node_executor: Type['BaseNodeExecutor[Any, Any]']) -> Type['BaseNodeExecutor[Any, Any]']:
         """Registers a node executor with this node executor registry, throwing an error if an executor has already

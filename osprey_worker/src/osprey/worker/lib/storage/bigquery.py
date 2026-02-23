@@ -1,5 +1,6 @@
 import time
-from typing import Any, Dict, List, Optional, Sequence, Union
+from collections.abc import Sequence
+from typing import Any
 from uuid import uuid4
 
 from google.cloud import bigquery
@@ -8,9 +9,9 @@ from google.cloud.bigquery.job import QueryJob, QueryJobConfig, QueryPriority
 from google.cloud.bigquery.table import RowIterator
 from osprey.worker.lib.ddtrace_utils import current_span, trace_wrap
 
-AbstractQueryParameterT = Union[bigquery.ScalarQueryParameter, bigquery.ArrayQueryParameter]
+AbstractQueryParameterT = bigquery.ScalarQueryParameter | bigquery.ArrayQueryParameter
 QueryParamsT = Sequence[AbstractQueryParameterT]
-QueryExecutorRetT = List[Dict[str, Any]]
+QueryExecutorRetT = list[dict[str, Any]]
 
 TIMEOUT_MS = 60 * 1000
 TIMEOUT_WAIT_INCREMENT_S = 1
@@ -38,7 +39,7 @@ def execute_query(
     query: str,
     timeout_ms: int,
     query_parameters: QueryParamsT = (),
-    job_name_prefix: Optional[str] = None,
+    job_name_prefix: str | None = None,
 ) -> QueryExecutorRetT:
     """
     Runs a query with the provided client

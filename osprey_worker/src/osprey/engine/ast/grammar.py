@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from pathlib import Path
-from typing import ClassVar, Dict, Optional, Sequence, TypeVar, Union
+from typing import ClassVar, TypeVar
 
 from gevent.lock import Semaphore
 
@@ -15,8 +16,8 @@ from osprey.engine.utils.types import add_slots, cached_property
 # Keep these outside `Source` so we don't break pickling/hashing/eq
 # Will this leak memory? Maybe
 # TODO(old): put this stuff back in cached_property
-parsed_ast_root_cache: Dict['Source', 'Root'] = {}
-ast_root_lock_cache: Dict['Source', Semaphore] = defaultdict(lambda: Semaphore())
+parsed_ast_root_cache: dict['Source', 'Root'] = {}
+ast_root_lock_cache: dict['Source', Semaphore] = defaultdict(lambda: Semaphore())
 
 # logger = get_logger()
 
@@ -35,7 +36,7 @@ class Source:
     """The contents of the source file.
     """
 
-    actual_path: Optional[Path] = field(default=None, compare=False)
+    actual_path: Path | None = field(default=None, compare=False)
     """If the source file was loaded from disk, rather than a virtual source, this will be Some path, where
     the file exists. Useful if we want to provide a jump to source functionality.
     """
@@ -88,7 +89,7 @@ class Span:
     start_pos: int
     """The position in the start-line that the span starts."""
 
-    _ast_node: Optional['ASTNode'] = None
+    _ast_node: 'ASTNode' | None = None
 
     def __repr__(self) -> str:
         return f'<Span source={self.source.path} start_line={self.start_line} start_pos={self.start_pos}>'
@@ -102,14 +103,14 @@ class Span:
     def copy(self, ast_node: 'ASTNode') -> 'Span':
         return replace(self, _ast_node=ast_node)
 
-    def parent_ast_node(self, n: int = 1) -> Optional['ASTNode']:
+    def parent_ast_node(self, n: int = 1) -> 'ASTNode' | None:
         """Helper for node traversal, gets the parent value off the n^th generation ast_node.
 
         >>> self.get_parent_ast_node(n=0) == self.ast_node
         >>> self.get_parent_ast_node(n=1) == self.ast_node.parent
         >>> self.get_parent_ast_node(n=2) == self.ast_node.parent.parent
         """
-        node: Optional[ASTNode] = self.ast_node
+        node: ASTNode | None = self.ast_node
         while n > 0 and node is not None:
             n -= 1
             node = node.parent
@@ -157,7 +158,7 @@ class IsExtractable:
 class ASTNode:
     """This is the base-class of all AST nodes."""
 
-    parent: Optional['ASTNode'] = field(default=None, init=False, repr=False, compare=False)
+    parent: 'ASTNode' | None = field(default=None, init=False, repr=False, compare=False)
     span: Span = field(repr=False, compare=False)
     """The location of this AST node, in a given source file."""
 
@@ -256,7 +257,7 @@ class Name(Expression, IsExtractable):
 
     identifier: str
     context: Context
-    _source_annotation: Union[None, _Sentinel, 'Annotation', 'AnnotationWithVariants'] = field(
+    _source_annotation: None | _Sentinel | 'Annotation' | 'AnnotationWithVariants' = field(
         default=_SOURCE_ANNOTATION_UNSET,
         repr=False,
         compare=False,
@@ -275,7 +276,7 @@ class Name(Expression, IsExtractable):
         else:
             return self.identifier
 
-    def set_source_annotation(self, annotation: Union[None, 'Annotation', 'AnnotationWithVariants']) -> None:
+    def set_source_annotation(self, annotation: None | 'Annotation' | 'AnnotationWithVariants') -> None:
         self._source_annotation = annotation
 
     @property
@@ -315,7 +316,7 @@ class String(Literal):
 class Number(Literal):
     """Represents a number parsed from ast."""
 
-    value: Union[int, float]
+    value: int | float
 
 
 @add_slots
@@ -349,7 +350,7 @@ class Assign(Statement, IsConstant, IsExtractable):
 
     target: Name
     value: Expression
-    annotation: Optional[Union['Annotation', 'AnnotationWithVariants']] = None
+    annotation: None | 'Annotation' | 'AnnotationWithVariants' = None
 
     @cached_property
     def should_extract(self) -> bool:
@@ -407,17 +408,17 @@ class Call(Expression, Statement):
     ```
     """
 
-    func: Union[Name, 'Attribute']
+    func: Name | 'Attribute'
     arguments: Sequence['Keyword']
 
-    def find_argument(self, name: str) -> Optional['Keyword']:
+    def find_argument(self, name: str) -> None | 'Keyword':
         for argument in self.arguments:
             if argument.name == name:
                 return argument
 
         return None
 
-    def argument_dict(self) -> Dict[str, Expression]:
+    def argument_dict(self) -> dict[str, Expression]:
         return {arg.name: arg.value for arg in self.arguments}
 
     @property
@@ -844,7 +845,7 @@ class AnnotationWithVariants(Expression):
     """
 
     identifier: str
-    variants: Sequence[Union[Annotation, 'AnnotationWithVariants']]
+    variants: Sequence[Annotation | 'AnnotationWithVariants']
 
     @property
     def can_extract(self) -> bool:

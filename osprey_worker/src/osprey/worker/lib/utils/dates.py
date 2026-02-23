@@ -1,6 +1,5 @@
 import time
 from datetime import datetime
-from typing import Union
 
 import pytz
 from dateutil import parser
@@ -21,7 +20,7 @@ class SnowflakeParseError(ValueError):
     pass
 
 
-def snowflake_to_datetime(snowflake: Union[str, int]) -> datetime:
+def snowflake_to_datetime(snowflake: str | int) -> datetime:
     """Extract the timestamp from a Snowflake and return a UTC datetime."""
     time_portion = int(snowflake) >> 22
     if time_portion == 0:

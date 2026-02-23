@@ -1,4 +1,5 @@
-from typing import Sequence, Type
+from collections.abc import Sequence
+from typing import Type
 
 from osprey.engine.ast_validator.base_validator import BaseValidator
 from osprey.engine.ast_validator.validators.feature_name_to_entity_type_mapping import FeatureNameToEntityTypeMapping

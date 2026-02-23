@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import AbstractSet, Any, Tuple, TypeVar, Union
+from collections.abc import Set
+from typing import Any, TypeVar
 
 from typing_extensions import Protocol, TypeAlias
 
@@ -11,7 +12,7 @@ VT_co = TypeVar('VT_co', covariant=True)
 
 
 class SupportsItems(Protocol[KT_co, VT_co]):
-    def items(self) -> AbstractSet[Tuple[KT_co, VT_co]]:
+    def items(self) -> Set[tuple[KT_co, VT_co]]:
         pass
 
 
@@ -39,5 +40,5 @@ class SupportsAllComparisons(
 ): ...
 
 
-SupportsRichComparison: TypeAlias = Union[SupportsDunderLT[Any], SupportsDunderGT[Any]]
+SupportsRichComparison: TypeAlias = SupportsDunderLT[Any] | SupportsDunderGT[Any]
 SupportsRichComparisonT = TypeVar('SupportsRichComparisonT', bound=SupportsRichComparison)

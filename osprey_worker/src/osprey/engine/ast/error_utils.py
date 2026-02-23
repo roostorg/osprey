@@ -1,6 +1,6 @@
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Optional, Sequence, Union
 
 from osprey.engine.utils.types import add_slots
 
@@ -38,7 +38,7 @@ def render_span_context_with_message(
     span: Span,
     hint: str = '',
     additional_spans_message: str = '',
-    additional_spans: Sequence[Union[Span, SpanWithHint]] = tuple(),
+    additional_spans: Sequence[Span | SpanWithHint] = tuple(),
     message_type: str = 'error',
 ) -> str:
     """Given a span, a message, and a hint, print out a human readable error
@@ -71,7 +71,7 @@ def render_span_context_with_message(
     # TODO: Colors?!
     parts = [f'{message_type}: {_assert_valid_message(message)}']
 
-    def append_span(span_: Span, hint_: str, num_prefix: Optional[int] = None) -> None:
+    def append_span(span_: Span, hint_: str, num_prefix: int | None = None) -> None:
         if num_prefix:
             num_prefix_str = f'({num_prefix}) '
         else:

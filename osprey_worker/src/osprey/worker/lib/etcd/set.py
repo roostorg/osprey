@@ -1,14 +1,15 @@
 from __future__ import absolute_import
 
 import json
-from typing import AbstractSet, Any, MutableSet
+from collections.abc import MutableSet, Set
+from typing import Any
 
 import gevent
 from gevent.lock import RLock
 from osprey.worker.lib import etcd
 
 
-class ReadOnlyEtcdSet(AbstractSet[Any]):
+class ReadOnlyEtcdSet(Set[Any]):
     def __init__(
         self, etcd_key, etcd_client=None, lazy=True, item_encode_hook=None, item_decode_hook=None, serializer=json
     ):

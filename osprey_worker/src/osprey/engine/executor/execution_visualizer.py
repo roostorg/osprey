@@ -2,7 +2,7 @@ import copy
 import enum
 import pathlib
 import tempfile
-from typing import Any, Dict, Optional, Set, Type, Union
+from typing import Any, Type
 
 from graphviz import Digraph
 from osprey.engine.ast.grammar import (
@@ -94,8 +94,8 @@ def _merge_label_add_nodes_with_whenrules_nodes(data: GraphData) -> None:
         except IndexError:
             continue
         if node.type == NodeType.LABEL:
-            new_parents: Set[int] = set()
-            new_children: Dict[int, Any] = {}
+            new_parents: set[int] = set()
+            new_children: dict[int, Any] = {}
             # Remove old edges and collect the edges of the WhenRules node
             for child_id in copy.deepcopy(node.children):
                 child_node = data.get_node(child_id)
@@ -117,7 +117,7 @@ def _merge_label_add_nodes_with_whenrules_nodes(data: GraphData) -> None:
                 data.create_edge(new_parent_id, node_id)
 
 
-def _recursively_collect_all_children_ids(data: GraphData, root_node: Node, node_ids: Set[int]) -> None:
+def _recursively_collect_all_children_ids(data: GraphData, root_node: Node, node_ids: set[int]) -> None:
     """
     Iterates through the provided node's children and adds all of the IDs to node_ids
     """
@@ -128,7 +128,7 @@ def _recursively_collect_all_children_ids(data: GraphData, root_node: Node, node
         _recursively_collect_all_children_ids(data, data.get_node(child_id), node_ids)
 
 
-def _recursively_collect_all_parent_ids(data: GraphData, root_node: Node, node_ids: Set[int]) -> None:
+def _recursively_collect_all_parent_ids(data: GraphData, root_node: Node, node_ids: set[int]) -> None:
     """
     Iterates through the provided node's parents and adds all of the IDs to node_ids
     """
@@ -141,7 +141,7 @@ def _recursively_collect_all_parent_ids(data: GraphData, root_node: Node, node_i
 
 def _create_label_view(
     data: GraphData,
-    label_names: Set[str],
+    label_names: set[str],
     show_label_upstream: bool,
     show_label_downstream: bool,
 ) -> None:
@@ -149,8 +149,8 @@ def _create_label_view(
     Turns the provided GraphData into a label view graph by conforming to the upstream/downstream view requests
     """
     # Grab all nodes matching the requested label names
-    root_nodes: Set[Node] = set()
-    safe_node_ids: Set[int] = set()
+    root_nodes: set[Node] = set()
+    safe_node_ids: set[int] = set()
     for node_id in data.get_node_ids():
         node = data.get_node(node_id)
         if node.type == NodeType.LABEL and node.data.get('label_name') in label_names:
@@ -175,7 +175,7 @@ def _create_label_view(
 def _graph_data_post_processing(
     data: GraphData,
     graph_view_type: GraphViewType,
-    label_names: Set[str],
+    label_names: set[str],
     show_label_upstream: bool,
     show_label_downstream: bool,
 ) -> None:
@@ -195,7 +195,7 @@ def _graph_data_post_processing(
 def process_graph_data(
     data: GraphData,
     graph_view_type: GraphViewType,
-    label_names: Set[str],
+    label_names: set[str],
     show_label_upstream: bool,
     show_label_downstream: bool,
 ) -> None:
@@ -209,8 +209,8 @@ def process_graph_data(
 
 def render_graph(
     execution_graph: ExecutionGraph,  # The compiled execution graph to render
-    action_names: Optional[Set[str]] = None,  # Action names to show
-    label_names: Optional[Set[str]] = None,  # Label names to show
+    action_names: set[str] | None = None,  # Action names to show
+    label_names: set[str] | None = None,  # Label names to show
     show_label_upstream: bool = False,  # Upstream for label view
     show_label_downstream: bool = True,  # Downstream for label view
 ) -> 'RenderedDigraph':
@@ -238,11 +238,11 @@ def render_graph(
 
 
 def _render_graph(
-    all_action_names: Set[str],  # All action names that exist within Osprey
-    all_label_names: Set[str],  # All label names that exist within Osprey Rules
+    all_action_names: set[str],  # All action names that exist within Osprey
+    all_label_names: set[str],  # All label names that exist within Osprey Rules
     execution_graph: ExecutionGraph,  # The compiled execution graph to render
-    action_names_to_render: Optional[Set[str]] = None,  # Action names to show
-    label_names_to_render: Optional[Set[str]] = None,  # Label names to show
+    action_names_to_render: set[str] | None = None,  # Action names to show
+    label_names_to_render: set[str] | None = None,  # Label names to show
     show_label_upstream: bool = False,  # Upstream for label view
     show_label_downstream: bool = True,  # Downstream for label view
 ) -> 'RenderedDigraph':
@@ -305,8 +305,8 @@ def _render_graph(
             name += ' [Type: ' + node_type.name + '] [Path: ' + path + ']'
         return name
 
-    def get_node_value(node: ASTNode) -> Optional[Any]:
-        value: Optional[Any]
+    def get_node_value(node: ASTNode) -> Any | None:
+        value: Any | None
         if isinstance(node, Call):
             path = get_path_from_require_node(node)
             if path:
@@ -329,7 +329,7 @@ def _render_graph(
             value = None
         return value
 
-    def get_node_type(node: ASTNode, node_type: Type[ASTNode], node_value: Optional[str]) -> NodeType:
+    def get_node_type(node: ASTNode, node_type: Type[ASTNode], node_value: str | None) -> NodeType:
         if isinstance(node, Call) and node.func.identifier == 'Require' and node_value and node_value.endswith('.sml'):
             return NodeType.FILE
         elif is_rule_node(node):
@@ -365,9 +365,9 @@ def _render_graph(
             span=str(node.span),
         )
 
-    traversed_paths: Set[str] = set()
+    traversed_paths: set[str] = set()
 
-    def handle_label_node_if_present(node: ASTNode) -> Optional[Node]:
+    def handle_label_node_if_present(node: ASTNode) -> Node | None:
         if not isinstance(node, Call) or node.func.identifier not in [label.value for label in LabelType]:
             return None
         label_name: str = [i.value.value for i in node.arguments if i.name == 'label'][0]  # type: ignore
@@ -387,14 +387,14 @@ def _render_graph(
         if current_node.type == NodeType.FILE:
             load_path(current_node.data['file_path'], current_node)
 
-    referenced_label_nodes: Set[str] = set()
+    referenced_label_nodes: set[str] = set()
 
     def create_node_from_label_name(
         label_name: str,
-        entity_name: Optional[str],
-        label_type: Optional[LabelType] = None,
+        entity_name: str | None,
+        label_type: LabelType | None = None,
         path: str = 'Unknown path',
-    ) -> Optional[Node]:
+    ) -> Node | None:
         if label_name not in referenced_label_nodes:
             referenced_label_nodes.add(label_name)
 
@@ -453,7 +453,7 @@ def _render_graph(
                 chain = execution_graph.get_dependency_chain(statement)
                 render_dependency_recursively(chain, root_dependency=root_dependency)
 
-    def get_path_from_require_node(node: ASTNode) -> Optional[str]:
+    def get_path_from_require_node(node: ASTNode) -> str | None:
         if not (isinstance(node, Call) and node.func.identifier == 'Require' and isinstance(node.func.context, Load)):
             return None
         encapsulated_string: str
@@ -475,9 +475,9 @@ def _render_graph(
     def render_dependency_recursively(
         current_dependency: DependencyChain,
         # A representation of the root node for the current dependency chain, if any.
-        root_dependency: Union[DependencyChain, Node, None] = None,
+        root_dependency: DependencyChain | Node | None = None,
         # Set this to skip the current node
-        dependent_node: Optional[Node] = None,
+        dependent_node: Node | None = None,
     ) -> Node:
         skip_next_node: bool = False
         if not dependent_node:
@@ -497,7 +497,7 @@ def _render_graph(
                 render_dependency_recursively(dependency, root_dependency=root_dependency, dependent_node=node)
 
         if root_dependency and len(current_dependency.dependent_on) == 0:
-            root_node: Union[ASTNode, Node]
+            root_node: ASTNode | Node
             if isinstance(root_dependency, DependencyChain):
                 root_node = create_node_from_ast(root_dependency.executor.node, root_dependency.executor.node_type)
                 associate_edge(root_node.id, node.id, '#FF00FF')
@@ -531,7 +531,7 @@ def _render_graph(
 
 
 class RenderedDigraph:
-    def _render_digraph_from_json_data(self, data: Dict[str, Any]) -> Digraph:
+    def _render_digraph_from_json_data(self, data: dict[str, Any]) -> Digraph:
         """
         Converts JSON data to a Digraph
         """
@@ -541,7 +541,7 @@ class RenderedDigraph:
         dot.attr(margin='0,0')
         dot.attr(pad='0.5,0.5')
 
-        def get_attrs_from_json_node(node: Dict[str, Any]) -> Dict[str, str]:
+        def get_attrs_from_json_node(node: dict[str, Any]) -> dict[str, str]:
             attrs = {
                 'label': node['name'],
                 'shape': 'box',
@@ -586,7 +586,7 @@ class RenderedDigraph:
                 attrs['fontcolor'] = '#23272A'
             return attrs
 
-        def get_edge_attrs(color: str) -> Dict[str, str]:
+        def get_edge_attrs(color: str) -> dict[str, str]:
             edge_attrs = {
                 'color': color,
                 'fontcolor': '#99AAB5',
@@ -604,8 +604,8 @@ class RenderedDigraph:
             dot.edge(edge['source'], edge['target'], _attributes=get_edge_attrs(edge['color']))
         return dot
 
-    def __init__(self, data: Dict[str, Any]):
-        self._digraph: Optional[Digraph] = None
+    def __init__(self, data: dict[str, Any]):
+        self._digraph: Digraph | None = None
         self.data = data
 
     def view(self) -> None:
