@@ -239,7 +239,7 @@ def push(self, result: ExecutionResult) -> None:
 
 ## User Defined Functions (UDFs)
 
-User Defined Functions (UDFs) are plugins that enable users of Osprey to extend and customize their use of the Osprey SML. UDFs are implemented as Python functions and are registered
+User Defined Functions (UDFs) are plugins written in Python that enable users of Osprey to extend and customize their use of the Osprey SML. UDFs are implemented as Python functions and are registered
 as a plugin. They extend the `UDFBase` abstract base class with a set of arguments and an output. These will be executed whenever called in SML.
 
 ```python
