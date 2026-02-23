@@ -1,5 +1,3 @@
-from typing import Optional
-
 from osprey.worker.lib.config import Config
 from osprey.worker.lib.singletons import CONFIG
 from pydruid.client import PyDruid
@@ -7,8 +5,8 @@ from pydruid.client import PyDruid
 
 class DruidClientHolder:
     def __init__(self) -> None:
-        self._client: Optional[PyDruid] = None
-        self._datasource: Optional[str] = None
+        self._client: PyDruid | None = None
+        self._datasource: str | None = None
         CONFIG.instance().register_configuration_callback(self.init_from_config)
 
     def init_from_config(self, config: Config) -> None:

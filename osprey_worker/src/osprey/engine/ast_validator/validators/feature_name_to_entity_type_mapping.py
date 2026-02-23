@@ -1,5 +1,3 @@
-from typing import Dict
-
 from osprey.engine.ast import grammar
 from osprey.engine.stdlib.udfs.entity import EntityArgumentsBase
 
@@ -8,10 +6,10 @@ from ..validation_context import ValidationContext
 from .validate_call_kwargs import UDFNodeMapping, ValidateCallKwargs
 
 
-class FeatureNameToEntityTypeMapping(SourceValidator, HasResult[Dict[str, str]]):
+class FeatureNameToEntityTypeMapping(SourceValidator, HasResult[dict[str, str]]):
     def __init__(self, context: 'ValidationContext'):
         super().__init__(context)
-        self._feature_name_to_entity_type: Dict[str, str] = {}
+        self._feature_name_to_entity_type: dict[str, str] = {}
         self._udf_node_mapping: UDFNodeMapping = context.get_validator_result(ValidateCallKwargs)
 
     def validate_source(self, source: 'grammar.Source') -> None:
@@ -25,5 +23,5 @@ class FeatureNameToEntityTypeMapping(SourceValidator, HasResult[Dict[str, str]])
                 if isinstance(args, EntityArgumentsBase):
                     self._feature_name_to_entity_type[statement.target.identifier] = args.type.value
 
-    def get_result(self) -> Dict[str, str]:
+    def get_result(self) -> dict[str, str]:
         return self._feature_name_to_entity_type

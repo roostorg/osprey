@@ -1,4 +1,4 @@
-from typing import List, Type, TypeVar
+from typing import Type, TypeVar
 
 import pytest
 from osprey.engine.ast import grammar
@@ -32,17 +32,17 @@ def test_scalar_const_expr(ty: Type[_T], lit: Type[grammar.Literal]) -> None:
 @pytest.mark.parametrize(
     'ty, lit, inner_ty, inner_lit_ty',
     [
-        (List[str], grammar.List, str, grammar.String),
-        (List[int], grammar.List, int, grammar.Number),
-        (List[float], grammar.List, float, grammar.Number),
-        (List[bool], grammar.List, bool, grammar.Boolean),
-        (List[None], grammar.List, type(None), grammar.None_),
+        (list[str], grammar.List, str, grammar.String),
+        (list[int], grammar.List, int, grammar.Number),
+        (list[float], grammar.List, float, grammar.Number),
+        (list[bool], grammar.List, bool, grammar.Boolean),
+        (list[None], grammar.List, type(None), grammar.None_),
     ],
 )
 def test_list_const_expr(
-    ty: Type[List[_T]], lit: Type[grammar.Literal], inner_ty: Type[_T], inner_lit_ty: Type[grammar.Literal]
+    ty: Type[list[_T]], lit: Type[grammar.Literal], inner_ty: Type[_T], inner_lit_ty: Type[grammar.Literal]
 ) -> None:
-    ConstExprT: Type[ConstExpr[List[_T]]] = ConstExpr[ty]  # type: ignore # Can't use runtime variable in a generic
+    ConstExprT: Type[ConstExpr[list[_T]]] = ConstExpr[ty]  # type: ignore # Can't use runtime variable in a generic
 
     assert ConstExpr.get_type_class(ConstExprT) is list
     assert ConstExpr.get_literal_node_type(ConstExprT) is lit

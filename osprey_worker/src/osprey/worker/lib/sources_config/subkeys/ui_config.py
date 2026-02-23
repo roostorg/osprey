@@ -1,12 +1,10 @@
-from typing import Dict, List
-
 from osprey.worker.lib.sources_config import register_config_subkey
 from pydantic import BaseModel
 
 
 class FeatureSummaryConfig(BaseModel):
-    actions: List[str] = []
-    features: List[str] = []
+    actions: list[str] = []
+    features: list[str] = []
 
 
 @register_config_subkey('ui_config')
@@ -14,5 +12,5 @@ class UIConfig(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    default_summary_features: List[FeatureSummaryConfig] = []
-    external_links: Dict[str, str] = {}
+    default_summary_features: list[FeatureSummaryConfig] = []
+    external_links: dict[str, str] = {}

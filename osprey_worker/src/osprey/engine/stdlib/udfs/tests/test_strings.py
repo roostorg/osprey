@@ -1,6 +1,7 @@
 import string
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union, cast
+from typing import Any, cast
 
 import pytest
 from osprey.engine.conftest import ExecuteFunction
@@ -61,7 +62,7 @@ def test_string_join(execute: ExecuteFunction) -> None:
 
 
 @pytest.mark.parametrize('sep,maxsplit', [(None, -1), (None, 2), ('o', -1), ('o', 2)])
-def test_string_split(execute: ExecuteFunction, sep: Optional[str], maxsplit: int) -> None:
+def test_string_split(execute: ExecuteFunction, sep: str | None, maxsplit: int) -> None:
     sep_arg = '' if sep is None else f', sep="{sep}"'
     maxsplit_arg = '' if maxsplit == -1 else f', maxsplit={maxsplit}'
 
@@ -112,7 +113,7 @@ def test_string_strip(
     UDF: str,
     func: Callable[..., str],
     input: str,
-    chars: Optional[str],
+    chars: str | None,
 ) -> None:
     chars_arg = '' if chars is None else f', chars="{chars}"'
     data = execute(
@@ -172,7 +173,7 @@ def test_string_to_upper(execute: ExecuteFunction) -> None:
 @dataclass
 class Scenario:
     s: str
-    expects: Union[str, Iterable[str]] = ('text',)
+    expects: str | Iterable[str] = ('text',)
     not_expects: Iterable[str] = ('|',)
 
 
@@ -266,14 +267,14 @@ def test_string_normalization(s: Scenario, execute: ExecuteFunction) -> None:
         ('check this out https://[bad::ipv6 click here', []),  # malformed IPv6 in text
     ],
 )
-def test_extract_domains(execute: ExecuteFunction, text: str, expected_result: List[str]) -> None:
-    data: Dict[str, Any] = execute(
+def test_extract_domains(execute: ExecuteFunction, text: str, expected_result: list[str]) -> None:
+    data: dict[str, Any] = execute(
         f"""
         Result = StringExtractDomains(s="{text}")
         """
     )
 
-    result: List[str] = data['Result']
+    result: list[str] = data['Result']
     assert len(expected_result) == len(result)
     assert set(expected_result) == set(result)
 
@@ -315,13 +316,13 @@ def test_extract_domains(execute: ExecuteFunction, text: str, expected_result: L
         ('check this out https://[bad::ipv6 click here', []),  # malformed IPv6 in text
     ],
 )
-def test_extract_urls(execute: ExecuteFunction, text: str, expected_result: List[str]) -> None:
-    data: Dict[str, Any] = execute(
+def test_extract_urls(execute: ExecuteFunction, text: str, expected_result: list[str]) -> None:
+    data: dict[str, Any] = execute(
         f"""
         Result = StringExtractURLs(s="{text}")
         """
     )
 
-    result: List[str] = data['Result']
+    result: list[str] = data['Result']
     assert len(expected_result) == len(result)
     assert set(expected_result) == set(result)

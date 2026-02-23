@@ -1,9 +1,10 @@
 import fnmatch
+from collections.abc import Iterator, Sequence
 from functools import reduce
 from hashlib import sha256
 from itertools import chain
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Union
+from typing import Any
 
 import deepmerge
 import yaml
@@ -19,19 +20,19 @@ class Sources:
     """A collection of sources, and an arbitrary configuration which describes a set of imported rules and perhaps
     additional configuration that will be executed by the engine."""
 
-    def __init__(self, sources: Dict[str, Source], config: Optional['SourcesConfig'] = None):
+    def __init__(self, sources: dict[str, Source], config: 'SourcesConfig' | None = None):
         assert SOURCE_ENTRY_POINT_PATH in sources, (
             "Sources requires a file with the `path` 'main.sml' to be present as the entry-point"
         )
         self._sources = sources
         self._config = config if config is not None else SourcesConfig(Source(path=CONFIG_PATH, contents=''))
-        self._hash: Optional[str] = None
+        self._hash: str | None = None
 
     @property
     def config(self) -> 'SourcesConfig':
         return self._config
 
-    def get_by_path(self, path: str) -> Optional[Source]:
+    def get_by_path(self, path: str) -> Source | None:
         """Gets a source that belongs to a given path, if it exists."""
         return self._sources.get(path)
 
@@ -45,16 +46,16 @@ class Sources:
     def __len__(self) -> int:
         return len(self._sources)
 
-    def paths(self) -> Set[str]:
+    def paths(self) -> set[str]:
         """Returns the set of paths within this sources collection."""
         return set(self._sources.keys())
 
-    def glob(self, pattern: str) -> List[Source]:
+    def glob(self, pattern: str) -> list[Source]:
         """Returns a list of sources that match the given pattern."""
         matches = fnmatch.filter(self._sources.keys(), pattern)
         return [self._sources[k] for k in matches]
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         """The inverse of from_dict, serializes this Sources collection to a dictionary."""
         sources = list(self)
         if self._config.source.contents:
@@ -63,7 +64,7 @@ class Sources:
         return {source.path: source.contents for source in sources}
 
     @staticmethod
-    def from_dict(sources_dict: Dict[str, str]) -> 'Sources':
+    def from_dict(sources_dict: dict[str, str]) -> 'Sources':
         """Creates a Sources object from a dict of path -> contents."""
         builder = SourcesBuilder()
 
@@ -123,9 +124,9 @@ class SourcesBuilder:
     at which you can mutate sources."""
 
     def __init__(self) -> None:
-        self._sources: Dict[str, Source] = {}
-        self._config: Optional['SourcesConfig'] = None
-        self._config_sources: Dict[str, Source] = {}
+        self._sources: dict[str, Source] = {}
+        self._config: 'SourcesConfig' | None = None
+        self._config_sources: dict[str, Source] = {}
 
     def add_source(self, source: Source) -> 'SourcesBuilder':
         """Adds a source to the sources collection."""
@@ -150,7 +151,7 @@ class SourcesBuilder:
         return Sources(self._sources, config=self._config)
 
 
-class SourcesConfig(Dict[str, Any]):
+class SourcesConfig(dict[str, Any]):
     """Wraps a configuration provided by a source, performing preliminary validation of its parsed
     contents, but not interpreting the content. This lets us side-load a "config" within the sources, that
     will generally have additional meaning outside of the rules engine, for example, doing event sampling
@@ -174,7 +175,7 @@ class SourcesConfig(Dict[str, Any]):
         if not all(isinstance(config, dict) for config in configs):
             raise TypeError('Config is not a yaml serialized dictionary.')
 
-        config: Dict[str, Any] = reduce(deepmerge.merge_or_raise.merge, configs, {})
+        config: dict[str, Any] = reduce(deepmerge.merge_or_raise.merge, configs, {})
 
         if not isinstance(config, dict):
             raise TypeError('Config is not a yaml serialized dictionary.')
@@ -193,10 +194,10 @@ class SourcesConfig(Dict[str, Any]):
         return self._source
 
     @property
-    def sources(self) -> List[Source]:
+    def sources(self) -> list[Source]:
         return self._sources
 
-    def closest_span_for_location(self, location: Sequence[Union[int, str]], key_only: bool) -> Span:
+    def closest_span_for_location(self, location: Sequence[int | str], key_only: bool) -> Span:
         """Given a location in the config, returns the span for the beginning of that location in the original source,
         or if we can't get the span for that element returns the span for the nearest possible parent.
 

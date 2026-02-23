@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,7 +21,7 @@ def experiment_validation_result_exporter() -> ExperimentValidationResultExporte
     return ExperimentValidationResultExporter(PubSubPublisher('test_project', 'test_topic'))
 
 
-def create_experiments() -> List[ExperimentT]:
+def create_experiments() -> list[ExperimentT]:
     user_entity = EntityT(type='User', id='4321')
     guild_entity = EntityT(type='Guild', id='1234')
     return [
@@ -55,7 +55,7 @@ def create_experiments() -> List[ExperimentT]:
     ]
 
 
-def get_validate_experiments_result(experiments: List[ExperimentT]) -> ValidateExperimentsResult:
+def get_validate_experiments_result(experiments: list[ExperimentT]) -> ValidateExperimentsResult:
     experiment_validation_results = {
         e.name: ExperimentValidationResult(
             name=e.name,
@@ -81,7 +81,7 @@ def get_validated_sources() -> ValidatedSources:
     )
 
 
-def assert_experiment_metadata_event(experiment: str, experiment_payload: Dict[str, Any]) -> None:
+def assert_experiment_metadata_event(experiment: str, experiment_payload: dict[str, Any]) -> None:
     if experiment == 'Experiment1':
         assert experiment_payload['experiment'] == 'Experiment1'
         assert experiment_payload['buckets'] == ['a', 'b', 'c']
