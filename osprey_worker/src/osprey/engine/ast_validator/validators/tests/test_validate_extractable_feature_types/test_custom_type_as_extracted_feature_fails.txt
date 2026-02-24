@@ -1,0 +1,9 @@
+error: cannot extract feature with type `CustomResultT`
+--> main.sml:1:0
+     |
+   1 | MyResult = ReturnsCustomType()
+     | ^ type `CustomResultT` cannot be serialized for extraction.
+       | Extracted features must be primitive types (str, int, float, bool), Optional[T], List[T], or EntityT.
+       |
+       | To use this value without extraction, prefix the variable name with `_`:
+       |     _MyResult = ...  # local variable, not extracted
