@@ -83,9 +83,9 @@ example-rules/
 |  main.sml
 ```
 
-This sort of structure lets you define rules and models that are specific to certain event types so that only the necessary rules are run for various event types. For example, you likely have some rules that should only be run on a `post` event, since only a `post` will have features like `text` or `mention_count`.
+The `main.sml` file at the root of your rules directory serves as the entrypoint. It uses `Import` and `Require` statements to control which other files are loaded and when, allowing you to compose together logic across the project. This sort of structure lets you define rules and models that are specific to certain event types so that only the necessary rules are run for various event types. For example, you likely have some rules that should only be run on a `post` event, since only a `post` will have features like `text` or `mention_count`.
 
-Inside of each directory, you may maintain an `index.sml` file that will define the conditional logic in which the rules inside that directory are actually included for execution. Although you could handle all of this conditional logic inside of a single file, maintaining separate `index.sml`s per directory greatly helps with neat organization. See [Workflow Structure and File Placement](#workflow-structure-and-file-placement) for more on how files are composed with `Import` and `Require`.
+Inside of each directory, you may maintain an `index.sml` file that will define the conditional logic in which the rules inside that directory are actually included for execution. Although you could handle all of this conditional logic inside of a single file, maintaining separate `index.sml`s per directory greatly helps with neat organization. See [Workflow Structure and File Placement](#workflow-structure-and-file-placement) for more on `Import` and `Require`.
 
 ## Models
 
