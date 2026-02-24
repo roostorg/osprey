@@ -41,10 +41,27 @@ class BinaryComparisonExecutor(BaseNodeExecutor[BinaryComparison, bool]):
             _COMPARATORS[Equals],
             _COMPARATORS[NotEquals],
         )
+        # For numerical comparisons (<, <=, >, >=), we need to handle None at runtime
+        # because the executor resolves all boolean operation dependencies before
+        # short-circuiting. The static validator enforces null-check patterns, but
+        # at runtime the comparison may still be evaluated with None values.
+        self.handles_none_comparison = self.comparator in (
+            _COMPARATORS[LessThan],
+            _COMPARATORS[LessThanEquals],
+            _COMPARATORS[GreaterThan],
+            _COMPARATORS[GreaterThanEquals],
+        )
 
     def execute(self, execution_context: 'ExecutionContext') -> bool:
         left = execution_context.resolved(self._node.left, return_none_for_failed_values=self.left_can_be_none)
         right = execution_context.resolved(self._node.right, return_none_for_failed_values=self.right_can_be_none)
+
+        # Handle None values for numerical comparisons at runtime.
+        # Even with null-check patterns like "X != None and X >= 90", the executor
+        # resolves all dependencies before the boolean operation short-circuits.
+        if self.handles_none_comparison and (left is None or right is None):
+            return False
+
         return bool(self.comparator(left, right))
 
     def get_dependent_nodes(self) -> List[ASTNode]:
