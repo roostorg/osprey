@@ -206,7 +206,7 @@ to place any effects toward the bottom of workflows.
 
 ## Output Sinks
 
-After all rules are evaluated for an input event, a set of output sinks takes the resulting `ExecutionOutput` and performs additional work based on that data. These may be defined
+After all rules are evaluated for an input event, a set of output sinks takes the resulting `ExecutionResult` and performs additional work based on that data. These may be defined
 as part of a plugin for performing domain specific work.
 
 Some default use cases include a `StdoutOutputSink` which simply outputs the result to the log, a `KafkaOutputSink` which pipes data to Kafka (used for Osprey UI), or the
