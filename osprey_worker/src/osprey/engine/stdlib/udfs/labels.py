@@ -214,11 +214,8 @@ class HasLabel(
 
         if label_state is not None:
             # Check to see if all reasons have expired, if so, the label should be considered as expired.
-            # Only consider a reason expired if it has a meaningful expires_at timestamp (not default/epoch)
             all_reasons_expired = all(
-                reason.expires_at
-                and reason.expires_at.second > 0  # Check if timestamp is not default/epoch
-                and reason.expires_at <= now
+                reason.expires_at is not None and reason.expires_at <= now
                 for reason in label_state.reasons.values()
             )
             if all_reasons_expired:
@@ -249,8 +246,7 @@ class HasLabel(
                 for reason in label_state.reasons.values()
                 if reason.created_at
                 and (
-                    not reason.expires_at
-                    or reason.expires_at.second == 0  # No meaningful expiration set
+                    reason.expires_at is None
                     or reason.expires_at > now
                 )
             )
