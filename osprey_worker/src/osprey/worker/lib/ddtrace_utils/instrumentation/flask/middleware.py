@@ -5,12 +5,12 @@ import sys
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import flask.templating
-from ddtrace import Span, Tracer
 from ddtrace.constants import ERROR_MSG, ERROR_TYPE
 from ddtrace.ext import SpanTypes, http
 from ddtrace.internal import compat
 from ddtrace.internal.logger import get_logger
 from ddtrace.propagation.http import HTTPPropagator
+from ddtrace.trace import Span, Tracer
 from flask import Flask, g, request, signals
 from osprey.worker.lib.ddtrace_utils.constants import SpanAttributes
 from osprey.worker.lib.ddtrace_utils.internal.globals import baggage_manager, baggage_propagator
@@ -228,7 +228,9 @@ class TraceMiddleware:
             _set_error_on_span(span, exception)
 
     def _finish_span(self, span: Span, exception: Optional[Exception] = None) -> None:
-        if not span or not span.sampled:
+        if not span or (
+            span.context and span.context.sampling_priority is not None and span.context.sampling_priority <= 0
+        ):
             return
 
         code: Union[int, str] = span.get_tag(http.STATUS_CODE) or 0
@@ -267,7 +269,7 @@ class TraceMiddleware:
             span.resource = compat.to_unicode(resource).lower()
 
         span.set_tag(http.URL, url)
-        span.set_tag(http.STATUS_CODE, code)
+        span.set_tag(http.STATUS_CODE, str(code))
         span.set_tag(http.METHOD, method)
 
         span.finish()
@@ -278,8 +280,8 @@ def _set_error_on_span(span: Span, exception: Exception) -> None:
     # also get the exception from the sys.exc_info (and fill the error meta).
     # Since we aren't sure it always work/for insuring no BC break, keep
     # these lines which get overridden anyway.
-    span.set_tag(ERROR_TYPE, type(exception))
-    span.set_tag(ERROR_MSG, exception)
+    span.set_tag(ERROR_TYPE, str(type(exception).__name__))
+    span.set_tag(ERROR_MSG, str(exception))
     # The provided `exception` object doesn't have a stack trace attached,
     # so attach the stack trace with `set_traceback`.
     span.set_traceback()

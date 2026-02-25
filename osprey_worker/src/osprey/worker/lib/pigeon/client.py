@@ -10,9 +10,8 @@ from typing import Any, Callable, Dict, Generic, List, Optional, Set, Tuple, Typ
 
 import grpc
 from ddtrace.constants import ERROR_MSG
-from ddtrace.contrib.grpc.constants import GRPC_STATUS_CODE_KEY
 from ddtrace.ext.http import STATUS_CODE
-from ddtrace.span import Span
+from ddtrace.trace import Span
 from gevent.pool import Pool
 from google.protobuf.message import Message
 from grpc import Channel
@@ -27,6 +26,8 @@ from osprey.worker.lib.pigeon.interceptors.baggage import BaggageInterceptor
 from osprey.worker.lib.pigeon.interceptors.metadata import MetadataInterceptor
 from osprey.worker.lib.pigeon.skip_rate_limit import skip_rate_limit_context
 from typing_extensions import TypedDict
+
+GRPC_STATUS_CODE_KEY = 'grpc.status.code'
 
 T = TypeVar('T')
 
@@ -567,10 +568,10 @@ class UnaryUnaryRpcCallable(Generic[T, Request, Response]):
             finally:
                 http_code = _GRPC_HTTP_CODE_TRANSLATIONS[grpc_code]
 
-                span.set_tag(GRPC_STATUS_CODE_KEY, grpc_code)
+                span.set_tag(GRPC_STATUS_CODE_KEY, str(grpc_code))
                 # Setting the HTTP status code on the tag is a hack to generate more metrics from APM,
                 # since Datadog automatically generates metrics based on HTTP status but not based on gRPC.
-                span.set_tag(STATUS_CODE, http_code)
+                span.set_tag(STATUS_CODE, str(http_code))
 
                 if http_code >= 500:
                     span.error = 1
@@ -691,7 +692,7 @@ def maybe_start_span(name: str, service: str, resource: str) -> Span:
     if existing_span.name == name:
         # Add tags to the existing span to indicate the inner service and resource that would have been recorded
         # if we had started a new span (otherwise we'd just lose this information).
-        existing_span.set_tag('pigeon.request.subsumed', True)
+        existing_span.set_tag('pigeon.request.subsumed', 'true')
         existing_span.set_tag('pigeon.request.service', service)
         existing_span.set_tag('pigeon.request.resource', resource)
 

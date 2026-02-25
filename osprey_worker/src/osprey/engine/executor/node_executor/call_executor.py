@@ -6,7 +6,7 @@ from ..node_executor_registry import NodeExecutorRegistry
 from ._base_node_executor import BaseNodeExecutor
 
 if TYPE_CHECKING:
-    from ddtrace.span import Span
+    from ddtrace.trace import Span
     from osprey.engine.ast_validator.validation_context import ValidatedSources
     from osprey.engine.udf.arguments import ArgumentsBase
     from osprey.engine.udf.base import UDFBase

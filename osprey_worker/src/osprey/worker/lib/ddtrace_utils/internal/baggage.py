@@ -1,7 +1,6 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
-from ddtrace.filters import TraceFilter
-from ddtrace.span import Span
+from ddtrace.trace import Span, TraceFilter
 
 from ..constants import BaggagePrefix
 
@@ -125,7 +124,7 @@ class _BaggageFilter(TraceFilter):
         for span in trace:
             # We need a new dictionary because you can't safely mutate a dict
             # while iterating over it
-            tags: Dict[Union[str, bytes], str] = {}
+            tags: Dict[str, str] = {}
 
             for k, v in span.get_tags().items():
                 if isinstance(k, bytes):
