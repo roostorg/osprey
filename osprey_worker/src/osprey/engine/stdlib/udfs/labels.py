@@ -215,8 +215,7 @@ class HasLabel(
         if label_state is not None:
             # Check to see if all reasons have expired, if so, the label should be considered as expired.
             all_reasons_expired = all(
-                reason.expires_at is not None and reason.expires_at <= now
-                for reason in label_state.reasons.values()
+                reason.expires_at is not None and reason.expires_at <= now for reason in label_state.reasons.values()
             )
             if all_reasons_expired:
                 label_state = None
@@ -244,11 +243,7 @@ class HasLabel(
             oldest_non_expired = min(
                 reason.created_at
                 for reason in label_state.reasons.values()
-                if reason.created_at
-                and (
-                    reason.expires_at is None
-                    or reason.expires_at > now
-                )
+                if reason.created_at and (reason.expires_at is None or reason.expires_at > now)
             )
             actual_delay = now - oldest_non_expired
 
