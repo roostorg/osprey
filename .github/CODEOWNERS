@@ -1,8 +1,11 @@
 # CODEOWNERS file for managing repository permissions
 # Format: path-pattern @username @org/team-name
 
-# Maintainers: Default owners for all files
+# Maintainers; see https://roostorg.github.io/community/roles.html#maintainers
 * @EXBreder @haileyok @vinaysrao1
+
+# Other trusted contributors
+* @roostorg/roosters @roostorg/discord
 
 # Docs contributors
 docs/ @roostorg/roosters
