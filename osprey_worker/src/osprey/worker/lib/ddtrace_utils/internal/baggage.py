@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional, Union
 
-from ddtrace.filters import TraceFilter
-from ddtrace.span import Span
+from ddtrace.trace import TraceFilter
+from ddtrace.trace import Span
 
 from ..constants import BaggagePrefix
 

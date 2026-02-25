@@ -3,7 +3,7 @@ import sys
 from typing import Any, Callable, Dict, Optional, TypeVar, Union
 
 import ddtrace
-from ddtrace.span import Span
+from ddtrace.trace import Span
 from flask import Flask
 from osprey.worker.lib.ddtrace_utils.instrumentation.flask.middleware import TraceMiddleware
 from osprey.worker.lib.ddtrace_utils.internal.baggage import Baggage

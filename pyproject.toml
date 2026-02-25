@@ -186,26 +186,7 @@ dev = [
 
 
 [tool.uv]
-override-dependencies = ["ddtrace>=2.17.2,<3.0.0"]
 default-groups = ["common", "dev"]
-
-[tool.uv.sources]
-erlpack = { git = "https://github.com/discord/erlpack.git", rev = "b25ebd51ae4c097bd7f756fd4e1c841b61bfe50b" }
-greenlet = { git = "https://github.com/discord/greenlet.git", rev = "a75d78f1547c74a81134644a179467525a255466" }
-gunicorn = { git = "https://github.com/discord/gunicorn.git", rev = "979efdcb918daa536d8923668241c6e6bf1edb58" }
-hash-ring = { url = "https://storage.googleapis.com/discord-devops/hash_ring-src-b4b56bc93053881b68b829ee9d1a4871b4aee592.zip" }
-jsonpath-rw = { url = "https://github.com/kennknowles/python-jsonpath-rw/archive/6f5647bb3ad2395c20f0191fef07a1df51c9fed8.tar.gz" }
-nostril = { url = "https://github.com/casics/nostril/archive/v1.2.0.tar.gz" }
-osprey_rpc = { workspace = true }
-osprey_worker = { workspace = true }
-example_plugins = { workspace = true }
-
-[tool.uv.workspace]
-members = [
-    "osprey_rpc",
-    "osprey_worker",
-    "example_plugins",
-]
 
 
 [tool.ruff]

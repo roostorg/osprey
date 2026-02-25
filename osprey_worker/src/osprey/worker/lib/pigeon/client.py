@@ -10,9 +10,9 @@ from typing import Any, Callable, Dict, Generic, List, Optional, Set, Tuple, Typ
 
 import grpc
 from ddtrace.constants import ERROR_MSG
-from ddtrace.contrib.grpc.constants import GRPC_STATUS_CODE_KEY
+GRPC_STATUS_CODE_KEY = "grpc.status.code"
 from ddtrace.ext.http import STATUS_CODE
-from ddtrace.span import Span
+from ddtrace.trace import Span
 from gevent.pool import Pool
 from google.protobuf.message import Message
 from grpc import Channel

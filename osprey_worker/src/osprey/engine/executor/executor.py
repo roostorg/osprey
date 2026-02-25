@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import gevent
 import gevent.pool
 from ddtrace import tracer
-from ddtrace.span import Span as TracerSpan
+from ddtrace.trace import Span as TracerSpan
 from osprey.engine.ast.grammar import ASTNode
 from osprey.engine.executor.custom_extracted_features import (
     ActionIdExtractedFeature,

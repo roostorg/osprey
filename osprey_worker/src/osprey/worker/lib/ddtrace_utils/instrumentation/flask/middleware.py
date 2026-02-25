@@ -5,7 +5,7 @@ import sys
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import flask.templating
-from ddtrace import Span, Tracer
+from ddtrace.trace import Span, Tracer
 from ddtrace.constants import ERROR_MSG, ERROR_TYPE
 from ddtrace.ext import SpanTypes, http
 from ddtrace.internal import compat
