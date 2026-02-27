@@ -12,7 +12,7 @@ patch_all()  # please ensure this occurs before *any* other imports !
 
 import datetime  # noqa: E402
 import os  # noqa: E402
-from typing import Any, Optional, Set  # noqa: E402
+from typing import Any  # noqa: E402
 
 import click  # noqa: E402
 from osprey.worker.lib.osprey_logging import configure_logging  # noqa: E402
@@ -185,7 +185,7 @@ def shell(auto_import: str) -> None:
         code.InteractiveConsole(namespace).interact()
 
 
-def get_lines_from_file_as_set(file_path: str) -> Set[str]:
+def get_lines_from_file_as_set(file_path: str) -> set[str]:
     """
     Collects all lines from a file in an unordered set.
     This collection does not include empty lines.
@@ -229,8 +229,8 @@ def apply_label(
     entity_id: str,
     label_name: str,
     label_status: LabelStatus,
-    reason: Optional[str],
-    description: Optional[str],
+    reason: str | None,
+    description: str | None,
     expire_instantly: bool,
 ) -> None:
     """Manually apply a label to an entity.
@@ -292,8 +292,8 @@ def bulk_apply_label(
     entity_ids_file_path: str,
     label_name: str,
     label_status: LabelStatus,
-    reason: Optional[str],
-    description: Optional[str],
+    reason: str | None,
+    description: str | None,
     expire_instantly: bool,
 ) -> None:
     """Manually apply a label to all entity IDs in the provided file at the file path.

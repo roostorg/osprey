@@ -2,13 +2,13 @@ from __future__ import print_function
 
 import os
 from collections import defaultdict
+from collections.abc import Callable, Mapping
 from multiprocessing import RLock
-from typing import Callable, Dict, List, Mapping, Optional
 
 import gevent
 from osprey.worker.lib import etcd
 
-TWatcherCallback = Callable[[str, Optional[str]], None]
+TWatcherCallback = Callable[[str, str | None], None]
 
 
 class ReadOnlyEtcdTree(Mapping[str, str]):
@@ -33,7 +33,7 @@ class ReadOnlyEtcdTree(Mapping[str, str]):
         self._watcher = None
         self._watcher_greenlet = None
 
-        self._dict: Dict[str, str] = {}
+        self._dict: dict[str, str] = {}
         """
         The dict holds the values, keys are the full absolute node path (i.e. starting with /example_path/...).
 
@@ -43,7 +43,7 @@ class ReadOnlyEtcdTree(Mapping[str, str]):
         operations, just simple set/get/delete by path. So we're using a dict to simplify.
         """
 
-        self._node_watchers: Dict[str, List[TWatcherCallback]] = defaultdict(list)
+        self._node_watchers: dict[str, list[TWatcherCallback]] = defaultdict(list)
         """
         Watchers for a specific node path e.g. /foo/bar/baz. The node path is the fully qualified path,
         i.e. self._root_path is the prefix.

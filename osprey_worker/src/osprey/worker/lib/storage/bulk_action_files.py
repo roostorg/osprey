@@ -2,7 +2,7 @@ import csv
 import os
 import tempfile
 from itertools import islice
-from typing import Any, Dict, Generator, Optional, Protocol
+from typing import Any, Generator, Protocol
 
 from google.cloud import storage
 from osprey.worker.lib.singletons import CONFIG
@@ -18,8 +18,8 @@ class BulkActionFileManager(Protocol):
         pass
 
     def get_bulk_action_file_stream(
-        self, object_name: str, start_row: int = 0, num_rows: Optional[int] = None
-    ) -> Generator[Dict[str, Any], None, None]:
+        self, object_name: str, start_row: int = 0, num_rows: int | None = None
+    ) -> Generator[dict[str, Any], None, None]:
         pass
 
     def upload_file(self, object_name: str, file_stream: FileStorage) -> None:
@@ -31,8 +31,8 @@ class NoopBulkActionFileManager(BulkActionFileManager):
         return f'http://localhost:5004/bulk_action/upload/{object_name}'
 
     def get_bulk_action_file_stream(
-        self, object_name: str, start_row: int = 0, num_rows: Optional[int] = None
-    ) -> Generator[Dict[str, Any], None, None]:
+        self, object_name: str, start_row: int = 0, num_rows: int | None = None
+    ) -> Generator[dict[str, Any], None, None]:
         yield {}
 
     def upload_file(self, object_name: str, file_stream: FileStorage) -> None:
@@ -47,8 +47,8 @@ class LocalBulkActionFileManager(BulkActionFileManager):
         return f'http://localhost:5004/bulk_action/upload/{object_name}'
 
     def get_bulk_action_file_stream(
-        self, object_name: str, start_row: int = 0, num_rows: Optional[int] = None
-    ) -> Generator[Dict[str, Any], None, None]:
+        self, object_name: str, start_row: int = 0, num_rows: int | None = None
+    ) -> Generator[dict[str, Any], None, None]:
         with open(os.path.join(self.local_dir, object_name), 'r') as f:
             reader = islice(csv.DictReader(f), start_row, start_row + num_rows if num_rows is not None else None)
             for row in reader:
@@ -77,8 +77,8 @@ class GCSBulkActionFileManager(BulkActionFileManager):
         return f'{base_url}/api/bulk_action/upload/{object_name}'
 
     def get_bulk_action_file_stream(
-        self, object_name: str, start_row: int = 0, num_rows: Optional[int] = None
-    ) -> Generator[Dict[str, Any], None, None]:
+        self, object_name: str, start_row: int = 0, num_rows: int | None = None
+    ) -> Generator[dict[str, Any], None, None]:
         blob = self._client.get_bucket(self.bucket_name).get_blob(object_name)
 
         if blob is None:
@@ -95,7 +95,7 @@ class GCSBulkActionFileManager(BulkActionFileManager):
         upload_bulk_action_file_to_gcs(self.bucket_name, self._client, object_name, file_stream)
 
 
-def get_bulk_action_file_manager(environment: Optional[str] = None) -> BulkActionFileManager:
+def get_bulk_action_file_manager(environment: str | None = None) -> BulkActionFileManager:
     if environment is None:
         environment = os.getenv('ENVIRONMENT', 'development')
 

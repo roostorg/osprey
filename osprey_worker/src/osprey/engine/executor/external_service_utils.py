@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
+from collections.abc import Hashable, Sequence
 from datetime import datetime, timedelta
-from typing import Dict, Generic, Hashable, Optional, Sequence, Tuple, TypeVar, cast
+from typing import Generic, TypeVar, cast
 
 from gevent.event import AsyncResult
 from result import Err, Ok, Result
@@ -18,7 +19,7 @@ class ExternalService(ABC, Generic[KeyT, ValueT]):
     def batch_get_from_service(self, keys: Sequence[KeyT]) -> Sequence[Result[ValueT, Exception]]:
         raise NotImplementedError
 
-    def cache_ttl(self) -> Optional[timedelta]:
+    def cache_ttl(self) -> timedelta | None:
         """
         Returns a time to live for items in the cache. By default, KVs are cached indefinitely.
 
@@ -38,10 +39,10 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
 
     def __init__(self, service: ExternalService[KeyT, ValueT]):
         self._service = service
-        # Key -> Tuple[ AsyncResult[ValueT], Expiration datetime ]
-        self._cache: Dict[KeyT, Tuple[AsyncResult[ValueT], Optional[datetime]]] = {}
+        # Key -> tuple[ AsyncResult[ValueT], Expiration datetime ]
+        self._cache: dict[KeyT, tuple[AsyncResult[ValueT], datetime | None]] = {}
 
-    def _is_past_cache_expiration(self, cache_expiration: Optional[datetime]) -> bool:
+    def _is_past_cache_expiration(self, cache_expiration: datetime | None) -> bool:
         """
         Helper method to perform a time check on an optional datetime.
         """
@@ -49,7 +50,7 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
             return False
         return datetime.now() > cache_expiration
 
-    def _get_cache_expiration_datetime(self) -> Optional[datetime]:
+    def _get_cache_expiration_datetime(self) -> datetime | None:
         """
         Helper method to generate an optional cache expiration datetime based on the cache TTL.
         """
@@ -62,7 +63,7 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
         The new value is then used to update the cache entry for subsequent `get` calls.
         """
         # Provide an explicit type annotation for cache_entry.
-        cache_entry: Tuple[AsyncResult[ValueT], Optional[datetime]] = (
+        cache_entry: tuple[AsyncResult[ValueT], datetime | None] = (
             AsyncResult(),
             self._get_cache_expiration_datetime(),
         )

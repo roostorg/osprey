@@ -1,5 +1,3 @@
-from typing import List
-
 import pytest
 from osprey.engine.conftest import ExecuteFunction
 from osprey.engine.executor.execution_context import ExecutionContext
@@ -13,12 +11,12 @@ from osprey.engine.udf.registry import UDFRegistry
 class Arguments(ArgumentsBase):
     # this is checkign that the arguments are hashable
     message: str = ''
-    some_list: List[str] = []
+    some_list: list[str] = []
 
 
 class CountingService(ExternalService[Arguments, int]):
     def __init__(self) -> None:
-        self.calls: List[Arguments] = []
+        self.calls: list[Arguments] = []
 
     def get_from_service(self, key: Arguments) -> int:
         self.calls.append(key)

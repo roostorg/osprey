@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any
 
 from osprey.engine.ast.grammar import ASTNode, Call
 
@@ -37,7 +37,7 @@ class CallExecutor(BaseNodeExecutor[Call, Any]):
         result = self._udf.execute(execution_context, resolved_arguments)
         return self._udf.check_result_type(result)
 
-    def get_dependent_nodes(self) -> List[ASTNode]:
+    def get_dependent_nodes(self) -> list[ASTNode]:
         return list(self.dependent_node_dict.values())
 
     @property

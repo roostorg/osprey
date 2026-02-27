@@ -1,6 +1,7 @@
 import os
 import textwrap
-from typing import TYPE_CHECKING, Callable, Iterator
+from collections.abc import Callable, Iterator
+from typing import TYPE_CHECKING
 
 import pytest
 from flask import Flask

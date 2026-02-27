@@ -1,6 +1,7 @@
 from abc import abstractmethod
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Generic, Iterable, List, Self
+from typing import Generic, Self
 
 from osprey.engine.executor.custom_extracted_features import (
     CustomExtractedFeature,
@@ -16,10 +17,10 @@ class EffectBase:
 
     Effects are outcomes of `WhenRules` blocks, and are appended to the `ExecutionResult.effects`.
     They can also be automatically serialized into a custom extracted feature (`ExecutionResult.extracted_features`)
-    if they implement the `ListToCustomExtractedFeature[SerializableT]` protocol, i.e. implement a class method with spec:
+    if they implement the `listToCustomExtractedFeature[SerializableT]` protocol, i.e. implement a class method with spec:
     ```python
     @classmethod
-    def build_custom_extracted_feature_from_list(cls, values: List[Self]) -> CustomExtractedFeature[SerializableT]:
+    def build_custom_extracted_feature_from_list(cls, values: list[Self]) -> CustomExtractedFeature[SerializableT]:
         ...
     ```
 
@@ -30,7 +31,7 @@ class EffectBase:
       - Used in :class:`osprey_engine.packages.osprey_stdlib.udfs.labels.LabelAdd` and :class:`osprey_engine.packages.osprey_stdlib.udfs.labels.LabelRemove`
     """
 
-    rules: List[RuleT] = field(default_factory=list)
+    rules: list[RuleT] = field(default_factory=list)
     """
     The rules that caused this effect to be emitted.
     These are appended automatically during WhenRules execution.
@@ -53,7 +54,7 @@ class EffectToCustomExtractedFeatureBase(EffectBase, Generic[SerializableT]):
 
     @classmethod
     @abstractmethod
-    def build_custom_extracted_feature_from_list(cls, values: List[Self]) -> CustomExtractedFeature[SerializableT]:
+    def build_custom_extracted_feature_from_list(cls, values: list[Self]) -> CustomExtractedFeature[SerializableT]:
         """
         This method should return a custom extracted feature from a list of its own type.
         It will be called by the executor to build the custom extracted feature to represent the effect

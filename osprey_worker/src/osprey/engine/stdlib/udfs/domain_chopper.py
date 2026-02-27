@@ -1,4 +1,4 @@
-from typing import List, cast
+from typing import cast
 
 from osprey.engine.executor.execution_context import ExpectedUdfException
 from tld import get_tld
@@ -8,11 +8,11 @@ from .categories import UdfCategories
 
 
 class DomainChopperArguments(ArgumentsBase):
-    urls: List[str]
+    urls: list[str]
     fld: ConstExpr[bool] = ConstExpr.for_default('fld', False)
 
 
-class DomainChopper(UDFBase[DomainChopperArguments, List[str]]):
+class DomainChopper(UDFBase[DomainChopperArguments, list[str]]):
     """Parses an list of valid URLs or Domains and returns a requested
     formatting of the Domains or URLs within, chopping the rest."""
 
@@ -40,7 +40,7 @@ class DomainChopper(UDFBase[DomainChopperArguments, List[str]]):
         # return fld for given domain
         return normalized_domain
 
-    def execute(self, execution_context: ExecutionContext, arguments: DomainChopperArguments) -> List[str]:
+    def execute(self, execution_context: ExecutionContext, arguments: DomainChopperArguments) -> list[str]:
         normalized_result = []
 
         # for list of domains parse out and return the fld + tld only

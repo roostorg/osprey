@@ -1,7 +1,8 @@
 import datetime
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, List, Self, Sequence, Tuple
+from typing import Any, Self, Tuple
 from unittest.mock import Mock, patch
 
 from osprey.engine.executor.custom_extracted_features import (
@@ -45,24 +46,24 @@ def test_default_custom_extracted_features():
 
 
 @dataclass
-class TestEffect(EffectToCustomExtractedFeatureBase[List[str]]):
+class TestEffect(EffectToCustomExtractedFeatureBase[list[str]]):
     value: str
 
     @classmethod
-    def build_custom_extracted_feature_from_list(cls, values: List[Self]) -> CustomExtractedFeature[List[str]]:
+    def build_custom_extracted_feature_from_list(cls, values: list[Self]) -> CustomExtractedFeature[list[str]]:
         # isinstance check just helps with typing. it shouldnt be possible for it to fail cuz Self type
         return TestEffectsExtractedFeature(values=[value for value in values if isinstance(value, TestEffect)])
 
 
 @dataclass
-class TestEffectsExtractedFeature(CustomExtractedFeature[List[str]]):
-    values: List[TestEffect]
+class TestEffectsExtractedFeature(CustomExtractedFeature[list[str]]):
+    values: list[TestEffect]
 
     @classmethod
     def feature_name(cls) -> str:
         return 'test_effects'
 
-    def get_serializable_feature(self) -> List[str] | None:
+    def get_serializable_feature(self) -> list[str] | None:
         return [value.value for value in self.values]
 
 

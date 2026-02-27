@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any, List, Optional, Self, cast
+from typing import Any, Self, cast
 
 from osprey.engine.executor.custom_extracted_features import CustomExtractedFeature
 from osprey.engine.language_types.effects import EffectToCustomExtractedFeatureBase
@@ -16,7 +16,7 @@ from .rules import RuleT, add_slots
 
 @add_slots
 @dataclass
-class LabelEffect(EffectToCustomExtractedFeatureBase[List[str]]):
+class LabelEffect(EffectToCustomExtractedFeatureBase[list[str]]):
     """Stores a label effect of a WhenRules(...) invocation, which stores the label mutations that should occur once
     a given action has finished classification."""
 
@@ -29,13 +29,13 @@ class LabelEffect(EffectToCustomExtractedFeatureBase[List[str]]):
     name: str
     """The name of the label to apply."""
 
-    expires_after: Optional[timedelta] = None
+    expires_after: timedelta | None = None
     """If set, the label effect has a timed expiration, which means that the reason will expire after this time."""
 
-    delay_action_by: Optional[timedelta] = None
+    delay_action_by: timedelta | None = None
     """Osprey can be configured to respond to this duration downstream to delay when a label is applied and/or causes an effect"""
 
-    dependent_rule: Optional[RuleT] = None
+    dependent_rule: RuleT | None = None
     """If set, the effect will only be applied if the dependent rule evaluates to true."""
 
     suppressed: bool = False
@@ -45,14 +45,14 @@ class LabelEffect(EffectToCustomExtractedFeatureBase[List[str]]):
         return ENTITY_LABEL_MUTATION_DIMENSION_VALUE(self.entity.type, self.name, self.status)
 
     @classmethod
-    def build_custom_extracted_feature_from_list(cls, values: List[Self]) -> CustomExtractedFeature[List[str]]:
-        return LabelEffectsExtractedFeature(effects=cast(List[LabelEffect], values))
+    def build_custom_extracted_feature_from_list(cls, values: list[Self]) -> CustomExtractedFeature[list[str]]:
+        return LabelEffectsExtractedFeature(effects=cast(list[LabelEffect], values))
 
 
 @add_slots
 @dataclass
-class LabelEffectsExtractedFeature(CustomExtractedFeature[List[str]]):
-    effects: List[LabelEffect]
+class LabelEffectsExtractedFeature(CustomExtractedFeature[list[str]]):
+    effects: list[LabelEffect]
 
     @classmethod
     def feature_name(cls) -> str:
@@ -62,5 +62,5 @@ class LabelEffectsExtractedFeature(CustomExtractedFeature[List[str]]):
             else ENTITY_LABEL_MUTATION_DIMENSION_NAME
         )
 
-    def get_serializable_feature(self) -> List[str] | None:
+    def get_serializable_feature(self) -> list[str] | None:
         return [effect.to_str() for effect in self.effects]

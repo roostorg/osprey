@@ -1,7 +1,8 @@
 import inspect
 import textwrap
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Generic, Optional, Sequence, Tuple, Type, TypeVar, cast
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Type, TypeVar, cast
 
 import typing_inspect
 from osprey.engine.executor.execution_context import ExecutionContext
@@ -25,10 +26,10 @@ NoneType = type(None)
 
 class MethodSpec(BaseModel):
     name: str
-    doc: Optional[str]
+    doc: str | None
     argument_specs: Sequence[ArgumentSpec]
     return_type: str
-    category: Optional[str]
+    category: str | None
 
     def stub(self) -> str:
         arg_declarations = ', '.join(arg.declaration() for arg in self.argument_specs)
@@ -69,7 +70,7 @@ class UDFBase(Generic[Arguments, RValue], ABC):
       generic functions:
         - **With a *generic* arguments class.** In this case, the arguments class must have at least one item
           (eg one kwarg) that is generic, and that item's type must be just the TypeVar or a simple wrapper around
-          the TypeVar that has one parameter (i.e. Optional[T] and List[T] are okay, but not Dict[T, T]). We infer the
+          the TypeVar that has one parameter (i.e. T | None and list[T] are okay, but not dict[T, T]). We infer the
           value of the TypeVar to determine the return type of the function statically (more on returns below).
         - **With a *non-generic* arguments class.** In this case, we have no way to statically determine the return
           type, so we treat it as a dynamic return type. The function must be assigned to a type-annotated variable,
@@ -77,7 +78,7 @@ class UDFBase(Generic[Arguments, RValue], ABC):
 
         In either case, all generic functions must have a generic return type (otherwise why is it generic?). Both the
         UDF classes and Arguments classes must inherit from `OspreyInvariantGeneric`, not the plain `typing.Generic`,
-        though the return type may inherit from `typing.Generic` (eg `Optional[T]`) or even just be a plain `TypeVar`
+        though the return type may inherit from `typing.Generic` (eg `T | None`) or even just be a plain `TypeVar`
         (eg `T`).
 
         These restrictions are verified by a combination of getters on `UDFBase` and `ArgumentsBase` and extra
@@ -89,12 +90,12 @@ class UDFBase(Generic[Arguments, RValue], ABC):
     the `execute_async` field in `BaseNodeExecutor`.
     """
 
-    category: ClassVar[Optional[str]] = None
+    category: ClassVar[str | None] = None
     """If present, a string name for what category this UDF falls into. Can be used for, say, grouping UDFs
     in documentation."""
 
     def __init__(self, validation_context: 'ValidationContext', arguments: Arguments):
-        self._rvalue_type_checker: Optional[RValueTypeChecker] = None
+        self._rvalue_type_checker: RValueTypeChecker | None = None
 
     def resolve_arguments(self, execution_context: ExecutionContext, call_executor: 'CallExecutor') -> Arguments:
         """Resolves the arguments once all dependent nodes have completed execution. The return value of this function
@@ -115,7 +116,7 @@ class UDFBase(Generic[Arguments, RValue], ABC):
         raise NotImplementedError
 
     @classmethod
-    def _get_udf_base_args(cls) -> Tuple[type, ...]:
+    def _get_udf_base_args(cls) -> tuple[type, ...]:
         for base in cls.__mro__:
             for generic_base in typing_inspect.get_generic_bases(base):
                 if typing_inspect.get_origin(generic_base) in (UDFBase, BatchableUDFBase, QueryUdfBase):
@@ -155,8 +156,8 @@ class UDFBase(Generic[Arguments, RValue], ABC):
         """Get the concrete return type, using the given resolved type to fill in the generic return.
 
         If the UDF returns a `TypeVar` (eg `T`) then this will just return the given resolved type. If the UDF
-        returns a generic type (eg `List[Optional[T]]`) then this will return that type with the given type inserted
-        into if (eg `List[Optional[str]]` if `resolved_generic_type` were `str`).
+        returns a generic type (eg `list[T | None]`) then this will return that type with the given type inserted
+        into if (eg `list[str | None] if `resolved_generic_type` were `str`).
 
         Asserts that the UDF is generic.
         """
@@ -168,10 +169,10 @@ class UDFBase(Generic[Arguments, RValue], ABC):
             # The return type is just the bare typevar, so return the resolved typevar
             return resolved_typevar_type
         else:
-            # If the type var is nested within another type (e.g. List[T]), then we perform typevar substitution
+            # If the type var is nested within another type (e.g. list[T]), then we perform typevar substitution
             return cls.get_rvalue_type()[resolved_typevar_type]  # type: ignore # Runtime typing
 
-    def get_resolved_rvalue_type(self, resolved_typevar_type: Optional[type]) -> type:
+    def get_resolved_rvalue_type(self, resolved_typevar_type: type | None) -> type:
         if self.has_dynamic_result():
             assert resolved_typevar_type is None, 'Should not have resolved generic type with dynamic result'
             assert self._rvalue_type_checker is not None, (
@@ -257,7 +258,7 @@ class QueryUdfBase(Generic[Arguments, RValue], UDFBase[Arguments, RValue]):
         raise NotImplementedError
 
     @abstractmethod
-    def to_druid_query(self) -> Dict[str, object]:
+    def to_druid_query(self) -> dict[str, object]:
         raise NotImplementedError
 
 

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import collections
 import logging
 import weakref
+from collections import deque
+from collections.abc import Callable
 from random import choice, randint, uniform
 from time import time
-from typing import TYPE_CHECKING, Callable, Deque, Dict, List, Optional, Union
+from typing import TYPE_CHECKING
 
 import gevent
 import six
@@ -36,11 +37,11 @@ ListenerFn = Callable[[Literal['UP', 'DOWN'], Service], None]
 
 class ServiceWrapper:
     service: Service
-    visible_at: Optional[float]
+    visible_at: float | None
 
     __slots__ = ('service', 'visible_at')
 
-    def __init__(self, service: Service, visible_at: Optional[float]) -> None:
+    def __init__(self, service: Service, visible_at: float | None) -> None:
         self.service = service
         self.visible_at = visible_at
 
@@ -74,12 +75,12 @@ class ServiceWatcher:
 
         self._lock = RLock()
 
-        self._instances: Dict[str, ServiceWrapper] = {}
-        self._rotation: Deque[str] = collections.deque()
+        self._instances: dict[str, ServiceWrapper] = {}
+        self._rotation: deque[str] = deque()
         self._ring = ring
 
         self._listeners: weakref.WeakSet[ListenerFn] = weakref.WeakSet()
-        self._watcher_greenlet: Optional[gevent.Greenlet] = None
+        self._watcher_greenlet: gevent.Greenlet | None = None
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__}: {self.key}>'
@@ -101,7 +102,7 @@ class ServiceWatcher:
 
     def select(
         self,
-        selector: Union[SelectorFunctionType, str, int, None] = None,
+        selector: SelectorFunctionType | str | int | None = None,
         secondaries: int = DEFAULT_SECONDARIES,
         instances_to_skip: int = DEFAULT_INSTANCES_TO_SKIP,
         tolerate_draining: bool = False,
@@ -136,7 +137,7 @@ class ServiceWatcher:
                 members = [members]
             for member in members[instances_to_skip:]:
                 # mypy limitations mean we can not re-use the variable name `service` in the else block
-                maybe_service: Optional[ServiceWrapper] = self._instances.get(six.ensure_str(member))
+                maybe_service: ServiceWrapper | None = self._instances.get(six.ensure_str(member))
                 if maybe_service and (tolerate_draining or not maybe_service.is_draining()):
                     return maybe_service.service
 
@@ -146,10 +147,10 @@ class ServiceWatcher:
 
     def select_all(
         self,
-        selector: Optional[SelectorFunctionType] = None,
+        selector: SelectorFunctionType | None = None,
         include_not_yet_visible: bool = False,
         tolerate_draining: bool = False,
-    ) -> List[Service]:
+    ) -> list[Service]:
         """Selects all instances of a service based on a selector."""
         self.ensure_watching()
 

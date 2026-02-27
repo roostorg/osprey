@@ -1,5 +1,6 @@
 import operator
-from typing import TYPE_CHECKING, Any, Callable, List, Mapping, Type
+from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING, Any, Type
 
 from osprey.engine.ast.grammar import ASTNode, Not, UnaryOperation, UnaryOperator, USub
 
@@ -24,7 +25,7 @@ class UnaryOperationExecutor(BaseNodeExecutor[UnaryOperation, Any]):
         operand = execution_context.resolved(self._node.operand)
         return self.operator(operand)
 
-    def get_dependent_nodes(self) -> List[ASTNode]:
+    def get_dependent_nodes(self) -> list[ASTNode]:
         return [self._node.operand]
 
 

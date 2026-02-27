@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, TypeVar, Union
+from typing import Any, TypeVar
 
 import pytest
 from osprey.engine.language_types.entities import EntityT
@@ -12,10 +12,10 @@ from osprey.engine.udf.type_helpers import UnsupportedTypeError, get_typevar_sub
         (str, '`str`'),
         (None, '`None`'),
         (type(None), '`None`'),
-        (Optional[str], '`Optional[str]`'),
-        (Union[str, None], '`Optional[str]`'),
-        (Union[str, int], '`Union[str, int]`'),
-        (List[Any], '`List[Any]`'),
+        (str | None, '`str | None`'),
+        (str | None, '`str | None`'),
+        (str | int, '`str | int`'),
+        (list[Any], '`list[Any]`'),
         (ConstExpr[str], '`ConstExpr[str]`'),
         (EntityT, '`Entity`'),
     ],
@@ -32,11 +32,11 @@ _T2 = TypeVar('_T2')
     'generic_type, resolved_type, expected_typevar_type',
     [
         (_T, str, str),
-        (_T, List[str], List[str]),
-        (Optional[_T], Optional[int], int),
-        (List[_T], List[bool], bool),  # type: ignore[valid-type]
-        (Optional[_T], Optional[Any], Any),
-        (Optional[_T], Optional[str], str),
+        (_T, list[str], list[str]),
+        (_T | None, int | None, int),
+        (list[_T], list[bool], bool),  # type: ignore[valid-type]
+        (_T | None, Any | None, Any),
+        (_T | None, str | None, str),
     ],
 )
 def test_get_typevar_substitution(generic_type: type, resolved_type: type, expected_typevar_type: type) -> None:
@@ -46,15 +46,15 @@ def test_get_typevar_substitution(generic_type: type, resolved_type: type, expec
 @pytest.mark.parametrize(
     'generic_type, resolved_type',
     [
-        (_T, Optional[_T]),
-        (Optional[_T], Optional[_T]),
-        (Optional[_T], List[str]),
-        (List[_T], str),  # type: ignore[valid-type]
-        (Dict[str, _T], Dict[int, str]),  # type: ignore[valid-type]
-        (Dict[_T, _T], Dict[str, int]),  # type: ignore[valid-type]
-        (Dict[_T, List[_T]], Dict[str, Optional[str]]),  # type: ignore[valid-type]
-        (Dict[_T, _T2], Dict[str, int]),  # type: ignore[valid-type]
-        (Dict[_T, int], Dict[str, int]),  # type: ignore[valid-type]
+        (_T, _T | None),
+        (_T | None, _T | None),
+        (_T | None, list[str]),
+        (list[_T], str),  # type: ignore[valid-type]
+        (dict[str, _T], dict[int, str]),  # type: ignore[valid-type]
+        (dict[_T, _T], dict[str, int]),  # type: ignore[valid-type]
+        (dict[_T, list[_T]], dict[str, str | None]),  # type: ignore[valid-type]
+        (dict[_T, _T2], dict[str, int]),  # type: ignore[valid-type]
+        (dict[_T, int], dict[str, int]),  # type: ignore[valid-type]
     ],
 )
 def test_get_typevar_substitution_fails(generic_type: type, resolved_type: type) -> None:

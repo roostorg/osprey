@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Any, Dict, Hashable, Iterator, List, Optional, Sequence, Set, TypeVar
+from collections.abc import Hashable, Iterator, Sequence
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from osprey.engine.ast.grammar import Assign, ASTNode, Load, Name, Source, Statement
 from osprey.engine.utils.periodic_execution_yielder import maybe_periodic_yield
@@ -29,10 +30,10 @@ class ExecutionGraph:
         '_nodes_to_unwrap',
     )
 
-    _root_node_executor_mapping: Dict[int, DependencyChain]
+    _root_node_executor_mapping: dict[int, DependencyChain]
     """This is a mapping of the node to its dependency chain. """
 
-    _assignment_executor_mapping: Dict[str, DependencyChain]
+    _assignment_executor_mapping: dict[str, DependencyChain]
     """This is a mapping of an identifier (stored Name), to the dependency chain which would execute it."""
 
     _node_executor_registry: 'NodeExecutorRegistry'
@@ -42,14 +43,14 @@ class ExecutionGraph:
     _validated_sources: 'ValidatedSources'
     """The validated sources that this execution graph was constructed from."""
 
-    _sorted_dependency_chains: Dict[Source, Sequence[DependencyChain]]
+    _sorted_dependency_chains: dict[Source, Sequence[DependencyChain]]
     """A dict of sources to sorted dependency chains."""
 
-    _nodes_to_unwrap: Set[int]
+    _nodes_to_unwrap: set[int]
     """ID's for nodes that need to be unwrapped to its inner type when used."""
 
     def __init__(
-        self, node_executor_registry: 'NodeExecutorRegistry', sources: 'ValidatedSources', nodes_to_unwrap: Set[int]
+        self, node_executor_registry: 'NodeExecutorRegistry', sources: 'ValidatedSources', nodes_to_unwrap: set[int]
     ):
         self._root_node_executor_mapping = {}
         self._assignment_executor_mapping = {}
@@ -109,7 +110,7 @@ class ExecutionGraph:
 
 
 def compile_execution_graph(
-    validated_sources: 'ValidatedSources', node_executor_registry: Optional['NodeExecutorRegistry'] = None
+    validated_sources: 'ValidatedSources', node_executor_registry: 'NodeExecutorRegistry' | None = None
 ) -> ExecutionGraph:
     """Given a validated sources collection, compiles it into an execution graph that can then be used by
     the executor."""
@@ -126,14 +127,14 @@ def compile_execution_graph(
     except KeyError:
         sorted_sources = []
     try:
-        nodes_to_unwrap: Set[int] = validated_sources.get_validator_result(ValidateStaticTypes).nodes_to_unwrap
+        nodes_to_unwrap: set[int] = validated_sources.get_validator_result(ValidateStaticTypes).nodes_to_unwrap
     except KeyError:
         nodes_to_unwrap = set()
 
     instance = ExecutionGraph(
         node_executor_registry=node_executor_registry, sources=validated_sources, nodes_to_unwrap=nodes_to_unwrap
     )
-    ordered_sources: List[Source] = list(chain_dedupe(iter(sorted_sources), iter(validated_sources.sources)))
+    ordered_sources: list[Source] = list(chain_dedupe(iter(sorted_sources), iter(validated_sources.sources)))
 
     for source in ordered_sources:
         # noinspection PyProtectedMember
@@ -150,7 +151,7 @@ def compile_execution_graph(
 
 
 def chain_dedupe(a: Iterator[T], b: Iterator[T]) -> Iterator[T]:
-    seen: Set[T] = set()
+    seen: set[T] = set()
 
     for iterator in (a, b):
         for item in iterator:
@@ -165,7 +166,7 @@ def _topologically_sort_dependency_chain_for(
     execution_graph: ExecutionGraph, source: Source
 ) -> Sequence[DependencyChain]:
     sorted_chain = []
-    visited: Set[DependencyChain] = set()
+    visited: set[DependencyChain] = set()
 
     def do_topological_sort(chain: DependencyChain) -> None:
         for dependency in chain.dependent_on:

@@ -1,4 +1,4 @@
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 from osprey.engine.executor.execution_context import ExpectedUdfException
 from osprey.engine.language_types.osprey_invariant_generic import OspreyInvariantGeneric
@@ -9,12 +9,12 @@ _T = TypeVar('_T')
 
 
 class Arguments(OspreyInvariantGeneric[_T], ArgumentsBase):
-    optional_value: Optional[_T]
+    optional_value: _T | None
     """
     The Optional value to unwrap.
     """
 
-    default_value: Optional[_T] = None
+    default_value: _T | None = None
     """
     The default value to return if the Optional value is missing.
     `should_report_error` is ignored if there is a `default_value` present.

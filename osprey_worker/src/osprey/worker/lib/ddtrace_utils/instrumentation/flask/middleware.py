@@ -2,7 +2,8 @@
 # In order to fix status_code bug
 import re
 import sys
-from typing import Any, Callable, Dict, List, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
 import flask.templating
 from ddtrace import Span, Tracer
@@ -73,13 +74,13 @@ class TraceMiddleware:
         timing_signals = {
             'got_request_exception': self._request_exception,
         }
-        self._receivers: List[Callable[[Any, Any], None]] = []
+        self._receivers: list[Callable[[Any, Any], None]] = []
         if self.use_signals and _signals_exist(timing_signals):
             self._connect(timing_signals)
 
         _patch_render(tracer)
 
-    def _connect(self, signal_to_handler: Dict[str, Callable[[Any, Any], None]]) -> bool:
+    def _connect(self, signal_to_handler: dict[str, Callable[[Any, Any], None]]) -> bool:
         connected = True
         for name, handler in signal_to_handler.items():
             s = getattr(signals, name, None)
@@ -109,7 +110,7 @@ class TraceMiddleware:
             log.debug('flask: error tracing response', exc_info=True)
         return response
 
-    def _teardown_request(self, exception: Optional[Exception]) -> None:
+    def _teardown_request(self, exception: Exception | None) -> None:
         """Runs at the end of a request. If there's an unhandled exception, it
         will be passed in.
         """
@@ -141,9 +142,9 @@ class TraceMiddleware:
             baggage_manager.store_baggage_items(span, baggage, False)
 
             local_baggage = {}
-            dd_service: Optional[str] = request.environ.get('DD_SERVICE')
-            role: Optional[str] = request.environ.get('role')
-            service: Optional[str] = self.app._service or dd_service or role
+            dd_service: str | None = request.environ.get('DD_SERVICE')
+            role: str | None = request.environ.get('role')
+            service: str | None = self.app._service or dd_service or role
 
             if span.name:
                 local_baggage[SpanAttributes.OPERATION] = span.name
@@ -210,7 +211,7 @@ class TraceMiddleware:
         if not (span and span.sampled):
             return
 
-        code: Union[str, int] = response.status_code if response else ''
+        code: str | int = response.status_code if response else ''
         # Sometimes the status code is a good old <enum HTTPStatus.NO_CONTENT: 204> which makes ddtrace barf unless
         # we manually coerce, since it tries to be smart and sets the tag to the string value of the enum, but this
         # makes the trace agent drop the heckin trace.
@@ -227,11 +228,11 @@ class TraceMiddleware:
         if span and exception:
             _set_error_on_span(span, exception)
 
-    def _finish_span(self, span: Span, exception: Optional[Exception] = None) -> None:
+    def _finish_span(self, span: Span, exception: Exception | None = None) -> None:
         if not span or not span.sampled:
             return
 
-        code: Union[int, str] = span.get_tag(http.STATUS_CODE) or 0
+        code: int | str = span.get_tag(http.STATUS_CODE) or 0
         try:
             code = int(code)
         except Exception:
@@ -303,7 +304,7 @@ def _patch_render(tracer: Tracer) -> None:
     flask.templating._render = _traced_render  # type: ignore[attr-defined]
 
 
-def _signals_exist(names: Dict[str, Callable[[Any, Any], None]]) -> bool:
+def _signals_exist(names: dict[str, Callable[[Any, Any], None]]) -> bool:
     """Return true if all of the given signals exist in this version of flask."""
     return all(getattr(signals, n, False) for n in names)
 

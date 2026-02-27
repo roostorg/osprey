@@ -1,6 +1,5 @@
 import logging
 from base64 import b64decode, b64encode
-from typing import Optional, Union
 
 import tink
 from osprey.worker.lib.encryption.base import EncryptionBase
@@ -12,7 +11,7 @@ from tink.proto import tink_pb2
 class Envelope(EncryptionBase):
     associated_data: bytes = b''
     dek_template: tink_pb2.KeyTemplate = aead.aead_key_templates.AES256_GCM
-    keyset_b64: Optional[str] = None  # Optional for local env based aead encryption
+    keyset_b64: str | None = None  # Optional for local env based aead encryption
 
     def __post_init__(self):
         super().__post_init__()
@@ -35,7 +34,7 @@ class Envelope(EncryptionBase):
             self.is_setup = False
             logging.exception('Error initializing Encryption Envelope client: %s', e)
 
-    def encrypt(self, plaintext: Union[str, bytes], base64: bool = True) -> bytes:
+    def encrypt(self, plaintext: str | bytes, base64: bool = True) -> bytes:
         """
         plaintext: the message to encrypt
         base64: base64 encode the encrypted output (useful for json encoding)

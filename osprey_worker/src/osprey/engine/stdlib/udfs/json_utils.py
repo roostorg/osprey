@@ -1,4 +1,4 @@
-from typing import Any, Dict, TypeVar
+from typing import Any, TypeVar
 
 from jsonpath_rw import JSONPath, parse
 from osprey.engine.executor.execution_context import ExpectedUdfException
@@ -45,7 +45,7 @@ _T = TypeVar('_T')
 
 def get_from_data(
     expr: JSONPath,
-    data: Dict[str, object],
+    data: dict[str, object],
     required: bool,
     coerce_type: bool,
     rvalue_type_checker: RValueTypeChecker,

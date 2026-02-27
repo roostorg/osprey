@@ -1,15 +1,13 @@
-from typing import Dict
-
 from osprey.engine.ast.grammar import Assign, Call, FormatString, Source, String
 
 from ..base_validator import HasResult, SourceValidator
 from ..validation_context import ValidationContext
 
 
-class RuleNameToDescriptionMapping(SourceValidator, HasResult[Dict[str, str]]):
+class RuleNameToDescriptionMapping(SourceValidator, HasResult[dict[str, str]]):
     def __init__(self, context: 'ValidationContext'):
         super().__init__(context)
-        self._rule_to_info_mapping: Dict[str, str] = {}
+        self._rule_to_info_mapping: dict[str, str] = {}
 
     def validate_source(self, source: 'Source') -> None:
         for statement in source.ast_root.statements:
@@ -28,5 +26,5 @@ class RuleNameToDescriptionMapping(SourceValidator, HasResult[Dict[str, str]]):
                 elif isinstance(description.value, String):
                     self._rule_to_info_mapping[rule_name] = description.value.value
 
-    def get_result(self) -> Dict[str, str]:
+    def get_result(self) -> dict[str, str]:
         return self._rule_to_info_mapping

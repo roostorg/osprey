@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Generic, List, TypeVar, Union
+from typing import Any, Generic, TypeVar
 
 SerializableT = TypeVar(
-    'SerializableT', bound=Union[str, int, float, bool, None, List[Any], Dict[str, Any]], covariant=True
+    'SerializableT', bound=str | int | float | bool | None | list[Any] | dict[str, Any], covariant=True
 )
 
 

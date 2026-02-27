@@ -1,6 +1,7 @@
 import json
+from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set
+from typing import Any
 
 import gevent
 import pytest
@@ -38,7 +39,7 @@ from osprey.worker.lib.osprey_shared.labels import (
 from osprey.worker.lib.storage.labels import LabelsProvider
 from result import Result
 
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_validators(
         [
             ValidateLabels,
@@ -55,7 +56,7 @@ pytestmark: List[Callable[[Any], Any]] = [
 
 
 class StaticLabelProvider(LabelsProvider):
-    def __init__(self, entity_labels: Dict[EntityT[Any], EntityLabels]) -> None:
+    def __init__(self, entity_labels: dict[EntityT[Any], EntityLabels]) -> None:
         self._entity_labels = entity_labels
 
     def get_from_service(self, key: EntityT[Any]) -> EntityLabels:
@@ -65,16 +66,16 @@ class StaticLabelProvider(LabelsProvider):
         return [Result.Ok(self.get_from_service(key)) for key in keys]
 
     def apply_entity_mutation(
-        self, entity_key: EntityT[Any], mutations: List[EntityLabelMutation]
+        self, entity_key: EntityT[Any], mutations: list[EntityLabelMutation]
     ) -> EntityLabelMutationsResult:
         return self.apply_entity_label_mutations(entity_key, mutations)
 
 
 class BlockingLabelProvider(StaticLabelProvider):
-    def __init__(self, entity_labels: Dict[EntityT[Any], EntityLabels]) -> None:
+    def __init__(self, entity_labels: dict[EntityT[Any], EntityLabels]) -> None:
         super().__init__(entity_labels)
-        self.blocking_events: List[Event] = []
-        self.calls: List[EntityT[Any]] = []
+        self.blocking_events: list[Event] = []
+        self.calls: list[EntityT[Any]] = []
 
     def get_from_service(self, key: EntityT[Any]) -> EntityLabels:
         event = Event()
@@ -86,7 +87,7 @@ class BlockingLabelProvider(StaticLabelProvider):
         return super().get_from_service(key)
 
 
-def source_with_labels_config(source: str, labels: Set[str]) -> Dict[str, str]:
+def source_with_labels_config(source: str, labels: set[str]) -> dict[str, str]:
     config = json.dumps({'labels': {label: {} for label in labels}})
     return {'main.sml': source, 'config.yaml': config}
 
@@ -177,8 +178,8 @@ def source_with_labels_config(source: str, labels: Set[str]) -> Dict[str, str]:
 def test_get_labels_retrieves_data(
     execute: ExecuteFunction,
     checking_status: str,
-    manual: Optional[bool],
-    actual_status: Optional[LabelStatus],
+    manual: bool | None,
+    actual_status: LabelStatus | None,
     reasons: LabelReasons,
     result: bool,
 ) -> None:
@@ -228,8 +229,8 @@ def test_get_labels_retrieves_data(
 def test_get_labels_retrieves_data_added_after(
     execute: ExecuteFunction,
     checking_status: str,
-    manual: Optional[bool],
-    actual_status: Optional[LabelStatus],
+    manual: bool | None,
+    actual_status: LabelStatus | None,
     reasons: LabelReasons,
     min_label_age: timedelta,
     result: bool,
@@ -510,7 +511,7 @@ def test_label_effects_are_exported_to_extracted_features_multi_rule_add_and_rem
     execute_with_result: ExecuteWithResultFunction,
     entity_type: str,
     label_name: str,
-    entity_label_mutation: List[str],
+    entity_label_mutation: list[str],
 ) -> None:
     result = execute_with_result(
         {
@@ -556,7 +557,7 @@ def test_label_effects_are_exported_to_extracted_features_multi_add(
     execute_with_result: ExecuteWithResultFunction,
     entity_type: str,
     label_name: str,
-    entity_label_mutation: List[str],
+    entity_label_mutation: list[str],
 ) -> None:
     result = execute_with_result(
         {

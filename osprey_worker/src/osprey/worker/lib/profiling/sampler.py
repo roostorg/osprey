@@ -4,14 +4,13 @@ import atexit
 import logging
 import signal
 import types
-from typing import Optional
 
 from flask import request
 
 from .feature import current_features
 from .pyroscope_reporter import Reporter, StackTrace
 
-sampler: Optional[Sampler] = None
+sampler: Sampler | None = None
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +39,7 @@ class Sampler(object):
         self._reporter.start()
         atexit.register(self.stop)
 
-    def _get_current_feature(self) -> Optional[str]:
+    def _get_current_feature(self) -> str | None:
         """Get the current features from tiering library."""
         features = current_features()
         if not features:
@@ -49,14 +48,14 @@ class Sampler(object):
         # TODO: decide how to handle multiple features
         return features[0].value
 
-    def _get_current_endpoint(self) -> Optional[str]:
+    def _get_current_endpoint(self) -> str | None:
         """Get the current endpoint from the request."""
         try:
             return request.endpoint
         except Exception:
             return None
 
-    def _sample(self, _signum: int, frame: Optional[types.FrameType]) -> None:
+    def _sample(self, _signum: int, frame: types.FrameType | None) -> None:
         if frame:
             feature = self._get_current_feature()
             endpoint = self._get_current_endpoint()

@@ -3,7 +3,8 @@ import binascii
 import functools
 import hashlib
 import json
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
+from collections.abc import Callable
+from typing import Any, TypeVar
 from urllib.parse import urlparse
 
 from Crypto.Hash import SHA256
@@ -26,11 +27,11 @@ class Signer:
         self._key_id = _get_key_id(key)
         self._dss_sig_scheme = _dss_sig_scheme(key)
 
-    def sign(self, message: bytes) -> Dict[str, Union[str, bytes]]:
+    def sign(self, message: bytes) -> dict[str, str | bytes]:
         signature = base64.b64encode(self._dss_sig_scheme.sign(SHA256.new(data=message)))
         return {self._key_id_header: self._key_id, self._signature_header: signature}
 
-    def sign_url(self, url: str, normalize: bool = True) -> Dict[str, Union[str, bytes]]:
+    def sign_url(self, url: str, normalize: bool = True) -> dict[str, str | bytes]:
         """
         `normalize` will normalize the URL to look like Flask's Request.full_path.
         When calling `verify_request_path`, `use_full_path` should be `True` if `normalize` is also `True` when signing.
@@ -57,10 +58,10 @@ def _get_key_id(key: ECC.EccKey) -> str:
 
 
 class PublicKeyGetterFunction(Protocol):
-    def __call__(self, key_id: str) -> Optional[ECC.EccKey]: ...
+    def __call__(self, key_id: str) -> ECC.EccKey | None: ...
 
 
-# Would be great to be able to actually assert that this thing can take a `request_data: Dict[str, object]`,
+# Would be great to be able to actually assert that this thing can take a `request_data: dict[str, object]`,
 # but mypy isn't great at modifying function types.
 WithRequestDataFunction = Callable[..., Any]
 FuncT = TypeVar('FuncT', bound=Callable[..., Any])
@@ -70,7 +71,7 @@ def verify_request_data(
     public_key_getter: PublicKeyGetterFunction,
     key_id_header: str,
     key_signature_header: str,
-    allowed_methods: Optional[List[str]] = None,
+    allowed_methods: list[str] | None = None,
 ) -> Callable[[WithRequestDataFunction], Callable[..., Any]]:
     """
     Wraps a view, verifying the request.data against a key signature using the same method as github,
@@ -109,7 +110,7 @@ def verify_request_path(
     key_id_header: str,
     key_signature_header: str,
     use_full_path: bool = True,
-    allowed_methods: Optional[List[str]] = None,
+    allowed_methods: list[str] | None = None,
 ) -> Callable[[FuncT], FuncT]:
     """
     Wraps a view, verifying the path and querystring parameters against a key signature. This is similar to
