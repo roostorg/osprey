@@ -44,12 +44,14 @@ common = [
     "graphviz==0.20",
     "greenlet",
     "grpc-google-iam-v1==0.14.2",
-    "grpcio==1.49.1; platform_machine == 'x86_64'",  # Normal dependency for production
-    "grpcio==1.53.*; platform_machine == 'aarch64'", # Only install on ARM64 architecture for local development on MacOS
+    "grpcio==1.49.1; platform_machine == 'x86_64'",
+    "grpcio==1.53.*; platform_machine != 'x86_64'",
     "grpcio-health-checking==1.44.0",
     "grpcio-reflection==1.44.0",
-    "grpcio-status==1.49.1",
-    "grpcio-tools==1.49.1",
+    "grpcio-status==1.49.1; platform_machine == 'x86_64'",
+    "grpcio-status==1.53.*; platform_machine != 'x86_64'",
+    "grpcio-tools==1.49.1; platform_machine == 'x86_64'",
+    "grpcio-tools==1.53.*; platform_machine != 'x86_64'",
     "gunicorn",
     "hash-ring",
     "httplib2==0.22.0",
