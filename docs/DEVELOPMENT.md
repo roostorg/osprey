@@ -162,7 +162,7 @@ Before cutting a release:
 
 1. Ensure the checklist above is satisfied.
 2. In GitHub: **Releases** → **Draft a new release**.
-3. Choose or create a tag `vX.Y.Z` (e.g. `v1.0.1`) from `main`.
+3. Choose or create a tag `X.Y.Z` (e.g. `1.0.1`) from `main`.
 4. Publish the release.
 
 Publishing the release triggers existing automation:
@@ -170,7 +170,7 @@ Publishing the release triggers existing automation:
 - **osprey-rpc**: build and attach sdist (and zip) to the release ([release-osprey-rpc](https://github.com/roostorg/osprey/blob/main/.github/workflows/release-osprey-rpc.yml)).
 - **Osprey Coordinator**: build and push Docker image to GHCR with version tags ([publish-coordinator-image](https://github.com/roostorg/osprey/blob/main/.github/workflows/publish-coordinator-image.yml)).
 
-Downstreams can depend on version tags (e.g. `v1.0.1`) instead of commit SHAs.
+Downstreams can depend on version tags (e.g. `1.0.1`) instead of commit SHAs.
 
 ## Test Data
 
