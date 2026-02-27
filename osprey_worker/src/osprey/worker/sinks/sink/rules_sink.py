@@ -7,7 +7,7 @@ from typing import Optional
 import gevent
 import sentry_sdk
 from ddtrace import tracer
-from ddtrace.span import Span as TracerSpan
+from ddtrace.trace import Span as TracerSpan
 from osprey.engine.executor.execution_context import Action, ExecutionResult
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.utils.types import add_slots
