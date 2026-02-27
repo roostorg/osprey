@@ -1,11 +1,9 @@
 # CODEOWNERS file for managing repository permissions
 # Format: path-pattern @username @org/team-name
 
-# Maintainers; see https://roostorg.github.io/community/roles.html#maintainers
-* @EXBreder @haileyok @vinaysrao1
-
-# Other trusted contributors
-* @roostorg/roosters @roostorg/discord
+# Maintainers, plus ROOST-maintained teams of other trusted contributors
+# See https://roostorg.github.io/community/roles.html#maintainers
+* @EXBreder @haileyok @vinaysrao1 @roostorg/roosters @roostorg/discord
 
 # Docs contributors
 docs/ @roostorg/roosters
