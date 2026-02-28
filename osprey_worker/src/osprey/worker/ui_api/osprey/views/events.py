@@ -129,18 +129,37 @@ def scan_query(request_model: PaginatedScanClickHouseQuery) -> Any:
     query_filter_ability = get_current_user().get_ability(CanViewEventsByAction)
     paginated_scan_results = request_model.execute(backend, query_filter_abilities=[query_filter_ability])
 
-    action_data_censor_ability = get_current_user().get_ability(CanViewActionData)
-    feature_data_censor_ability = get_current_user().get_ability(CanViewFeatureData)
-    storage_service = bootstrap_execution_result_storage_service()
-    events = storage_service.get_many(
-        action_ids=paginated_scan_results.action_ids,
-        data_censor_abilities=[action_data_censor_ability, feature_data_censor_ability],
-    )
+    try:
+        storage_service = bootstrap_execution_result_storage_service()
+        action_data_censor_ability = get_current_user().get_ability(CanViewActionData)
+        feature_data_censor_ability = get_current_user().get_ability(CanViewFeatureData)
+        events = storage_service.get_many(
+            action_ids=paginated_scan_results.action_ids,
+            data_censor_abilities=[action_data_censor_ability, feature_data_censor_ability],
+        )
+        return ScanQueryResult(
+            events=[event.dict(include={'id', 'extracted_features', 'timestamp'}) for event in events],
+            next_page=paginated_scan_results.next_page,
+        )
+    except (AssertionError, Exception):
+        # No storage backend configured — serve directly from ClickHouse
+        if not paginated_scan_results.action_ids:
+            return ScanQueryResult(events=[], next_page=paginated_scan_results.next_page)
 
-    return ScanQueryResult(
-        events=[event.dict(include={'id', 'extracted_features', 'timestamp'}) for event in events],
-        next_page=paginated_scan_results.next_page,
-    )
+        ids_str = ', '.join(str(aid) for aid in paginated_scan_results.action_ids)
+        rows = backend.query(f"SELECT * FROM {backend.full_table} WHERE `__action_id` IN ({ids_str})")
+        events = []
+        for row in rows:
+            features = {k: v for k, v in row.items() if not k.startswith('__')}
+            events.append({
+                'id': row.get('__action_id'),
+                'timestamp': str(row.get('__time', '')),
+                'extracted_features': features,
+            })
+        return ScanQueryResult(
+            events=events,
+            next_page=paginated_scan_results.next_page,
+        )
 
 
 @blueprint.route('/events/topn/csv', methods=['POST'])

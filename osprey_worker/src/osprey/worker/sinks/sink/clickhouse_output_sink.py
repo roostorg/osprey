@@ -42,6 +42,7 @@ class ClickHouseOutputSink(BaseOutputSink):
         self._database = database
         self._batch_size = batch_size
         self._buffer: list[dict[str, Any]] = []
+        logger.info(f'ClickHouseOutputSink initialized: {database}.{table} (batch_size={batch_size})')
 
     def will_do_work(self, result: ExecutionResult) -> bool:
         return True
@@ -50,11 +51,26 @@ class ClickHouseOutputSink(BaseOutputSink):
         try:
             features = json.loads(result.extracted_features_json)
 
-            row = {
+            row: dict[str, Any] = {
                 '__time': result.action.timestamp.isoformat(),
                 '__action_id': result.action.action_id,
-                **features,
             }
+
+            # Add features, skipping internal __ fields already handled above
+            for key, val in features.items():
+                if key.startswith('__'):
+                    continue
+                if isinstance(val, (list, dict)):
+                    row[key] = json.dumps(val)
+                elif val is None:
+                    row[key] = ''
+                else:
+                    row[key] = val
+
+            # Persist entity label mutations from features
+            label_mutations = features.get('__entity_label_mutations')
+            if label_mutations:
+                row['__entity_label_mutations'] = json.dumps(label_mutations) if isinstance(label_mutations, list) else str(label_mutations)
 
             # Add verdict info if present
             if result.verdicts:
@@ -63,7 +79,8 @@ class ClickHouseOutputSink(BaseOutputSink):
             # Add rule hit info from validator_results
             if result.validator_results:
                 row['__rule_hits'] = json.dumps(
-                    {name: bool(val) for name, val in result.validator_results.items() if val is not None}
+                    {str(getattr(name, '__name__', name)): bool(val)
+                     for name, val in result.validator_results.items() if val is not None}
                 )
 
             self._buffer.append(row)
@@ -79,15 +96,20 @@ class ClickHouseOutputSink(BaseOutputSink):
         if not self._buffer:
             return
 
+        rows_to_flush = len(self._buffer)
         try:
+            # clickhouse-connect requires column_names + list-of-lists, not dicts
+            column_names = list(self._buffer[0].keys())
+            data = [list(row.get(col, '') for col in column_names) for row in self._buffer]
             self._client.insert(
                 f'{self._database}.{self._table}',
-                data=self._buffer,
+                data=data,
+                column_names=column_names,
                 column_oriented=False,
             )
-            logger.debug(f'Flushed {len(self._buffer)} rows to ClickHouse')
+            logger.info(f'Flushed {rows_to_flush} rows to ClickHouse')
         except Exception as e:
-            logger.error(f'ClickHouse flush error ({len(self._buffer)} rows): {e}')
+            logger.error(f'ClickHouse flush error ({rows_to_flush} rows): {e}')
             sentry_sdk.capture_exception(error=e)
         finally:
             self._buffer.clear()

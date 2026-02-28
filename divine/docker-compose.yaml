@@ -60,8 +60,11 @@ services:
     ports:
       - "127.0.0.1:8123:8123"   # HTTP
       - "127.0.0.1:9000:9000"   # Native
+    environment:
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     volumes:
       - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse-users.xml:/etc/clickhouse-server/users.d/divine-access.xml:ro
     ulimits:
       nofile:
         soft: 262144
@@ -218,6 +221,11 @@ services:
       - OSPREY_DISABLE_VALIDATION_EXPORTER=true
       - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
       - SNOWFLAKE_EPOCH=1420070400000
+      # ClickHouse (query backend)
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=8123
+      - CLICKHOUSE_DATABASE=osprey
+      - CLICKHOUSE_TABLE=osprey_events
 
   # ── Osprey UI ────────────────────────────────────────────────────────
   osprey-ui:
@@ -248,5 +256,5 @@ services:
     environment:
       - RELAY_URL=${RELAY_URL:-wss://relay.divine.video}
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - KAFKA_TOPIC=nostr-events
+      - KAFKA_TOPIC=osprey.actions_input
     restart: unless-stopped

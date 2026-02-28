@@ -10,15 +10,33 @@ CREATE TABLE IF NOT EXISTS osprey.osprey_events
     `__verdicts`   String DEFAULT '',
     `__rule_hits`  String DEFAULT '',
 
-    -- Dynamic features from rule execution are stored as JSON string columns.
-    -- ClickHouse 23.1+ supports JSON type; for older versions, use String
-    -- and extract with JSON functions at query time.
-    --
-    -- Common Nostr event fields (pre-defined for query performance):
+    -- Common fields
     `EventType`    LowCardinality(String) DEFAULT '',
     `UserId`       String DEFAULT '',
     `Handle`       String DEFAULT '',
     `ActionName`   LowCardinality(String) DEFAULT '',
+
+    -- Nostr event fields
+    `EventId`              String DEFAULT '',
+    `Pubkey`               String DEFAULT '',
+    `Kind`                 Int32 DEFAULT 0,
+    `CreatedAt`            Int64 DEFAULT 0,
+    `Content`              String DEFAULT '',
+    `Tags`                 String DEFAULT '[]',
+    `NoteText`             String DEFAULT '',
+    `MentionedPubkeys`     String DEFAULT '[]',
+    `ReportedEventId`      String DEFAULT '',
+    `ReportedPubkey`       String DEFAULT '',
+    `ReportReason`         String DEFAULT '',
+
+    -- Rule results (boolean features)
+    `NewAccountSpam`       UInt8 DEFAULT 0,
+    `RapidPosting`         UInt8 DEFAULT 0,
+    `PreviouslyWarned`     UInt8 DEFAULT 0,
+    `PreviouslySuspended`  UInt8 DEFAULT 0,
+    `TrustedReporterCSAM`  UInt8 DEFAULT 0,
+    `TrustedReporterNSFW`  UInt8 DEFAULT 0,
+    `__entity_label_mutations` String DEFAULT '',
 
     -- Catch-all for additional extracted features
     `_extra`       String DEFAULT '{}',
@@ -26,6 +44,9 @@ CREATE TABLE IF NOT EXISTS osprey.osprey_events
     INDEX idx_user_id UserId TYPE bloom_filter GRANULARITY 4,
     INDEX idx_event_type EventType TYPE set(100) GRANULARITY 4,
     INDEX idx_action_name ActionName TYPE set(100) GRANULARITY 4,
+    INDEX idx_pubkey Pubkey TYPE bloom_filter GRANULARITY 4,
+    INDEX idx_event_id EventId TYPE bloom_filter GRANULARITY 4,
+    INDEX idx_kind Kind TYPE set(100) GRANULARITY 4,
     INDEX idx_verdicts __verdicts TYPE tokenbf_v1(256, 2, 0) GRANULARITY 4,
     INDEX idx_rule_hits __rule_hits TYPE tokenbf_v1(512, 2, 0) GRANULARITY 4
 )
