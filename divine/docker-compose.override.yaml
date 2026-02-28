@@ -1,0 +1,16 @@
+# Local ARM Mac override — builds worker/coordinator/UI as linux/amd64
+# since grpcio-tools 1.49.1 has no ARM wheels.
+# This file is auto-loaded by `docker compose up` in the divine/ directory.
+
+services:
+  osprey-coordinator:
+    platform: linux/amd64
+
+  osprey-worker:
+    platform: linux/amd64
+
+  osprey-ui-api:
+    platform: linux/amd64
+
+  osprey-ui:
+    platform: linux/amd64

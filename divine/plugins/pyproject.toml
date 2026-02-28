@@ -14,4 +14,4 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [project.entry-points.osprey_plugin]
-register_plugins = "register_plugins"
+divine_plugins = "divine_register_plugins"

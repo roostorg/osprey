@@ -128,6 +128,7 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - ETCD_HOST=etcd
       - ETCD_PORT=2379
+      - POD_IP=osprey-coordinator
       - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
 
   # ── Osprey Worker (Divine variant) ───────────────────────────────────
@@ -137,6 +138,7 @@ services:
       dockerfile: divine/Dockerfile.worker
     hostname: osprey-worker
     container_name: divine-worker
+    command: ["osprey-worker"]
     depends_on:
       kafka:
         condition: service_healthy
@@ -149,7 +151,7 @@ services:
     ports:
       - "127.0.0.1:5001:5000"
     environment:
-      - PYTHONPATH=/osprey
+      - PYTHONPATH=/osprey/osprey_worker/src:/osprey/osprey_rpc/src:/osprey/divine_plugins/src:/osprey
       - PORT=5000
       - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
       - OSPREY_INPUT_STREAM_SOURCE=kafka
@@ -168,11 +170,54 @@ services:
       - OSPREY_CLICKHOUSE_DATABASE=osprey
       - OSPREY_CLICKHOUSE_TABLE=osprey_events
       # Plugins & rules
-      - OSPREY_PLUGIN_PATH=/app/divine_plugins/src
-      - OSPREY_RULES_PATH=/app/divine_rules
+      - OSPREY_PLUGIN_PATH=/osprey/divine_plugins/src
+      - OSPREY_RULES_PATH=/osprey/divine_rules
       - DIVINE_RELAY_MANAGER_URL=http://host.docker.internal:5000
+      - OSPREY_RULES_SINK_NUM_WORKERS=1
+      - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
       - DD_TRACE_ENABLED=False
       - DD_DOGSTATSD_DISABLE=True
+
+  # ── Snowflake ID Worker ──────────────────────────────────────────────
+  snowflake-id-worker:
+    hostname: snowflake-id-worker
+    container_name: divine-snowflake
+    image: ghcr.io/ayubun/snowflake-id-worker:0
+    ports:
+      - "127.0.0.1:8088:8088"
+    environment:
+      - WORKER_ID=0
+      - DATA_CENTER_ID=0
+      - EPOCH=1420070400000
+      - PORT=8088
+    restart: unless-stopped
+
+  # ── Osprey UI API ────────────────────────────────────────────────────
+  osprey-ui-api:
+    build:
+      context: ..
+      dockerfile: divine/Dockerfile.worker
+    hostname: osprey-ui-api
+    container_name: divine-ui-api
+    command: ["osprey-ui-api"]
+    depends_on:
+      - osprey-worker
+      - postgres
+    ports:
+      - "127.0.0.1:5004:5004"
+    environment:
+      - PYTHONPATH=/osprey/osprey_worker/src:/osprey/osprey_rpc/src:/osprey/divine_plugins/src:/osprey
+      - PORT=5004
+      - DEBUG=true
+      - FLASK_DEBUG=1
+      - FLASK_ENV=development
+      - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
+      - DD_TRACE_ENABLED=False
+      - DD_DOGSTATSD_DISABLE=True
+      - OSPREY_RULES_PATH=/osprey/divine_rules
+      - OSPREY_DISABLE_VALIDATION_EXPORTER=true
+      - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
+      - SNOWFLAKE_EPOCH=1420070400000
 
   # ── Osprey UI ────────────────────────────────────────────────────────
   osprey-ui:

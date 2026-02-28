@@ -5,7 +5,7 @@ NoteText: str = JsonData(
   coerce_type=True
 )
 
-MentionedPubkeys: list = JsonData(
+MentionedPubkeys: List[str] = JsonData(
   path='$.mentioned_pubkeys',
   coerce_type=True,
   required=False

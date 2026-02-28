@@ -26,7 +26,7 @@ Content: str = JsonData(
   required=False
 )
 
-Tags: list = JsonData(
+Tags: List[str] = JsonData(
   path='$.tags',
   coerce_type=True,
   required=False

@@ -64,9 +64,14 @@ COPY entrypoint.sh /osprey/entrypoint.sh
 COPY divine/plugins /osprey/divine_plugins
 COPY divine/rules /osprey/divine_rules
 
-# Install divine plugins so pluggy discovers them via entrypoints
-RUN . .venv/bin/activate && pip install -e /osprey/divine_plugins
+# Remove example plugins (conflicts with divine plugin namespace) and install divine plugins
+RUN uv pip uninstall example-plugins --python=.venv/bin/python || true && \
+    uv pip install -e /osprey/divine_plugins --python=.venv/bin/python
 
-ENV OSPREY_PLUGIN_PATH=/osprey/divine_plugins/src
+# Use the venv directly (not `uv run`) to avoid re-syncing example_plugins from workspace
+ENV PATH="/osprey/.venv/bin:${PATH}"
+ENV VIRTUAL_ENV="/osprey/.venv"
+ENV PYTHONPATH="/osprey/osprey_worker/src:/osprey/osprey_rpc/src:/osprey/divine_plugins/src:/osprey"
 
+COPY divine/entrypoint.sh /osprey/entrypoint.sh
 ENTRYPOINT ["/osprey/entrypoint.sh"]

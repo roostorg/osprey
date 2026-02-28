@@ -30,7 +30,7 @@ labels:
     description: "User is rate limited due to suspicious activity"
 
   nsfw_flagged:
-    valid_for: [Pubkey]
+    valid_for: [Pubkey, ReportedPubkey]
     connotation: negative
     description: "User flagged for NSFW content by a trusted reporter"
 
