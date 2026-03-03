@@ -5,7 +5,7 @@ patch_all()  # please ensure this occurs before *any* other imports !
 
 import os  # noqa: E402
 from datetime import datetime, timedelta
-from typing import Dict, Optional, TextIO
+from typing import TextIO
 
 import click  # noqa: E402
 import simplejson as json
@@ -46,8 +46,8 @@ def export_all_actions(
     start: datetime,
     end: datetime,
     output: TextIO,
-    action_name: Optional[str],
-    query_filter: Optional[str],
+    action_name: str | None,
+    query_filter: str | None,
 ) -> None:
     """
     Queries druid for ids that match a given query or action name within a date range (default is last 24 hours).
@@ -72,13 +72,13 @@ def export_all_actions(
     if action_name:
         query_filter = f'ActionName == "{action_name}"'
 
-    def query_druid(next_page: Optional[str] = None) -> PaginatedScanResult:
+    def query_druid(next_page: str | None = None) -> PaginatedScanResult:
         assert query_filter is not None
         return PaginatedScanDruidQuery(
             start=start, end=end, query_filter=query_filter, next_page=next_page, entity=None
         ).execute()
 
-    def row(event: StoredExecutionResult) -> Dict[str, str]:
+    def row(event: StoredExecutionResult) -> dict[str, str]:
         d = event.dict()
         return {'id': d['id'], 'timestamp': d['timestamp'], 'action_data': d['action_data']}
 

@@ -1,9 +1,10 @@
 import copy
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from collections.abc import Sequence
 from contextlib import contextmanager
 from datetime import timedelta
-from typing import Any, Generator, Optional, Sequence
+from typing import Any, Generator
 
 from osprey.engine.executor.external_service_utils import ExternalService
 from osprey.engine.language_types.entities import EntityT
@@ -270,7 +271,7 @@ class LabelsProvider(ExternalService[EntityT[Any], EntityLabels]):
             logger.error(f'Could not read-modify-write labels for entity {entity.__repr__()}:', e)
             raise e
 
-    def cache_ttl(self) -> Optional[timedelta]:
+    def cache_ttl(self) -> timedelta | None:
         return timedelta(minutes=1)
 
     def get_from_service(self, key: EntityT[Any]) -> EntityLabels:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import simplejson as json
 
@@ -11,17 +11,17 @@ class Service:
         name: str,
         port: int,
         address: str = 'localhost',
-        metadata: Optional[Dict[str, Any]] = None,
-        ports: Optional[Dict[str, int]] = None,
-        ip: Optional[str] = None,
-        id_override: Optional[str] = None,
+        metadata: dict[str, Any] | None = None,
+        ports: dict[str, int] | None = None,
+        ip: str | None = None,
+        id_override: str | None = None,
         draining: bool = False,
     ):
         # type (...) -> None
         self.name = name
         self.address = address
         self.port = port
-        self.ports: Dict[str, int] = ports or {}
+        self.ports: dict[str, int] = ports or {}
         self.metadata = metadata or {}
         self.ip = ip
         self.id_override = id_override
@@ -53,7 +53,7 @@ class Service:
         return f'{self.address}:{self.port}'
 
     @property
-    def connection_key(self) -> Tuple[str, Optional[str]]:
+    def connection_key(self) -> tuple[str, str | None]:
         """A key for distinguishing this service based on the host it's connecting to. It
         contains both hostname and IP in order to prevent confusion if another host picked
         up the same IP as an old host.

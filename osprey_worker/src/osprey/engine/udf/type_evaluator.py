@@ -1,6 +1,7 @@
 import typing
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, List, Optional, Sequence, TypeVar
+from typing import Any, TypeVar
 
 from osprey.engine.language_types.osprey_invariant_generic import OspreyInvariantGeneric
 from osprey.engine.language_types.post_execution_convertible import PostExecutionConvertible
@@ -23,13 +24,13 @@ from .type_helpers import UnsupportedTypeError, get_normalized_origin, get_singl
 @add_slots
 @dataclass
 class CompatibleTypeInfo:
-    unwrapped_to_type: Optional[type]
+    unwrapped_to_type: type | None
     """If non-None, the given type had to be unwrapped (to this type) in order to be considered compatible."""
 
 
 def is_compatible_type(
     type_t: type, accepted_by_t: type, allow_unwrap: bool = True
-) -> Result[Optional[CompatibleTypeInfo], UnsupportedTypeError]:
+) -> Result[CompatibleTypeInfo | None, UnsupportedTypeError]:
     """Determines whether the given `type_t` is compatible with `accepted_by_t`.
 
     This assumes that the given type relationship is *covaraint*, aka type_t is allowed to be a subtype of
@@ -141,7 +142,7 @@ def _is_single_arg_invariant_generic(t: type) -> bool:
     return (
         # NOTE: Treating lists as invariant is the only safe way to handle lists that might be mutated. If we assume
         # no mutation then we could do a `is_compatible_type` check on the list item types.
-        origin == List or (isinstance(origin, type) and issubclass(origin, OspreyInvariantGeneric))
+        origin is list or (isinstance(origin, type) and issubclass(origin, OspreyInvariantGeneric))
     )
 
 

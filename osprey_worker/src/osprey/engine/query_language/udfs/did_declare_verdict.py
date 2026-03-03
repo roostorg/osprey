@@ -1,5 +1,3 @@
-from typing import Dict
-
 from osprey.engine import shared_constants
 from osprey.engine.ast_validator.validation_context import ValidationContext
 from osprey.engine.query_language.udfs.registry import register
@@ -25,7 +23,7 @@ class DidDeclareVerdict(QueryUdfBase[Arguments, bool]):
         super().__init__(validation_context, arguments)
         self.verdict = arguments.verdict.value
 
-    def to_druid_query(self) -> Dict[str, object]:
+    def to_druid_query(self) -> dict[str, object]:
         return {
             'type': 'arrayContainsElement',
             'column': shared_constants.VERDICT_DIMENSION_NAME,

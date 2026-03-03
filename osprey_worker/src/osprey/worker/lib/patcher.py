@@ -12,14 +12,14 @@ patch_all()
 """
 
 # Importing non-std modules here may break patching
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 def patch_all(
     patch_gevent: bool = True,
     patch_grpc: bool = True,
     patch_ddtrace: bool = True,
-    ddtrace_args: Optional[Dict[str, Any]] = None,
+    ddtrace_args: dict[str, Any] | None = None,
 ) -> None:
     if patch_gevent:
         # gevent must be patched first https://github.com/DataDog/dd-trace-py/issues/3595

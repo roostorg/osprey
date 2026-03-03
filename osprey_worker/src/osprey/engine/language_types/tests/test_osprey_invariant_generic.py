@@ -1,4 +1,5 @@
-from typing import Any, Mapping, Sequence, TypeVar
+from collections.abc import Mapping, Sequence
+from typing import Any, TypeVar
 
 import pytest
 from osprey.engine.language_types.osprey_invariant_generic import OspreyInvariantGeneric

@@ -3,9 +3,10 @@ from __future__ import annotations
 import gzip
 import json
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from datetime import datetime
 from io import BytesIO
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
+from typing import TYPE_CHECKING, Any
 
 import gevent
 import google.cloud.storage as storage
@@ -38,12 +39,12 @@ class ExecutionResultStore(ABC):
     """Abstract base class for execution result storage backends."""
 
     @abstractmethod
-    def select_one(self, action_id: int) -> Optional[Dict[str, Any]]:
+    def select_one(self, action_id: int) -> dict[str, Any] | None:
         """Retrieve a single execution result by action ID."""
         pass
 
     @abstractmethod
-    def select_many(self, action_ids: List[int]) -> List[Dict[str, Any]]:
+    def select_many(self, action_ids: list[int]) -> list[dict[str, Any]]:
         """Retrieve multiple execution results by action IDs."""
         pass
 
@@ -72,10 +73,10 @@ class StoredExecutionResult(BaseModel):
 
     # NOTE: These fields must match the database column names exactly.
     id: int
-    extracted_features: Dict[str, Any]
+    extracted_features: dict[str, Any]
     error_traces: Sequence[ErrorTrace]
     timestamp: datetime
-    action_data: Optional[Dict[str, Any]] = None
+    action_data: dict[str, Any] | None = None
 
     @classmethod
     def persist_from_execution_result(
@@ -95,8 +96,8 @@ class StoredExecutionResult(BaseModel):
         cls,
         event_record_id: int,
         storage_backend: ExecutionResultStore,
-        data_censor_abilities: Sequence[Optional[DataCensorAbility[Any, Any]]] = (),
-    ) -> Optional['StoredExecutionResult']:
+        data_censor_abilities: Sequence[DataCensorAbility[Any, Any] | None] = (),
+    ) -> 'StoredExecutionResult' | None:
         """Get execution result from the provided storage backend."""
         result = storage_backend.select_one(event_record_id)
         if result:
@@ -106,10 +107,10 @@ class StoredExecutionResult(BaseModel):
     @classmethod
     def get_many(
         cls,
-        action_ids: List[int],
+        action_ids: list[int],
         storage_backend: ExecutionResultStore,
-        data_censor_abilities: Sequence[Optional[DataCensorAbility[Any, Any]]] = (),
-    ) -> List['StoredExecutionResult']:
+        data_censor_abilities: Sequence[DataCensorAbility[Any, Any] | None] = (),
+    ) -> list['StoredExecutionResult']:
         """Get execution results from the provided storage backend."""
         results = storage_backend.select_many(action_ids)
 
@@ -121,7 +122,7 @@ class StoredExecutionResult(BaseModel):
 
     @classmethod
     def parse_from_query_result(
-        cls, result: Dict[str, Any], data_censor_abilities: Sequence[Optional[DataCensorAbility[Any, Any]]]
+        cls, result: dict[str, Any], data_censor_abilities: Sequence[DataCensorAbility[Any, Any] | None]
     ) -> 'StoredExecutionResult':
         # Apply the data censors
         from osprey.worker.ui_api.osprey.lib.abilities import (
@@ -131,15 +132,15 @@ class StoredExecutionResult(BaseModel):
         )
 
         def _censor_data(
-            data: Dict[str, Any],
+            data: dict[str, Any],
             field: str,
-            data_censor_abilities: List[DataCensorAbility[Any, Any]],
+            data_censor_abilities: list[DataCensorAbility[Any, Any]],
             action_name: str,
-        ) -> Optional[Dict[str, Any]]:
+        ) -> dict[str, Any] | None:
             data_at_field = data.get(field)
             if not data_at_field:
                 return None
-            data_copy: Dict[str, Any] = json.loads(data_at_field)
+            data_copy: dict[str, Any] = json.loads(data_at_field)
             if not data_censor_abilities:
                 return DataCensorAbility.censor_all_leafs(data_copy)
             for censor in data_censor_abilities:
@@ -147,16 +148,16 @@ class StoredExecutionResult(BaseModel):
             assert isinstance(data_copy, dict)
             return data_copy
 
-        action_name: Optional[str] = None
-        extracted_features: Optional[Any] = result.get('extracted_features')
+        action_name: str | None = None
+        extracted_features: Any | None = result.get('extracted_features')
         if extracted_features:
             action_name = json.loads(extracted_features).get('ActionName')
         assert action_name is not None, f'Action name could not be parsed from query result: {str(result)}'
 
-        action_data_censors: List[DataCensorAbility[Any, Any]] = [
+        action_data_censors: list[DataCensorAbility[Any, Any]] = [
             censor for censor in data_censor_abilities if censor and isinstance(censor, CanViewActionData)
         ]
-        feature_data_censors: List[DataCensorAbility[Any, Any]] = [
+        feature_data_censors: list[DataCensorAbility[Any, Any]] = [
             censor for censor in data_censor_abilities if censor and isinstance(censor, CanViewFeatureData)
         ]
         censored_action_data = _censor_data(result, 'action_data', action_data_censors, action_name)
@@ -182,7 +183,7 @@ class StoredExecutionResult(BaseModel):
 class StoredExecutionResultBigTable(ExecutionResultStore):
     retry_policy = retry.Retry(initial=1.0, maximum=2.0, multiplier=1.25, deadline=120.0)
 
-    def select_one(self, action_id: int) -> Optional[Dict[str, Any]]:
+    def select_one(self, action_id: int) -> dict[str, Any] | None:
         row = osprey_bigtable.table('stored_execution_result').read_row(
             StoredExecutionResultBigTable._encode_action_id(action_id), row_filters.CellsColumnLimitFilter(1)
         )
@@ -193,7 +194,7 @@ class StoredExecutionResultBigTable(ExecutionResultStore):
 
     # TODO: Add `select_*_minimal` methods
 
-    def select_many(self, action_ids: List[int]) -> List[Dict[str, Any]]:
+    def select_many(self, action_ids: list[int]) -> list[dict[str, Any]]:
         if not action_ids:
             return []
 
@@ -207,7 +208,7 @@ class StoredExecutionResultBigTable(ExecutionResultStore):
             retry=self.retry_policy,
         )
 
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         for row in rows:
             if not row:
                 continue
@@ -245,7 +246,7 @@ class StoredExecutionResultBigTable(ExecutionResultStore):
         return int(snowflake)
 
     @staticmethod
-    def _execution_result_dict_from_row(row: Row) -> Dict[str, Any]:
+    def _execution_result_dict_from_row(row: Row) -> dict[str, Any]:
         # row.cells doesn't have the right type information setup (at least in this version of bt), so its ignored here.
         extracted_features = row.cells['execution_result'][b'extracted_features'][0].value.decode('utf-8')  # type: ignore[attr-defined]
         error_traces = row.cells['execution_result'][b'error_traces'][0].value.decode('utf-8')  # type: ignore[attr-defined]
@@ -289,7 +290,7 @@ class StoredExecutionResultGCS(ExecutionResultStore):
             self._bucket_name = config.get_str('OSPREY_GCS_EXECUTION_RESULTS_BUCKET', 'osprey-execution-results-stg')
         return self._bucket_name
 
-    def select_one(self, action_id: int) -> Optional[Dict[str, Any]]:
+    def select_one(self, action_id: int) -> dict[str, Any] | None:
         try:
             with metrics.timed('gcs_stored_execution_result.get_one'):
                 object_name = StoredExecutionResultGCS._encode_action_id(action_id)
@@ -310,7 +311,7 @@ class StoredExecutionResultGCS(ExecutionResultStore):
             logger.error(f'Failed to retrieve execution result from GCS for action_id {action_id}: {e}')
             return None
 
-    def select_many(self, action_ids: List[int]) -> List[Dict[str, Any]]:
+    def select_many(self, action_ids: list[int]) -> list[dict[str, Any]]:
         results = [
             result
             for result in gevent.pool.Pool(GCS_CONCURRENCY_LIMIT).imap(self.select_one, action_ids)
@@ -358,7 +359,7 @@ class StoredExecutionResultGCS(ExecutionResultStore):
         return f'{key_prefix}:{action_id_snowflake}.json'
 
     @staticmethod
-    def _execution_result_dict_from_gcs_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    def _execution_result_dict_from_gcs_data(data: dict[str, Any]) -> dict[str, Any]:
         execution_result_dict = {
             'id': data['id'],
             'extracted_features': data['extracted_features'],
@@ -379,7 +380,7 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
         self._minio_client = Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=secure)
         self._bucket_name = bucket_name
 
-    def select_one(self, action_id: int) -> Optional[Dict[str, Any]]:
+    def select_one(self, action_id: int) -> dict[str, Any] | None:
         try:
             with metrics.timed('minio_stored_execution_result.get_one'):
                 object_name = StoredExecutionResultMinIO._encode_action_id(action_id)
@@ -406,7 +407,7 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
             logger.error(f'Failed to retrieve execution result from MinIO for action_id {action_id}: {e}')
             return None
 
-    def select_many(self, action_ids: List[int]) -> List[Dict[str, Any]]:
+    def select_many(self, action_ids: list[int]) -> list[dict[str, Any]]:
         results = [
             result
             for result in gevent.pool.Pool(MINIO_CONCURRENCY_LIMIT).imap(self.select_one, action_ids)
@@ -455,7 +456,7 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
         return f'{key_prefix}:{action_id_snowflake}.json'
 
     @staticmethod
-    def _execution_result_dict_from_minio_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    def _execution_result_dict_from_minio_data(data: dict[str, Any]) -> dict[str, Any]:
         execution_result_dict = {
             'id': data['id'],
             'extracted_features': data['extracted_features'],
@@ -482,16 +483,16 @@ class ExecutionResultStorageService:
         StoredExecutionResult.persist_from_execution_result(execution_result, self._storage_backend)
 
     def get_one_with_action_data(
-        self, event_record_id: int, data_censor_abilities: Sequence[Optional[DataCensorAbility[Any, Any]]] = ()
-    ) -> Optional[StoredExecutionResult]:
+        self, event_record_id: int, data_censor_abilities: Sequence[DataCensorAbility[Any, Any] | None] = ()
+    ) -> StoredExecutionResult | None:
         """Get execution result from the configured storage backend."""
         return StoredExecutionResult.get_one_with_action_data(
             event_record_id, self._storage_backend, data_censor_abilities
         )
 
     def get_many(
-        self, action_ids: List[int], data_censor_abilities: Sequence[Optional[DataCensorAbility[Any, Any]]] = ()
-    ) -> List[StoredExecutionResult]:
+        self, action_ids: list[int], data_censor_abilities: Sequence[DataCensorAbility[Any, Any] | None] = ()
+    ) -> list[StoredExecutionResult]:
         """Get execution results from the configured storage backend."""
         return StoredExecutionResult.get_many(action_ids, self._storage_backend, data_censor_abilities)
 

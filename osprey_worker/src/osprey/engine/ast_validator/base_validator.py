@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Dict, Generic, Type, TypeVar
+from typing import TYPE_CHECKING, Generic, Type, TypeVar
 
 from osprey.engine.utils.periodic_execution_yielder import maybe_periodic_yield
 from pydantic import BaseModel
@@ -72,5 +72,5 @@ class HasInput(Generic[T]):
     """Mixin to indicate that the validator may take data as an input."""
 
 
-class ConfigValidatorBase(BaseValidator, HasResult[Dict[Type[BaseModel], BaseModel]], ABC):
+class ConfigValidatorBase(BaseValidator, HasResult[dict[Type[BaseModel], BaseModel]], ABC):
     """Validates that a subkey of the config is compatible with a given Pydantic model."""

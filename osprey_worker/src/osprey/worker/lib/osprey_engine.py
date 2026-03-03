@@ -1,8 +1,9 @@
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from time import time
-from typing import Callable, Dict, Generic, List, Optional, Set, Tuple, Type, TypeVar
+from typing import Generic, Type, TypeVar
 
 import gevent
 import gevent.pool
@@ -57,7 +58,7 @@ _ModelT = TypeVar('_ModelT', bound=BaseModel)
 @dataclass
 class _ConfigSubkeyHandler(Generic[_ModelT]):
     model_class: Type[_ModelT]
-    callbacks: List[Callable[[_ModelT], None]]
+    callbacks: list[Callable[[_ModelT], None]]
 
 
 @dataclass
@@ -156,7 +157,7 @@ class OspreyEngine:
     def config(self) -> SourcesConfig:
         return self._execution_graph.validated_sources.sources.config
 
-    def get_known_feature_locations(self) -> List[FeatureLocation]:
+    def get_known_feature_locations(self) -> list[FeatureLocation]:
         """Gets the known feature locations from the rules engine."""
 
         def _should_extract(span: Span) -> bool:
@@ -179,7 +180,7 @@ class OspreyEngine:
             if _should_extract(span)
         ]
 
-    def get_known_action_names(self) -> Set[str]:
+    def get_known_action_names(self) -> set[str]:
         """Gets known action names by looking at the sources for files in the `actions/` directory. It is assumed,
         that .sml files in that directory map to a given action name.
 
@@ -195,7 +196,7 @@ class OspreyEngine:
             Path(source.path).stem for source in self.execution_graph.validated_sources.sources.glob('actions/*.sml')
         }
 
-    def get_rule_to_info_mapping(self) -> Dict[str, str]:
+    def get_rule_to_info_mapping(self) -> dict[str, str]:
         """Returns a mapping from 'rule name' -> 'rule description' for each feature that is a rule declaration."""
         return self._execution_graph.validated_sources.get_validator_result(RuleNameToDescriptionMapping)
 
@@ -204,7 +205,7 @@ class OspreyEngine:
         udf_helpers: UDFHelpers,
         action: Action,
         sample_rate: int = 100,
-        parent_tracer_span: Optional[TracerSpan] = None,
+        parent_tracer_span: TracerSpan | None = None,
     ) -> ExecutionResult:
         """Given input action, execute it against the execution engine and return the result."""
         return execute(
@@ -230,11 +231,11 @@ class OspreyEngine:
         """
         return self._config_subkey_handler.get_config_subkey(model_class)
 
-    def get_feature_name_to_entity_type_mapping(self) -> Dict[str, str]:
+    def get_feature_name_to_entity_type_mapping(self) -> dict[str, str]:
         """Returns a mapping from 'feature name' -> 'entity type' for each feature that holds an entity."""
         return self._execution_graph.validated_sources.get_validator_result(FeatureNameToEntityTypeMapping)
 
-    def get_post_execution_feature_name_to_value_type_mapping(self) -> Dict[str, type]:
+    def get_post_execution_feature_name_to_value_type_mapping(self) -> dict[str, type]:
         """Returns a mapping from 'feature name' -> 'value type' for each feature."""
         post_execution_name_to_type_and_span = ValidateStaticTypes.to_post_execution_types(
             self._execution_graph.validated_sources.get_validator_result(ValidateStaticTypes)
@@ -248,8 +249,8 @@ class OspreyEngine:
 
 
 def get_sources_provider(
-    rules_path: Optional[Path] = None,
-    input_stream_ready_signaler: Optional[InputStreamReadySignaler] = None,
+    rules_path: Path | None = None,
+    input_stream_ready_signaler: InputStreamReadySignaler | None = None,
 ) -> BaseSourcesProvider:
     """Creates the osprey engine sources provider. If a path is provided, will use a `StaticSourcesProvider` which will
     load sources from the given location on disk. Otherwise, will use the `EtcdSourcesProvider` to dynamically
@@ -302,8 +303,8 @@ def extract_source_snippet(span: Span) -> str:
 
 
 def bootstrap_engine_with_helpers(
-    sources_provider: Optional[BaseSourcesProvider] = None,
-) -> Tuple[OspreyEngine, UDFHelpers]:
+    sources_provider: BaseSourcesProvider | None = None,
+) -> tuple[OspreyEngine, UDFHelpers]:
     # Avoid circular imports
     from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators, bootstrap_udfs
 
@@ -327,5 +328,5 @@ def bootstrap_engine_with_helpers(
     )
 
 
-def bootstrap_engine(sources_provider: Optional[BaseSourcesProvider] = None) -> OspreyEngine:
+def bootstrap_engine(sources_provider: BaseSourcesProvider | None = None) -> OspreyEngine:
     return bootstrap_engine_with_helpers(sources_provider)[0]
