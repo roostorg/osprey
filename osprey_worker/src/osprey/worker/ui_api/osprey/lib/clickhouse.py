@@ -115,9 +115,12 @@ def _build_where_clause(
     query_filter_abilities: Sequence[Optional['QueryFilterAbility[Any, Any]']] = (),
 ) -> str:
     """Build the full WHERE clause from time range, user query filter, entity, and abilities."""
+    # Strip tzinfo — ClickHouse DateTime64(3, 'UTC') rejects +00:00 suffix
+    start_str = start.replace(tzinfo=None).isoformat()
+    end_str = end.replace(tzinfo=None).isoformat()
     parts = [
-        f"`__time` >= '{start.isoformat()}'",
-        f"`__time` < '{end.isoformat()}'",
+        f"`__time` >= '{start_str}'",
+        f"`__time` < '{end_str}'",
     ]
 
     # User query filter
