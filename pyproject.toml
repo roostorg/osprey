@@ -179,7 +179,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "deptry>=0.25.0",
+    "deptry>=0.24.0",
     "mypy>=1.13.0",
     "pre-commit>=4.3.0",
     "ruff>=0.12.9",
