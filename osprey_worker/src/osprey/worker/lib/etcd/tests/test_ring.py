@@ -46,8 +46,10 @@ def test_ring_with_mixed_data(ring, etcd_key, etcd_client, wait_for_condition):
     etcd_client.set(etcd_key, json.dumps(serialized_members))
 
     wait_for_condition(
-        lambda: EtcdHashRingTopology.to_json(ring.members)
-        == EtcdHashRingTopology.to_json(members + [{'name': 'test-4', 'num_replicas': 512}])
+        lambda: (
+            EtcdHashRingTopology.to_json(ring.members)
+            == EtcdHashRingTopology.to_json(members + [{'name': 'test-4', 'num_replicas': 512}])
+        )
     )
 
 
@@ -62,8 +64,10 @@ def test_ring_with_overrides(ring, etcd_key, etcd_client, wait_for_condition):
     etcd_client.set(etcd_key, json.dumps(serialized_json))
 
     wait_for_condition(
-        lambda: EtcdHashRingTopology.to_json(ring.members, ring.overrides)
-        == EtcdHashRingTopology.to_json(members, mapped_overrides)
+        lambda: (
+            EtcdHashRingTopology.to_json(ring.members, ring.overrides)
+            == EtcdHashRingTopology.to_json(members, mapped_overrides)
+        )
     )
 
 
@@ -146,10 +150,12 @@ def test_ring_select(ring, wait_for_condition):
     ring.add('test-1', 'test-2', 'test-3')
 
     wait_for_condition(
-        lambda: ring.select(3) == b'test-1'
-        and ring.select(6) == b'test-2'
-        and ring.select(1) == b'test-3'
-        and ring.select('foo') == b'test-2'
+        lambda: (
+            ring.select(3) == b'test-1'
+            and ring.select(6) == b'test-2'
+            and ring.select(1) == b'test-3'
+            and ring.select('foo') == b'test-2'
+        )
     )
 
     # Testing count of distribution
@@ -216,17 +222,21 @@ def test_ring_select_override_with_secondaries(ring, wait_for_condition):
     ring.add('test-1', 'test-2', 'test-3')
 
     wait_for_condition(
-        lambda: ring.select(1, 2) == [b'test-3', b'test-2', b'test-1']
-        and ring.select(3, 2) == [b'test-1', b'test-2', b'test-3']
-        and ring.select(6, 2) == [b'test-2', b'test-1', b'test-3']
+        lambda: (
+            ring.select(1, 2) == [b'test-3', b'test-2', b'test-1']
+            and ring.select(3, 2) == [b'test-1', b'test-2', b'test-3']
+            and ring.select(6, 2) == [b'test-2', b'test-1', b'test-3']
+        )
     )
 
     ring.overrides = {1: [b'special-a'], 3: [b'test-2', b'test-8']}
 
     wait_for_condition(
-        lambda: ring.select(1, 2) == [b'special-a', b'test-3', b'test-2']
-        and ring.select(3, 2) == [b'test-2', b'test-8', b'test-1']
-        and ring.select(6, 2) == [b'test-2', b'test-1', b'test-3']
+        lambda: (
+            ring.select(1, 2) == [b'special-a', b'test-3', b'test-2']
+            and ring.select(3, 2) == [b'test-2', b'test-8', b'test-1']
+            and ring.select(6, 2) == [b'test-2', b'test-1', b'test-3']
+        )
     )
 
 

@@ -2,8 +2,12 @@
 requires = ["uv_build>=0.8.12,<0.9.0"]
 build-backend = "uv_build"
 
-[dependency-groups]
-common = [
+[project]
+name = "osprey"
+version = "0.1.0"
+description = "Osprey monorepo"
+# Single source of truth for production deps. uv installs these + [dependency-groups].dev.
+dependencies = [
     "absl-py==2.3.1",
     "asttokens==3.0.0",
     "blinker==1.9.0",
@@ -44,8 +48,8 @@ common = [
     "graphviz==0.20",
     "greenlet",
     "grpc-google-iam-v1==0.14.2",
-    "grpcio==1.49.1; platform_machine == 'x86_64'",  # Normal dependency for production
-    "grpcio==1.53.*; platform_machine == 'aarch64'", # Only install on ARM64 architecture for local development on MacOS
+    "grpcio==1.49.1; platform_machine == 'x86_64'",
+    "grpcio==1.53.*; platform_machine == 'aarch64'",
     "grpcio-health-checking==1.44.0",
     "grpcio-reflection==1.44.0",
     "grpcio-status==1.49.1",
@@ -55,7 +59,6 @@ common = [
     "httplib2==0.22.0",
     "humanize==4.12.3",
     "idna==3.10",
-    "imagehash==4.3.2",
     "importlib-metadata==8.7.0",
     "infinity==1.5",
     "iniconfig==2.1.0",
@@ -66,7 +69,6 @@ common = [
     "iso8601==2.1.0",
     "itsdangerous==1.1.0",
     "jedi==0.19.2",
-    "jinja2==2.11.3",
     "jslog4kube==1.0.6",
     "jsonpath-rw",
     "kafka-python==1.4.7",
@@ -89,10 +91,8 @@ common = [
     "opentelemetry-api==1.36.0",
     "packaging==25.0",
     "parso==0.8.4",
-    "pdqhash==0.2.5",
     "pexpect==4.9.0",
     "phone-iso3166==0.3.8",
-    "pillow==9.5.0",
     "plac==1.4.5",
     "platformdirs==4.3.8",
     "pluggy==1.5.0",
@@ -176,7 +176,10 @@ common = [
     "zope-event==5.1.1",
     "zope-interface==7.2",
 ]
+
+[dependency-groups]
 dev = [
+    "deptry>=0.25.0",
     "mypy>=1.13.0",
     "pre-commit>=4.3.0",
     "ruff>=0.12.9",
@@ -187,7 +190,7 @@ dev = [
 
 [tool.uv]
 override-dependencies = ["ddtrace>=2.17.2,<3.0.0"]
-default-groups = ["common", "dev"]
+default-groups = ["dev"]
 
 [tool.uv.sources]
 erlpack = { git = "https://github.com/discord/erlpack.git", rev = "b25ebd51ae4c097bd7f756fd4e1c841b61bfe50b" }
@@ -228,7 +231,7 @@ line-ending = "auto"
 [tool.ruff.lint]
 select = [
     "E",    # pycodestyle errors
-    "F",    # pyflakes
+    "F",    # pyflakes (includes F401 unused imports)
     "I",    # isort
     "B006", # flake8-bugbear, B006 catches mutable defaults
 ]
@@ -238,6 +241,11 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["osprey_worker", "osprey_rpc", "example_plugins"]
+
+[tool.deptry]
+# Check for unused/missing deps; reads [project].dependencies
+known_first_party = ["osprey", "osprey_worker", "osprey_rpc", "example_plugins"]
+extend_exclude = [".*_pb2\\.py$", ".*_pb2\\.pyi$", ".*_pb2_grpc\\.py$"]
 
 [tool.mypy]
 plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]

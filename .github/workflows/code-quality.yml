@@ -39,12 +39,15 @@ jobs:
           path: ~/.cache/pre-commit
           key: pre-commit|${{ env.PY }}|${{ hashFiles('.pre-commit-config.yaml') }}
 
-      - name: Run pre-commit python checks
+      - name: Run pre-commit python checks (ruff, mypy, etc.)
         env:
           SKIP: prettier-osprey-ui
         run: |
           uv run pre-commit install --install-hooks
           uv run pre-commit run --show-diff-on-failure --color=always --all-files
+
+      - name: Run deptry (unused/missing dependency check)
+        run: uv run deptry . --github-output
 
   ui-quality:
     runs-on: ubuntu-24.04
