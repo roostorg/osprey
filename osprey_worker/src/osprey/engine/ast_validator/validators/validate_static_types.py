@@ -457,6 +457,79 @@ class ValidateStaticTypes(SourceValidator, HasInput[Dict[str, _TypeAndSpan]], Ha
 
         return False
 
+    def _get_non_none_type(self, t: type) -> Optional[type]:
+        """Extract the non-None type from an Optional[T] type.
+
+        Returns T if t is Optional[T], otherwise returns None.
+        """
+        if not self._is_optional_type(t):
+            return None
+
+        origin = get_origin(t)
+        if origin is EntityT:
+            # EntityT is treated as optional but we don't narrow it
+            return None
+
+        # For Union types (which includes Optional), get the non-None type
+        if hasattr(t, '__args__'):
+            non_none_args = [arg for arg in t.__args__ if arg is not type(None)]
+            if len(non_none_args) == 1:
+                return non_none_args[0]
+            elif len(non_none_args) > 1:
+                # Multiple non-None types, return a Union of them
+                return cast(type, Union[tuple(non_none_args)])
+
+        return None
+
+    def _get_type_narrowing_from_expression(
+        self, expr: grammar.Expression, operand: grammar.BooleanOperand
+    ) -> Dict[str, type]:
+        """Detect type narrowing from null-check patterns.
+
+        For 'and' operations: X != None narrows X from Optional[T] to T
+        For 'or' operations: X == None narrows X from Optional[T] to T (for subsequent expressions)
+
+        Returns a dict of identifier_key -> narrowed type
+        """
+        narrowed_types: Dict[str, type] = {}
+
+        if not isinstance(expr, grammar.BinaryComparison):
+            return narrowed_types
+
+        is_and_operation = isinstance(operand, grammar.And)
+        is_not_equals = isinstance(expr.comparator, grammar.NotEquals)
+        is_equals = isinstance(expr.comparator, grammar.Equals)
+
+        # For 'and': X != None narrows X
+        # For 'or': X == None narrows X (because if X == None is false, X is not None)
+        should_narrow = (is_and_operation and is_not_equals) or (not is_and_operation and is_equals)
+
+        if not should_narrow:
+            return narrowed_types
+
+        # Check if one side is None and the other is a Name
+        left_is_none = isinstance(expr.left, grammar.None_)
+        right_is_none = isinstance(expr.right, grammar.None_)
+
+        if left_is_none and isinstance(expr.right, grammar.Name):
+            name = expr.right
+        elif right_is_none and isinstance(expr.left, grammar.Name):
+            name = expr.left
+        else:
+            return narrowed_types
+
+        # Get the current type of the name
+        if name.identifier_key not in self._name_type_and_span_cache:
+            return narrowed_types
+
+        current_type = self._name_type_and_span_cache[name.identifier_key].type
+        non_none_type = self._get_non_none_type(current_type)
+
+        if non_none_type is not None:
+            narrowed_types[name.identifier_key] = non_none_type
+
+        return narrowed_types
+
     def _validate_binary_comparison(self, binary_comparison: grammar.BinaryComparison) -> type:
         def valid_transition_hook(left_type: type, right_type: type) -> None:
             # Some extra warnings for certain cases
@@ -585,17 +658,40 @@ class ValidateStaticTypes(SourceValidator, HasInput[Dict[str, _TypeAndSpan]], Ha
     def _validate_boolean_operation(self, boolean_operation: grammar.BooleanOperation) -> type:
         # Type check left and right sides, but return bool regardless because the underlying `any` and `all` can
         # handle arbitrary types and will always return bools.
+        #
+        # Apply type narrowing: for 'and' operations, X != None narrows X from Optional[T] to T
+        # for subsequent expressions. For 'or' operations, X == None narrows X.
+        narrowed_types: Dict[str, type] = {}
+
         for value in boolean_operation.values:
-            value_type = self._validate_expression(value)
-            value_type_str = to_display_str(value_type)
-            self._check_compatible_type(
-                type_t=value_type,
-                accepted_by_t=bool,
-                message=f'unsupported operand type for `{boolean_operation.operand.original_operand}`',
-                node=value,
-                hint=f'has type {value_type_str}, expected `bool`',
-                additional_spans=self._maybe_get_additional_span_for_identifier_definition(value, value_type_str),
-            )
+            # Temporarily apply any accumulated type narrowings for this expression
+            original_types: Dict[str, _TypeAndSpan] = {}
+            for identifier_key, narrowed_type in narrowed_types.items():
+                if identifier_key in self._name_type_and_span_cache:
+                    original_types[identifier_key] = self._name_type_and_span_cache[identifier_key]
+                    self._name_type_and_span_cache[identifier_key] = original_types[identifier_key].copy(
+                        type=narrowed_type
+                    )
+
+            try:
+                value_type = self._validate_expression(value)
+                value_type_str = to_display_str(value_type)
+                self._check_compatible_type(
+                    type_t=value_type,
+                    accepted_by_t=bool,
+                    message=f'unsupported operand type for `{boolean_operation.operand.original_operand}`',
+                    node=value,
+                    hint=f'has type {value_type_str}, expected `bool`',
+                    additional_spans=self._maybe_get_additional_span_for_identifier_definition(value, value_type_str),
+                )
+
+                # Detect any new type narrowings from this expression
+                new_narrowings = self._get_type_narrowing_from_expression(value, boolean_operation.operand)
+                narrowed_types.update(new_narrowings)
+            finally:
+                # Restore original types
+                for identifier_key, original_type_and_span in original_types.items():
+                    self._name_type_and_span_cache[identifier_key] = original_type_and_span
 
         return bool
 
@@ -752,6 +848,9 @@ def _get_binary_comparison_transitions() -> Dict[str, Sequence[_ValidTwoArgTypeT
     number_to_bool_transition = _ValidTwoArgTypeTransition(
         valid_left_type=_INT_OR_FLOAT_T, valid_right_type=_INT_OR_FLOAT_T, resulting_type=bool
     )
+    # Note: Optional types are not directly supported for comparison operators.
+    # Use type narrowing with a null check first: X != None and X >= 90
+    number_comparison_transitions = [number_to_bool_transition]
     # For "in"/"not in"
     in_transitions = [
         _ValidTwoArgTypeTransition(valid_left_type=str, valid_right_type=str, resulting_type=bool),
@@ -763,10 +862,10 @@ def _get_binary_comparison_transitions() -> Dict[str, Sequence[_ValidTwoArgTypeT
     comparators_to_transitions = {
         grammar.Equals: [any_to_bool_transition],
         grammar.NotEquals: [any_to_bool_transition],
-        grammar.LessThan: [number_to_bool_transition],
-        grammar.LessThanEquals: [number_to_bool_transition],
-        grammar.GreaterThan: [number_to_bool_transition],
-        grammar.GreaterThanEquals: [number_to_bool_transition],
+        grammar.LessThan: number_comparison_transitions,
+        grammar.LessThanEquals: number_comparison_transitions,
+        grammar.GreaterThan: number_comparison_transitions,
+        grammar.GreaterThanEquals: number_comparison_transitions,
         grammar.In: in_transitions,
         grammar.NotIn: in_transitions,
     }

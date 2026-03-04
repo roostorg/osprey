@@ -133,6 +133,16 @@ def source_with_labels_config(source: str, labels: Set[str]) -> Dict[str, str]:
             LabelReasons({'ExpiringReason': LabelReason(expires_at=(datetime.now(timezone.utc) + timedelta(hours=1)))}),
             True,
         ),
+        # Regression: expired reason where expires_at has second=0 should still be treated as expired
+        (
+            'added',
+            None,
+            LabelStatus.ADDED,
+            LabelReasons(
+                {'ExpiredReason': LabelReason(expires_at=datetime(2020, 1, 1, 12, 30, 0, tzinfo=timezone.utc))}
+            ),
+            False,
+        ),
         ('added', None, LabelStatus.MANUALLY_ADDED, LabelReasons({'TestReason': LabelReason()}), True),
         ('added', None, LabelStatus.REMOVED, LabelReasons({'TestReason': LabelReason()}), False),
         ('added', None, LabelStatus.MANUALLY_REMOVED, LabelReasons({'TestReason': LabelReason()}), False),
