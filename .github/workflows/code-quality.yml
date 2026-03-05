@@ -46,8 +46,8 @@ jobs:
           uv run pre-commit install --install-hooks
           uv run pre-commit run --show-diff-on-failure --color=always --all-files
 
-      - name: Run deptry (unused/missing dependency check)
-        run: uv run deptry . --github-output
+      - name: Check for unused dependencies
+        run: uv tool run fawltydeps --check-unused --pyenv .venv
 
   ui-quality:
     runs-on: ubuntu-24.04

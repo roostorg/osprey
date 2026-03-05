@@ -6,4 +6,5 @@
 
 - [ ] Tests pass locally
 - [ ] `uv run ruff check .` passes (no unused imports or other lint errors)
-- [ ] `uv run deptry .` passes (no unused/missing dependencies)
+- [ ] `uv tool run fawltydeps --check-unused --pyenv .venv` passes (no unused dependencies)
+
