@@ -37,15 +37,11 @@ class RelayManagerSink(BaseOutputSink):
             assert isinstance(effect, BanEventEffect)
             payload: Dict[str, Any] = {
                 'method': 'banevent',
-                'params': {
-                    'event_id': effect.event_id,
-                    'pubkey': effect.pubkey,
-                    'reason': effect.reason,
-                },
+                'params': [effect.event_id, effect.reason],
             }
             try:
                 resp = requests.post(
-                    f'{self._url}/api/v1/nip86',
+                    f'{self._url}/api/relay-rpc',
                     json=payload,
                     timeout=self.timeout,
                 )

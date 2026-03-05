@@ -103,6 +103,15 @@ def _wrap_nostr_event(event: dict) -> dict:
                 if t[0] == 'l' and len(t) >= 3 and t[2] == 'MOD':
                     data['report_reason'] = t[1]
                     break
+        # Try parsing content JSON for moderation service reports (type field)
+        if 'report_reason' not in data:
+            try:
+                content_json = json.loads(event.get('content', ''))
+                if isinstance(content_json, dict) and 'type' in content_json:
+                    data['report_reason'] = content_json['type']
+            except (json.JSONDecodeError, TypeError):
+                pass
+
         # Fallback: check content for common report keywords
         if 'report_reason' not in data:
             content_lower = event.get('content', '').lower()

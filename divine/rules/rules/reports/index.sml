@@ -8,3 +8,4 @@ Import(
 )
 
 Require(rule='rules/reports/auto_hide.sml')
+Require(rule='rules/reports/moderation_service.sml')
