@@ -16,7 +16,7 @@ common = [
     "ddtrace==2.21.11",
     "decorator==5.2.1",
     "deepmerge==0.3.0",
-    "dnspython==2.0.0",
+    "dnspython==2.6.1",
     "ecdsa==0.19.1",
     "envier==0.5.2",
     "erlpack",
