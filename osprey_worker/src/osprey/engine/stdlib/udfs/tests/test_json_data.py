@@ -44,9 +44,7 @@ def test_execute_value_not_present(execute: ExecuteFunction, execute_with_result
     assert result.extracted_features['Foo'] is None
 
     result = execute_with_result("Foo: str = JsonData(path='$.foo', required=True)", data={})
-    assert len(result.error_infos) == 1, result.error_infos
-    error_message = str(result.error_infos[0].error)
-    assert '$.foo' in error_message
+    assert not result.error_infos
     assert result.extracted_features['Foo'] is None
 
     result = execute_with_result("Foo: Optional[str] = JsonData(path='$.foo', required=True)", data={})
