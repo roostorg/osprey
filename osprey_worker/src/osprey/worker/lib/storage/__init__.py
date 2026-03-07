@@ -26,6 +26,11 @@ class ExecutionResultStorageBackendType(StrEnum):
     Minio execution result store
     """
 
+    POSTGRES = auto()
+    """
+    Postgres execution result store
+    """
+
     PLUGIN = auto()
     """
     Execution result store that is defined via register_execution_result_store
