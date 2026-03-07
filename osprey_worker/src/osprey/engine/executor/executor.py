@@ -12,7 +12,6 @@ from osprey.engine.executor.custom_extracted_features import (
     SampleRateExtractedFeature,
     TimestampExtractedFeature,
 )
-from osprey.engine.stdlib.udfs.json_utils import MissingJsonPath
 from osprey.engine.udf.base import BatchableUDFBase
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
@@ -75,7 +74,6 @@ def _is_spammy_exception(e: Optional[Exception]) -> bool:
         e is None
         or isinstance(e, ExpectedUdfException)
         or isinstance(e, NodeFailurePropagationException)
-        or isinstance(e, MissingJsonPath)
         or isinstance(e, TypeError)
     )
 

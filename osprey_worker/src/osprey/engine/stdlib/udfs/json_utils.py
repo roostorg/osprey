@@ -1,4 +1,4 @@
-from typing import Any, Dict, TypeVar
+from typing import Any, Dict
 
 from jsonpath_rw import JSONPath, parse
 from osprey.engine.executor.execution_context import ExpectedUdfException
@@ -19,14 +19,6 @@ def parse_path(path: ConstExpr[str]) -> JSONPath:
             raise
 
 
-class MissingJsonPath(Exception):
-    def __init__(self, path: str) -> None:
-        self.path = path
-
-    def __str__(self) -> str:
-        return f'Missing Json data at path `{self.path}`.'
-
-
 class InvalidJsonType(TypeError):
     def __init__(self, path: str, expected_type: type, actual_type: type) -> None:
         self.path = path
@@ -38,9 +30,6 @@ class InvalidJsonType(TypeError):
             f'Invalid type in Json data at path `{self.path}`.'
             f' Has type {to_display_str(self.actual_type)}, expected {to_display_str(self.expected_type)}.'
         )
-
-
-_T = TypeVar('_T')
 
 
 def get_from_data(
@@ -59,12 +48,8 @@ def get_from_data(
         if rvalue_type_checker.check(None):
             return None
 
-        # Only perform the `required` check if our return type is incompatible with None
-        if required:
-            raise MissingJsonPath(str(expr))
-
-        # Otherwise raise an expected/ignored failure to prevent dependencies from running, but not be reported
-        # as an exception.
+        # Missing paths are expected — most actions only have a subset of fields.
+        # Raise ExpectedUdfException to skip downstream nodes without recording an error.
         raise ExpectedUdfException()
 
     if not rvalue_type_checker.check(value):
