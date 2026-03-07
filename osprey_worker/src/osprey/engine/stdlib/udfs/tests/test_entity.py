@@ -138,10 +138,7 @@ def test_entity_can_be_optional(execute: ExecuteFunction, execute_with_result: E
 
     result = execute_with_result("A: Entity[str] = EntityJson(type='A', path='$.missing')")
 
-    assert len(result.error_infos) == 1
-    error_message = str(result.error_infos[0].error)
-    assert '$.missing' in error_message
-
+    assert not result.error_infos
     assert result.extracted_features['A'] is None
 
 
