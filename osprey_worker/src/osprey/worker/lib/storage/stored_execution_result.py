@@ -5,7 +5,7 @@ import json
 from abc import ABC, abstractmethod
 from datetime import datetime
 from io import BytesIO
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, cast
 
 import gevent
 import google.cloud.storage as storage
@@ -19,8 +19,9 @@ from osprey.engine.executor.execution_context import ExecutionResult
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.snowflake import Snowflake
-from osprey.worker.lib.storage import ExecutionResultStorageBackendType
+from osprey.worker.lib.storage import ExecutionResultStorageBackendType, postgres
 from osprey.worker.lib.storage.bigtable import osprey_bigtable
+from osprey.worker.lib.storage.pg_stored_execution import PgStoredExecutionResult
 from pydantic.main import BaseModel
 
 logger = get_logger()
@@ -456,6 +457,78 @@ class StoredExecutionResultMinIO(ExecutionResultStore):
 
     @staticmethod
     def _execution_result_dict_from_minio_data(data: Dict[str, Any]) -> Dict[str, Any]:
+        execution_result_dict = {
+            'id': data['id'],
+            'extracted_features': data['extracted_features'],
+            'error_traces': data['error_traces'],
+            'timestamp': datetime.fromisoformat(data['timestamp']),
+            'action_data': None,
+        }
+
+        action_data = data.get('action_data')
+        if action_data:
+            execution_result_dict['action_data'] = action_data
+
+        return execution_result_dict
+
+
+class StoredExecutionResultPostgres(ExecutionResultStore):
+    def __init__(self) -> None:
+        postgres.init_from_config('osprey_db')
+
+    def select_one(self, action_id: int) -> Optional[Dict[str, Any]]:
+        try:
+            with metrics.timed('pg_stored_execution_result.get_one'):
+                result = PgStoredExecutionResult.select_one(action_id)
+                if not result:
+                    metrics.increment(
+                        'pg_stored_execution_result.select_one.not_found', tags=[f'action_id:{action_id}']
+                    )
+                    return None
+                payload = cast(Dict[str, Any], result.payload)
+                return StoredExecutionResultPostgres._execution_result_dict_from_pg_data(payload)
+
+        except Exception as e:
+            logger.error(f'Failed to retrieve execution result from PG for action_id {action_id}: {e}')
+            return None
+
+    def select_many(self, action_ids: List[int]) -> List[Dict[str, Any]]:
+        try:
+            with metrics.timed('pg_stored_execution_result.get_many'):
+                results = PgStoredExecutionResult.select_many(action_ids)
+                return [
+                    StoredExecutionResultPostgres._execution_result_dict_from_pg_data(
+                        cast(Dict[str, Any], result.payload)
+                    )
+                    for result in results
+                ]
+        except Exception as e:
+            logger.error(f'Failed to retrieve execution results from PG for action_ids {action_ids}: {e}')
+            return []
+
+    def insert(
+        self,
+        action_id: int,
+        extracted_features_json: str,
+        error_traces_json: str,
+        timestamp: datetime,
+        action_data_json: str,
+    ) -> None:
+        try:
+            with metrics.timed('pg_stored_execution_result.insert'):
+                payload: Dict[str, Any] = {
+                    'id': action_id,
+                    'extracted_features': extracted_features_json,
+                    'error_traces': error_traces_json,
+                    'timestamp': timestamp.isoformat(),
+                    'action_data': action_data_json,
+                }
+                PgStoredExecutionResult.insert(action_id, payload)
+        except Exception as e:
+            logger.error(f'Failed to insert execution result into PG for action_id {action_id}: {e}')
+
+    @staticmethod
+    def _execution_result_dict_from_pg_data(data: Dict[str, Any]) -> Dict[str, Any]:
         execution_result_dict = {
             'id': data['id'],
             'extracted_features': data['extracted_features'],

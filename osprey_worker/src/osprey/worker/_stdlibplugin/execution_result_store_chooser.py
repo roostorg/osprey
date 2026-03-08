@@ -8,6 +8,7 @@ from osprey.worker.lib.storage.stored_execution_result import (
     StoredExecutionResultBigTable,
     StoredExecutionResultGCS,
     StoredExecutionResultMinIO,
+    StoredExecutionResultPostgres,
 )
 
 
@@ -33,6 +34,8 @@ def get_rules_execution_result_storage_backend(
         return StoredExecutionResultMinIO(
             endpoint=endpoint, access_key=access_key, secret_key=secret_key, secure=secure, bucket_name=bucket_name
         )
+    elif backend_type == ExecutionResultStorageBackendType.POSTGRES:
+        return StoredExecutionResultPostgres()
     elif backend_type == ExecutionResultStorageBackendType.PLUGIN:
         store = bootstrap_execution_result_store(config=config)
         if store is None:
