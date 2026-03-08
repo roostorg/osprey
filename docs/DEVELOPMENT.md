@@ -88,7 +88,7 @@ This starts up many services, including:
 - **Postgres**: A database that the Worker, UI API, and Druid use for various reasons, such as the Postgres-backed Labels Service (in the example plugins)
 - **Druid**: A database that consumes Osprey Worker outputs to power the UI API for real-time querying
 
-Alternatively, you can start Osprey with `osprey-coordinator`, refer to the [Coordinator README](./example_docker_compose/run_osprey_with_coordinator/README.md) for more information
+Alternatively, you can start Osprey with `osprey-coordinator`, refer to the [Coordinator README](../example_docker_compose/run_osprey_with_coordinator/README.md) for more information
 
 ### 6. (Optional) Open ports for the UI/UI API
 
