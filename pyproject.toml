@@ -71,7 +71,7 @@ common = [
     "jinja2==2.11.3",
     "jslog4kube==1.0.6",
     "jsonpath-rw",
-    "kafka-python==1.4.7",
+    "kafka-python==2.3.0",
     "linkify-it-py==2.0.3",
     "markdown-it-py==3.0.0",
     "markupsafe==2.0.1",
