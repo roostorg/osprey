@@ -136,7 +136,14 @@ def test_entity_can_be_optional(execute: ExecuteFunction, execute_with_result: E
 
     assert data == {'A': None}
 
+    # Default required=False means missing paths silently skip without errors
     result = execute_with_result("A: Entity[str] = EntityJson(type='A', path='$.missing')")
+
+    assert not result.error_infos
+    assert result.extracted_features['A'] is None
+
+    # Explicit required=True still reports errors for missing paths
+    result = execute_with_result("A: Entity[str] = EntityJson(type='A', path='$.missing', required=True)")
 
     assert len(result.error_infos) == 1
     error_message = str(result.error_infos[0].error)

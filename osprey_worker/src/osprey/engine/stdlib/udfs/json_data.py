@@ -14,10 +14,11 @@ class Arguments(ArgumentsBase):
     Must be a string literal and must be valid JSON path syntax.
     """
 
-    required: bool = True
+    required: bool = False
     """Whether or not the value is required to be in the action data.
 
-    Defaults to `True`. If `False`, will gracefully handle both missing and present-but-null values.
+    Defaults to `False`. If `True`, missing values will be reported as errors rather than silently
+    skipping downstream nodes.
     """
 
     coerce_type: bool = False
