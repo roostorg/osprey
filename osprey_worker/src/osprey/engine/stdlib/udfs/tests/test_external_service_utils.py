@@ -42,13 +42,13 @@ class FailingService(ExternalService[str, int]):
         raise RuntimeError(f'timeout for {key}')
 
 
-class SuppressedFailingService(ExternalService[str, Optional[int]]):
-    """Always raises, but opts in to suppress_cached_errors."""
+class CountErrorOnceFailingService(ExternalService[str, Optional[int]]):
+    """Always raises, but opts in to count_error_once."""
 
     def __init__(self) -> None:
         self.calls: List[str] = []
 
-    def suppress_cached_errors(self) -> bool:
+    def count_error_once(self) -> bool:
         return True
 
     def get_from_service(self, key: str) -> Optional[int]:
@@ -118,7 +118,7 @@ def test_can_request_different_keys_in_parallel() -> None:
 
 
 def test_cached_errors_re_raise_by_default() -> None:
-    """Without suppress_cached_errors, cached exceptions re-raise for all callers."""
+    """Without count_error_once, cached exceptions re-raise for every caller."""
     service = FailingService()
     accessor = ExternalServiceAccessor(service)
 
@@ -133,10 +133,10 @@ def test_cached_errors_re_raise_by_default() -> None:
     assert service.calls == ['a']
 
 
-def test_suppress_cached_errors_returns_none_on_subsequent_calls() -> None:
-    """With suppress_cached_errors, the first caller gets the exception but
+def test_count_error_once_returns_none_on_subsequent_calls() -> None:
+    """With count_error_once, the first caller gets the exception but
     subsequent callers receive None from the cache."""
-    service = SuppressedFailingService()
+    service = CountErrorOnceFailingService()
     accessor = ExternalServiceAccessor(service)
 
     with pytest.raises(RuntimeError, match='timeout for a'):
@@ -149,15 +149,15 @@ def test_suppress_cached_errors_returns_none_on_subsequent_calls() -> None:
     assert service.calls == ['a']
 
 
-def test_suppress_cached_errors_concurrent_waiters() -> None:
-    """With suppress_cached_errors, concurrent waiters get None while the
+def test_count_error_once_concurrent_waiters() -> None:
+    """With count_error_once, concurrent waiters get None while the
     initiating greenlet gets the exception."""
 
     class BlockingThenFailService(ExternalService[str, Optional[int]]):
         def __init__(self) -> None:
             self.event = Event()
 
-        def suppress_cached_errors(self) -> bool:
+        def count_error_once(self) -> bool:
             return True
 
         def get_from_service(self, key: str) -> Optional[int]:
