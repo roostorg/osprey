@@ -32,6 +32,16 @@ class ExternalService(ABC, Generic[KeyT, ValueT]):
         """
         return None
 
+    def count_error_once(self) -> bool:
+        """
+        When True, only the caller that initiated the external service call
+        receives the exception. Subsequent callers that would hit the cached
+        error receive None instead.
+
+        Only enable this when ValueT is Optional and None is a safe fallback.
+        """
+        return False
+
 
 class ExternalServiceAccessor(Generic[KeyT, ValueT]):
     """Facilitates accessing an external service in a way that caches and debounces requests based on a key."""
@@ -84,7 +94,11 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
             try:
                 cache_entry[0].set(self._service.get_from_service(key))
             except Exception as e:
-                cache_entry[0].set_exception(e)
+                if self._service.count_error_once():
+                    cache_entry[0].set(None)
+                else:
+                    cache_entry[0].set_exception(e)
+                raise
 
         return cast(ValueT, cache_entry[0].get())
 
