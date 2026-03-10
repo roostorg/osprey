@@ -32,6 +32,16 @@ class ExternalService(ABC, Generic[KeyT, ValueT]):
         """
         return None
 
+    def suppress_cached_errors(self) -> bool:
+        """
+        When True, subsequent callers that hit a cached error receive None
+        instead of re-raising the original exception. The caller that initiated
+        the service call still gets the exception raised normally.
+
+        Only enable this when ValueT is Optional and None is a safe fallback.
+        """
+        return False
+
 
 class ExternalServiceAccessor(Generic[KeyT, ValueT]):
     """Facilitates accessing an external service in a way that caches and debounces requests based on a key."""
@@ -84,7 +94,11 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
             try:
                 cache_entry[0].set(self._service.get_from_service(key))
             except Exception as e:
-                cache_entry[0].set_exception(e)
+                if self._service.suppress_cached_errors():
+                    cache_entry[0].set(None)
+                else:
+                    cache_entry[0].set_exception(e)
+                raise
 
         return cast(ValueT, cache_entry[0].get())
 
