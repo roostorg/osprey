@@ -6,7 +6,7 @@ from typing import Callable, Dict, Generic, List, Optional, Set, Tuple, Type, Ty
 
 import gevent
 import gevent.pool
-from ddtrace.span import Span as TracerSpan
+from ddtrace.trace import Span as TracerSpan
 from gevent.threadpool import ThreadPool
 from osprey.engine.ast.grammar import Assign, Span
 from osprey.engine.ast.sources import Sources, SourcesConfig

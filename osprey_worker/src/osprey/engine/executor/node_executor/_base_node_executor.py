@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Generic, Sequence, Type, TypeVar
 
-from ddtrace.span import Span
+from ddtrace.trace import Span
 from osprey.engine.ast.grammar import ASTNode
 
 if TYPE_CHECKING:

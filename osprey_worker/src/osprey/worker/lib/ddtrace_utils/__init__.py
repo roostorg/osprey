@@ -1,9 +1,10 @@
 import functools
 import sys
-from typing import Any, Callable, Dict, Optional, TypeVar, Union
+from typing import Any, Callable, Dict, Optional, TypeVar
 
 import ddtrace
-from ddtrace.span import Span
+from ddtrace._trace.pin import Pin
+from ddtrace.trace import Span
 from flask import Flask
 from osprey.worker.lib.ddtrace_utils.instrumentation.flask.middleware import TraceMiddleware
 from osprey.worker.lib.ddtrace_utils.internal.baggage import Baggage
@@ -42,7 +43,7 @@ def trace(
     service: Optional[str] = None,
     resource: Optional[str] = None,
     span_type: Optional[str] = None,
-    tags: Optional[Dict[Union[str, bytes], str]] = None,
+    tags: Optional[Dict[str, str]] = None,
 ) -> Span:
     span = ddtrace.tracer.trace(name, service, resource, span_type) or _noop_span()
     if tags:
@@ -59,7 +60,7 @@ def current_span() -> Span:
 
 
 def pin_override(cluster: Any, service: Optional[str], tags: Optional[Dict[str, str]] = None) -> None:
-    ddtrace.Pin.override(cluster, service, tags=tags)
+    Pin.override(cluster, service=service, tags=tags)
 
 
 def get_baggage(span: Span) -> Baggage:
