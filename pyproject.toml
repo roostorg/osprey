@@ -34,7 +34,7 @@ common = [
     "greenlet",
     "grpc-google-iam-v1==0.14.2",
     "grpcio==1.49.1; platform_machine == 'x86_64'",
-    "grpcio==1.53.*; platform_machine == 'aarch64'",
+    "grpcio==1.53.*; platform_machine != 'x86_64'",
     "grpcio-health-checking==1.44.0",
     "grpcio-reflection==1.44.0",
     "grpcio-status==1.49.1",
@@ -98,7 +98,7 @@ common = [
 ]
 dev = [
     "grpcio-tools==1.49.1; platform_machine == 'x86_64'",
-    "grpcio-tools==1.53.*; platform_machine == 'aarch64'",
+    "grpcio-tools==1.53.*; platform_machine != 'x86_64'",
     "ipdb==0.13.13",
     "ipython==9.4.0",
     "memray==1.17.2",
