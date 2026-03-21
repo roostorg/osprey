@@ -7,6 +7,7 @@
   - [Tools Overview](development/tools.md)
   - [Troubleshooting](development/troubleshooting.md)
   - [IDE Setup](development/ide.md)
+  - [Release Process](development/releases.md)
 - [User Interface](UI.md)
 - [Writing Rules](rules.md)
 - [User Research & Personas](user_personas.md)

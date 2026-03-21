@@ -1,6 +1,7 @@
-from typing import List
+from typing import List, Optional
 
 import gevent
+import pytest
 from gevent.event import Event
 from osprey.engine.executor.external_service_utils import ExternalService, ExternalServiceAccessor
 
@@ -28,6 +29,31 @@ class BlockingService(CountingService):
         self.blocking_events.remove(event)
 
         return super().get_from_service(key)
+
+
+class FailingService(ExternalService[str, int]):
+    """Always raises on the first call for a key."""
+
+    def __init__(self) -> None:
+        self.calls: List[str] = []
+
+    def get_from_service(self, key: str) -> int:
+        self.calls.append(key)
+        raise RuntimeError(f'timeout for {key}')
+
+
+class CountErrorOnceFailingService(ExternalService[str, Optional[int]]):
+    """Always raises, but opts in to count_error_once."""
+
+    def __init__(self) -> None:
+        self.calls: List[str] = []
+
+    def count_error_once(self) -> bool:
+        return True
+
+    def get_from_service(self, key: str) -> Optional[int]:
+        self.calls.append(key)
+        raise RuntimeError(f'timeout for {key}')
 
 
 def test_accessor_caches_values() -> None:
@@ -89,3 +115,68 @@ def test_can_request_different_keys_in_parallel() -> None:
     assert g1.get() == 1
     assert g2.get() == 2
     assert g3.get() == 1
+
+
+def test_cached_errors_re_raise_by_default() -> None:
+    """Without count_error_once, cached exceptions re-raise for every caller."""
+    service = FailingService()
+    accessor = ExternalServiceAccessor(service)
+
+    with pytest.raises(RuntimeError, match='timeout for a'):
+        accessor.get('a')
+
+    # Subsequent call also raises from cache
+    with pytest.raises(RuntimeError, match='timeout for a'):
+        accessor.get('a')
+
+    # Only one service call was made
+    assert service.calls == ['a']
+
+
+def test_count_error_once_returns_none_on_subsequent_calls() -> None:
+    """With count_error_once, the first caller gets the exception but
+    subsequent callers receive None from the cache."""
+    service = CountErrorOnceFailingService()
+    accessor = ExternalServiceAccessor(service)
+
+    with pytest.raises(RuntimeError, match='timeout for a'):
+        accessor.get('a')
+
+    # Subsequent call returns None from cache
+    assert accessor.get('a') is None
+
+    # Only one service call was made
+    assert service.calls == ['a']
+
+
+def test_count_error_once_concurrent_waiters() -> None:
+    """With count_error_once, concurrent waiters get None while the
+    initiating greenlet gets the exception."""
+
+    class BlockingThenFailService(ExternalService[str, Optional[int]]):
+        def __init__(self) -> None:
+            self.event = Event()
+
+        def count_error_once(self) -> bool:
+            return True
+
+        def get_from_service(self, key: str) -> Optional[int]:
+            self.event.wait()
+            raise RuntimeError('timeout')
+
+    service = BlockingThenFailService()
+    accessor = ExternalServiceAccessor(service)
+
+    g1 = gevent.spawn(lambda: accessor.get('a'))
+    g2 = gevent.spawn(lambda: accessor.get('a'))
+    gevent.idle()
+
+    service.event.set()
+    gevent.idle()
+
+    # The initiating greenlet gets the exception
+    assert g1.exception is not None or g2.exception is not None
+
+    # The waiting greenlet gets None
+    results = [g.value for g in [g1, g2] if g.exception is None]
+    assert None in results

@@ -37,7 +37,10 @@ common = [
     "grpcio==1.53.*; platform_machine != 'x86_64'",
     "grpcio-health-checking==1.44.0",
     "grpcio-reflection==1.44.0",
-    "grpcio-status==1.49.1",
+    "grpcio-status==1.49.1; platform_machine == 'x86_64'",
+    "grpcio-status==1.53.*; platform_machine != 'x86_64'",
+    "grpcio-tools==1.49.1; platform_machine == 'x86_64'",
+    "grpcio-tools==1.53.*; platform_machine != 'x86_64'",
     "gunicorn",
     "hash-ring",
     "intervals==0.9.2",
@@ -97,8 +100,6 @@ common = [
     "types-werkzeug==1.0.9",
 ]
 dev = [
-    "grpcio-tools==1.49.1; platform_machine == 'x86_64'",
-    "grpcio-tools==1.53.*; platform_machine != 'x86_64'",
     "ipdb==0.13.13",
     "ipython==9.4.0",
     "memray==1.17.2",
