@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 📚 3rd party library updates
     - Upgrade `simplejson` from 3.19.3 to 3.20.2 ([#174](https://github.com/roostorg/osprey/pull/174) by [@dependabot](https://github.com/dependabot))
+    - Upgrade `requests-mock` from 1.9.3 to 1.12.1 ([#176](https://github.com/roostorg/osprey/pull/176) by [@dependabot](https://github.com/dependabot))
 
 ### 🛠 Breaking changes
 
