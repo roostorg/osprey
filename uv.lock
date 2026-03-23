@@ -70,7 +70,7 @@ common = [
     { name = "hash-ring", url = "https://storage.googleapis.com/discord-devops/hash_ring-src-b4b56bc93053881b68b829ee9d1a4871b4aee592.zip" },
     { name = "intervals", specifier = "==0.9.2" },
     { name = "jsonpath-rw", url = "https://github.com/kennknowles/python-jsonpath-rw/archive/6f5647bb3ad2395c20f0191fef07a1df51c9fed8.tar.gz" },
-    { name = "kafka-python", specifier = "==1.4.7" },
+    { name = "kafka-python", specifier = "==2.3.0" },
     { name = "minio", specifier = ">=7.2.16" },
     { name = "mmh3", specifier = "==3.0.0" },
     { name = "msgpack", specifier = "==1.0.8" },
@@ -1290,11 +1290,11 @@ requires-dist = [
 
 [[package]]
 name = "kafka-python"
-version = "1.4.7"
+version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/58/20/2a2494fe7b4bf4cb36c060f88a55adcd944b7876877691a2f28cd544467b/kafka-python-1.4.7.tar.gz", hash = "sha256:2f29baad4b3efe05a2bb81ac268855aa01cbc68397f15bac77b494ffd7e2cada", size = 290977, upload-time = "2019-09-30T21:13:20.078Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/27/5c/d3b6d93ed625d2cb0265e6fe0f507be544f6edde577c1b118f42566389bf/kafka_python-2.3.0.tar.gz", hash = "sha256:de65b596d26b5c894f227c35c7d29a65cea8f8a1c4f0f2b4e3e2ea60d503acc8", size = 358391, upload-time = "2025-11-21T00:47:34.078Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/49/c9/9863483a1353700ba87821b4f39085eb18fd1bcbb1e954c697177d67f03f/kafka_python-1.4.7-py2.py3-none-any.whl", hash = "sha256:4fbebebfcb6fc94903fb720fe883d7bbec7298f4f1acb857c21dd3b4b114ba4b", size = 266121, upload-time = "2019-09-30T21:13:17.697Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/db/694fd552295ed091e7418d02b6268ee36092d4c93211136c448fe061fe32/kafka_python-2.3.0-py2.py3-none-any.whl", hash = "sha256:831ba6dff28144d0f1145c874d391f3ebb3c2c3e940cc78d74e83f0183497c98", size = 326260, upload-time = "2025-11-21T00:47:32.561Z" },
 ]
 
 [[package]]
