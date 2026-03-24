@@ -11,7 +11,7 @@ class Arguments(ArgumentsBase):
 class ParseInt(UDFBase[Arguments, int]):
     """Converts a numeric string to an integer."""
 
-    category = UdfCategories.NUMERIC
+    category = UdfCategories.CAST
 
     def execute(self, execution_context: ExecutionContext, arguments: Arguments) -> int:
         try:

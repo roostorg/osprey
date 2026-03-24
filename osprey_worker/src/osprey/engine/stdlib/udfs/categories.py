@@ -13,6 +13,6 @@ class UdfCategories(str, Enum):
     HTTP = 'HTTP'
     IP = 'IP'
     PHONE = 'Phone'
-    NUMERIC = 'Numeric'
+    CAST = 'Cast'
     RANDOM = 'Random'
     STRING = 'String'
