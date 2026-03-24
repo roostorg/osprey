@@ -419,7 +419,7 @@ def execute(
     ]
     metrics.increment('osprey.action_health', tags=action_tags)
     if total_errors > 0:
-        metrics.histogram('osprey.action_error_count', total_errors, tags=[f'action:{action.action_name}'], sample_rate=0.1)
+        metrics.histogram('osprey.action_error_count', total_errors, tags=[f'action:{action.action_name}'])
 
     result = ExecutionResult(
         extracted_features=context.get_extracted_features(),
