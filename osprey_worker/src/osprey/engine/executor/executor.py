@@ -406,10 +406,25 @@ def execute(
         ]
     )
 
+    effects = context.get_effects()
+
+    total_errors = len(error_infos)
+    unexpected_errors = len(unexpected_error_infos)
+    has_effects = len(effects) > 0
+    action_tags = [
+        f'action:{action.action_name}',
+        f'had_errors:{total_errors > 0}',
+        f'had_unexpected_errors:{unexpected_errors > 0}',
+        f'had_effects:{has_effects}',
+    ]
+    metrics.increment('osprey.action_health', tags=action_tags)
+    if total_errors > 0:
+        metrics.histogram('osprey.action_error_count', total_errors, tags=[f'action:{action.action_name}'], sample_rate=0.1)
+
     result = ExecutionResult(
         extracted_features=context.get_extracted_features(),
         action=action,
-        effects=context.get_effects(),
+        effects=effects,
         validator_results=validator_results,
         error_infos=unexpected_error_infos,
         sample_rate=sample_rate,
