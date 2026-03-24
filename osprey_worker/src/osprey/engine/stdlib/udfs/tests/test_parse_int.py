@@ -1,6 +1,5 @@
 import pytest
 from osprey.engine.conftest import ExecuteFunction
-from osprey.engine.executor.execution_context import ExpectedUdfException
 from osprey.engine.stdlib.udfs.parse_int import ParseInt
 from osprey.engine.udf.registry import UDFRegistry
 
@@ -14,5 +13,5 @@ def test_parse_int(execute: ExecuteFunction, s: str, expected: int) -> None:
 
 
 def test_parse_int_invalid(execute: ExecuteFunction) -> None:
-    with pytest.raises(ExpectedUdfException):
-        execute('Result = ParseInt(s="ABC")')
+    data = execute('Result = ParseInt(s="ABC")')
+    assert data == {'Result': None}
