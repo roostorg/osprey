@@ -408,18 +408,23 @@ def execute(
 
     effects = context.get_effects()
 
-    total_errors = len(error_infos)
-    unexpected_errors = len(unexpected_error_infos)
+    actionable_error_infos = [
+        error_info
+        for error_info in error_infos
+        if isinstance(error_info.error, Exception) and not _is_spammy_exception(error_info.error)
+    ]
     has_effects = len(effects) > 0
+    has_actionable_errors = len(actionable_error_infos) > 0
     action_tags = [
         f'action:{action.action_name}',
-        f'had_errors:{total_errors > 0}',
-        f'had_unexpected_errors:{unexpected_errors > 0}',
+        f'had_actionable_errors:{has_actionable_errors}',
         f'had_effects:{has_effects}',
     ]
     metrics.increment('osprey.action_health', tags=action_tags)
-    if total_errors > 0:
-        metrics.histogram('osprey.action_error_count', total_errors, tags=[f'action:{action.action_name}'])
+    if has_actionable_errors:
+        metrics.histogram(
+            'osprey.action_error_count', len(actionable_error_infos), tags=[f'action:{action.action_name}']
+        )
 
     result = ExecutionResult(
         extracted_features=context.get_extracted_features(),
