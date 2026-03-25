@@ -132,22 +132,36 @@ class WhenRules(UDFBase[WhenRulesArguments, None]):
         #    This is important because if we have a list of LabelAdd() calls, we can end up invalidating
         #    them all if any of the calls fails.
         then_value = []
+        then_failed = 0
         assert isinstance(then_node, grammar.List), 'BUG: `then` node is not a list!'
         for item in then_node.items:
             resolved = execution_context.resolved(item, return_none_for_failed_values=True)
             if resolved is not None:
                 then_value.append(resolved)
+            else:
+                then_failed += 1
 
         # 3. Perform special resolution of the `rules_any` list. Essentially, we are semi-circumventing the
         #    `ListExecutor`, in order to peek inside, and grab each non-failed item within the list.
         rules_any_value = []
+        rules_any_failed = 0
         assert isinstance(rules_any_node, grammar.List), 'BUG: `rules_any node is not a List!'
         for item in rules_any_node.items:
             resolved = execution_context.resolved(item, return_none_for_failed_values=True)
             if resolved is not None:
                 rules_any_value.append(resolved)
+            else:
+                rules_any_failed += 1
 
-        # 4. Construct the resolved arguments, based on our custom argument resolution.
+        # 4. Emit completeness metrics for this WhenRules block.
+        action_name = execution_context.get_action_name()
+        is_degraded = rules_any_failed > 0 or then_failed > 0
+        metrics.increment(
+            'osprey.whenrules_completeness',
+            tags=[f'action:{action_name}', f'degraded:{is_degraded}'],
+        )
+
+        # 5. Construct the resolved arguments, based on our custom argument resolution.
         return cast(
             WhenRulesArguments,
             call_executor.unresolved_arguments.update_with_resolved({'then': then_value, 'rules_any': rules_any_value}),
