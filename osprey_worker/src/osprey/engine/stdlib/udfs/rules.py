@@ -160,6 +160,8 @@ class WhenRules(UDFBase[WhenRulesArguments, None]):
                     failed_rule_names.append('<unknown>')
 
         # 4. Store audit state for execute() to consume.
+        # Safe because WhenRules is synchronous (execute_async=False) and CallExecutor.execute()
+        # calls resolve_arguments() then execute() without yielding to the event loop.
         self._failed_rule_names = failed_rule_names
         self._then_failed = then_failed
 
@@ -181,8 +183,9 @@ class WhenRules(UDFBase[WhenRulesArguments, None]):
         all_rule_names = [rule.name for rule in arguments.rules_any]
         passing_rules = [rule for rule in arguments.rules_any if rule.value]
         passing_names = [rule.name for rule in passing_rules]
-        failed_rule_names: List[str] = getattr(self, '_failed_rule_names', [])
-        then_failed: int = getattr(self, '_then_failed', 0)
+        assert hasattr(self, '_failed_rule_names'), 'BUG: resolve_arguments() must be called before execute()'
+        failed_rule_names: List[str] = self._failed_rule_names
+        then_failed: int = self._then_failed
 
         effects_emitted: List[str] = []
         if passing_rules:

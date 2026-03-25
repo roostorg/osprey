@@ -66,6 +66,7 @@ class ExternalServiceException(Exception):
     """Indicates that an external service call failed or returned unexpected data."""
 
 
+@add_slots
 @dataclass
 class WhenRulesAuditEntry:
     """Audit record for a single WhenRules evaluation."""
