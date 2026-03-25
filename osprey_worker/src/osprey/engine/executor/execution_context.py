@@ -12,6 +12,7 @@ from typing import (
     Iterable,
     List,
     Mapping,
+    Optional,
     Sequence,
     Set,
     Type,
@@ -65,6 +66,18 @@ class ExternalServiceException(Exception):
     """Indicates that an external service call failed or returned unexpected data."""
 
 
+@dataclass
+class WhenRulesAuditEntry:
+    """Audit record for a single WhenRules evaluation."""
+
+    rules_evaluated: List[str]
+    rules_matched: List[str]
+    rules_failed: List[str]
+    effects_emitted: List[str]
+    effects_failed: int
+    is_degraded: bool
+
+
 class ExecutionContext:
     """The execution context stores any outputs or intermediate state of an execution."""
 
@@ -83,6 +96,7 @@ class ExecutionContext:
         '_dependency_dag',
         '_chain_by_id',
         '_custom_extracted_features',
+        '_rule_audit_entries',
     )
 
     def __init__(self, execution_graph: ExecutionGraph, action: 'Action', helpers: UDFHelpers):
@@ -102,6 +116,7 @@ class ExecutionContext:
         self._chain_by_id: Dict[int, DependencyChain] = {}
         # feature name -> serializable feature
         self._custom_extracted_features: Dict[str, Any] = {}
+        self._rule_audit_entries: List[WhenRulesAuditEntry] = []
 
         self.enqueue_source(execution_graph.get_entry_point())
 
@@ -201,6 +216,12 @@ class ExecutionContext:
 
     def get_effects(self) -> Mapping[Type[EffectBase], Sequence[EffectBase]]:
         return dict(self._effects)
+
+    def add_rule_audit_entry(self, entry: WhenRulesAuditEntry) -> None:
+        self._rule_audit_entries.append(entry)
+
+    def get_rule_audit_entries(self) -> List[WhenRulesAuditEntry]:
+        return list(self._rule_audit_entries)
 
     def add_custom_extracted_feature(
         self, custom_extracted_feature: CustomExtractedFeature[Any], error_on_duplicate_key: bool = True
@@ -355,6 +376,8 @@ class ExecutionResult:
     # some kind of typing when outputing `validator_results`
     validator_results: Dict[Any, Any] = field(default_factory=dict)
     sample_rate: int = 100
+    trace_id: Optional[str] = None
+    rule_audit_entries: Sequence[WhenRulesAuditEntry] = field(default_factory=list)
 
     def add_custom_extracted_feature(self, custom_extracted_feature: CustomExtractedFeature[Any]) -> None:
         name = custom_extracted_feature.feature_name()

@@ -4,6 +4,7 @@ from typing import List, Optional, cast
 from osprey.engine.ast import grammar
 from osprey.engine.ast_validator.validation_utils import add_must_assign_to_variable_error
 from osprey.engine.executor.node_executor.call_executor import CallExecutor
+from osprey.engine.executor.execution_context import WhenRulesAuditEntry
 from osprey.engine.language_types.effects import EffectBase
 from osprey.engine.language_types.rules import RuleT
 from osprey.engine.udf.type_helpers import validate_kwarg_node_type
@@ -145,6 +146,7 @@ class WhenRules(UDFBase[WhenRulesArguments, None]):
         #    `ListExecutor`, in order to peek inside, and grab each non-failed item within the list.
         rules_any_value = []
         rules_any_failed = 0
+        failed_rule_names: List[str] = []
         assert isinstance(rules_any_node, grammar.List), 'BUG: `rules_any node is not a List!'
         for item in rules_any_node.items:
             resolved = execution_context.resolved(item, return_none_for_failed_values=True)
@@ -152,8 +154,16 @@ class WhenRules(UDFBase[WhenRulesArguments, None]):
                 rules_any_value.append(resolved)
             else:
                 rules_any_failed += 1
+                if isinstance(item, grammar.Name):
+                    failed_rule_names.append(item.identifier)
+                else:
+                    failed_rule_names.append('<unknown>')
 
-        # 4. Emit completeness metrics for this WhenRules block.
+        # 4. Store audit state for execute() to consume.
+        self._failed_rule_names = failed_rule_names
+        self._then_failed = then_failed
+
+        # 5. Emit completeness metrics for this WhenRules block.
         action_name = execution_context.get_action_name()
         is_degraded = rules_any_failed > 0 or then_failed > 0
         metrics.increment(
@@ -161,14 +171,33 @@ class WhenRules(UDFBase[WhenRulesArguments, None]):
             tags=[f'action:{action_name}', f'degraded:{is_degraded}'],
         )
 
-        # 5. Construct the resolved arguments, based on our custom argument resolution.
+        # 6. Construct the resolved arguments, based on our custom argument resolution.
         return cast(
             WhenRulesArguments,
             call_executor.unresolved_arguments.update_with_resolved({'then': then_value, 'rules_any': rules_any_value}),
         )
 
     def execute(self, execution_context: ExecutionContext, arguments: WhenRulesArguments) -> None:
+        all_rule_names = [rule.name for rule in arguments.rules_any]
         passing_rules = [rule for rule in arguments.rules_any if rule.value]
+        passing_names = [rule.name for rule in passing_rules]
+        failed_rule_names: List[str] = getattr(self, '_failed_rule_names', [])
+        then_failed: int = getattr(self, '_then_failed', 0)
+
+        effects_emitted: List[str] = []
+        if passing_rules:
+            effects_emitted = [type(o).__name__ for o in arguments.then if isinstance(o, EffectBase)]
+
+        entry = WhenRulesAuditEntry(
+            rules_evaluated=all_rule_names,
+            rules_matched=passing_names,
+            rules_failed=failed_rule_names,
+            effects_emitted=effects_emitted,
+            effects_failed=then_failed,
+            is_degraded=len(failed_rule_names) > 0 or then_failed > 0,
+        )
+        execution_context.add_rule_audit_entry(entry)
+
         if not passing_rules:
             return
 
