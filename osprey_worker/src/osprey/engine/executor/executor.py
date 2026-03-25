@@ -408,7 +408,11 @@ def execute(
 
     effects = context.get_effects()
 
-    actionable_error_infos = [error_info for error_info in error_infos if not _is_spammy_exception(error_info.error)]
+    actionable_error_infos = [
+        error_info
+        for error_info in error_infos
+        if isinstance(error_info.error, Exception) and not _is_spammy_exception(error_info.error)
+    ]
     has_effects = len(effects) > 0
     has_actionable_errors = len(actionable_error_infos) > 0
     action_tags = [
