@@ -9,6 +9,7 @@ from urllib.parse import ParseResult, urlparse, urlunparse
 
 from osprey.engine.stdlib.udfs._prelude import (
     ArgumentsBase,
+    ConstExpr,
     ExecutionContext,
     UDFBase,
     ValidationContext,
@@ -124,6 +125,39 @@ class StringSplit(UDFBase[StringSplitArguments, List[str]]):
 
     def execute(self, execution_context: ExecutionContext, arguments: StringSplitArguments) -> List[str]:
         return arguments.s.split(arguments.sep, arguments.maxsplit)
+
+
+class StringSliceArguments(StringArguments):
+    start: ConstExpr[int]
+    end: ConstExpr[int]
+
+
+class StringSlice(UDFBase[StringSliceArguments, str]):
+    category = UdfCategories.STRING
+
+    def __init__(self, validation_context: ValidationContext, arguments: StringSliceArguments):
+        super().__init__(validation_context, arguments)
+        if arguments.start.value < 0:
+            validation_context.add_error(
+                message='invalid `start`',
+                span=arguments.start.argument_span,
+                hint='`start` must be a non-negative integer',
+            )
+        if arguments.end.value < 0:
+            validation_context.add_error(
+                message='invalid `end`',
+                span=arguments.end.argument_span,
+                hint='`end` must be a non-negative integer',
+            )
+        if arguments.start.value > arguments.end.value:
+            validation_context.add_error(
+                message='invalid `start`',
+                span=arguments.start.argument_span,
+                hint='`start` must be less than or equal to `end`',
+            )
+
+    def execute(self, execution_context: ExecutionContext, arguments: StringSliceArguments) -> str:
+        return arguments.s[arguments.start.value : arguments.end.value]
 
 
 class StringCleaningArguments(StringArguments):
