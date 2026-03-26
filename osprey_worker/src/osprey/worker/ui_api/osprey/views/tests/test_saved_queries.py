@@ -1,8 +1,7 @@
 # import json
 # from http.client import NO_CONTENT, OK
 # from random import choice
-# from collections.abc import Mapping
-# from typing import Any
+# from typing import Any, Mapping, Optional
 
 # import pytest
 # from faker import Faker
@@ -33,7 +32,7 @@
 
 
 # @pytest.mark.use_rules_sources(config)
-# def _create_query(persist: bool = True, parent_id: int | None = None) -> Query:
+# def _create_query(persist: bool = True, parent_id: Optional[int] = None) -> Query:
 #     query = Query()
 #     query.parent_id = parent_id
 #     query.executed_by = fake.email()
