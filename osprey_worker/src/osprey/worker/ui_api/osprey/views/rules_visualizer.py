@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, List
+from typing import Any
 
 from flask import Blueprint, jsonify
 from osprey.engine.executor.execution_visualizer import RenderedDigraph, render_graph
@@ -14,11 +14,11 @@ blueprint = Blueprint('rules_visualizer', __name__)
 
 
 class BaseActionsViewQuery(BaseModel, JsonBodyMarshaller):
-    action_names: List[str]
+    action_names: list[str]
 
 
 class BaseLabelsViewQuery(BaseModel, JsonBodyMarshaller):
-    label_names: List[str]
+    label_names: list[str]
     show_upstream: bool = False
     show_downstream: bool = True
 

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Generic, Sequence, Type, TypeVar
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, ClassVar, Generic, Type, TypeVar
 
 from ddtrace.span import Span
 from osprey.engine.ast.grammar import ASTNode

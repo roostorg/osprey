@@ -1,4 +1,5 @@
-from typing import Any, Dict, Iterator, Optional, Type
+from collections.abc import Iterator
+from typing import Any, Type
 
 import typing_inspect
 from osprey.engine.udf.arguments import EXTRA_ARGS_ATTR
@@ -10,7 +11,7 @@ from .type_helpers import UnsupportedTypeError, get_osprey_generic_param, is_typ
 
 class UDFRegistry:
     def __init__(self) -> None:
-        self._functions: Dict[str, Type[UDFBase[Any, Any]]] = {}
+        self._functions: dict[str, Type[UDFBase[Any, Any]]] = {}
 
     @classmethod
     def with_udfs(cls, *funcs: Type[UDFBase[Any, Any]]) -> 'UDFRegistry':
@@ -77,7 +78,7 @@ class UDFRegistry:
 
         return self
 
-    def get(self, function_name: str) -> Optional[Type[UDFBase[Any, Any]]]:
+    def get(self, function_name: str) -> Type[UDFBase[Any, Any]] | None:
         return self._functions.get(function_name)
 
 

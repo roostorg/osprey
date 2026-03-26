@@ -1,11 +1,11 @@
-from typing import Any, List
+from typing import Any
 
 from ._prelude import ArgumentsBase, ExecutionContext, UDFBase
 from .categories import UdfCategories
 
 
 class Arguments(ArgumentsBase):
-    list: List[Any]
+    list: list[Any]
 
 
 class ListLength(UDFBase[Arguments, int]):

@@ -3,7 +3,8 @@ from __future__ import annotations
 import logging
 import random
 import time
-from typing import Callable, Optional, Tuple, Type
+from collections.abc import Callable
+from typing import Type
 
 import requests
 from requests.exceptions import ConnectionError, ReadTimeout
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 class SessionWithRetries:
     def __init__(
         self,
-        exceptions: Tuple[Type[Exception], ...] = (ConnectionError, ReadTimeout),
+        exceptions: tuple[Type[Exception], ...] = (ConnectionError, ReadTimeout),
         min_delay: float = 0.1,
         max_delay: float = 2,
         jitter: bool = True,
@@ -23,7 +24,7 @@ class SessionWithRetries:
         version: str = 'unknown',
         environment: str = 'unknown',
         raise_for_status: bool = False,
-        predicate: Optional[Callable[[Exception], bool]] = None,
+        predicate: Callable[[Exception], bool] | None = None,
         pool_connections: int = requests.adapters.DEFAULT_POOLSIZE,
         pool_maxsize: int = requests.adapters.DEFAULT_POOLSIZE,
         connection_retries: int = requests.adapters.DEFAULT_RETRIES,

@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import random
-from typing import Optional
 
 
 class Backoff(object):
@@ -9,7 +8,7 @@ class Backoff(object):
     A class that manages an exponential backoff.
     """
 
-    def __init__(self, min_delay: float = 0.5, max_delay: Optional[float] = None, jitter: bool = True):
+    def __init__(self, min_delay: float = 0.5, max_delay: float | None = None, jitter: bool = True):
         self._min = min_delay
         if max_delay is None:
             max_delay = min_delay * 10

@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from osprey.engine.ast import grammar
 from osprey.engine.ast_validator.validation_context import ValidatedSources
@@ -28,10 +28,10 @@ class DruidQueryTransformer:
         assert isinstance(assign_node, grammar.Assign)
         self._root = assign_node.value
 
-    def transform(self) -> Dict[str, Any]:
+    def transform(self) -> dict[str, Any]:
         return {'filter': self._transform(self._root)}
 
-    def _transform(self, node: grammar.ASTNode) -> Dict[str, Any]:
+    def _transform(self, node: grammar.ASTNode) -> dict[str, Any]:
         method = 'transform_' + node.__class__.__name__
         transformer = getattr(self, method, None)
 
@@ -42,14 +42,14 @@ class DruidQueryTransformer:
         assert isinstance(ret, dict)
         return ret
 
-    def transform_BooleanOperation(self, node: grammar.BooleanOperation) -> Dict[str, Any]:
+    def transform_BooleanOperation(self, node: grammar.BooleanOperation) -> dict[str, Any]:
         assert isinstance(node.operand, grammar.And) or isinstance(node.operand, grammar.Or)
 
         filter_type = 'and' if isinstance(node.operand, grammar.And) else 'or'
         values = [self._transform(v) for v in node.values]
         return {'type': filter_type, 'fields': values}
 
-    def transform_BinaryComparison(self, node: grammar.BinaryComparison) -> Dict[str, Any]:
+    def transform_BinaryComparison(self, node: grammar.BinaryComparison) -> dict[str, Any]:
         if isinstance(node.left, grammar.Name) and isinstance(node.right, grammar.Name):
             column_comparison = {
                 'type': 'columnComparison',
@@ -92,13 +92,13 @@ class DruidQueryTransformer:
             ],
         }
 
-    def transform_UnaryOperation(self, node: grammar.UnaryOperation) -> Dict[str, Any]:
+    def transform_UnaryOperation(self, node: grammar.UnaryOperation) -> dict[str, Any]:
         if isinstance(node.operator, grammar.Not):
             return {'type': 'not', 'field': self._transform(node.operand)}
         else:
             raise DruidQueryTransformException(node, 'Unknown Unary Operator')
 
-    def transform_Call(self, node: grammar.Call) -> Dict[str, Any]:
+    def transform_Call(self, node: grammar.Call) -> dict[str, Any]:
         udf, _ = self._udf_node_mapping[id(node)]
 
         if not isinstance(udf, QueryUdfBase):
@@ -107,7 +107,7 @@ class DruidQueryTransformer:
         return udf.to_druid_query()
 
 
-def get_in_query_by_value_type(node: grammar.BinaryComparison, dimension: str, comparison_value: Any) -> Dict[str, Any]:
+def get_in_query_by_value_type(node: grammar.BinaryComparison, dimension: str, comparison_value: Any) -> dict[str, Any]:
     if isinstance(comparison_value, str):
         return {
             'type': 'search',
@@ -120,7 +120,7 @@ def get_in_query_by_value_type(node: grammar.BinaryComparison, dimension: str, c
         raise DruidQueryTransformException(node, 'Invalid "in" comparison value type, must be string or list')
 
 
-def get_druid_bound_query_props(node: grammar.BinaryComparison, comparison_value: Any) -> Dict[str, Any]:
+def get_druid_bound_query_props(node: grammar.BinaryComparison, comparison_value: Any) -> dict[str, Any]:
     """Get the correct query properties for the various type of `bound` filters"""
 
     if isinstance(node.comparator, grammar.LessThan):

@@ -11,7 +11,8 @@ patch_all(patch_gevent=False, patch_ddtrace=False)
 
 import os
 import textwrap
-from typing import TYPE_CHECKING, Iterator
+from collections.abc import Iterator
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
