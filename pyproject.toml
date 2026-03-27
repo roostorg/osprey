@@ -17,7 +17,7 @@ common = [
     "google-api-core==2.19.2",
     "google-api-python-client==2.105.0",
     "google-auth==2.40.3",
-    "google-auth-httplib2==0.2.0",
+    "google-auth-httplib2==0.3.0",
     "google-cloud-appengine-logging==1.6.2",
     "google-cloud-audit-log==0.3.2",
     "google-cloud-bigquery==3.27.0",
