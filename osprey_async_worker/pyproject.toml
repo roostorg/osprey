@@ -16,7 +16,7 @@ dependencies = [
 [project.scripts]
 osprey-async-cli = "osprey.async_worker.cli.main:cli"
 
-[project.entry-points."osprey_plugin"]
+[project.entry-points."osprey_async_plugin"]
 
 [tool.setuptools]
 include-package-data = true
