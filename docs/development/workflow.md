@@ -70,6 +70,10 @@ refactor: simplify rule evaluation logic
 3. **Run quality checks:**
 
    ```bash
+   # This prevents uv.lock from being modified
+   # this is preferred.
+   uv sync --frozen
+
    uv run ruff check --fix
    uv run ruff format
    ```
