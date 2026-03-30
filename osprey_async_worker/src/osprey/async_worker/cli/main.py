@@ -7,17 +7,17 @@ Supports static rules files for testing without etcd.
 import asyncio
 import json
 import logging
-import os
 import signal
-import sys
 from datetime import datetime, timezone
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Tuple
 
 import click
 from osprey.engine.executor.execution_context import Action
+from osprey.engine.executor.udf_execution_helpers import UDFHelpers
+from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.lib.config import Config
-from osprey.worker.lib.instruments import metrics
-from osprey.worker.lib.osprey_engine import bootstrap_engine_with_helpers, get_sources_provider
+from osprey.worker.lib.osprey_engine import OspreyEngine, get_sources_provider, should_yield_during_compilation
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.singletons import CONFIG
 from osprey.worker.sinks.utils.acking_contexts import NoopAckingContext
@@ -33,6 +33,35 @@ def init_config() -> Config:
     config = CONFIG.instance()
     config.configure_from_env()
     return config
+
+
+def bootstrap_stdlib_engine(rules_path: str) -> Tuple[OspreyEngine, UDFHelpers]:
+    """Bootstrap engine with only stdlib UDFs — no external plugins, no Postgres, no labels.
+
+    This avoids loading example_plugins or discord plugins that require database connections.
+    """
+    from osprey.worker._stdlibplugin.udf_register import register_udfs as stdlib_register_udfs
+    from osprey.worker._stdlibplugin.validator_regsiter import register_ast_validators as stdlib_register_validators
+    from osprey.engine.ast_validator import ValidatorRegistry
+
+    udf_helpers = UDFHelpers()
+    udfs = stdlib_register_udfs()
+    udf_registry = UDFRegistry.with_udfs(*udfs)
+
+    validators = stdlib_register_validators()
+    registry = ValidatorRegistry.get_instance()
+    for validator in validators:
+        registry.register_to_instance(validator)
+
+    sources_provider = get_sources_provider(rules_path=rules_path)
+
+    engine = OspreyEngine(
+        sources_provider=sources_provider,
+        udf_registry=udf_registry,
+        should_yield_during_compilation=should_yield_during_compilation(),
+    )
+
+    return engine, udf_helpers
 
 
 class AsyncFileInputStream(AsyncBaseInputStream):
@@ -66,7 +95,8 @@ def cli() -> None:
 @click.option('--rules-path', type=click.Path(exists=True), required=True, help='Path to rules directory')
 @click.option('--input-file', type=click.Path(exists=True), default=None, help='Path to JSONL input file')
 @click.option('--max-concurrent', type=int, default=12, help='Max concurrent async UDF executions')
-def run(rules_path: str, input_file: Optional[str], max_concurrent: int) -> None:
+@click.option('--with-plugins', is_flag=True, default=False, help='Load all plugins (requires external services)')
+def run(rules_path: str, input_file: Optional[str], max_concurrent: int, with_plugins: bool) -> None:
     """Run the async rules worker with a static rules file and optional input file."""
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
     logger.info('Starting async osprey worker (Phase 0)')
@@ -75,9 +105,13 @@ def run(rules_path: str, input_file: Optional[str], max_concurrent: int) -> None
 
     config = init_config()
 
-    # Bootstrap engine with static sources
-    sources_provider = get_sources_provider(rules_path=rules_path)
-    engine, udf_helpers = bootstrap_engine_with_helpers(sources_provider=sources_provider)
+    if with_plugins:
+        from osprey.worker.lib.osprey_engine import bootstrap_engine_with_helpers
+
+        sources_provider = get_sources_provider(rules_path=rules_path)
+        engine, udf_helpers = bootstrap_engine_with_helpers(sources_provider=sources_provider)
+    else:
+        engine, udf_helpers = bootstrap_stdlib_engine(rules_path)
 
     # Input stream
     if input_file:
@@ -140,8 +174,7 @@ def benchmark(rules_path: str, input_file: str, max_concurrent: int, iterations:
     logging.basicConfig(level=logging.WARNING)
     config = init_config()
 
-    sources_provider = get_sources_provider(rules_path=rules_path)
-    engine, udf_helpers = bootstrap_engine_with_helpers(sources_provider=sources_provider)
+    engine, udf_helpers = bootstrap_stdlib_engine(rules_path)
 
     # Load actions
     actions = []

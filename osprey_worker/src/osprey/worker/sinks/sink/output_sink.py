@@ -13,6 +13,7 @@ from osprey.engine.language_types.labels import LabelEffect
 from osprey.engine.stdlib.udfs.rules import RuleT
 from osprey.worker.lib.ddtrace_utils import trace
 from osprey.worker.lib.instruments import metrics
+from osprey.worker.lib.metric_tags import WORKER_TYPE_TAG
 from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation
 from osprey.worker.lib.osprey_shared.logging import DynamicLogSampler, get_logger
 from osprey.worker.lib.storage.labels import LabelsProvider
@@ -69,7 +70,7 @@ class MultiOutputSink(BaseOutputSink):
             attempt = retry_state.attempt_number
             exception = retry_state.outcome.exception() if retry_state.outcome else None
             logger.warning(f'Retrying sink {sink_name}, attempt {attempt}, error: {exception}')
-            metrics.increment('output_sink.retry', tags=[f'sink:{sink_name}', f'attempt:{attempt}'])
+            metrics.increment('output_sink.retry', tags=[WORKER_TYPE_TAG, f'sink:{sink_name}', f'attempt:{attempt}'])
 
         # stop_after_attempt(1) = no retries, stop_after_attempt(3) = 2 retries
         @retry(
@@ -81,7 +82,7 @@ class MultiOutputSink(BaseOutputSink):
         def push_with_retry(result: ExecutionResult) -> None:
             with (
                 trace(f'{sink_name}.push'),
-                metrics.timed('handled_message_output', tags=[f'sink:{sink_name}'], use_ms=True),
+                metrics.timed('handled_message_output', tags=[WORKER_TYPE_TAG, f'sink:{sink_name}'], use_ms=True),
                 gevent.Timeout(sink.timeout),
             ):
                 sink.push(result)
@@ -100,12 +101,12 @@ class MultiOutputSink(BaseOutputSink):
                 except gevent.Timeout as timeout_exc:
                     logger.exception(f'Timeout exception raised when pushing event to sink: {sink_name}')
                     errors[sink] = timeout_exc
-                    metrics.increment('output_sink.timeout', tags=[f'sink:{sink_name}'])
+                    metrics.increment('output_sink.timeout', tags=[WORKER_TYPE_TAG, f'sink:{sink_name}'])
                     sentry_sdk.capture_exception()
                 except Exception as exc:
                     errors[sink] = exc
                     metrics.increment(
-                        'output_sink.error', tags=[f'sink:{sink_name}', f'error:{exc.__class__.__name__}']
+                        'output_sink.error', tags=[WORKER_TYPE_TAG, f'sink:{sink_name}', f'error:{exc.__class__.__name__}']
                     )
                     sentry_sdk.capture_exception()
 
