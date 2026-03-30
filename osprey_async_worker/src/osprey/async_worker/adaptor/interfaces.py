@@ -1,12 +1,16 @@
 """Async plugin interfaces for the osprey async worker.
 
-These mirror the sync interfaces in osprey.worker but use async/await.
-Sync plugins can be wrapped with the adapters below for backward compatibility.
+AsyncUDFBase extends UDFBase so it works with the existing engine machinery
+(UDFRegistry, CallExecutor, validation, type checking, argument resolution).
+
+All I/O UDFs in the async worker MUST be AsyncUDFBase subclasses — existing
+sync UDFs that use gevent primitives will not work without monkey patching.
+Pure-computation UDFs (no I/O) can remain as regular UDFBase and run inline.
 """
 
 import abc
 import asyncio
-from typing import Any, Generic, Optional, Sequence, TypeVar
+from typing import Any, ClassVar, Generic, Sequence, TypeVar
 
 from osprey.engine.executor.execution_context import ExecutionContext, ExecutionResult
 from osprey.engine.udf.base import BatchableUDFBase, UDFBase
@@ -19,21 +23,68 @@ RValue = TypeVar('RValue')
 _T = TypeVar('_T')
 
 
-class AsyncUDFBase(Generic[Arguments, RValue], abc.ABC):
-    """Async version of UDFBase. Implement this for UDFs that do async I/O natively."""
+class AsyncUDFBase(UDFBase[Arguments, RValue]):
+    """Native async UDF base class.
 
-    execute_async = True
+    Extends UDFBase so it integrates with UDFRegistry, CallExecutor, and
+    the full validation/type-checking pipeline. The async executor detects
+    AsyncUDFBase instances via isinstance() and awaits async_execute()
+    directly on the event loop — no thread pool.
+
+    The sync execute() raises so it can't accidentally be called in the
+    async executor's sync path.
+    """
+
+    execute_async: ClassVar[bool] = True
+    is_native_async: ClassVar[bool] = True
+
+    def __init__(self, validation_context, arguments):
+        super().__init__(validation_context, arguments)
+
+    def execute(self, execution_context: ExecutionContext, arguments: Arguments) -> RValue:
+        raise RuntimeError(
+            f'{self.__class__.__name__} is a native async UDF. '
+            f'Use async_execute() instead of execute().'
+        )
 
     @abc.abstractmethod
-    async def execute(self, execution_context: ExecutionContext, arguments: Arguments) -> RValue:
+    async def async_execute(self, execution_context: ExecutionContext, arguments: Arguments) -> RValue:
+        """Override this to implement the UDF's async execution logic."""
         raise NotImplementedError
 
 
-class AsyncBatchableUDFBase(Generic[Arguments, RValue, BatchableArguments], AsyncUDFBase[Arguments, RValue]):
-    """Async version of BatchableUDFBase."""
+class AsyncBatchableUDFBase(BatchableUDFBase[Arguments, RValue, BatchableArguments]):
+    """Native async batchable UDF base class.
+
+    Same as AsyncUDFBase but for batchable UDFs. The async executor detects
+    these and awaits async_execute_batch() directly.
+    """
+
+    is_native_async: ClassVar[bool] = True
+
+    def execute(self, execution_context: ExecutionContext, arguments: Arguments) -> RValue:
+        raise RuntimeError(
+            f'{self.__class__.__name__} is a native async UDF. '
+            f'Use async_execute() instead of execute().'
+        )
+
+    def execute_batch(
+        self,
+        execution_context: ExecutionContext,
+        udfs: Sequence[UDFBase[Any, Any]],
+        arguments: Sequence[BatchableArguments],
+    ) -> Sequence[Result[RValue, Exception]]:
+        raise RuntimeError(
+            f'{self.__class__.__name__} is a native async UDF. '
+            f'Use async_execute_batch() instead of execute_batch().'
+        )
 
     @abc.abstractmethod
-    async def execute_batch(
+    async def async_execute(self, execution_context: ExecutionContext, arguments: Arguments) -> RValue:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def async_execute_batch(
         self,
         execution_context: ExecutionContext,
         udfs: Sequence[UDFBase[Any, Any]],
@@ -42,34 +93,21 @@ class AsyncBatchableUDFBase(Generic[Arguments, RValue, BatchableArguments], Asyn
         raise NotImplementedError
 
 
+# --- Output sinks and input streams (unchanged) ---
+
+
 class AsyncBaseOutputSink(abc.ABC):
-    """Async version of BaseOutputSink."""
+    """Async output sink."""
 
     timeout: float = 2.0
     max_retries: int = 0
 
     @abc.abstractmethod
     def will_do_work(self, result: ExecutionResult) -> bool:
-        """Sync check — no I/O needed, just inspects the result."""
         raise NotImplementedError
 
     @abc.abstractmethod
     async def push(self, result: ExecutionResult) -> None:
-        raise NotImplementedError
-
-    async def stop(self) -> None:
-        pass
-
-
-class AsyncBaseInputStream(abc.ABC, Generic[_T]):
-    """Async version of BaseInputStream. Uses async iteration."""
-
-    @abc.abstractmethod
-    async def __aiter__(self):
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    async def __anext__(self) -> _T:
         raise NotImplementedError
 
     async def stop(self) -> None:
@@ -92,7 +130,6 @@ class AsyncMultiOutputSink(AsyncBaseOutputSink):
                     async with asyncio.timeout(sink.timeout):
                         await sink.push(result)
                 except TimeoutError:
-                    # Log/metric, but don't fail the whole pipeline
                     pass
                 except Exception:
                     pass
@@ -100,55 +137,3 @@ class AsyncMultiOutputSink(AsyncBaseOutputSink):
     async def stop(self) -> None:
         for sink in self._sinks:
             await sink.stop()
-
-
-# --- Adapters: wrap sync plugins to run in async worker ---
-
-
-class SyncUDFAdapter:
-    """Wraps a sync UDFBase to run in a thread pool executor within the async event loop."""
-
-    def __init__(self, sync_udf: UDFBase[Any, Any]):
-        self._sync_udf = sync_udf
-
-    async def execute(self, execution_context: ExecutionContext, arguments: Any) -> Any:
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self._sync_udf.execute, execution_context, arguments)
-
-
-class SyncBatchableUDFAdapter:
-    """Wraps a sync BatchableUDFBase to run in a thread pool executor."""
-
-    def __init__(self, sync_udf: BatchableUDFBase[Any, Any, Any]):
-        self._sync_udf = sync_udf
-
-    async def execute_batch(
-        self,
-        execution_context: ExecutionContext,
-        udfs: Sequence[UDFBase[Any, Any]],
-        arguments: Sequence[Any],
-    ) -> Sequence[Result[Any, Exception]]:
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(
-            None, self._sync_udf.execute_batch, execution_context, udfs, arguments
-        )
-
-
-class SyncOutputSinkAdapter(AsyncBaseOutputSink):
-    """Wraps a sync BaseOutputSink to run in a thread pool executor."""
-
-    def __init__(self, sync_sink: Any):
-        self._sync_sink = sync_sink
-        self.timeout = getattr(sync_sink, 'timeout', 2.0)
-        self.max_retries = getattr(sync_sink, 'max_retries', 0)
-
-    def will_do_work(self, result: ExecutionResult) -> bool:
-        return self._sync_sink.will_do_work(result)
-
-    async def push(self, result: ExecutionResult) -> None:
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._sync_sink.push, result)
-
-    async def stop(self) -> None:
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._sync_sink.stop)
