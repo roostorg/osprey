@@ -10,7 +10,7 @@ Pure-computation UDFs (no I/O) can remain as regular UDFBase and run inline.
 
 import abc
 import asyncio
-from typing import Any, ClassVar, Generic, Sequence, TypeVar
+from typing import Any, ClassVar, Generic, Sequence, Tuple, TypeVar
 
 from osprey.engine.executor.execution_context import ExecutionContext, ExecutionResult
 from osprey.engine.udf.base import (
@@ -42,6 +42,25 @@ class AsyncUDFBase(UDFBase[Arguments, RValue]):
 
     def __init__(self, validation_context, arguments):
         super().__init__(validation_context, arguments)
+
+    @classmethod
+    def _get_udf_base_args(cls):
+        """Override to include AsyncUDFBase in the generic origin check."""
+        import typing_inspect
+
+        for base in cls.__mro__:
+            for generic_base in typing_inspect.get_generic_bases(base):
+                origin = typing_inspect.get_origin(generic_base)
+                if origin in (UDFBase, AsyncUDFBase) or (
+                    hasattr(origin, '__mro__') and UDFBase in origin.__mro__
+                ):
+                    args = typing_inspect.get_args(generic_base)
+                    # Only return if args are concrete (not TypeVars)
+                    if args and not any(isinstance(a, TypeVar) for a in args):
+                        return args
+
+        # Fallback to parent
+        return super()._get_udf_base_args()
 
     def execute(self, execution_context: ExecutionContext, arguments: Arguments) -> RValue:
         raise RuntimeError(
