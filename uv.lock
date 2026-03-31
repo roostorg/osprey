@@ -22,6 +22,7 @@ resolution-markers = [
 [manifest]
 members = [
     "example-plugins",
+    "osprey-async-worker",
     "osprey-rpc",
     "osprey-worker",
 ]
@@ -1552,6 +1553,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/27/d2/c782c88b8afbf961d6972428821c302bd1e9e7bc361352172f0ca31296e2/opentelemetry_api-1.36.0.tar.gz", hash = "sha256:9a72572b9c416d004d492cbc6e61962c0501eaf945ece9b5a0f56597d8348aa0", size = 64780, upload-time = "2025-07-29T15:12:06.02Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bb/ee/6b08dde0a022c463b88f55ae81149584b125a42183407dc1045c486cc870/opentelemetry_api-1.36.0-py3-none-any.whl", hash = "sha256:02f20bcacf666e1333b6b1f04e647dc1d5111f86b8e510238fcc56d7762cda8c", size = 65564, upload-time = "2025-07-29T15:11:47.998Z" },
+]
+
+[[package]]
+name = "osprey-async-worker"
+version = "0.1.0"
+source = { editable = "osprey_async_worker" }
+dependencies = [
+    { name = "osprey-rpc" },
+    { name = "osprey-worker" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "osprey-rpc", editable = "osprey_rpc" },
+    { name = "osprey-worker", editable = "osprey_worker" },
 ]
 
 [[package]]

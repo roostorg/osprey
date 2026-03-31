@@ -8,7 +8,6 @@ from osprey.engine.executor.execution_context import ExecutionResult
 from osprey.worker.lib.instruments import metrics
 
 from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
-from osprey.async_worker.metric_tags import WORKER_TYPE_TAG
 
 logger = logging.getLogger(__name__)
 
@@ -37,13 +36,13 @@ class AsyncMultiOutputSink(AsyncBaseOutputSink):
                     break
                 except TimeoutError:
                     logger.warning(f'Timeout pushing to {sink_name} (attempt {attempt}/{attempts})')
-                    metrics.increment('output_sink.timeout', tags=[WORKER_TYPE_TAG, f'sink:{sink_name}'])
+                    metrics.increment('output_sink.timeout', tags=[f'sink:{sink_name}'])
                     if attempt == attempts:
-                        metrics.increment('output_sink.timeout_exhausted', tags=[WORKER_TYPE_TAG, f'sink:{sink_name}'])
+                        metrics.increment('output_sink.timeout_exhausted', tags=[f'sink:{sink_name}'])
                 except Exception as exc:
                     logger.exception(f'Error pushing to {sink_name}: {exc}')
                     metrics.increment(
-                        'output_sink.error', tags=[WORKER_TYPE_TAG, f'sink:{sink_name}', f'error:{exc.__class__.__name__}']
+                        'output_sink.error', tags=[f'sink:{sink_name}', f'error:{exc.__class__.__name__}']
                     )
                     if attempt == attempts:
                         break

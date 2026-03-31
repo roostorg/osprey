@@ -12,7 +12,6 @@ from osprey.engine.executor.execution_context import Action, ExecutionResult
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.utils.types import add_slots
 from osprey.worker.lib.instruments import metrics
-from osprey.worker.lib.metric_tags import WORKER_TYPE_TAG
 from osprey.worker.lib.osprey_engine import OspreyEngine
 from osprey.worker.lib.osprey_shared.logging import info_log_osprey_action
 from osprey.worker.lib.snowflake import generate_snowflake
@@ -90,7 +89,6 @@ class RulesRunner:
     ) -> Optional[ExecutionResult]:
         sample_config = self._sampler.sample(action)
         tags = [
-            WORKER_TYPE_TAG,
             tag,
             f'action:{action.action_name}',
             f'sample_rate:{sample_config.sample_rate}',
@@ -161,18 +159,18 @@ class RulesSink(BaseSink):
                                 info_log_osprey_action(
                                     action.action_id, action.action_name, 'execution result is None :<'
                                 )
-                                metrics.increment('rules_sink.missing_result', tags=[WORKER_TYPE_TAG])
+                                metrics.increment('rules_sink.missing_result')
                             else:
                                 info_log_osprey_action(action.action_id, action.action_name, 'sending verdicts~')
                                 message_context.set_verdicts(result.get_verdicts_pb2_proto())
-                                metrics.increment('rules_sink.captured_verdicts', tags=[WORKER_TYPE_TAG])
+                                metrics.increment('rules_sink.captured_verdicts')
                         info_log_osprey_action(action.action_id, action.action_name, 'classify_one complete')
             except gevent.GreenletExit:
                 envoy_check_server.stop()
                 return
             except Exception as e:
                 logging.exception('Unexpected error in rules sink')
-                metrics.increment('rules_sink.unexpected_error', tags=[WORKER_TYPE_TAG, f'err:{e.__class__.__name__}'])
+                metrics.increment('rules_sink.unexpected_error', tags=[f'err:{e.__class__.__name__}'])
                 sentry_sdk.capture_exception(e)
 
     def stop(self) -> None:

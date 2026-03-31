@@ -42,7 +42,6 @@ from osprey.worker.lib.pigeon.exceptions import RPCException
 from result import Err, Ok
 
 from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase, AsyncUDFBase
-from osprey.async_worker.metric_tags import WORKER_TYPE_TAG
 
 logger = get_logger(__name__)
 
@@ -76,7 +75,6 @@ def _get_metric_tags(
     context: ExecutionContext, batchable_udf: Optional[BatchableUDFBase[Any, Any, Any]] = None
 ) -> List[str]:
     return [
-        WORKER_TYPE_TAG,
         f'action:{context.get_action_name()}',
         f'encoding:{context.get_data_encoding()}',
         f'batch_type:{batchable_udf.get_batchable_arguments_type().__name__}'
@@ -386,7 +384,6 @@ async def execute(
     has_effects = len(effects) > 0
     has_actionable_errors = len(actionable_error_infos) > 0
     action_tags = [
-        WORKER_TYPE_TAG,
         f'action:{action.action_name}',
         f'had_actionable_errors:{has_actionable_errors}',
         f'had_effects:{has_effects}',
@@ -394,7 +391,7 @@ async def execute(
     metrics.increment('osprey.action_health', tags=action_tags)
     if has_actionable_errors:
         metrics.histogram(
-            'osprey.action_error_count', len(actionable_error_infos), tags=[WORKER_TYPE_TAG, f'action:{action.action_name}']
+            'osprey.action_error_count', len(actionable_error_infos), tags=[f'action:{action.action_name}']
         )
 
     trace_id = str(parent_tracer_span.trace_id) if parent_tracer_span else None

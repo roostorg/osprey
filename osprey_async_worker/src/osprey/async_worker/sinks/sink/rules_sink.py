@@ -17,7 +17,6 @@ from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext, Verdict
 
 from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
 from osprey.async_worker.executor import execute as async_execute
-from osprey.async_worker.metric_tags import WORKER_TYPE_TAG
 from osprey.async_worker.sinks.sink.input_stream import AsyncBaseInputStream
 
 logger = logging.getLogger(__name__)
@@ -42,7 +41,6 @@ class AsyncRulesRunner:
     async def classify_one(self, action: Action, tag: str) -> Optional[ExecutionResult]:
         sample_config = self._sampler.sample(action)
         tags = [
-            WORKER_TYPE_TAG,
             tag,
             f'action:{action.action_name}',
             f'sample_rate:{sample_config.sample_rate}',
@@ -105,17 +103,17 @@ class AsyncRulesSink:
 
                         if isinstance(message_context, VerdictsAckingContext):
                             if result is None:
-                                metrics.increment('rules_sink.missing_result', tags=[WORKER_TYPE_TAG])
+                                metrics.increment('rules_sink.missing_result')
                             else:
                                 message_context.set_verdicts(result.get_verdicts_pb2_proto())
-                                metrics.increment('rules_sink.captured_verdicts', tags=[WORKER_TYPE_TAG])
+                                metrics.increment('rules_sink.captured_verdicts')
 
                         info_log_osprey_action(action.action_id, action.action_name, 'async classify_one complete')
             except asyncio.CancelledError:
                 return
             except Exception as e:
                 logging.exception('Unexpected error in async rules sink')
-                metrics.increment('rules_sink.unexpected_error', tags=[WORKER_TYPE_TAG, f'err:{e.__class__.__name__}'])
+                metrics.increment('rules_sink.unexpected_error', tags=[f'err:{e.__class__.__name__}'])
                 sentry_sdk.capture_exception(e)
 
     async def stop(self) -> None:

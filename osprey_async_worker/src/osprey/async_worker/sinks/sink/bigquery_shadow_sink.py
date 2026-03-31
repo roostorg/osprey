@@ -24,7 +24,6 @@ from osprey.worker.lib.publisher import PubSubPublisher
 from pydantic import BaseModel
 
 from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
-from osprey.async_worker.metric_tags import WORKER_TYPE_TAG
 
 logger = get_logger(__name__)
 
@@ -113,12 +112,12 @@ class AsyncBigQueryShadowSink(AsyncBaseOutputSink):
                 rule_audit_entries=rule_audit_entries,
             )
             self._publisher.publish(event)
-            metrics.increment('bigquery_shadow_sink.push.success', tags=[WORKER_TYPE_TAG])
+            metrics.increment('bigquery_shadow_sink.push.success')
         except Exception as e:
             logger.error(f'Exception in BigQuery shadow sink: {e}')
             metrics.increment(
                 'bigquery_shadow_sink.push.error',
-                tags=[WORKER_TYPE_TAG, f'error:{e.__class__.__name__}'],
+                tags=[f'error:{e.__class__.__name__}'],
             )
             sentry_sdk.capture_exception(e)
 

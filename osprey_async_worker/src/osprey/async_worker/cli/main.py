@@ -17,6 +17,7 @@ from osprey.engine.executor.execution_context import Action
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.lib.config import Config
+from osprey.worker.lib.instruments import set_worker_type_tag
 from osprey.worker.lib.osprey_engine import OspreyEngine, get_sources_provider, should_yield_during_compilation
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.singletons import CONFIG
@@ -32,6 +33,7 @@ logger = get_logger(__name__)
 def init_config() -> Config:
     config = CONFIG.instance()
     config.configure_from_env()
+    set_worker_type_tag('async')
     return config
 
 
