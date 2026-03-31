@@ -2,7 +2,7 @@ import csv
 import logging
 import tempfile
 from http.client import NOT_FOUND
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from flask import Blueprint, Response, abort, jsonify
 from osprey.worker.lib.storage.stored_execution_result import (
@@ -110,8 +110,8 @@ def timeseries_query(request_model: TimeseriesDruidQuery) -> Any:
 
 
 class ScanQueryResult(BaseModel):
-    events: List[Dict[str, object]]
-    next_page: Optional[str]
+    events: list[dict[str, object]]
+    next_page: str | None
 
     class Config:
         arbitrary_types_allowed = True
@@ -126,7 +126,9 @@ def scan_query(request_model: PaginatedScanDruidQuery) -> Any:
     require_ability_with_request(request_model, CanViewEventsByAction)
 
     query_filter_ability = get_current_user().get_ability(CanViewEventsByAction)
-    paginated_scan_results = request_model.execute(query_filter_abilities=[query_filter_ability])
+    paginated_scan_results = request_model.execute(
+        query_filter_abilities=[query_filter_ability] if query_filter_ability else []
+    )
 
     action_data_censor_ability = get_current_user().get_ability(CanViewActionData)
     feature_data_censor_ability = get_current_user().get_ability(CanViewFeatureData)
@@ -151,7 +153,7 @@ def topn_query_csv(topn_druid_query: TopNDruidQuery) -> Any:
 
     topn_results: TopNPoPResponse = topn_druid_query.execute()
 
-    topn_rows: List[Any] = []
+    topn_rows: list[Any] = []
     fieldnames = [
         topn_druid_query.dimension,
         'current_count',
@@ -159,7 +161,7 @@ def topn_query_csv(topn_druid_query: TopNDruidQuery) -> Any:
 
     # we might have some PoP items that have diffs, and some that do not. we want to make sure we export
     # both without duplicating anything
-    included_dimension_keys: Set[str] = set()
+    included_dimension_keys: set[str] = set()
     # if this is a PoP comparison query, we will want to do something a little different to include more
     # data in the CSV response~ this data includes previous period counts and the difference calculations
     if topn_results.comparison:
@@ -186,7 +188,7 @@ def topn_query_csv(topn_druid_query: TopNDruidQuery) -> Any:
     # now, regardless of whether we have a comparison or not, we want to include any remaining results that
     # have not been included yet. i.e. a comparison query may have some results that do not have diffs.
     for current_period in topn_results.current_period:
-        result: List[DimensionData] = current_period.result
+        result: list[DimensionData] = current_period.result
         for current_result in result:
             # this is not a beautiful solution, but it should work to snag the dimensions
             # for non-pop based on how we sanitize the results into DimensionData models

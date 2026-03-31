@@ -1,5 +1,3 @@
-from typing import Dict, Tuple
-
 from osprey.engine.ast.ast_utils import filter_nodes
 from osprey.engine.ast.grammar import Load, Name, Source, Store
 
@@ -12,7 +10,7 @@ class NoUnusedLocals(SourceValidator):
     """
 
     def validate_source(self, source: 'Source') -> None:
-        seen_locals: Dict[str, Tuple[int, Name]] = {}
+        seen_locals: dict[str, tuple[int, Name]] = {}
 
         # Walk AST for all name nodes, finding nodes that are stored, but never loaded,
         # by maintaining a counter of identifier -> load count.

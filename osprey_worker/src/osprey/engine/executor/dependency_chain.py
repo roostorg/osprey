@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 from osprey.engine.utils.types import add_slots
 
@@ -18,5 +18,5 @@ class DependencyChain:
     executor: 'BaseNodeExecutor[ASTNode, object]'
     """The executor that we are holding dependencies for."""
 
-    dependent_on: Tuple['DependencyChain', ...]
+    dependent_on: tuple['DependencyChain', ...]
     """The requisite dependency chains that must be resolved before we can execute the node `executor`."""

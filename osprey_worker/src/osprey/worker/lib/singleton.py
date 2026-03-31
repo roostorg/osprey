@@ -1,5 +1,6 @@
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from typing import Callable, Generic, Iterator, Optional, TypeVar
+from typing import Generic, TypeVar
 
 T = TypeVar('T')
 
@@ -21,7 +22,7 @@ class Singleton(Generic[T]):
 
     def __init__(self, factory: Callable[[], T]):
         self._factory = factory
-        self._instance: Optional[T] = None
+        self._instance: T | None = None
 
     def instance(self) -> T:
         """Gets or lazily creates the singleton object by invoking the factory function."""

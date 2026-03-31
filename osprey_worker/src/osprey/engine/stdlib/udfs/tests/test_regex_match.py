@@ -1,4 +1,5 @@
-from typing import Any, Callable, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
@@ -7,7 +8,7 @@ from osprey.engine.conftest import CheckFailureFunction, ExecuteFunction, RunVal
 from osprey.engine.stdlib.udfs.regex_match import RegexMatch, RegexMatchMap
 from osprey.engine.udf.registry import UDFRegistry
 
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_validators([ValidateCallKwargs, UniqueStoredNames]),
     pytest.mark.use_udf_registry(UDFRegistry.with_udfs(RegexMatch, RegexMatchMap)),
 ]
@@ -90,7 +91,7 @@ def test_regex_map_all_and_any(execute: ExecuteFunction, pattern: str, target: s
     ),
 )
 def test_can_be_case_insensitive(
-    execute: ExecuteFunction, pattern: str, target: str, case_insensitive: Optional[bool], should_match: bool
+    execute: ExecuteFunction, pattern: str, target: str, case_insensitive: bool | None, should_match: bool
 ) -> None:
     extra_args = ''
     if case_insensitive is not None:
