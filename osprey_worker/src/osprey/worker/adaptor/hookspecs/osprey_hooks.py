@@ -13,6 +13,7 @@ from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
+    from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter
     from osprey.worker.lib.storage.stored_execution_result import ExecutionResultStore
     from osprey.worker.sinks.sink.input_stream import BaseInputStream
     from osprey.worker.sinks.sink.output_sink import BaseOutputSink
@@ -61,6 +62,17 @@ def register_labels_service_or_provider(config: Config) -> LabelsServiceBase | L
     service base and utilizing the provided labels provider, or by overriding the labels provider to
     fit your needs"""
     raise NotImplementedError('register_labels_service_or_provider must be implemented by the plugin')
+
+
+@hookspec(firstresult=True)
+def register_validation_exporter(config: Config) -> 'BaseValidationResultExporter | None':
+    """
+    Optional: Register a custom validation result exporter.
+
+    Called after sources are validated to publish experiment metadata (e.g., bucket definitions).
+    If None is returned or this hook is not implemented, NullValidationResultExporter is used.
+    """
+    pass
 
 
 @hookspec(firstresult=True)
