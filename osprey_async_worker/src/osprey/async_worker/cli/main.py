@@ -168,14 +168,23 @@ def run(rules_path: str, input_file: Optional[str], max_concurrent: int, with_pl
 @click.option('--rules-path', type=click.Path(exists=True), required=True, help='Path to rules directory')
 @click.option('--input-file', type=click.Path(exists=True), required=True, help='Path to JSONL input file')
 @click.option('--max-concurrent', type=int, default=12, help='Max concurrent async UDF executions')
-@click.option('--iterations', type=int, default=100, help='Number of iterations to run')
-def benchmark(rules_path: str, input_file: str, max_concurrent: int, iterations: int) -> None:
-    """Benchmark the async executor against the gevent executor."""
+@click.option('--iterations', type=int, default=1000, help='Number of iterations to run')
+@click.option('--warmup', type=int, default=50, help='Warmup iterations (not counted)')
+def benchmark(rules_path: str, input_file: str, max_concurrent: int, iterations: int, warmup: int) -> None:
+    """Benchmark the async executor vs the gevent executor.
+
+    Runs both executors against the same rules and input data, then compares
+    throughput and latency.
+    """
     import time
+
+    import gevent.pool
+    from osprey.engine.executor.executor import execute as gevent_execute
+
+    from osprey.async_worker.executor import execute as async_execute
 
     logging.basicConfig(level=logging.WARNING)
     config = init_config()
-
     engine, udf_helpers = bootstrap_stdlib_engine(rules_path)
 
     # Load actions
@@ -199,32 +208,66 @@ def benchmark(rules_path: str, input_file: str, max_concurrent: int, iterations:
         click.echo('No actions found in input file')
         return
 
-    click.echo(f'Loaded {len(actions)} actions')
-    click.echo(f'Running {iterations} iterations with max_concurrent={max_concurrent}')
+    click.echo(f'Loaded {len(actions)} actions, {iterations} iterations (+ {warmup} warmup)')
+    click.echo(f'Rules: {rules_path}')
+    click.echo()
 
-    from osprey.async_worker.executor import execute as async_execute
+    # --- Gevent executor ---
+    pool = gevent.pool.Pool(max_concurrent)
 
-    async def run_async_benchmark():
+    # Warmup
+    for i in range(warmup):
+        action = actions[i % len(actions)]
+        gevent_execute(engine.execution_graph, udf_helpers, action, pool)
+
+    start = time.perf_counter()
+    for i in range(iterations):
+        action = actions[i % len(actions)]
+        gevent_execute(engine.execution_graph, udf_helpers, action, pool)
+    gevent_elapsed = time.perf_counter() - start
+
+    gevent_throughput = iterations / gevent_elapsed
+    gevent_latency_ms = (gevent_elapsed / iterations) * 1000
+
+    click.echo(f'Gevent Executor:')
+    click.echo(f'  Total time:  {gevent_elapsed:.3f}s')
+    click.echo(f'  Throughput:  {gevent_throughput:.1f} actions/sec')
+    click.echo(f'  Avg latency: {gevent_latency_ms:.3f}ms')
+    click.echo()
+
+    # --- Async executor ---
+    async def run_async():
+        # Warmup
+        for i in range(warmup):
+            action = actions[i % len(actions)]
+            await async_execute(engine.execution_graph, udf_helpers, action, max_concurrent=max_concurrent)
+
         start = time.perf_counter()
         for i in range(iterations):
             action = actions[i % len(actions)]
-            await async_execute(
-                engine.execution_graph,
-                udf_helpers,
-                action,
-                max_concurrent=max_concurrent,
-            )
-        elapsed = time.perf_counter() - start
-        return elapsed
+            await async_execute(engine.execution_graph, udf_helpers, action, max_concurrent=max_concurrent)
+        return time.perf_counter() - start
 
-    elapsed = asyncio.run(run_async_benchmark())
-    throughput = iterations / elapsed
-    avg_latency_ms = (elapsed / iterations) * 1000
+    async_elapsed = asyncio.run(run_async())
+    async_throughput = iterations / async_elapsed
+    async_latency_ms = (async_elapsed / iterations) * 1000
 
-    click.echo(f'\nAsync Executor Results:')
-    click.echo(f'  Total time: {elapsed:.3f}s')
-    click.echo(f'  Throughput: {throughput:.1f} actions/sec')
-    click.echo(f'  Avg latency: {avg_latency_ms:.2f}ms')
+    click.echo(f'Async Executor:')
+    click.echo(f'  Total time:  {async_elapsed:.3f}s')
+    click.echo(f'  Throughput:  {async_throughput:.1f} actions/sec')
+    click.echo(f'  Avg latency: {async_latency_ms:.3f}ms')
+    click.echo()
+
+    # --- Comparison ---
+    ratio = async_throughput / gevent_throughput if gevent_throughput > 0 else 0
+    click.echo(f'Comparison:')
+    click.echo(f'  Async/Gevent ratio: {ratio:.2f}x')
+    if ratio > 1:
+        click.echo(f'  Async is {((ratio - 1) * 100):.1f}% faster')
+    elif ratio < 1:
+        click.echo(f'  Async is {((1 - ratio) * 100):.1f}% slower')
+    else:
+        click.echo(f'  Same performance')
 
 
 if __name__ == '__main__':

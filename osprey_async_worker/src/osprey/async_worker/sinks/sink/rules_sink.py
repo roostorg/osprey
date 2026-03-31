@@ -87,7 +87,7 @@ class AsyncRulesSink:
         async for message_context in self._input_stream:
             try:
                 with message_context as action:
-                    if action.data.get('osprey_v2_skip_async_classification', False) or action.data.get(
+                    if action.data.get('osprey_skip_async_classification', False) or action.data.get(
                         'osprey_skip_async', False
                     ):
                         continue
