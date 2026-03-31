@@ -306,7 +306,7 @@ class InExperimentArguments(ArgumentsBase):
 class InExperiment(UDFBase[InExperimentArguments, bool]):
     """
     Returns True if the entity was assigned to any bucket in the experiment,
-    False if the entity fell outside all bucket ranges (NOT_IN_EXPERIMENT_BUCKET).
+    False if the entity fell outside all bucket ranges
     """
 
     category = UdfCategories.ENGINE
