@@ -223,6 +223,36 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
         self._shutdown_event = asyncio.Event()
         self._current_execution_result: Optional[ExecutionResult] = None
 
+    @classmethod
+    def from_direct_address(cls, client_id: str, address: str, service_name: str = 'osprey_coordinator') -> 'OspreyCoordinatorInputStream':
+        """Create an input stream connected directly to a coordinator address.
+
+        Bypasses etcd service discovery, which uses gevent-patched code that
+        is incompatible with grpc.aio. Use this for the async worker.
+        """
+        instance = cls.__new__(cls)
+        instance._client_id = client_id
+        instance._shutdown_event = asyncio.Event()
+        instance._current_execution_result = None
+
+        host, port_str = address.rsplit(':', 1)
+        service = Service(
+            name=service_name,
+            address=host,
+            port=int(port_str),
+            ports={'grpc': int(port_str)},
+            metadata={},
+        )
+        channel = grpc.aio.insecure_channel(address)
+
+        pool = GrpcConnectionDiscoveryPool.__new__(GrpcConnectionDiscoveryPool)
+        pool._service_name = service_name
+        pool._grpc_channels = {service: (channel, service)}
+        pool._service_watcher = None
+        instance._channel_pool = pool
+
+        return instance
+
     async def stop(self) -> None:
         logger.info('Received shutdown signal... safely shutting down')
         self._shutdown_event.set()
