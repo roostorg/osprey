@@ -18,9 +18,11 @@ from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.lib.config import Config
 from osprey.worker.lib.instruments import set_worker_type_tag
-from osprey.worker.lib.osprey_engine import OspreyEngine, get_sources_provider, should_yield_during_compilation
+from osprey.worker.lib.osprey_engine import get_sources_provider
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.singletons import CONFIG
+
+from osprey.async_worker.engine import AsyncOspreyEngine
 from osprey.worker.sinks.utils.acking_contexts import NoopAckingContext
 
 from osprey.async_worker.sinks.sink.input_stream import AsyncBaseInputStream, AsyncStaticInputStream
@@ -37,7 +39,7 @@ def init_config() -> Config:
     return config
 
 
-def bootstrap_stdlib_engine(rules_path: str) -> Tuple[OspreyEngine, UDFHelpers]:
+def bootstrap_stdlib_engine(rules_path: str) -> Tuple[AsyncOspreyEngine, UDFHelpers]:
     """Bootstrap engine with only stdlib UDFs — no external plugins, no Postgres, no labels.
 
     This avoids loading example_plugins or discord plugins that require database connections.
@@ -57,10 +59,9 @@ def bootstrap_stdlib_engine(rules_path: str) -> Tuple[OspreyEngine, UDFHelpers]:
 
     sources_provider = get_sources_provider(rules_path=rules_path)
 
-    engine = OspreyEngine(
+    engine = AsyncOspreyEngine(
         sources_provider=sources_provider,
         udf_registry=udf_registry,
-        should_yield_during_compilation=should_yield_during_compilation(),
     )
 
     return engine, udf_helpers
@@ -178,9 +179,6 @@ def benchmark(rules_path: str, input_file: str, max_concurrent: int, iterations:
     """
     import time
 
-    import gevent.pool
-    from osprey.engine.executor.executor import execute as gevent_execute
-
     from osprey.async_worker.executor import execute as async_execute
 
     logging.basicConfig(level=logging.WARNING)
@@ -212,32 +210,38 @@ def benchmark(rules_path: str, input_file: str, max_concurrent: int, iterations:
     click.echo(f'Rules: {rules_path}')
     click.echo()
 
-    # --- Gevent executor ---
-    pool = gevent.pool.Pool(max_concurrent)
+    # --- Gevent executor (optional, for comparison) ---
+    try:
+        import gevent.pool
+        from osprey.engine.executor.executor import execute as gevent_execute
 
-    # Warmup
-    for i in range(warmup):
-        action = actions[i % len(actions)]
-        gevent_execute(engine.execution_graph, udf_helpers, action, pool)
+        pool = gevent.pool.Pool(max_concurrent)
 
-    start = time.perf_counter()
-    for i in range(iterations):
-        action = actions[i % len(actions)]
-        gevent_execute(engine.execution_graph, udf_helpers, action, pool)
-    gevent_elapsed = time.perf_counter() - start
+        for i in range(warmup):
+            action = actions[i % len(actions)]
+            gevent_execute(engine.execution_graph, udf_helpers, action, pool)
 
-    gevent_throughput = iterations / gevent_elapsed
-    gevent_latency_ms = (gevent_elapsed / iterations) * 1000
+        start = time.perf_counter()
+        for i in range(iterations):
+            action = actions[i % len(actions)]
+            gevent_execute(engine.execution_graph, udf_helpers, action, pool)
+        gevent_elapsed = time.perf_counter() - start
 
-    click.echo(f'Gevent Executor:')
-    click.echo(f'  Total time:  {gevent_elapsed:.3f}s')
-    click.echo(f'  Throughput:  {gevent_throughput:.1f} actions/sec')
-    click.echo(f'  Avg latency: {gevent_latency_ms:.3f}ms')
-    click.echo()
+        gevent_throughput = iterations / gevent_elapsed
+        gevent_latency_ms = (gevent_elapsed / iterations) * 1000
+
+        click.echo(f'Gevent Executor:')
+        click.echo(f'  Total time:  {gevent_elapsed:.3f}s')
+        click.echo(f'  Throughput:  {gevent_throughput:.1f} actions/sec')
+        click.echo(f'  Avg latency: {gevent_latency_ms:.3f}ms')
+        click.echo()
+    except ImportError:
+        click.echo('Gevent not available, skipping gevent benchmark')
+        click.echo()
+        gevent_throughput = None
 
     # --- Async executor ---
     async def run_async():
-        # Warmup
         for i in range(warmup):
             action = actions[i % len(actions)]
             await async_execute(engine.execution_graph, udf_helpers, action, max_concurrent=max_concurrent)
@@ -259,13 +263,14 @@ def benchmark(rules_path: str, input_file: str, max_concurrent: int, iterations:
     click.echo()
 
     # --- Comparison ---
-    ratio = async_throughput / gevent_throughput if gevent_throughput > 0 else 0
-    click.echo(f'Comparison:')
-    click.echo(f'  Async/Gevent ratio: {ratio:.2f}x')
-    if ratio > 1:
-        click.echo(f'  Async is {((ratio - 1) * 100):.1f}% faster')
-    elif ratio < 1:
-        click.echo(f'  Async is {((1 - ratio) * 100):.1f}% slower')
+    if gevent_throughput:
+        ratio = async_throughput / gevent_throughput
+        click.echo(f'Comparison:')
+        click.echo(f'  Async/Gevent ratio: {ratio:.2f}x')
+        if ratio > 1:
+            click.echo(f'  Async is {((ratio - 1) * 100):.1f}% faster')
+        elif ratio < 1:
+            click.echo(f'  Async is {((1 - ratio) * 100):.1f}% slower')
     else:
         click.echo(f'  Same performance')
 
