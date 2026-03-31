@@ -13,13 +13,15 @@ import asyncio
 from typing import Any, ClassVar, Generic, Sequence, TypeVar
 
 from osprey.engine.executor.execution_context import ExecutionContext, ExecutionResult
-from osprey.engine.udf.base import BatchableUDFBase, UDFBase
-from osprey.engine.udf.arguments import ArgumentsBase
+from osprey.engine.udf.base import (
+    Arguments,
+    BatchableArguments,
+    BatchableUDFBase,
+    RValue,
+    UDFBase,
+)
 from result import Result
 
-Arguments = TypeVar('Arguments', bound=ArgumentsBase)
-BatchableArguments = TypeVar('BatchableArguments')
-RValue = TypeVar('RValue')
 _T = TypeVar('_T')
 
 
