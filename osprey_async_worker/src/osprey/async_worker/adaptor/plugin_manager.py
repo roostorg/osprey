@@ -69,7 +69,13 @@ def bootstrap_async_udfs(load_sync_plugins: bool = False) -> tuple[UDFRegistry, 
 
     for udf in all_udfs:
         if issubclass(udf, HasHelper):
-            udf_helpers.set_udf_helper(udf, udf.create_provider())
+            try:
+                udf_helpers.set_udf_helper(udf, udf.create_provider())
+            except Exception:
+                # Skip helper creation for UDFs that fail (e.g., etcd not available).
+                # These UDFs will fail at execution time via the legacy fallback,
+                # which is expected — errors get captured in error_infos.
+                pass
 
     udf_registry = UDFRegistry.with_udfs(*all_udfs)
     return udf_registry, udf_helpers
