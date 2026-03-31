@@ -125,6 +125,96 @@ def _execute_sync(
     return execution_result
 
 
+# --- Legacy sync UDF fallback (thread pool, for execute_async=True UDFs not yet ported) ---
+
+
+def _execute_legacy_sync(
+    chain: DependencyChain,
+    context: ExecutionContext,
+    error_info_: List[NodeErrorInfo],
+) -> NodeResult:
+    """Execute a legacy sync UDF that has execute_async=True but is not AsyncUDFBase.
+
+    Runs in a thread pool via run_in_executor. May fail if the UDF uses gevent
+    primitives (no monkey patching), but errors are captured gracefully.
+    """
+    caught_exception: Optional[Exception] = None
+    metric_tags = _get_metric_tags(context)
+    if isinstance(chain.executor, CallExecutor):
+        call_node: CallExecutor = chain.executor
+        metric_tags += [f'udf:{call_node._udf.__class__.__name__}']
+
+    execution_result: NodeResult = Err(None)
+    try:
+        with metrics.timed('udf_execution_duration', tags=metric_tags, sample_rate=0.01):
+            execution_result = Ok(chain.executor.execute(execution_context=context))
+    except Exception as e:
+        if not isinstance(e, NodeFailurePropagationException):
+            error_info_.append(NodeErrorInfo(e, chain.executor.node))
+        execution_result = Err(None)
+        caught_exception = e
+    finally:
+        if isinstance(chain.executor, CallExecutor):
+            _record_udf_metric(metric_tags, execution_result, caught_exception)
+        return execution_result
+
+
+async def _execute_legacy_in_executor(
+    loop: asyncio.AbstractEventLoop,
+    semaphore: asyncio.Semaphore,
+    chain: DependencyChain,
+    context: ExecutionContext,
+    error_info_: List[NodeErrorInfo],
+) -> NodeResult:
+    """Run a legacy sync UDF in the thread pool with semaphore."""
+    async with semaphore:
+        return await loop.run_in_executor(None, _execute_legacy_sync, chain, context, error_info_)
+
+
+def _execute_legacy_batch_sync(
+    udfs: Sequence[BatchableUDFBase[Any, Any, Any]],
+    nodes: Sequence[ASTNode],
+    batchable_args: Sequence[Any],
+    context: ExecutionContext,
+    error_info_: List[NodeErrorInfo],
+) -> Sequence[NodeResult]:
+    """Execute a batch of legacy sync batchable UDFs in thread pool."""
+    assert len(udfs) == len(nodes) == len(batchable_args)
+    num_executions = len(udfs)
+    metric_tags = _get_metric_tags(context, udfs[0])
+
+    try:
+        with metrics.timed('udf_execution_batch_duration', tags=metric_tags, sample_rate=0.01):
+            results = udfs[0].execute_batch(context, udfs, batchable_args)
+        assert len(results) == num_executions
+    except Exception as e:
+        if not isinstance(e, NodeFailurePropagationException):
+            for n in nodes:
+                error_info_.append(NodeErrorInfo(e, n))
+        if not _is_spammy_exception(e):
+            metrics.increment(
+                'udf_execution_batch',
+                tags=metric_tags + [f'exc_name:{e.__class__.__name__}', 'result:unexpected_failure'],
+            )
+        return [Err(None)] * num_executions
+
+    type_checked_results = []
+    for udf, node, result in zip(udfs, nodes, results):
+        if result.is_err():
+            if not isinstance(result.value, NodeFailurePropagationException):
+                error_info_.append(NodeErrorInfo(result.value, node))
+            type_checked_results.append(Err(None))
+            continue
+        try:
+            type_checked_results.append(Ok(udf.check_result_type(result.value)))
+        except Exception as e:
+            if not isinstance(e, NodeFailurePropagationException):
+                error_info_.append(NodeErrorInfo(e, node))
+            type_checked_results.append(Err(None))
+
+    return type_checked_results
+
+
 # --- Async execution (native async UDFs, awaited on event loop) ---
 
 
@@ -220,6 +310,7 @@ async def _execute_async_batch(
 
 
 async def _enqueue_batches(
+    loop: asyncio.AbstractEventLoop,
     semaphore: asyncio.Semaphore,
     context: ExecutionContext,
     error_infos: List[NodeErrorInfo],
@@ -236,9 +327,9 @@ async def _enqueue_batches(
         if not isinstance(async_chain.executor, CallExecutor):
             continue
         call_executor: CallExecutor = async_chain.executor
-        if not isinstance(call_executor._udf, AsyncBatchableUDFBase):
+        if not isinstance(call_executor._udf, (AsyncBatchableUDFBase, BatchableUDFBase)):
             continue
-        udf: AsyncBatchableUDFBase[Any, Any, Any] = call_executor._udf
+        udf = call_executor._udf
 
         batch_type = udf.get_batchable_arguments_type()
         try:
@@ -261,16 +352,22 @@ async def _enqueue_batches(
         chains, args = zip(*chains_and_args)
         chains_to_remove.extend(chains)
 
-        task = asyncio.create_task(
-            _execute_async_batch(
-                semaphore,
-                [chain.executor._udf for chain in chains],
-                [chain.executor.node for chain in chains],
-                args,
-                context,
-                error_infos,
+        batch_udfs = [chain.executor._udf for chain in chains]
+        batch_nodes = [chain.executor.node for chain in chains]
+
+        if isinstance(batch_udfs[0], AsyncBatchableUDFBase):
+            task = asyncio.create_task(
+                _execute_async_batch(semaphore, batch_udfs, batch_nodes, args, context, error_infos)
             )
-        )
+        else:
+            # Legacy sync batchable UDF — run in thread pool
+            async def _run_legacy_batch(s, u, n, a, c, e):
+                async with s:
+                    return await loop.run_in_executor(None, _execute_legacy_batch_sync, u, n, a, c, e)
+
+            task = asyncio.create_task(
+                _run_legacy_batch(semaphore, batch_udfs, batch_nodes, args, context, error_infos)
+            )
         new_batch_tasks[task] = chains
 
     remaining = [chain for chain in ready_async if chain not in chains_to_remove]
@@ -290,11 +387,11 @@ async def execute(
 ) -> ExecutionResult:
     """Async executor for the osprey rules engine.
 
-    Two paths:
+    Three paths:
     - Sync UDFs (execute_async=False): run inline, pure computation only
-    - Async UDFs (AsyncUDFBase): awaited as tasks with concurrency semaphore
-
-    No thread pool. No gevent. All I/O UDFs must be AsyncUDFBase subclasses.
+    - AsyncUDFBase: awaited as tasks directly on event loop (native async)
+    - Legacy UDFBase with execute_async=True: run in thread pool via run_in_executor
+      (may fail on gevent calls, errors captured gracefully)
     """
     if parent_tracer_span:
         parent_tracer_span.set_tag('action-name', action.action_name)
@@ -302,6 +399,7 @@ async def execute(
     context = ExecutionContext(execution_graph=execution_graph, helpers=udf_helpers, action=action)
     allow_async = max_concurrent > 0
     semaphore = asyncio.Semaphore(max_concurrent)
+    loop = asyncio.get_running_loop()
     error_infos: List[NodeErrorInfo] = []
 
     in_progress_singlets: Dict[asyncio.Task[NodeResult], DependencyChain] = {}
@@ -339,14 +437,22 @@ async def execute(
         if allow_async and ready_async:
             with tracer.start_span('osprey.rules.try_enqueue_batches', child_of=parent_tracer_span):
                 remaining_ready_async, new_batch_tasks = await _enqueue_batches(
-                    semaphore, context, error_infos, ready_async
+                    loop, semaphore, context, error_infos, ready_async
                 )
             in_progress_batches.update(new_batch_tasks)
 
             for async_chain in remaining_ready_async:
-                task = asyncio.create_task(
-                    _execute_async_udf(semaphore, async_chain, context, error_infos)
-                )
+                # Native async UDF → await on event loop
+                if (isinstance(async_chain.executor, CallExecutor)
+                        and isinstance(async_chain.executor._udf, AsyncUDFBase)):
+                    task = asyncio.create_task(
+                        _execute_async_udf(semaphore, async_chain, context, error_infos)
+                    )
+                else:
+                    # Legacy sync UDF with execute_async=True → thread pool fallback
+                    task = asyncio.create_task(
+                        _execute_legacy_in_executor(loop, semaphore, async_chain, context, error_infos)
+                    )
                 in_progress_singlets[task] = async_chain
 
         # Execute sync chains inline (pure computation, fast, no I/O)
