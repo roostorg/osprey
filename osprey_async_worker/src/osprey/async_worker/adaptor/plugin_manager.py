@@ -39,31 +39,32 @@ def load_all_async_plugins() -> None:
     plugin_manager.check_pending()
 
 
-def bootstrap_async_udfs() -> tuple[UDFRegistry, UDFHelpers]:
+def bootstrap_async_udfs(load_sync_plugins: bool = False) -> tuple[UDFRegistry, UDFHelpers]:
     """Bootstrap UDFs from async plugins.
 
-    Also loads sync plugins' UDFs via the existing osprey_plugin system,
-    since UDFs are the same regardless of worker type.
+    By default only loads from osprey_async_plugin entry_points. The async
+    plugin is expected to re-export all needed UDFs (including ones from
+    the sync plugin). Set load_sync_plugins=True to also load UDFs from
+    osprey_plugin, but beware this triggers sync plugin module-level
+    side effects (etcd connections, gevent monkey patching, etc.).
     """
     load_all_async_plugins()
     udf_helpers = UDFHelpers()
 
     # Load UDFs from async plugins
-    async_udfs: List[Type[UDFBase[Any, Any]]] = _flatten(plugin_manager.hook.register_udfs())
+    all_udfs: List[Type[UDFBase[Any, Any]]] = _flatten(plugin_manager.hook.register_udfs())
 
-    # Also load UDFs from sync plugins (they work in the async executor via run_in_executor)
-    from osprey.worker.adaptor.plugin_manager import load_all_osprey_plugins, plugin_manager as sync_plugin_manager
+    if load_sync_plugins:
+        from osprey.worker.adaptor.plugin_manager import load_all_osprey_plugins, plugin_manager as sync_plugin_manager
 
-    load_all_osprey_plugins()
-    sync_udfs: List[Type[UDFBase[Any, Any]]] = _flatten(sync_plugin_manager.hook.register_udfs())
+        load_all_osprey_plugins()
+        sync_udfs: List[Type[UDFBase[Any, Any]]] = _flatten(sync_plugin_manager.hook.register_udfs())
 
-    # Merge, deduplicating by class
-    seen = set()
-    all_udfs = []
-    for udf in async_udfs + sync_udfs:
-        if udf not in seen:
-            seen.add(udf)
-            all_udfs.append(udf)
+        seen = {udf for udf in all_udfs}
+        for udf in sync_udfs:
+            if udf not in seen:
+                seen.add(udf)
+                all_udfs.append(udf)
 
     for udf in all_udfs:
         if issubclass(udf, HasHelper):
@@ -83,20 +84,25 @@ def bootstrap_async_output_sinks(config: Config) -> AsyncMultiOutputSink:
     return AsyncMultiOutputSink(sinks)
 
 
-def bootstrap_async_ast_validators() -> None:
-    """Bootstrap AST validators from both async and sync plugins."""
+def bootstrap_async_ast_validators(load_sync_plugins: bool = False) -> None:
+    """Bootstrap AST validators from async plugins.
+
+    By default only loads from osprey_async_plugin. Set load_sync_plugins=True
+    to also load from osprey_plugin (triggers side effects).
+    """
     load_all_async_plugins()
     validators = _flatten(plugin_manager.hook.register_ast_validators())
 
-    # Also load sync validators
-    from osprey.worker.adaptor.plugin_manager import load_all_osprey_plugins, plugin_manager as sync_plugin_manager
+    if load_sync_plugins:
+        from osprey.worker.adaptor.plugin_manager import load_all_osprey_plugins, plugin_manager as sync_plugin_manager
 
-    load_all_osprey_plugins()
-    sync_validators = _flatten(sync_plugin_manager.hook.register_ast_validators())
+        load_all_osprey_plugins()
+        sync_validators = _flatten(sync_plugin_manager.hook.register_ast_validators())
+        validators = validators + sync_validators
 
     registry = ValidatorRegistry.get_instance()
     seen = set()
-    for validator in validators + sync_validators:
+    for validator in validators:
         if validator not in seen:
             seen.add(validator)
             registry.register_to_instance(validator)
