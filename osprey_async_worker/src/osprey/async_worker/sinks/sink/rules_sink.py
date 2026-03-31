@@ -2,6 +2,8 @@
 
 import asyncio
 import logging
+from dataclasses import dataclass
+from random import randint
 from typing import Optional
 
 import sentry_sdk
@@ -9,17 +11,47 @@ from ddtrace import tracer
 from osprey.engine.executor.execution_context import Action, ExecutionResult
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.worker.lib.instruments import metrics
-from osprey.worker.lib.osprey_engine import OspreyEngine
 from osprey.worker.lib.osprey_shared.logging import info_log_osprey_action
 from osprey.worker.lib.snowflake import generate_snowflake
-from osprey.worker.sinks.sink.rules_sink import ActionSampler
+from osprey.worker.lib.sources_config.subkeys.action_config import ActionConfigs
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext, VerdictsAckingContext
 
 from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
+from osprey.async_worker.engine import AsyncOspreyEngine
 from osprey.async_worker.executor import execute as async_execute
 from osprey.async_worker.sinks.sink.input_stream import AsyncBaseInputStream
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class SampleDecision:
+    sample_rate: int
+    drop: bool
+
+
+_SAMPLE_NEVER = SampleDecision(sample_rate=100, drop=False)
+_SAMPLE_ALWAYS = SampleDecision(sample_rate=0, drop=True)
+
+
+class ActionSampler:
+    """Checks whether an action should be sampled. No gevent dependency."""
+
+    def __init__(self, engine: AsyncOspreyEngine):
+        self._engine = engine
+
+    def sample(self, action: Action) -> SampleDecision:
+        action_configs = self._engine.get_config_subkey(ActionConfigs)
+        action_config = action_configs.get_action_config(action.action_name)
+
+        if not action_config or action_config.sample_rate == 100:
+            return _SAMPLE_NEVER
+        if action_config.sample_rate == 0:
+            return _SAMPLE_ALWAYS
+
+        p = randint(0, 99)
+        should_drop = p < action_config.sample_rate
+        return SampleDecision(sample_rate=action_config.sample_rate, drop=should_drop)
 
 
 class AsyncRulesRunner:
@@ -27,7 +59,7 @@ class AsyncRulesRunner:
 
     def __init__(
         self,
-        engine: OspreyEngine,
+        engine: AsyncOspreyEngine,
         output_sink: AsyncBaseOutputSink,
         udf_helpers: UDFHelpers,
         max_concurrent_udfs: int = 12,
@@ -74,7 +106,7 @@ class AsyncRulesSink:
 
     def __init__(
         self,
-        engine: OspreyEngine,
+        engine: AsyncOspreyEngine,
         input_stream: AsyncBaseInputStream[BaseAckingContext[Action]],
         output_sink: AsyncBaseOutputSink,
         udf_helpers: UDFHelpers,
