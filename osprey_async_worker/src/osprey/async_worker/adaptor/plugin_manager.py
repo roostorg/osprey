@@ -40,19 +40,20 @@ def load_all_async_plugins() -> None:
 
 
 def bootstrap_async_udfs(load_sync_plugins: bool = False) -> tuple[UDFRegistry, UDFHelpers]:
-    """Bootstrap UDFs from async plugins.
+    """Bootstrap UDFs from async plugins + stdlib.
 
-    By default only loads from osprey_async_plugin entry_points. The async
-    plugin is expected to re-export all needed UDFs (including ones from
-    the sync plugin). Set load_sync_plugins=True to also load UDFs from
-    osprey_plugin, but beware this triggers sync plugin module-level
-    side effects (etcd connections, gevent monkey patching, etc.).
+    Always loads stdlib UDFs (JsonData, StringLength, Rule, etc.) since
+    they're needed for basic rule compilation. Optionally loads from
+    osprey_plugin too (triggers gevent side effects).
     """
+    # Always load stdlib UDFs — they don't trigger gevent side effects
+    from osprey.worker._stdlibplugin.udf_register import register_udfs as stdlib_register_udfs
+
     load_all_async_plugins()
     udf_helpers = UDFHelpers()
 
-    # Load UDFs from async plugins
-    all_udfs: List[Type[UDFBase[Any, Any]]] = _flatten(plugin_manager.hook.register_udfs())
+    # Load stdlib + async plugin UDFs
+    all_udfs: List[Type[UDFBase[Any, Any]]] = list(stdlib_register_udfs()) + _flatten(plugin_manager.hook.register_udfs())
 
     if load_sync_plugins:
         from osprey.worker.adaptor.plugin_manager import load_all_osprey_plugins, plugin_manager as sync_plugin_manager
@@ -85,13 +86,16 @@ def bootstrap_async_output_sinks(config: Config) -> AsyncMultiOutputSink:
 
 
 def bootstrap_async_ast_validators(load_sync_plugins: bool = False) -> None:
-    """Bootstrap AST validators from async plugins.
+    """Bootstrap AST validators from async plugins + stdlib.
 
-    By default only loads from osprey_async_plugin. Set load_sync_plugins=True
-    to also load from osprey_plugin (triggers side effects).
+    Always loads stdlib validators (ValidateCallKwargs, etc.) since they're
+    needed for rule compilation. Optionally loads from osprey_plugin too.
     """
+    # Always load stdlib validators — they don't trigger gevent side effects
+    from osprey.worker._stdlibplugin.validator_regsiter import register_ast_validators as stdlib_register_validators
+
     load_all_async_plugins()
-    validators = _flatten(plugin_manager.hook.register_ast_validators())
+    validators = list(stdlib_register_validators()) + _flatten(plugin_manager.hook.register_ast_validators())
 
     if load_sync_plugins:
         from osprey.worker.adaptor.plugin_manager import load_all_osprey_plugins, plugin_manager as sync_plugin_manager
