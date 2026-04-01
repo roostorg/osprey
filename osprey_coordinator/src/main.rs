@@ -62,6 +62,12 @@ struct CliOptions {
         env = "SNOWFLAKE_API_ENDPOINT"
     )]
     snowflake_api_endpoint: String,
+    #[arg(
+        long,
+        default_value = "osprey_coordinator",
+        env = "OSPREY_COORDINATOR_SERVICE_NAME"
+    )]
+    service_name: String,
 }
 
 #[tokio::main]
@@ -135,15 +141,23 @@ async fn main() -> Result<()> {
         }
     };
 
+    let bidi_service_name = opts.service_name.clone();
+    let sync_action_service_name = format!("{}_sync_action", opts.service_name);
+    tracing::info!(
+        bidi_service_name = %bidi_service_name,
+        sync_action_service_name = %sync_action_service_name,
+        "registering coordinator services in etcd"
+    );
+
     let grpc_bidi_stream_service_fut = pigeon::serve(
         osprey_coordinator_grpc_bidi_stream_service,
-        "osprey_coordinator",
+        &bidi_service_name,
         opts.bidi_stream_port,
         Duration::from_secs(30),
     );
     let sync_action_service_fut = pigeon::serve(
         osprey_coordinator_sync_action_service,
-        "osprey_coordinator_sync_action",
+        &sync_action_service_name,
         opts.sync_action_port,
         Duration::from_secs(60),
     );
