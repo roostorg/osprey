@@ -201,6 +201,12 @@ class WhenRules(UDFBase[WhenRulesArguments, None]):
         )
         execution_context.add_rule_audit_entry(entry)
 
+        if entry.effects_failed > 0 and not entry.is_degraded:
+            metrics.increment(
+                'osprey.enforcement_gap',
+                tags=[f'action:{execution_context.get_action_name()}'],
+            )
+
         if not passing_rules:
             return
 
