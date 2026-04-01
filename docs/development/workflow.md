@@ -19,7 +19,7 @@ Every commit automatically runs:
 
 ## Making Changes
 
-1. **Prevent uv.lock modification**
+1. **Sync Dependencies**
    ```bash
    uv sync --frozen
    ```
