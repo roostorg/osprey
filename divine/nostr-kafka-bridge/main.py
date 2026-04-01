@@ -26,6 +26,42 @@ _action_counter = 0
 
 connected = False
 
+# --- Report reason normalization ---
+# Divine clients use different reason vocabularies. Normalize to canonical
+# values that SML rules can match consistently.
+#
+# Canonical values: csam, nudity, spam, impersonation, illegal, harassment, other
+# Mobile maps csam -> 'illegal' and sexual content -> 'nudity' per NIP-56.
+# Web passes raw reasons (csam, harassment, sexual-content, etc.).
+_REASON_ALIASES = {
+    # CSAM variants -- mobile sends 'illegal' for CSAM but also for violence/copyright.
+    # We can't distinguish from 'illegal' alone, so we keep it as-is.
+    # The 'sexual_minors' and 'csam' forms are unambiguous.
+    'sexual_minors': 'csam',
+    'NS-csam': 'csam',
+    # Nudity/sexual content
+    'sexual-content': 'nudity',
+    'sexual': 'nudity',
+    'explicit': 'nudity',
+    'pornography': 'nudity',
+    'NS-nudity': 'nudity',
+    'NS-sexual-content': 'nudity',
+    # Harassment
+    'profanity': 'harassment',
+    'NS-harassment': 'harassment',
+    # Spam
+    'NS-spam': 'spam',
+    # Other
+    'false-information': 'other',
+    'NS-other': 'other',
+}
+
+
+def _normalize_report_reason(raw: str) -> str:
+    """Normalize report reason to canonical value for SML rule matching."""
+    raw = raw.strip().lower()
+    return _REASON_ALIASES.get(raw, raw)
+
 
 # --- Health check ---
 class HealthHandler(BaseHTTPRequestHandler):
@@ -87,38 +123,112 @@ def _wrap_nostr_event(event: dict) -> dict:
     if p_tags:
         data['mentioned_pubkeys'] = p_tags
 
+    # Extract video hash from x-tag (for kind 34235/34236 video events)
+    if kind in (34235, 34236):
+        for t in tags:
+            if isinstance(t, list) and len(t) >= 2 and t[0] == 'x':
+                data['video_hash'] = t[1]
+                break
+
+    # Extract label fields for kind 1985 (NIP-32 label events)
+    if kind == 1985:
+        for t in tags:
+            if isinstance(t, list) and len(t) >= 2:
+                if t[0] == 'L':
+                    data['label_namespace'] = t[1]
+                elif t[0] == 'l' and len(t) >= 3:
+                    data['label_value'] = t[1]
+                    # Parse metadata from 4th element if present
+                    if len(t) >= 4:
+                        try:
+                            meta = json.loads(t[3])
+                            data['label_metadata'] = t[3]
+                            if isinstance(meta, dict):
+                                if 'confidence' in meta:
+                                    data['label_confidence'] = float(meta['confidence'])
+                                if 'source' in meta:
+                                    data['label_source'] = meta['source']
+                                data['label_rejected'] = bool(meta.get('rejected', False))
+                                if 'sha256' in meta:
+                                    data['label_content_hash'] = meta['sha256']
+                        except (json.JSONDecodeError, TypeError, ValueError):
+                            data['label_metadata'] = t[3]
+                elif t[0] == 'e':
+                    data['label_target_event'] = t[1]
+                elif t[0] == 'x':
+                    data['label_content_hash'] = t[1]
+
     # Extract report-specific fields for kind 1984 (NIP-56 moderation reports)
+    #
+    # Divine clients use different tag formats:
+    #   Mobile: ['e', eventId, nip56Type], ['p', pubkey, nip56Type]
+    #           reason in 3rd element of e/p tags (spam, nudity, illegal, profanity, other)
+    #   Web:    ['e', eventId, reason], ['p', pubkey, reason]
+    #           plus ['l', 'NS-reason', 'social.nos.ontology']
+    #   Generic: ['report', reason] or ['l', reason, 'MOD']
+    #
+    # Normalize report reasons to canonical values for rule matching.
     if kind == 1984:
         e_tags = [t for t in tags if isinstance(t, list) and len(t) >= 2 and t[0] == 'e']
         if e_tags:
             data['reported_event_id'] = e_tags[0][1]
         if p_tags:
             data['reported_pubkey'] = p_tags[0]
-        # Report reason from the "report" tag or "l" tag
+
+        # Extract raw reason from multiple sources (priority order)
+        raw_reason = None
+
+        # 1. Explicit 'report' tag (generic format)
         for t in tags:
-            if isinstance(t, list) and len(t) >= 2:
-                if t[0] == 'report':
-                    data['report_reason'] = t[1]
+            if isinstance(t, list) and len(t) >= 2 and t[0] == 'report':
+                raw_reason = t[1]
+                break
+
+        # 2. NIP-32 label with social.nos.ontology namespace (divine-web)
+        if not raw_reason:
+            for t in tags:
+                if isinstance(t, list) and len(t) >= 3 and t[0] == 'l' and t[2] == 'social.nos.ontology':
+                    # Strip 'NS-' prefix from divine-web labels
+                    raw_reason = t[1].removeprefix('NS-') if t[1].startswith('NS-') else t[1]
                     break
-                if t[0] == 'l' and len(t) >= 3 and t[2] == 'MOD':
-                    data['report_reason'] = t[1]
+
+        # 3. NIP-32 label with MOD namespace
+        if not raw_reason:
+            for t in tags:
+                if isinstance(t, list) and len(t) >= 3 and t[0] == 'l' and t[2] == 'MOD':
+                    raw_reason = t[1]
                     break
-        # Try parsing content JSON for moderation service reports (type field)
-        if 'report_reason' not in data:
+
+        # 4. 3rd element of e or p tags (divine-mobile and divine-web primary format)
+        if not raw_reason:
+            if e_tags and len(e_tags[0]) >= 3 and e_tags[0][2]:
+                raw_reason = e_tags[0][2]
+            elif p_tags and isinstance(p_tags[0], str):
+                # p_tags[0] is already the pubkey string, check raw tag
+                p_tag_raw = [t for t in tags if isinstance(t, list) and len(t) >= 3 and t[0] == 'p']
+                if p_tag_raw:
+                    raw_reason = p_tag_raw[0][2]
+
+        # 5. Content JSON (moderation-service automated reports)
+        if not raw_reason:
             try:
                 content_json = json.loads(event.get('content', ''))
                 if isinstance(content_json, dict) and 'type' in content_json:
-                    data['report_reason'] = content_json['type']
+                    raw_reason = content_json['type']
             except (json.JSONDecodeError, TypeError):
                 pass
 
-        # Fallback: check content for common report keywords
-        if 'report_reason' not in data:
+        # 6. Keyword scan in content text (last resort)
+        if not raw_reason:
             content_lower = event.get('content', '').lower()
-            for reason in ('spam', 'nudity', 'csam', 'impersonation', 'illegal'):
+            for reason in ('csam', 'sexual_minors', 'nudity', 'spam', 'impersonation', 'illegal'):
                 if reason in content_lower:
-                    data['report_reason'] = reason
+                    raw_reason = reason
                     break
+
+        # Normalize reason to canonical values used by SML rules
+        if raw_reason:
+            data['report_reason'] = _normalize_report_reason(raw_reason)
 
     # ISO timestamp for the wrapper
     try:
@@ -170,9 +280,12 @@ async def bridge():
                         producer.send(KAFKA_TOPIC, value=wrapped)
                         event_count += 1
                         if event_count % 100 == 1:
-                            log.info('Published %d events (latest: kind %s id %s)',
-                                     event_count, event.get('kind', '?'),
-                                     event.get('id', '?')[:12])
+                            log.info(
+                                'Published %d events (latest: kind %s id %s)',
+                                event_count,
+                                event.get('kind', '?'),
+                                event.get('id', '?')[:12],
+                            )
                         else:
                             log.debug('Published event %s', event.get('id', '?')[:12])
 

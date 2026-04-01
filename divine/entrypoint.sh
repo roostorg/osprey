@@ -19,7 +19,6 @@ cli-osprey-ui-api() {
     --reload \
     --access-logfile - \
     --error-logfile - \
-    --logger-class jslog4kube.GunicornLogger \
     --name osprey_ui_api \
     --worker-class gevent \
     --chdir /osprey/osprey_worker/src \

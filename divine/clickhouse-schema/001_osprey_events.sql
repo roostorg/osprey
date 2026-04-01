@@ -29,14 +29,39 @@ CREATE TABLE IF NOT EXISTS osprey.osprey_events
     `ReportedPubkey`       String DEFAULT '',
     `ReportReason`         String DEFAULT '',
 
+    -- Kind 1985 label event fields
+    `LabelNamespace`       LowCardinality(String) DEFAULT '',
+    `LabelValue`           LowCardinality(String) DEFAULT '',
+    `LabelSource`          LowCardinality(String) DEFAULT '',
+    `LabelRejected`        UInt8 DEFAULT 0,
+    `LabelMetadata`        String DEFAULT '',
+    `LabelTargetEvent`     String DEFAULT '',
+    `LabelContentHash`     String DEFAULT '',
+    `LabelConfidence`      Float32 DEFAULT 0,
+
+    -- Video event fields
+    `VideoHash`            String DEFAULT '',
+    `VideoUrl`             String DEFAULT '',
+    `VideoTitle`           String DEFAULT '',
+
     -- Rule results (boolean features)
     `NewAccountSpam`       UInt8 DEFAULT 0,
     `RapidPosting`         UInt8 DEFAULT 0,
     `PreviouslyWarned`     UInt8 DEFAULT 0,
     `PreviouslySuspended`  UInt8 DEFAULT 0,
+    `PermanentBan`         UInt8 DEFAULT 0,
     `TrustedReporterCSAM`  UInt8 DEFAULT 0,
     `TrustedReporterNSFW`  UInt8 DEFAULT 0,
+    `ConfirmedNudity`      UInt8 DEFAULT 0,
+    `ConfirmedViolence`    UInt8 DEFAULT 0,
+    `ConfirmedCSAM`        UInt8 DEFAULT 0,
+    `ConfirmedAIGenerated` UInt8 DEFAULT 0,
+    `AgeRestricted`        UInt8 DEFAULT 0,
+    `NeedsReview`          UInt8 DEFAULT 0,
+    `ModerationServiceBan` UInt8 DEFAULT 0,
+    `RejectedLabel`        UInt8 DEFAULT 0,
     `__entity_label_mutations` String DEFAULT '',
+    `__ban_nostr_event`    String DEFAULT '',
 
     -- Catch-all for additional extracted features
     `_extra`       String DEFAULT '{}',

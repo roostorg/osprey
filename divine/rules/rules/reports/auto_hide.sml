@@ -1,5 +1,13 @@
 # Trusted Reporter Auto-Hide
 # Automatically acts on reports from trusted reporters for CSAM and NSFW content.
+#
+# Report reasons are normalized by the bridge. Canonical values:
+#   csam, nudity, spam, impersonation, illegal, harassment, other
+#
+# Mobile sends 'illegal' for CSAM (NIP-56 mapping), which the bridge
+# can't distinguish from violence/copyright 'illegal'. We match both
+# 'csam' (unambiguous) and 'illegal' (may over-match, but for trusted
+# reporters the cost of a false auto-hide on 'illegal' is low).
 
 Import(
   rules=[
@@ -12,9 +20,9 @@ TrustedReporterCSAM = Rule(
   when_all=[
     Kind == 1984,
     HasLabel(entity=Pubkey, label='trusted_reporter'),
-    ReportReason == 'csam',
+    ReportReason in ['csam', 'illegal'],
   ],
-  description='Trusted reporter flagged CSAM content',
+  description='Trusted reporter flagged CSAM or illegal content',
 )
 
 TrustedReporterNSFW = Rule(

@@ -1,5 +1,6 @@
 # New Account Spam Detection
-# Flags new accounts (< 1 hour old) posting kind 1 notes without verification.
+# Flags new accounts (< 1 hour old) posting without verification.
+# Covers text notes (kind 1) and video events (kinds 34235, 34236).
 
 Import(
   rules=[
@@ -10,11 +11,11 @@ Import(
 
 NewAccountSpam = Rule(
   when_all=[
-    Kind == 1,
+    Kind in [1, 34235, 34236],
     NostrAccountAge(created_at=CreatedAt) < 3600,
     not HasLabel(entity=Pubkey, label='verified'),
   ],
-  description='New account (< 1 hour old) posting a note without verification',
+  description='New account (< 1 hour old) posting without verification',
 )
 
 WhenRules(

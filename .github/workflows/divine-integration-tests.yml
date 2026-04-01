@@ -90,7 +90,7 @@ jobs:
 
       - name: Verify Divine plugin files exist
         run: |
-          test -f divine/plugins/src/register_plugins.py
+          test -f divine/plugins/src/divine_register_plugins.py
           test -f divine/plugins/src/udfs/ban_nostr_event.py
           test -f divine/plugins/src/udfs/nostr_account_age.py
           test -f divine/plugins/src/udfs/check_moderation_result.py

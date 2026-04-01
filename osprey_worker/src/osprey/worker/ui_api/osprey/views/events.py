@@ -147,17 +147,17 @@ def scan_query(request_model: PaginatedScanClickHouseQuery) -> Any:
             return ScanQueryResult(events=[], next_page=paginated_scan_results.next_page)
 
         ids_str = ', '.join(str(aid) for aid in paginated_scan_results.action_ids)
-        rows = backend.query(f"SELECT * FROM {backend.full_table} WHERE `__action_id` IN ({ids_str})")
-        events = []
-        for row in rows:
-            features = {k: v for k, v in row.items() if not k.startswith('__')}
-            events.append({
+        rows = backend.query(f'SELECT * FROM {backend.full_table} WHERE `__action_id` IN ({ids_str})')
+        ch_events = [
+            {
                 'id': row.get('__action_id'),
                 'timestamp': str(row.get('__time', '')),
-                'extracted_features': features,
-            })
+                'extracted_features': {k: v for k, v in row.items() if not k.startswith('__')},
+            }
+            for row in rows
+        ]
         return ScanQueryResult(
-            events=events,
+            events=ch_events,
             next_page=paginated_scan_results.next_page,
         )
 

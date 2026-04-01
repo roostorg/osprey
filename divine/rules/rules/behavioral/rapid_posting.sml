@@ -9,11 +9,11 @@ Import(
 
 RapidPosting = Rule(
   when_all=[
-    Kind == 1,
+    Kind in [1, 34235, 34236],
     HasLabel(entity=Pubkey, label='new_account_activity'),
     not HasLabel(entity=Pubkey, label='verified'),
   ],
-  description='New flagged account posting without verification',
+  description='Flagged account posting without verification',
 )
 
 WhenRules(

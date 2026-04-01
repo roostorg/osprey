@@ -1,40 +1,86 @@
+## Vocabulary note
+#
+# These labels are Osprey's internal state. They need to map to the canonical
+# moderation vocabulary used across Divine's stack:
+#
+#   Osprey verdict     | relay-manager action  | moderation-service tier | Blossom state
+#   -------------------|-----------------------|-------------------------|---------------
+#   approve            | reviewed / dismissed  | SAFE                    | APPROVE
+#   restrict           | (not implemented)     | AGE_RESTRICTED          | RESTRICT
+#   flag_for_review    | (queue for human)     | REVIEW                  | (pending)
+#   auto_hide          | auto_hidden           | (n/a)                   | (n/a)
+#   ban                | delete_event          | PERMANENT_BAN           | BLOCK
+#   ban_user           | ban_pubkey            | (n/a)                   | (n/a)
+#   suspend            | (not implemented)     | (n/a)                   | (n/a)
+#   restore            | (undo ban)            | (n/a)                   | APPROVE
+#
+# See: support-trust-safety/docs/moderation-vocabulary-alignment.md
+
 labels:
+  # --- Account lifecycle ---
+
   new_account_activity:
     valid_for: [Pubkey]
     connotation: neutral
     description: Account is newly created and showing early activity patterns
-
-  warned:
-    valid_for: [Pubkey]
-    connotation: negative
-    description: Account has been warned for policy violations
-
-  suspended:
-    valid_for: [Pubkey]
-    connotation: negative
-    description: Account is temporarily suspended from the platform
-
-  banned:
-    valid_for: [Pubkey, EventId]
-    connotation: negative
-    description: Account or event is permanently banned
 
   verified:
     valid_for: [Pubkey]
     connotation: positive
     description: Account has been verified as legitimate
 
-  rate_limited:
-    valid_for: [Pubkey]
-    connotation: negative
-    description: "User is rate limited due to suspicious activity"
-
-  nsfw_flagged:
-    valid_for: [Pubkey, ReportedPubkey]
-    connotation: negative
-    description: "User flagged for NSFW content by a trusted reporter"
-
   trusted_reporter:
     valid_for: [Pubkey]
     connotation: positive
     description: Account is a trusted source for NIP-56 moderation reports
+
+  moderation_service:
+    valid_for: [Pubkey]
+    connotation: neutral
+    description: Events from this pubkey are from the AI moderation service (not a human user)
+
+  # --- Enforcement state (graduated) ---
+
+  warned:
+    valid_for: [Pubkey]
+    connotation: negative
+    description: Account has been warned for policy violations (strike 1)
+
+  suspended:
+    valid_for: [Pubkey]
+    connotation: negative
+    description: Account is temporarily suspended from the platform (strike 2)
+
+  banned:
+    valid_for: [Pubkey, EventId]
+    connotation: negative
+    description: Account or event is permanently banned (strike 3 / immediate for severe violations)
+
+  rate_limited:
+    valid_for: [Pubkey]
+    connotation: negative
+    description: Account is rate limited due to suspicious activity
+
+  # --- Content flags ---
+
+  nsfw_flagged:
+    valid_for: [Pubkey, ReportedPubkey]
+    connotation: negative
+    description: Content flagged for NSFW by a trusted reporter or AI classification
+
+  age_restricted:
+    valid_for: [EventId]
+    connotation: negative
+    description: Content requires age verification to view (maps to Blossom RESTRICT)
+
+  ai_classified:
+    valid_for: [EventId]
+    connotation: neutral
+    description: Content has been classified by the AI moderation pipeline (result in verdict)
+
+  # --- Human review ---
+
+  human_reviewed:
+    valid_for: [EventId, Pubkey]
+    connotation: neutral
+    description: A human moderator has reviewed this content or account. Human decisions override automated ones.
