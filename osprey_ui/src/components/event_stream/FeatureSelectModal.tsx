@@ -76,6 +76,12 @@ const FeatureSelectModal = () => {
     return featureCategory.substring(0, featureCategory.lastIndexOf('.')).replace(/_|\//g, ' ');
   };
 
+  const isSetSelected = (feature: string) => {
+    if (!useCustomFeatures) return true;
+
+    return selectedFeatures.has(feature as string);
+  };
+
   const renderModalTitle = () => {
     return (
       <>
@@ -130,7 +136,7 @@ const FeatureSelectModal = () => {
               value={feature}
               disabled={!useCustomFeatures}
               onChange={handleSelectFeature}
-              checked={selectedFeatures.has(feature as string)}
+              checked={isSetSelected(feature)}
               className={styles.featureCheckboxRow}
             >
               <span className={styles.featureSpan}>{feature}</span>

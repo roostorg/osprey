@@ -1,0 +1,11 @@
+2 errors occurred while validating:
+[1/2] error: invalid `start`
+--> main.sml:1:39
+     |
+   1 | Result = StringSlice(s="abcdef", start=0, end=-1)
+     |                                        ^ `start` must be less than or equal to `end`
+[2/2] error: invalid `end`
+--> main.sml:1:47
+     |
+   1 | Result = StringSlice(s="abcdef", start=0, end=-1)
+     |                                                ^ `end` must be a non-negative integer
