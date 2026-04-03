@@ -31,8 +31,10 @@ class AsyncMultiOutputSink(AsyncBaseOutputSink):
 
             for attempt in range(1, attempts + 1):
                 try:
+                    start = asyncio.get_running_loop().time()
                     async with asyncio.timeout(sink.timeout):
                         await sink.push(result)
+                    metrics.timing('handled_message_output', (asyncio.get_running_loop().time() - start) * 1000, tags=[f'sink:{sink_name}'])
                     break
                 except TimeoutError:
                     logger.warning(f'Timeout pushing to {sink_name} (attempt {attempt}/{attempts})')
