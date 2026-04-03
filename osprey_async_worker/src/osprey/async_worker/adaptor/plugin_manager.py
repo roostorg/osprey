@@ -14,6 +14,7 @@ from osprey.engine.ast_validator import ValidatorRegistry
 from osprey.engine.executor.udf_execution_helpers import HasHelper, UDFHelpers
 from osprey.engine.udf.base import UDFBase
 from osprey.engine.udf.registry import UDFRegistry
+from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
 from osprey.worker.lib.storage.labels import LabelsProvider, LabelsServiceBase
 
 from osprey.async_worker.adaptor import hookspecs as async_hookspecs
@@ -110,6 +111,16 @@ def _bootstrap_labels_provider(config: 'Config | None') -> LabelsProvider | None
         provider.initialize()
         return provider
     return None
+
+
+def bootstrap_async_action_proto_deserializer() -> ActionProtoDeserializer | None:
+    """Bootstrap action proto deserializer from async plugins."""
+    load_all_async_plugins()
+    try:
+        [deserializer] = plugin_manager.hook.register_action_proto_deserializer()
+        return deserializer
+    except Exception:
+        return None
 
 
 def bootstrap_async_output_sinks(config: Config) -> AsyncMultiOutputSink:

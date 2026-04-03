@@ -294,9 +294,9 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
                     tags=tags + ['serialization_type:proto'],
                     use_ms=True,
                 ):
-                    from osprey.worker.adaptor.plugin_manager import bootstrap_action_proto_deserializer
+                    from osprey.async_worker.adaptor.plugin_manager import bootstrap_async_action_proto_deserializer
 
-                    deserializer = bootstrap_action_proto_deserializer()
+                    deserializer = bootstrap_async_action_proto_deserializer()
                     if deserializer is not None:
                         res = deserializer.proto_bytes_to_dict(osprey_coordinator_action.proto_action_data)
                         data = res.data

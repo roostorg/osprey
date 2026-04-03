@@ -23,6 +23,7 @@ from osprey.async_worker.adaptor.constants import OSPREY_ASYNC_ADAPTOR
 from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
 
 if TYPE_CHECKING:
+    from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
     from osprey.worker.lib.config import Config
     from osprey.worker.lib.storage.labels import LabelsServiceBase
 
@@ -53,6 +54,15 @@ def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
 @hookspec
 def register_ast_validators() -> Sequence[Type[BaseValidator]]:
     """Register AST validators. Same interface as the sync worker."""
+    raise NotImplementedError
+
+
+@hookspec
+def register_action_proto_deserializer() -> 'ActionProtoDeserializer':
+    """Register an action proto deserializer.
+
+    Same interface as the sync worker's register_action_proto_deserializer.
+    """
     raise NotImplementedError
 
 
