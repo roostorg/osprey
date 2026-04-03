@@ -21,6 +21,7 @@ from osprey.engine.stdlib.udfs.list_length import ListLength
 from osprey.engine.stdlib.udfs.list_read import ListRead
 from osprey.engine.stdlib.udfs.list_sort import ListSort
 from osprey.engine.stdlib.udfs.mx_lookup import MXLookup
+from osprey.engine.stdlib.udfs.parse_int import ParseInt
 from osprey.engine.stdlib.udfs.phone_country import PhoneCountry
 from osprey.engine.stdlib.udfs.phone_prefix import PhonePrefix
 from osprey.engine.stdlib.udfs.random_bool import RandomBool
@@ -96,6 +97,7 @@ def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
         ListRead,
         ListSort,
         MXLookup,
+        ParseInt,
         PhoneCountry,
         PhonePrefix,
         RandomBool,
