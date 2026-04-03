@@ -14,6 +14,7 @@ from osprey.engine.ast_validator import ValidatorRegistry
 from osprey.engine.executor.udf_execution_helpers import HasHelper, UDFHelpers
 from osprey.engine.udf.base import UDFBase
 from osprey.engine.udf.registry import UDFRegistry
+from osprey.worker.lib.storage.labels import LabelsProvider, LabelsServiceBase
 
 from osprey.async_worker.adaptor import hookspecs as async_hookspecs
 from osprey.async_worker.adaptor.constants import OSPREY_ASYNC_ADAPTOR
@@ -39,7 +40,7 @@ def load_all_async_plugins() -> None:
     plugin_manager.check_pending()
 
 
-def bootstrap_async_udfs(load_sync_plugins: bool = False) -> tuple[UDFRegistry, UDFHelpers]:
+def bootstrap_async_udfs(config: 'Config | None' = None, load_sync_plugins: bool = False) -> tuple[UDFRegistry, UDFHelpers]:
     """Bootstrap UDFs from async plugins + stdlib.
 
     Always loads stdlib UDFs (JsonData, StringLength, Rule, etc.) since
@@ -77,8 +78,38 @@ def bootstrap_async_udfs(load_sync_plugins: bool = False) -> tuple[UDFRegistry, 
                 # which is expected — errors get captured in error_infos.
                 pass
 
+    # Bootstrap labels provider if registered (needed for HasLabel, LabelAdd, LabelRemove)
+    labels_provider = _bootstrap_labels_provider(config)
+    if labels_provider:
+        from osprey.engine.stdlib.udfs.labels import HasLabel, LabelAdd, LabelRemove
+
+        all_udfs.extend([HasLabel, LabelAdd, LabelRemove])
+        udf_helpers.set_udf_helper(HasLabel, labels_provider)
+
     udf_registry = UDFRegistry.with_udfs(*all_udfs)
     return udf_registry, udf_helpers
+
+
+def _bootstrap_labels_provider(config: 'Config | None') -> LabelsProvider | None:
+    """Bootstrap labels provider from async plugins, following the sync worker pattern."""
+    if config is None:
+        return None
+    if not hasattr(plugin_manager.hook, 'register_labels_service_or_provider'):
+        return None
+    try:
+        provider_or_service = plugin_manager.hook.register_labels_service_or_provider(config=config)
+    except Exception:
+        return None
+    if provider_or_service is None:
+        return None
+    if isinstance(provider_or_service, LabelsProvider):
+        provider_or_service.initialize()
+        return provider_or_service
+    if isinstance(provider_or_service, LabelsServiceBase):
+        provider = LabelsProvider(provider_or_service)
+        provider.initialize()
+        return provider
+    return None
 
 
 def bootstrap_async_output_sinks(config: Config) -> AsyncMultiOutputSink:

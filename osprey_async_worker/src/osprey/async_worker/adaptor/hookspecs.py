@@ -24,6 +24,7 @@ from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
 
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
+    from osprey.worker.lib.storage.labels import LabelsServiceBase
 
 hookspec: pluggy.HookspecMarker = pluggy.HookspecMarker(OSPREY_ASYNC_ADAPTOR)
 
@@ -52,4 +53,14 @@ def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
 @hookspec
 def register_ast_validators() -> Sequence[Type[BaseValidator]]:
     """Register AST validators. Same interface as the sync worker."""
+    raise NotImplementedError
+
+
+@hookspec(firstresult=True)
+def register_labels_service_or_provider(config: 'Config') -> 'LabelsServiceBase':
+    """Register a labels service for HasLabel/LabelAdd/LabelRemove UDFs.
+
+    Same interface as the sync worker's register_labels_service_or_provider.
+    Returns a LabelsServiceBase which will be wrapped in a LabelsProvider.
+    """
     raise NotImplementedError
