@@ -9,6 +9,7 @@ from osprey.engine.stdlib.udfs.experiments import (
     Experiment,
     ExperimentsBucketAssignment,
     ExperimentWhen,
+    InExperiment,
 )
 from osprey.engine.stdlib.udfs.extract_cookie import ExtractCookie
 from osprey.engine.stdlib.udfs.get_action_name import GetActionName
@@ -20,6 +21,7 @@ from osprey.engine.stdlib.udfs.list_length import ListLength
 from osprey.engine.stdlib.udfs.list_read import ListRead
 from osprey.engine.stdlib.udfs.list_sort import ListSort
 from osprey.engine.stdlib.udfs.mx_lookup import MXLookup
+from osprey.engine.stdlib.udfs.parse_int import ParseInt
 from osprey.engine.stdlib.udfs.phone_country import PhoneCountry
 from osprey.engine.stdlib.udfs.phone_prefix import PhonePrefix
 from osprey.engine.stdlib.udfs.random_bool import RandomBool
@@ -38,6 +40,7 @@ from osprey.engine.stdlib.udfs.string import (
     StringLStrip,
     StringReplace,
     StringRStrip,
+    StringSlice,
     StringSplit,
     StringStartsWith,
     StringStrip,
@@ -81,6 +84,7 @@ def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
         Experiment,
         ExperimentWhen,
         ExperimentsBucketAssignment,
+        InExperiment,
         ExtractCookie,
         GetActionName,
         HasLabel,
@@ -93,6 +97,7 @@ def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
         ListRead,
         ListSort,
         MXLookup,
+        ParseInt,
         PhoneCountry,
         PhonePrefix,
         RandomBool,
@@ -118,6 +123,7 @@ def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
         StringLStrip,
         StringReplace,
         StringJoin,
+        StringSlice,
         StringSplit,
         StringClean,
         StringExtractDomains,
