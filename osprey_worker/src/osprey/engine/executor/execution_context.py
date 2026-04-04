@@ -29,6 +29,15 @@ from osprey.engine.executor.custom_extracted_features import (
 from osprey.engine.executor.dependency_chain import DependencyChain
 from osprey.engine.executor.execution_graph import ExecutionGraph
 from osprey.engine.executor.external_service_utils import ExternalService, ExternalServiceAccessor, KeyT, ValueT
+
+try:
+    from osprey.async_worker.lib.external_service import (
+        AsyncExternalService,
+        ExternalServiceAccessor as AsyncExternalServiceAccessor,
+    )
+except ImportError:
+    AsyncExternalService = None  # type: ignore[assignment,misc]
+    AsyncExternalServiceAccessor = None  # type: ignore[assignment,misc]
 from osprey.engine.executor.topological_sorter import TopologicalSorter
 from osprey.engine.executor.udf_execution_helpers import HasHelperInternal, HelperT, UDFHelpers
 from osprey.engine.language_types.effects import (
@@ -94,6 +103,7 @@ class ExecutionContext:
         '_effects',
         '_udf_helpers',
         '_external_service_accessors_by_getter_id',
+        '_async_external_service_accessors_by_getter_id',
         '_dependency_dag',
         '_chain_by_id',
         '_custom_extracted_features',
@@ -113,6 +123,7 @@ class ExecutionContext:
         # a k/v store of effects, by effect type
         self._effects: DefaultDict[Type[EffectBase], List[EffectBase]] = defaultdict(list)
         self._external_service_accessors_by_getter_id: Dict[int, ExternalServiceAccessor[Any, Any]] = {}
+        self._async_external_service_accessors_by_getter_id: Dict[int, Any] = {}
         self._dependency_dag = TopologicalSorter()
         self._chain_by_id: Dict[int, DependencyChain] = {}
         # feature name -> serializable feature
@@ -309,6 +320,16 @@ class ExecutionContext:
             accessor = ExternalServiceAccessor(external_service)
             self._external_service_accessors_by_getter_id[id(external_service)] = accessor
 
+        return accessor
+
+    def get_async_external_service_accessor(
+        self, external_service: 'AsyncExternalService[KeyT, ValueT]'
+    ) -> 'AsyncExternalServiceAccessor[KeyT, ValueT]':
+        """Async version of get_external_service_accessor, using asyncio.Future for caching."""
+        accessor = self._async_external_service_accessors_by_getter_id.get(id(external_service))
+        if accessor is None:
+            accessor = AsyncExternalServiceAccessor(external_service)
+            self._async_external_service_accessors_by_getter_id[id(external_service)] = accessor
         return accessor
 
 
