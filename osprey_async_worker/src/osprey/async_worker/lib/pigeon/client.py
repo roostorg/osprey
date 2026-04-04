@@ -1,6 +1,7 @@
 import asyncio
 import copy
 import itertools
+import logging
 import weakref
 from collections import defaultdict
 from collections.abc import Mapping
@@ -28,6 +29,8 @@ from osprey.worker.lib.pigeon.interceptors.metadata import MetadataInterceptor
 from typing_extensions import TypedDict
 
 from osprey.async_worker.lib.pigeon.skip_rate_limit import skip_rate_limit_context
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar('T')
 
@@ -154,8 +157,17 @@ class RoutedClient(Generic[T]):
         Safe to call multiple times — only initializes once.
         """
         if hasattr(self, '_service_watcher_initialized') and not self._service_watcher_initialized:
-            await self._service_watcher.ensure_initialized()
-            self._service_watcher_initialized = True
+            try:
+                await self._service_watcher.ensure_initialized()
+                self._service_watcher_initialized = True
+                logger.info(
+                    'async service watcher initialized for %s: %d instances',
+                    self._service_name,
+                    len(self._service_watcher._instances),
+                )
+            except Exception:
+                logger.exception('failed to initialize async service watcher for %s', self._service_name)
+                raise
 
     async def request(
         self,
@@ -358,12 +370,12 @@ class RoutedClient(Generic[T]):
         except KeyError:
             addr_port = f'{service.connection_address}:{service.grpc_port}'
 
-            # grpc.aio.insecure_channel accepts interceptors directly as a constructor arg,
-            # unlike the sync API which requires grpc.intercept_channel().
+            # grpc.aio requires async interceptors (grpc.aio.UnaryUnaryClientInterceptor).
+            # The BaggageInterceptor/MetadataInterceptor are sync interceptors that only
+            # work with ENVOY routing (pre-created channels). For discovered services
+            # (SCALAR/ROUND_ROBIN), create channels without interceptors.
             pin_override(grpc.Channel, f'{service.name}-grpc-client')
-            channel = grpc.aio.insecure_channel(
-                addr_port, options=self._grpc_options, interceptors=self._interceptors
-            )
+            channel = grpc.aio.insecure_channel(addr_port, options=self._grpc_options)
             self._open_channels[key] = weakref.ref(channel)
 
             pin_override(grpc.Channel, None)

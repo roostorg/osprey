@@ -204,6 +204,10 @@ class AsyncServiceWatcher:
         )
         event = await loop.run_in_executor(None, watcher.begin_watching)
         self._handle_full_sync(event, delay_visibility=False)
+        logger.info(
+            'async watcher %s: %d instances loaded: %s',
+            self._service_name, len(self._instances), list(self._instances.keys()),
+        )
         await self._ring.ensure_initialized()
         self._initialized = True
         self._watch_task = asyncio.create_task(self._watch_loop(watcher))
