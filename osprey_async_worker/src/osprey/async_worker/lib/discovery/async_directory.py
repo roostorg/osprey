@@ -235,9 +235,23 @@ class AsyncServiceWatcher:
                 members = [members]
             for member in members[instances_to_skip:]:
                 member_str = member.decode() if isinstance(member, bytes) else str(member)
+                # Try exact match in registered instances first
                 wrapper = self._instances.get(member_str)
                 if wrapper and (tolerate_draining or not wrapper.service.draining):
                     return wrapper.service
+                # Ring members use short hostnames (e.g. "smite-counters-1:5102") while
+                # instances register with FQDN. Create a Service from the ring member
+                # name directly — it's a valid DNS endpoint.
+                if ':' in member_str:
+                    host, port_str = member_str.rsplit(':', 1)
+                    port = int(port_str)
+                    return Service(
+                        name=self._service_name,
+                        address=host,
+                        port=port,
+                        ports={'grpc': port + 1},
+                        metadata={},
+                    )
             raise ServiceUnavailable(f'No service for {self._service_name} key={selector}')
 
     def select_all(self, tolerate_draining: bool = False) -> List[Service]:
