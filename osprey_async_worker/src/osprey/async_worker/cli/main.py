@@ -17,13 +17,14 @@ from osprey.engine.executor.execution_context import Action
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.lib.config import Config
+from osprey.engine.ast.sources import Sources
 from osprey.worker.lib.instruments import set_worker_type_tag
-from osprey.worker.lib.osprey_engine import get_sources_provider
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.singletons import CONFIG
+from osprey.worker.lib.sources_provider_base import StaticSourcesProvider
 
 from osprey.async_worker.engine import AsyncOspreyEngine
-from osprey.worker.sinks.utils.acking_contexts import NoopAckingContext
+from osprey.worker.sinks.utils.acking_contexts_base import NoopAckingContext
 
 from osprey.async_worker.sinks.sink.input_stream import AsyncBaseInputStream, AsyncStaticInputStream
 from osprey.async_worker.sinks.sink.output_sink import AsyncStdoutOutputSink
@@ -57,7 +58,7 @@ def bootstrap_stdlib_engine(rules_path: str) -> Tuple[AsyncOspreyEngine, UDFHelp
     for validator in validators:
         registry.register_to_instance(validator)
 
-    sources_provider = get_sources_provider(rules_path=rules_path)
+    sources_provider = StaticSourcesProvider(sources=Sources.from_path(Path(rules_path)))
 
     engine = AsyncOspreyEngine(
         sources_provider=sources_provider,
@@ -111,7 +112,7 @@ def run(rules_path: str, input_file: Optional[str], max_concurrent: int, with_pl
     if with_plugins:
         from osprey.worker.lib.osprey_engine import bootstrap_engine_with_helpers
 
-        sources_provider = get_sources_provider(rules_path=rules_path)
+        sources_provider = StaticSourcesProvider(sources=Sources.from_path(Path(rules_path)))
         engine, udf_helpers = bootstrap_engine_with_helpers(sources_provider=sources_provider)
     else:
         engine, udf_helpers = bootstrap_stdlib_engine(rules_path)

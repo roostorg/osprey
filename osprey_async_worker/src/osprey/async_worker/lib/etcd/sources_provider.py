@@ -14,7 +14,7 @@ from typing import Callable, Dict, Optional
 
 from osprey.engine.ast.sources import Sources
 from osprey.worker.lib.etcd import EtcdClient, FullSyncOne, FullSyncOneNoKey
-from osprey.worker.lib.sources_provider import BaseSourcesProvider
+from osprey.worker.lib.sources_provider_base import BaseSourcesProvider
 
 SourcesWatcherCallback = Callable[[], None]
 

@@ -36,7 +36,7 @@ from osprey.engine.executor.execution_graph import ExecutionGraph, compile_execu
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.lib.sources_config import get_config_registry
-from osprey.worker.lib.sources_provider import BaseSourcesProvider
+from osprey.worker.lib.sources_provider_base import BaseSourcesProvider
 
 from osprey.async_worker.executor import execute as async_execute
 

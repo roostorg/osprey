@@ -14,7 +14,7 @@ from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import info_log_osprey_action
 from osprey.worker.lib.snowflake import generate_snowflake
 from osprey.worker.lib.sources_config.subkeys.action_config import ActionConfigs
-from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext, VerdictsAckingContext
+from osprey.worker.sinks.utils.acking_contexts_base import BaseAckingContext, VerdictsAckingContext
 
 from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
 from osprey.async_worker.engine import AsyncOspreyEngine

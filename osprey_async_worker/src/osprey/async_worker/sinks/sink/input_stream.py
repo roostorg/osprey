@@ -5,7 +5,7 @@ from collections import deque
 from typing import AsyncIterator, Generic, Sequence, TypeVar
 
 from osprey.engine.executor.execution_context import Action
-from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext, NoopAckingContext
+from osprey.worker.sinks.utils.acking_contexts_base import BaseAckingContext, NoopAckingContext
 
 _T = TypeVar('_T')
 

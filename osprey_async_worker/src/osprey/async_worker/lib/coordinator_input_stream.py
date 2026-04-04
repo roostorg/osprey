@@ -24,11 +24,10 @@ from osprey.rpc.osprey_coordinator.bidirectional_stream.v1.service_pb2 import (
 from osprey.rpc.osprey_coordinator.bidirectional_stream.v1.service_pb2_grpc import (
     OspreyCoordinatorServiceStub,
 )
-from osprey.worker.lib.discovery.directory import Directory
 from osprey.worker.lib.discovery.service import Service
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger, info_log_osprey_action
-from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext, NoopAckingContext, VerdictsAckingContext
+from osprey.worker.sinks.utils.acking_contexts_base import BaseAckingContext, NoopAckingContext, VerdictsAckingContext
 
 from osprey.async_worker.sinks.sink.input_stream import AsyncBaseInputStream
 
@@ -60,6 +59,10 @@ class GrpcConnectionDiscoveryPool:
     """Maintains a pool of async gRPC channels discovered via etcd service discovery."""
 
     def __init__(self, service_name: str) -> None:
+        # Lazy import: Directory uses gevent-based service discovery. The async worker
+        # bypasses this constructor entirely via OspreyCoordinatorInputStream.from_direct_address().
+        from osprey.worker.lib.discovery.directory import Directory
+
         self._service_name = service_name
         directory = Directory.instance(secure=False)
 

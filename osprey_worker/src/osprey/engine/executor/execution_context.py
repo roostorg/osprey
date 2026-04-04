@@ -40,13 +40,15 @@ from osprey.engine.executor.custom_extracted_features import (
 )
 from osprey.engine.executor.dependency_chain import DependencyChain
 from osprey.engine.executor.execution_graph import ExecutionGraph
-from osprey.engine.executor.external_service_utils import (
+from osprey.engine.executor.external_service_utils_base import (
     ExternalService,
-    ExternalServiceAccessor,
     KeyT,
     PlainExternalServiceAccessor,
     ValueT,
 )
+
+if TYPE_CHECKING:
+    from osprey.engine.executor.external_service_utils import ExternalServiceAccessor
 
 try:
     from osprey.async_worker.lib.external_service import (
@@ -140,7 +142,7 @@ class ExecutionContext:
         self._visited_executions: Set[DependencyChain] = set()
         # a k/v store of effects, by effect type
         self._effects: DefaultDict[Type[EffectBase], List[EffectBase]] = defaultdict(list)
-        self._external_service_accessors_by_getter_id: Dict[int, ExternalServiceAccessor[Any, Any]] = {}
+        self._external_service_accessors_by_getter_id: Dict[int, Any] = {}
         self._async_external_service_accessors_by_getter_id: Dict[int, Any] = {}
         self._dependency_dag = TopologicalSorter()
         self._chain_by_id: Dict[int, DependencyChain] = {}
@@ -329,7 +331,7 @@ class ExecutionContext:
 
     def get_external_service_accessor(
         self, external_service: ExternalService[KeyT, ValueT]
-    ) -> ExternalServiceAccessor[KeyT, ValueT]:
+    ) -> 'ExternalServiceAccessor[KeyT, ValueT]':
         """Given an external service, wraps that service in an accessor that ensures that requests to the service are
         cached and debounced by key within this execution.
 
@@ -340,6 +342,8 @@ class ExecutionContext:
         accessor = self._external_service_accessors_by_getter_id.get(id(external_service))
         if accessor is None:
             if _is_gevent_patched():
+                from osprey.engine.executor.external_service_utils import ExternalServiceAccessor
+
                 accessor = ExternalServiceAccessor(external_service)
             else:
                 accessor = PlainExternalServiceAccessor(external_service)

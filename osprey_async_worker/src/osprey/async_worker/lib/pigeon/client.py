@@ -19,7 +19,9 @@ from google.protobuf.message import Message
 from osprey.worker.lib.ddtrace_utils import current_span, noop_span, pin_override, trace
 from osprey.worker.lib.discovery.exceptions import ServiceUnavailable
 from osprey.worker.lib.discovery.service import Service
-from osprey.worker.lib.discovery.service_watcher import DOWN
+# String constant matching osprey.worker.lib.discovery.service_watcher.DOWN
+# Defined locally to avoid importing service_watcher which pulls in gevent.
+DOWN = 'down'
 
 from osprey.async_worker.lib.discovery.async_directory import AsyncDirectory
 from osprey.worker.lib.instruments import metrics
