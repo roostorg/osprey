@@ -20,7 +20,19 @@ from typing import (
     TypeVar,
 )
 
+from functools import lru_cache
+
 from google.protobuf.timestamp_pb2 import Timestamp
+
+
+@lru_cache(maxsize=1)
+def _is_gevent_patched() -> bool:
+    try:
+        from gevent.monkey import is_module_patched
+
+        return is_module_patched('socket')
+    except ImportError:
+        return False
 from osprey.engine.ast.grammar import ASTNode, Load, Name, Source
 from osprey.engine.ast.printer import print_ast
 from osprey.engine.executor.custom_extracted_features import (
@@ -28,7 +40,13 @@ from osprey.engine.executor.custom_extracted_features import (
 )
 from osprey.engine.executor.dependency_chain import DependencyChain
 from osprey.engine.executor.execution_graph import ExecutionGraph
-from osprey.engine.executor.external_service_utils import ExternalService, ExternalServiceAccessor, KeyT, ValueT
+from osprey.engine.executor.external_service_utils import (
+    ExternalService,
+    ExternalServiceAccessor,
+    KeyT,
+    PlainExternalServiceAccessor,
+    ValueT,
+)
 
 try:
     from osprey.async_worker.lib.external_service import (
@@ -313,11 +331,18 @@ class ExecutionContext:
         self, external_service: ExternalService[KeyT, ValueT]
     ) -> ExternalServiceAccessor[KeyT, ValueT]:
         """Given an external service, wraps that service in an accessor that ensures that requests to the service are
-        cached and debounced by key within this execution."""
+        cached and debounced by key within this execution.
+
+        Returns PlainExternalServiceAccessor (no gevent dependency) when gevent is not monkey-patched,
+        allowing sync ExternalService calls to work in the async worker's thread pool.
+        """
         # No need to lock since not doing any IO
         accessor = self._external_service_accessors_by_getter_id.get(id(external_service))
         if accessor is None:
-            accessor = ExternalServiceAccessor(external_service)
+            if _is_gevent_patched():
+                accessor = ExternalServiceAccessor(external_service)
+            else:
+                accessor = PlainExternalServiceAccessor(external_service)
             self._external_service_accessors_by_getter_id[id(external_service)] = accessor
 
         return accessor
