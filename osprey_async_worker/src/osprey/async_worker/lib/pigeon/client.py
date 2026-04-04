@@ -16,10 +16,11 @@ from ddtrace.ext.http import STATUS_CODE
 from ddtrace.span import Span
 from google.protobuf.message import Message
 from osprey.worker.lib.ddtrace_utils import current_span, noop_span, pin_override, trace
-from osprey.worker.lib.discovery.directory import Directory
 from osprey.worker.lib.discovery.exceptions import ServiceUnavailable
 from osprey.worker.lib.discovery.service import Service
 from osprey.worker.lib.discovery.service_watcher import DOWN
+
+from osprey.async_worker.lib.discovery.async_directory import AsyncDirectory
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.pigeon.exceptions import InvalidRoutingValueException, NoResponsesException, RPCException
 from osprey.worker.lib.pigeon.interceptors.baggage import BaggageInterceptor
@@ -133,10 +134,9 @@ class RoutedClient(Generic[T]):
                 ip=envoy_endpoint.get('ip'),
             )
         else:
-            self._service_watcher = Directory.instance(secure=secure_etcd).get_watcher(service_name)
-            # Adding a bound method to a WeakSet directly causes it to be removed
-            # immediately, so our handler method is never invoked. Instead, create a
-            # strong reference to the method on `self` and pass that to the set.
+            self._async_directory = AsyncDirectory.instance(secure=secure_etcd)
+            self._service_watcher = self._async_directory.get_watcher(service_name)
+            self._service_watcher_initialized = False
             self._handle_service_change_fn = self._handle_service_change
             self._service_watcher.add_lazy_listener(self._handle_service_change_fn)
 
@@ -146,6 +146,16 @@ class RoutedClient(Generic[T]):
     @property
     def acceptable_duration_ms(self) -> Optional[int]:
         return self._acceptable_duration_ms
+
+    async def _ensure_watcher_initialized(self) -> None:
+        """Lazily initialize the async service watcher on first use.
+
+        Must be called from an async context (inside the event loop).
+        Safe to call multiple times — only initializes once.
+        """
+        if hasattr(self, '_service_watcher_initialized') and not self._service_watcher_initialized:
+            await self._service_watcher.ensure_initialized()
+            self._service_watcher_initialized = True
 
     async def request(
         self,
@@ -157,6 +167,7 @@ class RoutedClient(Generic[T]):
         metadata: Optional[List[Tuple[str, str]]] = None,
         instances_to_skip: int = 0,
     ):
+        await self._ensure_watcher_initialized()
         routing_type = routing_type if routing_type is not None else self._routing_type
         request_field = request_field if request_field is not None else self._request_field
         timeout = timeout or self._read_timeout
