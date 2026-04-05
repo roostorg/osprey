@@ -25,6 +25,7 @@ from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
 if TYPE_CHECKING:
     from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
     from osprey.worker.lib.config import Config
+    from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter
     from osprey.worker.lib.storage.labels import LabelsServiceBase
 
 hookspec: pluggy.HookspecMarker = pluggy.HookspecMarker(OSPREY_ASYNC_ADAPTOR)
@@ -72,5 +73,15 @@ def register_labels_service_or_provider(config: 'Config') -> 'LabelsServiceBase'
 
     Same interface as the sync worker's register_labels_service_or_provider.
     Returns a LabelsServiceBase which will be wrapped in a LabelsProvider.
+    """
+    raise NotImplementedError
+
+
+@hookspec(firstresult=True)
+def register_validation_exporter(config: 'Config') -> 'BaseValidationResultExporter':
+    """Register a validation result exporter.
+
+    Called after rule compilation to export experiment metadata
+    and other validation results to analytics.
     """
     raise NotImplementedError

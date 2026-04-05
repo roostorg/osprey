@@ -10,7 +10,10 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from time import time
-from typing import Callable, Dict, List, Optional, Set, Type, TypeVar
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Set, Type, TypeVar
+
+if TYPE_CHECKING:
+    from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter
 
 from ddtrace.span import Span as TracerSpan
 from osprey.engine.ast.grammar import Assign, Span
@@ -56,6 +59,7 @@ class AsyncOspreyEngine:
         self,
         sources_provider: BaseSourcesProvider,
         udf_registry: UDFRegistry,
+        validation_exporter: Optional['BaseValidationResultExporter'] = None,
     ):
         self._sources_provider = sources_provider
         self._udf_registry = udf_registry
@@ -67,6 +71,7 @@ class AsyncOspreyEngine:
         self._execution_graph = self._compile_execution_graph_sync()
         self._sources_provider.set_sources_watcher(self._handle_updated_sources)
         self._config_subkey_handler = ConfigSubkeyHandler(config_registry, self._execution_graph.validated_sources)
+        self._validation_result_exporter = validation_exporter
 
     def _compile_execution_graph_sync(self) -> ExecutionGraph:
         """Compile the execution graph synchronously. Used for initial compilation."""
@@ -106,6 +111,12 @@ class AsyncOspreyEngine:
             )
         else:
             self._config_subkey_handler.dispatch_config(self._execution_graph.validated_sources)
+
+        if self._validation_result_exporter is not None:
+            try:
+                self._validation_result_exporter.send(self._execution_graph.validated_sources)
+            except Exception:
+                log.exception('Failed to export validation results')
 
     @property
     def execution_graph(self) -> ExecutionGraph:

@@ -148,6 +148,21 @@ def bootstrap_async_action_proto_deserializer() -> ActionProtoDeserializer | Non
         return None
 
 
+def bootstrap_validation_exporter(config: Config) -> Any:
+    """Bootstrap validation result exporter from async plugins.
+
+    Returns the exporter or None if not registered.
+    """
+    load_all_async_plugins()
+    if not hasattr(plugin_manager.hook, 'register_validation_exporter'):
+        return None
+    try:
+        return plugin_manager.hook.register_validation_exporter(config=config)
+    except Exception:
+        logging.exception('Failed to bootstrap validation exporter')
+        return None
+
+
 def bootstrap_async_output_sinks(config: Config) -> AsyncMultiOutputSink:
     """Bootstrap async output sinks from async plugins only.
 
