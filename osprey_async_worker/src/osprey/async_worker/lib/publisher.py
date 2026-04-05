@@ -103,11 +103,14 @@ class AsyncPubSubPublisher:
                 logger.exception('Failed to publish message')
 
     def publish(self, data: BaseModel) -> None:
-        """Queue a message for async batched publishing."""
-        encoded = data.json(exclude_none=True).encode()
+        """Queue a Pydantic model for async batched publishing."""
+        self.publish_bytes(data.json(exclude_none=True).encode())
+
+    def publish_bytes(self, data: bytes) -> None:
+        """Queue raw bytes for async batched publishing."""
         self._ensure_started()
         try:
-            self._queue.put_nowait(encoded)
+            self._queue.put_nowait(data)
         except asyncio.QueueFull:
             logger.warning('Publisher queue full, dropping message')
 
