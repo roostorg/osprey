@@ -78,11 +78,11 @@ def bootstrap_async_udfs(config: 'Config | None' = None, load_sync_plugins: bool
                 # Skip helper creation for UDFs that fail (e.g., etcd not available).
                 # These UDFs will fail at execution time via the legacy fallback,
                 # which is expected — errors get captured in error_infos.
-                pass
+                logging.warning('Failed to create provider for %s', udf.__name__, exc_info=True)
 
     # Bootstrap labels service (needed for HasLabel, LabelAdd, LabelRemove)
-    labels_service = _bootstrap_labels_service(config)
-    if labels_service:
+    labels_hook_result = _get_labels_hook_result(config)
+    if labels_hook_result:
         from osprey.engine.stdlib.udfs.labels import LabelAdd, LabelRemove
 
         # Use AsyncHasLabel (native async) instead of sync HasLabel.
@@ -97,12 +97,12 @@ def bootstrap_async_udfs(config: 'Config | None' = None, load_sync_plugins: bool
             # Remove sync HasLabel (registered by stdlib) — replaced by AsyncHasLabel
             all_udfs = [u for u in all_udfs if u is not SyncHasLabel]
             all_udfs.extend([AsyncHasLabel, LabelAdd, LabelRemove])
-            udf_helpers.set_udf_helper(AsyncHasLabel, labels_service)
+            udf_helpers.set_udf_helper(AsyncHasLabel, labels_hook_result)
         except ImportError:
             # Fall back to sync HasLabel with LabelsProvider wrapper
             from osprey.engine.stdlib.udfs.labels import HasLabel
 
-            labels_provider = _bootstrap_labels_provider(config)
+            labels_provider = _wrap_as_labels_provider(labels_hook_result)
             if labels_provider:
                 all_udfs.extend([HasLabel, LabelAdd, LabelRemove])
                 udf_helpers.set_udf_helper(HasLabel, labels_provider)
@@ -111,8 +111,8 @@ def bootstrap_async_udfs(config: 'Config | None' = None, load_sync_plugins: bool
     return udf_registry, udf_helpers
 
 
-def _bootstrap_labels_service(config: 'Config | None') -> Any:
-    """Bootstrap the raw labels service from async plugins (for AsyncHasLabel)."""
+def _get_labels_hook_result(config: 'Config | None') -> Any:
+    """Call the labels service/provider hook. Returns the raw result or None on failure."""
     if config is None:
         return None
     if not hasattr(plugin_manager.hook, 'register_labels_service_or_provider'):
@@ -124,24 +124,15 @@ def _bootstrap_labels_service(config: 'Config | None') -> Any:
         return None
 
 
-def _bootstrap_labels_provider(config: 'Config | None') -> LabelsProvider | None:
-    """Bootstrap labels provider from async plugins, following the sync worker pattern."""
-    if config is None:
+def _wrap_as_labels_provider(hook_result: Any) -> LabelsProvider | None:
+    """Wrap a hook result in a LabelsProvider if needed. For sync HasLabel fallback."""
+    if hook_result is None:
         return None
-    if not hasattr(plugin_manager.hook, 'register_labels_service_or_provider'):
-        return None
-    try:
-        provider_or_service = plugin_manager.hook.register_labels_service_or_provider(config=config)
-    except Exception:
-        logging.exception('Failed to register labels service/provider')
-        return None
-    if provider_or_service is None:
-        return None
-    if isinstance(provider_or_service, LabelsProvider):
-        provider_or_service.initialize()
-        return provider_or_service
-    if isinstance(provider_or_service, LabelsServiceBase):
-        provider = LabelsProvider(provider_or_service)
+    if isinstance(hook_result, LabelsProvider):
+        hook_result.initialize()
+        return hook_result
+    if isinstance(hook_result, LabelsServiceBase):
+        provider = LabelsProvider(hook_result)
         provider.initialize()
         return provider
     return None

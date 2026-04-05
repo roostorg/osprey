@@ -159,15 +159,18 @@ class RoutedClient(Generic[T]):
         Safe to call multiple times — only initializes once.
         """
         if hasattr(self, '_service_watcher_initialized') and not self._service_watcher_initialized:
+            # Set flag before awaiting to prevent concurrent coroutines from
+            # double-initializing. Reset on failure so the next call retries.
+            self._service_watcher_initialized = True
             try:
                 await self._service_watcher.ensure_initialized()
-                self._service_watcher_initialized = True
                 logger.info(
                     'async service watcher initialized for %s: %d instances',
                     self._service_name,
                     len(self._service_watcher._instances),
                 )
             except Exception:
+                self._service_watcher_initialized = False
                 logger.exception('failed to initialize async service watcher for %s', self._service_name)
                 raise
 
@@ -350,13 +353,13 @@ class RoutedClient(Generic[T]):
     def _cleanup_client(self, service_key):
         if service_key in self._open_channels:
             channel = self._open_channels.pop(service_key)()
-            if channel is not None:
-                if hasattr(channel, 'close'):
-                    # grpc.aio channels have an async close, but we fire-and-forget here
-                    # since this is called from a sync callback.
+            if channel is not None and hasattr(channel, 'close'):
+                # grpc.aio channels have an async close, but we fire-and-forget here
+                # since this is called from a sync callback.
+                try:
                     asyncio.get_event_loop().create_task(channel.close())
-                else:
-                    del channel
+                except RuntimeError:
+                    pass  # No running event loop (shutdown or non-main thread)
         if service_key in self._clients:
             del self._clients[service_key]
 

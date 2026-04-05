@@ -28,7 +28,7 @@ def test_discovery_pool_creates_channels():
     mock_directory.select_all.return_value = [mock_service]
     mock_directory.get_watcher.return_value = mock_watcher
 
-    with patch('osprey.async_worker.lib.coordinator_input_stream.Directory') as MockDirectory:
+    with patch('osprey.worker.lib.discovery.directory.Directory') as MockDirectory:
         MockDirectory.instance.return_value = mock_directory
         pool = GrpcConnectionDiscoveryPool('test_coordinator')
         assert len(pool._grpc_channels) == 1

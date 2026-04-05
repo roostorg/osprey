@@ -10,6 +10,7 @@ Pure-computation UDFs (no I/O) can remain as regular UDFBase and run inline.
 
 import abc
 import asyncio
+import logging
 from typing import Any, ClassVar, Generic, Sequence, Tuple, TypeVar
 
 from osprey.engine.executor.execution_context import ExecutionContext, ExecutionResult
@@ -151,9 +152,18 @@ class AsyncMultiOutputSink(AsyncBaseOutputSink):
                     async with asyncio.timeout(sink.timeout):
                         await sink.push(result)
                 except TimeoutError:
-                    pass
+                    logging.warning(
+                        'Output sink %s timed out after %ss for action %s',
+                        sink.__class__.__name__,
+                        sink.timeout,
+                        result.action.action_name,
+                    )
                 except Exception:
-                    pass
+                    logging.exception(
+                        'Output sink %s failed for action %s',
+                        sink.__class__.__name__,
+                        result.action.action_name,
+                    )
 
     async def stop(self) -> None:
         for sink in self._sinks:

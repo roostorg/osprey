@@ -94,6 +94,7 @@ class AsyncEtcdSourcesProvider(BaseSourcesProvider):
     async def _watch_loop(self) -> None:
         """Watch for etcd changes, running the sync watcher in a thread pool."""
         loop = asyncio.get_running_loop()
+        backoff = 1.0
         try:
             while True:
                 if self._watcher is None:
@@ -104,14 +105,16 @@ class AsyncEtcdSourcesProvider(BaseSourcesProvider):
                 # Block in thread pool waiting for next etcd event
                 try:
                     event = await loop.run_in_executor(None, self._get_next_event)
+                    backoff = 1.0  # Reset on success
                 except StopIteration:
                     # Watcher exhausted, restart
                     self._watcher = None
                     continue
                 except Exception:
-                    logging.exception('Error in etcd watcher loop, restarting')
+                    logging.exception('Error in etcd watcher loop, retrying in %.1fs', backoff)
                     self._watcher = None
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(backoff)
+                    backoff = min(backoff * 2, 30.0)
                     continue
 
                 if event is not None:

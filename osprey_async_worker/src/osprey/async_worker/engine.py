@@ -162,4 +162,4 @@ class AsyncOspreyEngine:
 
     def shutdown(self) -> None:
         """Shutdown the compilation thread pool."""
-        self._thread_pool.shutdown(wait=False)
+        self._thread_pool.shutdown(wait=True)

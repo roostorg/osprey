@@ -51,14 +51,19 @@ class _AsyncHashRing:
     async def ensure_initialized(self) -> None:
         if self._initialized:
             return
-        loop = asyncio.get_running_loop()
-        watcher = await loop.run_in_executor(
-            None, self._etcd_client.get_watcher, self._key, False
-        )
-        event = await loop.run_in_executor(None, watcher.begin_watching)
-        self._handle_event(event)
+        # Set early to prevent concurrent coroutines from double-initializing.
         self._initialized = True
-        self._watch_task = asyncio.create_task(self._watch_loop(watcher))
+        try:
+            loop = asyncio.get_running_loop()
+            watcher = await loop.run_in_executor(
+                None, self._etcd_client.get_watcher, self._key, False
+            )
+            event = await loop.run_in_executor(None, watcher.begin_watching)
+            self._handle_event(event)
+            self._watch_task = asyncio.create_task(self._watch_loop(watcher))
+        except Exception:
+            self._initialized = False
+            raise
 
     def select(self, key: Any, secondaries: int = 0) -> Any:
         if isinstance(key, str):
@@ -198,19 +203,24 @@ class AsyncServiceWatcher:
     async def ensure_initialized(self) -> None:
         if self._initialized:
             return
-        loop = asyncio.get_running_loop()
-        watcher = await loop.run_in_executor(
-            None, self._etcd_client.get_watcher, self._key, True
-        )
-        event = await loop.run_in_executor(None, watcher.begin_watching)
-        self._handle_full_sync(event, delay_visibility=False)
-        logger.info(
-            'async watcher %s: %d instances loaded: %s',
-            self._service_name, len(self._instances), list(self._instances.keys()),
-        )
-        await self._ring.ensure_initialized()
+        # Set early to prevent concurrent coroutines from double-initializing.
         self._initialized = True
-        self._watch_task = asyncio.create_task(self._watch_loop(watcher))
+        try:
+            loop = asyncio.get_running_loop()
+            watcher = await loop.run_in_executor(
+                None, self._etcd_client.get_watcher, self._key, True
+            )
+            event = await loop.run_in_executor(None, watcher.begin_watching)
+            self._handle_full_sync(event, delay_visibility=False)
+            logger.info(
+                'async watcher %s: %d instances loaded: %s',
+                self._service_name, len(self._instances), list(self._instances.keys()),
+            )
+            await self._ring.ensure_initialized()
+            self._watch_task = asyncio.create_task(self._watch_loop(watcher))
+        except Exception:
+            self._initialized = False
+            raise
 
     def select(
         self,

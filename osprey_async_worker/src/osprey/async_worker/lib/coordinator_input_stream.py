@@ -78,6 +78,24 @@ class GrpcConnectionDiscoveryPool:
         self._handle_service_change_fn = self._handle_service_change
         self._service_watcher.add_lazy_listener(self._handle_service_change_fn)
 
+    @classmethod
+    def from_static(cls, address: str, service_name: str) -> 'GrpcConnectionDiscoveryPool':
+        """Create a pool with a single static address (no etcd discovery)."""
+        host, port_str = address.rsplit(':', 1)
+        service = Service(
+            name=service_name,
+            address=host,
+            port=int(port_str),
+            ports={'grpc': int(port_str)},
+            metadata={},
+        )
+        instance = object.__new__(cls)
+        instance._service_name = service_name
+        instance._grpc_channels = {service: (grpc.aio.insecure_channel(address), service)}
+        instance._service_watcher = None
+        instance._handle_service_change_fn = None
+        return instance
+
     @staticmethod
     def _create_async_channel(service: Service) -> grpc.aio.Channel:
         return grpc.aio.insecure_channel(target=f'{service.connection_address}:{service.grpc_port}')
@@ -93,16 +111,27 @@ class GrpcConnectionDiscoveryPool:
     async def get_connection(self) -> Tuple[grpc.aio.Channel, Service]:
         """Gets an async gRPC channel to a coordinator instance.
 
-        If no services are registered, polls until one becomes available.
+        If no services are registered, polls with exponential backoff until one becomes available.
         """
         channels = list(self._grpc_channels.values())
+        backoff = 1.0
 
         while len(channels) == 0:
-            logger.info(f'all {self._service_name} instances offline... waiting')
-            await asyncio.sleep(1)
+            logger.info('all %s instances offline... retrying in %.1fs', self._service_name, backoff)
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, 30.0)
             channels = list(self._grpc_channels.values())
 
         return random.choice(channels)
+
+    async def close(self) -> None:
+        """Close all gRPC channels."""
+        for channel, _ in list(self._grpc_channels.values()):
+            try:
+                await channel.close()
+            except Exception:
+                pass
+        self._grpc_channels.clear()
 
 
 class OspreyCoordinatorBiDirectionalStream:
@@ -233,32 +262,17 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
         Bypasses etcd service discovery, which uses gevent-patched code that
         is incompatible with grpc.aio. Use this for the async worker.
         """
-        instance = cls.__new__(cls)
+        instance = object.__new__(cls)
         instance._client_id = client_id
         instance._shutdown_event = asyncio.Event()
         instance._current_execution_result = None
-
-        host, port_str = address.rsplit(':', 1)
-        service = Service(
-            name=service_name,
-            address=host,
-            port=int(port_str),
-            ports={'grpc': int(port_str)},
-            metadata={},
-        )
-        channel = grpc.aio.insecure_channel(address)
-
-        pool = GrpcConnectionDiscoveryPool.__new__(GrpcConnectionDiscoveryPool)
-        pool._service_name = service_name
-        pool._grpc_channels = {service: (channel, service)}
-        pool._service_watcher = None
-        instance._channel_pool = pool
-
+        instance._channel_pool = GrpcConnectionDiscoveryPool.from_static(address, service_name)
         return instance
 
     async def stop(self) -> None:
         logger.info('Received shutdown signal... safely shutting down')
         self._shutdown_event.set()
+        await self._channel_pool.close()
 
     # -- deserialization -----------------------------------------------------------
 
@@ -315,9 +329,12 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
                 )
                 return None
 
-            assert isinstance(data, dict), 'the `json_action_data` was not a dict'
-            assert isinstance(secret_data, dict), 'the `json_secret_data` was not a dict'
-            assert osprey_coordinator_action.action_name != '', 'action name must never be empty'
+            if not isinstance(data, dict):
+                raise ValueError('json_action_data was not a dict')
+            if not isinstance(secret_data, dict):
+                raise ValueError('json_secret_data was not a dict')
+            if not osprey_coordinator_action.action_name:
+                raise ValueError('action name must never be empty')
 
             return OspreyEngineAction(
                 action_id=osprey_coordinator_action.action_id,

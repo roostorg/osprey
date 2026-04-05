@@ -96,7 +96,9 @@ class AsyncRulesRunner:
                 await self._output_sink.push(result)
                 info_log_osprey_action(action.action_id, action.action_name, 'pushed to output sink')
                 return result
-        except BaseException:
+        except Exception:
+            logging.exception('Error in classify_one for action %s', action.action_name)
+            metrics.increment('rules_runner.classify_error', tags=tags)
             sentry_sdk.capture_exception()
             return result
 
