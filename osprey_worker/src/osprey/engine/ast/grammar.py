@@ -6,7 +6,7 @@ from enum import Enum
 from pathlib import Path
 from typing import ClassVar, Dict, Optional, Sequence, TypeVar, Union
 
-from gevent.lock import Semaphore
+from threading import Lock
 
 # TODO: Uncomment logging when we have a logging system
 # from osprey.worker.ui_api.lib.osprey_shared.logging import get_logger
@@ -16,7 +16,7 @@ from osprey.engine.utils.types import add_slots, cached_property
 # Will this leak memory? Maybe
 # TODO(old): put this stuff back in cached_property
 parsed_ast_root_cache: Dict['Source', 'Root'] = {}
-ast_root_lock_cache: Dict['Source', Semaphore] = defaultdict(lambda: Semaphore())
+ast_root_lock_cache: Dict['Source', Lock] = defaultdict(Lock)
 
 # logger = get_logger()
 

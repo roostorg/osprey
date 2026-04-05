@@ -1,46 +1,25 @@
-from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
-from typing import Dict, Generic, Hashable, Optional, Sequence, Tuple, TypeVar, cast
+from datetime import datetime
+from typing import Dict, Generic, Optional, Sequence, Tuple, TypeVar, cast
 
 from gevent.event import AsyncResult
+from osprey.engine.executor.external_service_utils_base import (
+    ExternalService,
+    PlainExternalServiceAccessor,
+    _CacheEntry,
+)
 from result import Err, Ok, Result
 
-KeyT = TypeVar('KeyT', bound=Hashable)
-ValueT = TypeVar('ValueT')
+# Re-export base classes for backward compatibility
+from osprey.engine.executor.external_service_utils_base import ExternalService, KeyT, ValueT  # noqa: F811
 
-
-class ExternalService(ABC, Generic[KeyT, ValueT]):
-    @abstractmethod
-    def get_from_service(self, key: KeyT) -> ValueT:
-        raise NotImplementedError
-
-    # Not abstract because not all services support batching multiple keys
-    def batch_get_from_service(self, keys: Sequence[KeyT]) -> Sequence[Result[ValueT, Exception]]:
-        raise NotImplementedError
-
-    def cache_ttl(self) -> Optional[timedelta]:
-        """
-        Returns a time to live for items in the cache. By default, KVs are cached indefinitely.
-
-        To have cache entries auto-expire, override this method in your external service definition.
-
-        Note that timedeltas can accept negative values to represent the past, but only on the days field.
-        You *can* use timedelta(seconds=0) to disable caching, but a negative time delta *ensures* that even
-        if a time shift occurs (such as daylight savings), the cache_ttl will still be immediate.
-
-        Therefore, to disable the read cache, it is recommended to set this to `timedelta(days=-1)`
-        """
-        return None
-
-    def count_error_once(self) -> bool:
-        """
-        When True, only the caller that initiated the external service call
-        receives the exception. Subsequent callers that would hit the cached
-        error receive None instead.
-
-        Only enable this when ValueT is Optional and None is a safe fallback.
-        """
-        return False
+__all__ = [
+    'ExternalService',
+    'ExternalServiceAccessor',
+    'PlainExternalServiceAccessor',
+    '_CacheEntry',
+    'KeyT',
+    'ValueT',
+]
 
 
 class ExternalServiceAccessor(Generic[KeyT, ValueT]):
@@ -132,3 +111,5 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
             else Err(cast(Exception, self._cache[key][0].exception))
             for key in keys
         ]
+
+
