@@ -88,6 +88,13 @@ def bootstrap_output_sinks(config: Config) -> BaseOutputSink:
     return MultiOutputSink(sinks)
 
 
+def bootstrap_validation_exporter(config: Config) -> 'BaseValidationResultExporter':
+    from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter, NullValidationResultExporter
+    load_all_osprey_plugins()
+    exporter = plugin_manager.hook.register_validation_exporter(config=config)
+    return exporter if isinstance(exporter, BaseValidationResultExporter) else NullValidationResultExporter()
+
+
 def bootstrap_labels_provider(config: Config) -> LabelsProvider:
     """
     NOTE: If you are looking to get a labels provider to use within Osprey,
