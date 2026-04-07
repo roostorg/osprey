@@ -56,30 +56,33 @@ def _get_ready_sync_and_async(
     return _ready_sync, _ready_async
 
 
+_SPAMMY_EXCEPTION_TYPES = (ExpectedUdfException, NodeFailurePropagationException, MissingJsonPath, TypeError)
+
+
 def _is_spammy_exception(e: Optional[Exception]) -> bool:
-    return (
-        e is None
-        or isinstance(e, ExpectedUdfException)
-        or isinstance(e, NodeFailurePropagationException)
-        or isinstance(e, MissingJsonPath)
-        or isinstance(e, TypeError)
-    )
+    return e is None or isinstance(e, _SPAMMY_EXCEPTION_TYPES)
 
 
-def _get_metric_tags(
-    context: ExecutionContext, batchable_udf: Optional[AsyncBatchableUDFBase[Any, Any, Any]] = None
-) -> List[str]:
+_STATIC_METRIC_TAGS = ['host:none', 'kube_node:none', 'instance-id:none', 'internal-hostname:none', 'name:none']
+_SUCCESS_SUFFIX = ['exc_name:none', 'result:success']
+
+
+def _get_base_metric_tags(context: ExecutionContext) -> List[str]:
+    """Return per-action metric tags. Reuse across UDF calls within one execution."""
     return [
         f'action:{context.get_action_name()}',
         f'encoding:{context.get_data_encoding()}',
-        f'batch_type:{batchable_udf.get_batchable_arguments_type().__name__}'
-        if batchable_udf is not None
-        else 'batch_type:none',
-        'host:none',
-        'kube_node:none',
-        'instance-id:none',
-        'internal-hostname:none',
-        'name:none',
+        'batch_type:none',
+        *_STATIC_METRIC_TAGS,
+    ]
+
+
+def _get_batch_metric_tags(context: ExecutionContext, batchable_udf: AsyncBatchableUDFBase[Any, Any, Any]) -> List[str]:
+    return [
+        f'action:{context.get_action_name()}',
+        f'encoding:{context.get_data_encoding()}',
+        f'batch_type:{batchable_udf.get_batchable_arguments_type().__name__}',
+        *_STATIC_METRIC_TAGS,
     ]
 
 
@@ -90,14 +93,14 @@ def _record_udf_metric(
 ) -> None:
     """Emit UDF execution metrics. Shared by sync and async paths."""
     if execution_result.is_ok():
-        metrics.increment('udf_execution', tags=metric_tags + ['exc_name:none', 'result:success'])
+        metrics.increment('udf_execution', tags=[*metric_tags, *_SUCCESS_SUFFIX])
     elif not _is_spammy_exception(caught_exception):
         exc_name = caught_exception.__class__.__name__
         if isinstance(caught_exception, RPCException):
             exc_name = exc_name + f'.{caught_exception.code().name.lower()}'
         metrics.increment(
             'udf_execution',
-            tags=metric_tags + [f'exc_name:{exc_name}', 'result:unexpected_failure'],
+            tags=[*metric_tags, f'exc_name:{exc_name}', 'result:unexpected_failure'],
         )
 
 
@@ -128,12 +131,13 @@ async def _execute_async_udf(
     chain: DependencyChain,
     context: ExecutionContext,
     error_info_: List[NodeErrorInfo],
+    base_metric_tags: List[str],
 ) -> NodeResult:
     """Execute a native async UDF. Awaited directly on the event loop."""
     async with semaphore:
         call_executor: CallExecutor = chain.executor  # type: ignore
         udf: AsyncUDFBase[Any, Any] = call_executor._udf  # type: ignore
-        metric_tags = _get_metric_tags(context) + [f'udf:{udf.__class__.__name__}']
+        metric_tags = [*base_metric_tags, f'udf:{udf.__class__.__name__}']
 
         caught_exception: Optional[Exception] = None
         execution_result: NodeResult = Err(None)
@@ -155,16 +159,17 @@ async def _execute_async_udf(
 async def _execute_async_batch(
     semaphore: asyncio.Semaphore,
     udfs: Sequence[AsyncBatchableUDFBase[Any, Any, Any]],
-    nodes: Sequence['ASTNode'],
+    nodes: Sequence[Any],
     batchable_args: Sequence[Any],
     context: ExecutionContext,
     error_info_: List[NodeErrorInfo],
+    batch_metric_tags: List[str],
 ) -> Sequence[NodeResult]:
     """Execute a batch of native async batchable UDFs."""
     async with semaphore:
         assert len(udfs) == len(nodes) == len(batchable_args)
         num_executions = len(udfs)
-        metric_tags = _get_metric_tags(context, udfs[0])
+        metric_tags = batch_metric_tags
 
         try:
             with metrics.timed('udf_execution_batch_duration', tags=metric_tags, sample_rate=0.01):
@@ -214,7 +219,7 @@ async def _execute_async_batch(
 # --- Batching logic ---
 
 
-async def _enqueue_batches(
+def _enqueue_batches(
     semaphore: asyncio.Semaphore,
     context: ExecutionContext,
     error_infos: List[NodeErrorInfo],
@@ -225,7 +230,7 @@ async def _enqueue_batches(
     Returns (remaining non-batched chains, dict of batch tasks -> chains).
     """
     batch_chains: Dict[Tuple[type, str], List[Tuple[DependencyChain, Any]]] = defaultdict(list)
-    chains_to_remove: List[DependencyChain] = []
+    chains_to_remove: Set[int] = set()
 
     for async_chain in ready_async:
         if not isinstance(async_chain.executor, CallExecutor):
@@ -242,9 +247,9 @@ async def _enqueue_batches(
             routing_key = udf.get_batch_routing_key(batchable_arguments)
             batch_chains[(batch_type, routing_key)].append((async_chain, batchable_arguments))
         except Exception as e:
-            if not isinstance(e, NodeFailurePropagationException):
+            if not isinstance(e, _SPAMMY_EXCEPTION_TYPES):
                 error_infos.append(NodeErrorInfo(e, call_executor.node))
-            chains_to_remove.append(async_chain)
+            chains_to_remove.add(id(async_chain))
             context.set_resolved_value(async_chain, Err(None))
 
     new_batch_tasks: Dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]] = {}
@@ -254,17 +259,19 @@ async def _enqueue_batches(
             continue
 
         chains, args = zip(*chains_and_args)
-        chains_to_remove.extend(chains)
+        for chain in chains:
+            chains_to_remove.add(id(chain))
 
         batch_udfs = [chain.executor._udf for chain in chains]
         batch_nodes = [chain.executor.node for chain in chains]
+        batch_metric_tags = _get_batch_metric_tags(context, batch_udfs[0])
 
         task = asyncio.create_task(
-            _execute_async_batch(semaphore, batch_udfs, batch_nodes, args, context, error_infos)
+            _execute_async_batch(semaphore, batch_udfs, batch_nodes, args, context, error_infos, batch_metric_tags)
         )
         new_batch_tasks[task] = chains
 
-    remaining = [chain for chain in ready_async if chain not in chains_to_remove]
+    remaining = [chain for chain in ready_async if id(chain) not in chains_to_remove]
     return remaining, new_batch_tasks
 
 
@@ -292,6 +299,7 @@ async def execute(
     allow_async = max_concurrent > 0
     semaphore = asyncio.Semaphore(max_concurrent)
     error_infos: List[NodeErrorInfo] = []
+    base_metric_tags = _get_base_metric_tags(context)
 
     in_progress_singlets: Dict[asyncio.Task[NodeResult], DependencyChain] = {}
     in_progress_batches: Dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]] = {}
@@ -327,14 +335,14 @@ async def execute(
         # Enqueue async tasks
         if allow_async and ready_async:
             with tracer.start_span('osprey.rules.try_enqueue_batches', child_of=parent_tracer_span):
-                remaining_ready_async, new_batch_tasks = await _enqueue_batches(
+                remaining_ready_async, new_batch_tasks = _enqueue_batches(
                     semaphore, context, error_infos, ready_async
                 )
             in_progress_batches.update(new_batch_tasks)
 
             for async_chain in remaining_ready_async:
                 task = asyncio.create_task(
-                    _execute_async_udf(semaphore, async_chain, context, error_infos)
+                    _execute_async_udf(semaphore, async_chain, context, error_infos, base_metric_tags)
                 )
                 in_progress_singlets[task] = async_chain
 
