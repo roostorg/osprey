@@ -54,6 +54,12 @@ _REASON_ALIASES = {
     # Other
     'false-information': 'other',
     'NS-other': 'other',
+    # MOD namespace labels from moderation-service kind 1984 reports.
+    # These are the raw l-tag values: NS (Not Safe), VI (Violence), AI (AI-generated).
+    # The bridge receives them lowercased after strip().lower() in _normalize_report_reason.
+    'ns': 'nudity',
+    'vi': 'violence',
+    'ai': 'ai_generated',
 }
 
 

@@ -1,20 +1,24 @@
-# Divine Moderation Service Auto-Ban (kind 1984 reports)
+# Divine Moderation Service Signal (kind 1984 reports)
 #
 # Handles kind 1984 events published by moderation-service for automated
-# classifications AND human moderator overrides. Both use NOSTR_PRIVATE_KEY
-# and the MOD namespace with labels NS/VI/AI.
+# AI classifications. Uses NOSTR_PRIVATE_KEY with MOD namespace labels NS/VI/AI.
+# The bridge normalizes these to 'nudity', 'violence', 'ai_generated'.
 #
-# This is one of two paths for moderation-service output into Osprey:
-#   - Kind 1984 (this file): automated AI flags + human override reports
-#   - Kind 1985 (content/label_routing.sml): human-verified label events
+# This rule is a SIGNAL only -- it flags content for human review but does
+# not enforce bans directly. Two reasons:
 #
-# The kind 1984 reports use the MOD namespace. Content JSON includes
-# scores, type, and source ('ai' or 'human-moderator').
+# 1. moderation-service kind 1984 events use ['p', sha256] (video hash, not
+#    a real pubkey) and have no 'e' tag, so ReportedEventId is empty and
+#    ReportedPubkey is a sha256. BanNostrEvent with those identifiers would
+#    fail or produce incorrect bans.
 #
-# NOTE: ReportReason values below still don't match the actual MOD
-# labels (NS, VI, AI). These need alignment with the kind 1984 tag
-# structure. The rule currently won't match because it checks for
-# 'ai_generated' etc. but the reports use 'NS', 'VI', 'AI'.
+# 2. Enforcement with real Nostr identifiers is handled by ai_classification.sml
+#    (which operates on actual video events and calls the moderation API directly)
+#    and label_routing.sml (which fires on kind 1985 human-verified decisions).
+#
+# This path is one of two for moderation-service output into Osprey:
+#   - Kind 1984 (this file): automated AI signal, routes to human review
+#   - Kind 1985 (content/label_routing.sml): human-verified decisions, enforces
 
 Import(
   rules=[
@@ -23,19 +27,19 @@ Import(
   ]
 )
 
-ModerationServiceBan = Rule(
+ModerationServiceFlag = Rule(
   when_all=[
     Kind == 1984,
     HasLabel(entity=Pubkey, label='moderation_service'),
-    ReportReason in ['ai_generated', 'deepfake', 'self_harm', 'offensive'],
+    ReportReason in ['nudity', 'violence', 'ai_generated'],
   ],
-  description='Divine moderation service flagged content for permanent ban',
+  description='Divine moderation service flagged content for human review',
 )
 
 WhenRules(
-  rules_any=[ModerationServiceBan],
+  rules_any=[ModerationServiceFlag],
   then=[
-    BanNostrEvent(event_id=ReportedEventId, pubkey=ReportedPubkey, reason='Content flagged by moderation service'),
-    DeclareVerdict(verdict='auto_ban'),
+    LabelAdd(entity=EventId, label='ai_classified'),
+    DeclareVerdict(verdict='flag_for_review'),
   ],
 )
