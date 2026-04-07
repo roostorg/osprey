@@ -208,14 +208,16 @@ class OspreyCoordinatorBiDirectionalStream:
             yield action
 
     async def _gen(self) -> AsyncIterator[OspreyCoordinatorAction]:
-        logger.debug('submitting initial action request')
+        logger.info('submitting initial action request')
         await self._send(Request(action_request=ActionRequest(initial=ClientDetails(id=self._client_id))))
         self._last_action_request_time = time.time()
         self._connect_time = time.time()
         metrics.increment('osprey_coordinator_input_stream.connect', tags=self._tags)
 
         try:
+            logger.info('opening bidi stream to coordinator')
             incoming_stream = self._stub.OspreyBidirectionalStream(self._outgoing_iterator(), timeout=None)
+            logger.info('bidi stream opened, waiting for first action')
             async for osprey_coordinator_action in incoming_stream:
                 elapsed_time_since_last_action_request = time.time() - self._last_action_request_time
                 metrics.histogram(
@@ -223,7 +225,23 @@ class OspreyCoordinatorBiDirectionalStream:
                     elapsed_time_since_last_action_request,
                     tags=self._tags,
                 )
+                metrics.increment('osprey_coordinator_input_stream.action_received', tags=self._tags)
+                logger.info(
+                    'received action from coordinator: action_name=%s ack_id=%s wait_time=%.1fs',
+                    osprey_coordinator_action.action_name,
+                    osprey_coordinator_action.ack_id,
+                    elapsed_time_since_last_action_request,
+                )
                 yield osprey_coordinator_action
+                # Track that control returned from the rules sink (yield completed)
+                metrics.increment('osprey_coordinator_input_stream.yield_returned', tags=self._tags)
+                logger.info(
+                    'yield returned for action: action_name=%s ack_id=%s',
+                    osprey_coordinator_action.action_name,
+                    osprey_coordinator_action.ack_id,
+                )
+            logger.info('bidi stream ended normally (async for exhausted)')
+            metrics.increment('osprey_coordinator_input_stream.stream_ended_normally', tags=self._tags)
         except grpc.aio.AioRpcError as e:
             if e.code() != grpc.StatusCode.CANCELLED:
                 logger.exception(e)
@@ -356,7 +374,11 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
     # -- main loop -----------------------------------------------------------------
 
     async def _gen(self) -> AsyncIterator[BaseAckingContext[OspreyEngineAction]]:
+        stream_generation = 0
         while not self._shutdown_event.is_set():
+            stream_generation += 1
+            logger.info('opening new bidi stream generation=%d', stream_generation)
+            metrics.increment('osprey_coordinator_input_stream.stream_open')
             channel, service = await self._channel_pool.get_connection()
             bidirectional_stream = OspreyCoordinatorBiDirectionalStream(
                 client_id=self._client_id, channel=channel, service=service
@@ -367,6 +389,10 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
             async for osprey_coordinator_action in bidirectional_stream:
                 actions_handled += 1
                 ack_id = osprey_coordinator_action.ack_id
+                logger.info(
+                    'gen=%d dispatching action=%s ack_id=%s handled=%d',
+                    stream_generation, osprey_coordinator_action.action_name, ack_id, actions_handled,
+                )
                 osprey_engine_action = self._create_osprey_engine_action(osprey_coordinator_action)
 
                 if not osprey_engine_action:
@@ -381,6 +407,7 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
                 context: AsyncVerdictsAckingContext = AsyncVerdictsAckingContext(
                     osprey_engine_action, bidirectional_stream, ack_id
                 )
+                logger.info('yielding action=%s ack_id=%s to rules sink', osprey_engine_action.action_name, ack_id)
                 with metrics.timed(
                     'osprey_coordinator_input_stream.action_handle_time',
                     tags=[f'action_name:{osprey_engine_action.action_name}'],
@@ -388,27 +415,29 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
                 ):
                     yield context
 
+                logger.info('rules sink returned for action=%s ack_id=%s', osprey_engine_action.action_name, ack_id)
+
                 # Prioritize shutdown so we can ack the last action and disconnect gracefully
                 if self._shutdown_event.is_set():
+                    logger.info('shutdown requested, disconnecting gracefully ack_id=%s', ack_id)
                     await bidirectional_stream.send_graceful_disconnect(ack_id, verdicts=context.get_verdicts())
                     break
 
                 # Reconnect after the jittered uptime threshold
                 uptime = bidirectional_stream.get_uptime()
                 if uptime > max_uptime_allowed:
-                    logger.debug(f'Reconnecting because {uptime} seconds have passed')
+                    logger.info('reconnecting after uptime=%.1fs ack_id=%s', uptime, ack_id)
                     await bidirectional_stream.send_graceful_disconnect(ack_id, verdicts=context.get_verdicts())
                     break
 
                 # Normal path: ack the last action and request the next one
+                logger.info('acking action=%s ack_id=%s', osprey_engine_action.action_name, ack_id)
                 await bidirectional_stream.send_ack_or_nack(ack_id, verdicts=context.get_verdicts())
-                info_log_osprey_action(
-                    osprey_coordinator_action.action_id, osprey_coordinator_action.action_name, 'acking'
-                )
 
             if not self._shutdown_event.is_set():
                 metrics.gauge('osprey_coordinator_input_stream.actions_handled', actions_handled)
-                logger.debug(f'Reconnecting due to stream ending, actions handled: {actions_handled}')
+                metrics.increment('osprey_coordinator_input_stream.stream_close')
+                logger.info('stream gen=%d ended, actions_handled=%d, reconnecting', stream_generation, actions_handled)
             else:
                 logger.info('shutting down')
                 metrics.increment('osprey_coordinator_input_stream.shutdown')
