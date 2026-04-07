@@ -64,6 +64,7 @@ class GrpcConnectionDiscoveryPool:
         from osprey.worker.lib.discovery.directory import Directory
 
         self._service_name = service_name
+        self._needs_async_init = False
         directory = Directory.instance(secure=False)
 
         self._grpc_channels: Dict[Service, Tuple[grpc.aio.Channel, Service]] = {
@@ -72,9 +73,6 @@ class GrpcConnectionDiscoveryPool:
         }
 
         self._service_watcher = directory.get_watcher(self._service_name)
-        # Adding a bound method to a WeakSet directly causes it to be removed
-        # immediately, so our handler method is never invoked. Instead, create a
-        # strong reference to the method on `self` and pass that to the set.
         self._handle_service_change_fn = self._handle_service_change
         self._service_watcher.add_lazy_listener(self._handle_service_change_fn)
 
@@ -91,6 +89,7 @@ class GrpcConnectionDiscoveryPool:
         )
         instance = object.__new__(cls)
         instance._service_name = service_name
+        instance._needs_async_init = False
         instance._grpc_channels = {service: (grpc.aio.insecure_channel(address), service)}
         instance._service_watcher = None
         instance._handle_service_change_fn = None
@@ -100,29 +99,39 @@ class GrpcConnectionDiscoveryPool:
     def from_async_discovery(cls, service_name: str) -> 'GrpcConnectionDiscoveryPool':
         """Create a pool using async etcd service discovery (no gevent dependency).
 
-        Discovers all coordinator instances from etcd and creates a gRPC channel to each.
-        Watches for service changes so the pool stays up to date as pods scale up/down.
-        ``get_connection()`` uses random.choice() to distribute streams across all instances.
+        The initial etcd load is deferred to the first ``get_connection()`` call
+        (which is async) since the etcd watcher requires ``await ensure_initialized()``.
+        After initialization, the watcher keeps the pool updated as pods scale up/down.
         """
         from osprey.async_worker.lib.discovery.async_directory import AsyncDirectory
 
         instance = object.__new__(cls)
         instance._service_name = service_name
+        instance._needs_async_init = True
+        instance._grpc_channels = {}
+
         directory = AsyncDirectory.instance(secure=False)
-
-        instance._grpc_channels = {
-            service: (cls._create_async_channel(service), service)
-            for service in directory.select_all(service_name)
-        }
-
         instance._service_watcher = directory.get_watcher(service_name)
         instance._handle_service_change_fn = instance._handle_service_change
         instance._service_watcher.add_lazy_listener(instance._handle_service_change_fn)
 
-        logger.info(
-            'async discovery pool for %s: %d instances', service_name, len(instance._grpc_channels)
-        )
         return instance
+
+    async def _initialize_from_etcd(self) -> None:
+        """Load coordinator instances from etcd on first async call."""
+        self._needs_async_init = False
+        try:
+            await self._service_watcher.ensure_initialized()
+            for service in self._service_watcher.select_all():
+                if service not in self._grpc_channels:
+                    self._grpc_channels[service] = (self._create_async_channel(service), service)
+            logger.info(
+                'async discovery initialized for %s: %d instances',
+                self._service_name, len(self._grpc_channels),
+            )
+        except Exception:
+            self._needs_async_init = True
+            logger.exception('failed to initialize async discovery for %s', self._service_name)
 
     @staticmethod
     def _create_async_channel(service: Service) -> grpc.aio.Channel:
@@ -141,6 +150,9 @@ class GrpcConnectionDiscoveryPool:
 
         If no services are registered, polls with exponential backoff until one becomes available.
         """
+        if self._needs_async_init:
+            await self._initialize_from_etcd()
+
         channels = list(self._grpc_channels.values())
         backoff = 1.0
 
