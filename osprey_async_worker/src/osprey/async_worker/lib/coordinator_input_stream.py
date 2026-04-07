@@ -96,6 +96,34 @@ class GrpcConnectionDiscoveryPool:
         instance._handle_service_change_fn = None
         return instance
 
+    @classmethod
+    def from_async_discovery(cls, service_name: str) -> 'GrpcConnectionDiscoveryPool':
+        """Create a pool using async etcd service discovery (no gevent dependency).
+
+        Discovers all coordinator instances from etcd and creates a gRPC channel to each.
+        Watches for service changes so the pool stays up to date as pods scale up/down.
+        ``get_connection()`` uses random.choice() to distribute streams across all instances.
+        """
+        from osprey.async_worker.lib.discovery.async_directory import AsyncDirectory
+
+        instance = object.__new__(cls)
+        instance._service_name = service_name
+        directory = AsyncDirectory.instance(secure=False)
+
+        instance._grpc_channels = {
+            service: (cls._create_async_channel(service), service)
+            for service in directory.select_all(service_name)
+        }
+
+        instance._service_watcher = directory.get_watcher(service_name)
+        instance._handle_service_change_fn = instance._handle_service_change
+        instance._service_watcher.add_lazy_listener(instance._handle_service_change_fn)
+
+        logger.info(
+            'async discovery pool for %s: %d instances', service_name, len(instance._grpc_channels)
+        )
+        return instance
+
     @staticmethod
     def _create_async_channel(service: Service) -> grpc.aio.Channel:
         return grpc.aio.insecure_channel(target=f'{service.connection_address}:{service.grpc_port}')
@@ -259,14 +287,27 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
     def from_direct_address(cls, client_id: str, address: str, service_name: str = 'osprey_coordinator') -> 'OspreyCoordinatorInputStream':
         """Create an input stream connected directly to a coordinator address.
 
-        Bypasses etcd service discovery, which uses gevent-patched code that
-        is incompatible with grpc.aio. Use this for the async worker.
+        Bypasses etcd service discovery. Each instance gets its own gRPC channel.
         """
         instance = object.__new__(cls)
         instance._client_id = client_id
         instance._shutdown_event = asyncio.Event()
         instance._current_execution_result = None
         instance._channel_pool = GrpcConnectionDiscoveryPool.from_static(address, service_name)
+        return instance
+
+    @classmethod
+    def from_async_discovery(cls, client_id: str, service_name: str = 'osprey_coordinator') -> 'OspreyCoordinatorInputStream':
+        """Create an input stream using async etcd discovery (no gevent).
+
+        Discovers all coordinator instances from etcd. Each ``get_connection()`` call
+        randomly selects a coordinator, distributing streams across all pods.
+        """
+        instance = object.__new__(cls)
+        instance._client_id = client_id
+        instance._shutdown_event = asyncio.Event()
+        instance._current_execution_result = None
+        instance._channel_pool = GrpcConnectionDiscoveryPool.from_async_discovery(service_name)
         return instance
 
     async def stop(self) -> None:
