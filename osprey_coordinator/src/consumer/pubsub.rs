@@ -117,7 +117,11 @@ async fn create_pubsub_subscription_client(
 ) -> SubscriberClient<InterceptedService<Channel, AuthorizationHeaderInterceptor>> {
     let emulator_host = std::env::var("PUBSUB_EMULATOR_HOST").ok();
 
-    let timeout = Duration::from_secs(5);
+    let timeout_secs: u64 = std::env::var("PUBSUB_CHANNEL_TIMEOUT_SECS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(5);
+    let timeout = Duration::from_secs(timeout_secs);
 
     if let Some(emulator_host) = emulator_host {
         tracing::info!("Creating subscription client to emulator");
