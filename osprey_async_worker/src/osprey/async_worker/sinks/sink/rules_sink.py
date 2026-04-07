@@ -118,22 +118,12 @@ class AsyncRulesSink:
         self._rules_runner = AsyncRulesRunner(engine, output_sink, udf_helpers, max_concurrent_udfs)
 
     async def run(self) -> None:
-        actions_total = 0
-        logger.info('rules sink starting, waiting for actions from input stream')
         async for message_context in self._input_stream:
-            actions_total += 1
-            metrics.increment('rules_sink.action_received')
             try:
                 with message_context as action:
-                    logger.info(
-                        'rules_sink received action=%s id=%s total=%d',
-                        action.action_name, action.action_id, actions_total,
-                    )
                     if action.data.get('osprey_skip_async_classification', False) or action.data.get(
                         'osprey_skip_async', False
                     ):
-                        metrics.increment('rules_sink.skipped')
-                        logger.info('skipping action=%s (skip flag set)', action.action_name)
                         continue
 
                     with tracer.start_span('osprey.async.classify_one', child_of=None) as span:
@@ -153,19 +143,12 @@ class AsyncRulesSink:
                                 metrics.increment('rules_sink.captured_verdicts')
 
                         info_log_osprey_action(action.action_id, action.action_name, 'async classify_one complete')
-                        logger.info(
-                            'classify_one done action=%s id=%s error_count=%d',
-                            action.action_name, action.action_id,
-                            len(result.error_infos) if result else -1,
-                        )
             except asyncio.CancelledError:
-                logger.info('rules sink cancelled after %d actions', actions_total)
                 return
             except Exception as e:
                 logging.exception('Unexpected error in async rules sink')
                 metrics.increment('rules_sink.unexpected_error', tags=[f'err:{e.__class__.__name__}'])
                 sentry_sdk.capture_exception(e)
-        logger.info('rules sink input stream exhausted after %d actions', actions_total)
 
     async def stop(self) -> None:
         await self._input_stream.stop()
