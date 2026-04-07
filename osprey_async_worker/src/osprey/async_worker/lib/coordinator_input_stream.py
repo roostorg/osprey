@@ -248,7 +248,10 @@ class OspreyCoordinatorBiDirectionalStream:
             yield action
 
     async def _gen(self) -> AsyncIterator[OspreyCoordinatorAction]:
-        logger.debug('submitting initial action request')
+        logger.info(
+            'bidi stream connecting to coordinator %s (client_id=%s)',
+            self._tags, self._client_id,
+        )
         await self._send(Request(action_request=ActionRequest(initial=ClientDetails(id=self._client_id))))
         self._last_action_request_time = time.time()
         self._connect_time = time.time()
