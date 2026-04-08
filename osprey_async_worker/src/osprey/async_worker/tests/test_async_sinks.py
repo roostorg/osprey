@@ -8,9 +8,9 @@ from unittest.mock import MagicMock
 import pytest
 from osprey.engine.executor.execution_context import Action, ExecutionResult
 
-from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink, AsyncMultiOutputSink
+from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
 from osprey.async_worker.sinks.sink.input_stream import AsyncStaticInputStream
-from osprey.async_worker.sinks.sink.output_sink import AsyncMultiOutputSink as AsyncMultiOutputSinkImpl, AsyncStdoutOutputSink
+from osprey.async_worker.sinks.sink.output_sink import AsyncMultiOutputSink, AsyncStdoutOutputSink
 
 
 def _make_result(action_id: int = 1, action_name: str = 'test') -> ExecutionResult:
@@ -165,7 +165,7 @@ async def test_multi_sink_handles_timeout():
     """A slow sink times out without blocking other sinks."""
     slow = SlowSink()
     recording = RecordingSink()
-    multi = AsyncMultiOutputSinkImpl([slow, recording])
+    multi = AsyncMultiOutputSink([slow, recording])
 
     await multi.push(_make_result())
 

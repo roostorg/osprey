@@ -19,7 +19,8 @@ from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
 
 from osprey.async_worker.adaptor import hookspecs as async_hookspecs
 from osprey.async_worker.adaptor.constants import OSPREY_ASYNC_ADAPTOR
-from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink, AsyncMultiOutputSink
+from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
+from osprey.async_worker.sinks.sink.output_sink import AsyncMultiOutputSink
 
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
