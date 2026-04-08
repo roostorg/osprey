@@ -2,7 +2,10 @@
 
 Two execution paths:
 - Sync UDFs (execute_async=False): pure computation, run inline on the event loop
-- Async UDFs (AsyncUDFBase/AsyncBatchableUDFBase): native async I/O, awaited as tasks with semaphore
+- Async UDFs (AsyncUDFBase): native async I/O, awaited as tasks with semaphore
+
+No thread pool. No run_in_executor. Existing sync UDFs that use gevent
+primitives will NOT work here — they must be ported to AsyncUDFBase.
 """
 
 import asyncio
@@ -11,6 +14,7 @@ from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 from ddtrace import tracer
 from ddtrace.span import Span as TracerSpan
+from osprey.engine.ast.grammar import ASTNode
 from osprey.engine.executor.custom_extracted_features import (
     ActionIdExtractedFeature,
     ErrorCountExtractedFeature,
@@ -31,7 +35,7 @@ from osprey.engine.executor.execution_graph import ExecutionGraph
 from osprey.engine.executor.node_executor.call_executor import CallExecutor
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.stdlib.udfs.json_utils import MissingJsonPath
-from osprey.engine.udf.base import BatchableUDFBase as _BatchableUDFBase  # noqa: F401 — import kept for fork() CoW sharing
+from osprey.engine.udf.base import BatchableUDFBase
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.pigeon.exceptions import RPCException
@@ -57,33 +61,30 @@ def _get_ready_sync_and_async(
     return _ready_sync, _ready_async
 
 
-_SPAMMY_EXCEPTION_TYPES = (ExpectedUdfException, NodeFailurePropagationException, MissingJsonPath, TypeError)
-
-
 def _is_spammy_exception(e: Optional[Exception]) -> bool:
-    return e is None or isinstance(e, _SPAMMY_EXCEPTION_TYPES)
+    return (
+        e is None
+        or isinstance(e, ExpectedUdfException)
+        or isinstance(e, NodeFailurePropagationException)
+        or isinstance(e, MissingJsonPath)
+        or isinstance(e, TypeError)
+    )
 
 
-_STATIC_METRIC_TAGS = ['host:none', 'kube_node:none', 'instance-id:none', 'internal-hostname:none', 'name:none']
-_SUCCESS_SUFFIX = ['exc_name:none', 'result:success']
-
-
-def _get_base_metric_tags(context: ExecutionContext) -> List[str]:
-    """Return per-action metric tags. Reuse across UDF calls within one execution."""
+def _get_metric_tags(
+    context: ExecutionContext, batchable_udf: Optional[BatchableUDFBase[Any, Any, Any]] = None
+) -> List[str]:
     return [
         f'action:{context.get_action_name()}',
         f'encoding:{context.get_data_encoding()}',
-        'batch_type:none',
-        *_STATIC_METRIC_TAGS,
-    ]
-
-
-def _get_batch_metric_tags(context: ExecutionContext, batchable_udf: AsyncBatchableUDFBase[Any, Any, Any]) -> List[str]:
-    return [
-        f'action:{context.get_action_name()}',
-        f'encoding:{context.get_data_encoding()}',
-        f'batch_type:{batchable_udf.get_batchable_arguments_type().__name__}',
-        *_STATIC_METRIC_TAGS,
+        f'batch_type:{batchable_udf.get_batchable_arguments_type().__name__}'
+        if batchable_udf is not None
+        else 'batch_type:none',
+        'host:none',
+        'kube_node:none',
+        'instance-id:none',
+        'internal-hostname:none',
+        'name:none',
     ]
 
 
@@ -94,14 +95,14 @@ def _record_udf_metric(
 ) -> None:
     """Emit UDF execution metrics. Shared by sync and async paths."""
     if execution_result.is_ok():
-        metrics.increment('udf_execution', tags=[*metric_tags, *_SUCCESS_SUFFIX])
+        metrics.increment('udf_execution', tags=metric_tags + ['exc_name:none', 'result:success'])
     elif not _is_spammy_exception(caught_exception):
         exc_name = caught_exception.__class__.__name__
         if isinstance(caught_exception, RPCException):
             exc_name = exc_name + f'.{caught_exception.code().name.lower()}'
         metrics.increment(
             'udf_execution',
-            tags=[*metric_tags, f'exc_name:{exc_name}', 'result:unexpected_failure'],
+            tags=metric_tags + [f'exc_name:{exc_name}', 'result:unexpected_failure'],
         )
 
 
@@ -124,6 +125,96 @@ def _execute_sync(
     return execution_result
 
 
+# --- Legacy sync UDF fallback (thread pool, for execute_async=True UDFs not yet ported) ---
+
+
+def _execute_legacy_sync(
+    chain: DependencyChain,
+    context: ExecutionContext,
+    error_info_: List[NodeErrorInfo],
+) -> NodeResult:
+    """Execute a legacy sync UDF that has execute_async=True but is not AsyncUDFBase.
+
+    Runs in a thread pool via run_in_executor. May fail if the UDF uses gevent
+    primitives (no monkey patching), but errors are captured gracefully.
+    """
+    caught_exception: Optional[Exception] = None
+    metric_tags = _get_metric_tags(context)
+    if isinstance(chain.executor, CallExecutor):
+        call_node: CallExecutor = chain.executor
+        metric_tags += [f'udf:{call_node._udf.__class__.__name__}']
+
+    execution_result: NodeResult = Err(None)
+    try:
+        with metrics.timed('udf_execution_duration', tags=metric_tags, sample_rate=0.01):
+            execution_result = Ok(chain.executor.execute(execution_context=context))
+    except Exception as e:
+        if not isinstance(e, NodeFailurePropagationException):
+            error_info_.append(NodeErrorInfo(e, chain.executor.node))
+        execution_result = Err(None)
+        caught_exception = e
+    finally:
+        if isinstance(chain.executor, CallExecutor):
+            _record_udf_metric(metric_tags, execution_result, caught_exception)
+        return execution_result
+
+
+async def _execute_legacy_in_executor(
+    loop: asyncio.AbstractEventLoop,
+    semaphore: asyncio.Semaphore,
+    chain: DependencyChain,
+    context: ExecutionContext,
+    error_info_: List[NodeErrorInfo],
+) -> NodeResult:
+    """Run a legacy sync UDF in the thread pool with semaphore."""
+    async with semaphore:
+        return await loop.run_in_executor(None, _execute_legacy_sync, chain, context, error_info_)
+
+
+def _execute_legacy_batch_sync(
+    udfs: Sequence[BatchableUDFBase[Any, Any, Any]],
+    nodes: Sequence[ASTNode],
+    batchable_args: Sequence[Any],
+    context: ExecutionContext,
+    error_info_: List[NodeErrorInfo],
+) -> Sequence[NodeResult]:
+    """Execute a batch of legacy sync batchable UDFs in thread pool."""
+    assert len(udfs) == len(nodes) == len(batchable_args)
+    num_executions = len(udfs)
+    metric_tags = _get_metric_tags(context, udfs[0])
+
+    try:
+        with metrics.timed('udf_execution_batch_duration', tags=metric_tags, sample_rate=0.01):
+            results = udfs[0].execute_batch(context, udfs, batchable_args)
+        assert len(results) == num_executions
+    except Exception as e:
+        if not isinstance(e, NodeFailurePropagationException):
+            for n in nodes:
+                error_info_.append(NodeErrorInfo(e, n))
+        if not _is_spammy_exception(e):
+            metrics.increment(
+                'udf_execution_batch',
+                tags=metric_tags + [f'exc_name:{e.__class__.__name__}', 'result:unexpected_failure'],
+            )
+        return [Err(None)] * num_executions
+
+    type_checked_results = []
+    for udf, node, result in zip(udfs, nodes, results):
+        if result.is_err():
+            if not isinstance(result.value, NodeFailurePropagationException):
+                error_info_.append(NodeErrorInfo(result.value, node))
+            type_checked_results.append(Err(None))
+            continue
+        try:
+            type_checked_results.append(Ok(udf.check_result_type(result.value)))
+        except Exception as e:
+            if not isinstance(e, NodeFailurePropagationException):
+                error_info_.append(NodeErrorInfo(e, node))
+            type_checked_results.append(Err(None))
+
+    return type_checked_results
+
+
 # --- Async execution (native async UDFs, awaited on event loop) ---
 
 
@@ -132,13 +223,12 @@ async def _execute_async_udf(
     chain: DependencyChain,
     context: ExecutionContext,
     error_info_: List[NodeErrorInfo],
-    base_metric_tags: List[str],
 ) -> NodeResult:
     """Execute a native async UDF. Awaited directly on the event loop."""
     async with semaphore:
         call_executor: CallExecutor = chain.executor  # type: ignore
         udf: AsyncUDFBase[Any, Any] = call_executor._udf  # type: ignore
-        metric_tags = [*base_metric_tags, f'udf:{udf.__class__.__name__}']
+        metric_tags = _get_metric_tags(context) + [f'udf:{udf.__class__.__name__}']
 
         caught_exception: Optional[Exception] = None
         execution_result: NodeResult = Err(None)
@@ -160,17 +250,16 @@ async def _execute_async_udf(
 async def _execute_async_batch(
     semaphore: asyncio.Semaphore,
     udfs: Sequence[AsyncBatchableUDFBase[Any, Any, Any]],
-    nodes: Sequence[Any],
+    nodes: Sequence[ASTNode],
     batchable_args: Sequence[Any],
     context: ExecutionContext,
     error_info_: List[NodeErrorInfo],
-    batch_metric_tags: List[str],
 ) -> Sequence[NodeResult]:
     """Execute a batch of native async batchable UDFs."""
     async with semaphore:
         assert len(udfs) == len(nodes) == len(batchable_args)
         num_executions = len(udfs)
-        metric_tags = batch_metric_tags
+        metric_tags = _get_metric_tags(context, udfs[0])
 
         try:
             with metrics.timed('udf_execution_batch_duration', tags=metric_tags, sample_rate=0.01):
@@ -220,7 +309,8 @@ async def _execute_async_batch(
 # --- Batching logic ---
 
 
-def _enqueue_batches(
+async def _enqueue_batches(
+    loop: asyncio.AbstractEventLoop,
     semaphore: asyncio.Semaphore,
     context: ExecutionContext,
     error_infos: List[NodeErrorInfo],
@@ -231,13 +321,13 @@ def _enqueue_batches(
     Returns (remaining non-batched chains, dict of batch tasks -> chains).
     """
     batch_chains: Dict[Tuple[type, str], List[Tuple[DependencyChain, Any]]] = defaultdict(list)
-    chains_to_remove: Set[int] = set()
+    chains_to_remove: List[DependencyChain] = []
 
     for async_chain in ready_async:
         if not isinstance(async_chain.executor, CallExecutor):
             continue
         call_executor: CallExecutor = async_chain.executor
-        if not isinstance(call_executor._udf, AsyncBatchableUDFBase):
+        if not isinstance(call_executor._udf, (AsyncBatchableUDFBase, BatchableUDFBase)):
             continue
         udf = call_executor._udf
 
@@ -248,9 +338,9 @@ def _enqueue_batches(
             routing_key = udf.get_batch_routing_key(batchable_arguments)
             batch_chains[(batch_type, routing_key)].append((async_chain, batchable_arguments))
         except Exception as e:
-            if not isinstance(e, _SPAMMY_EXCEPTION_TYPES):
+            if not isinstance(e, NodeFailurePropagationException):
                 error_infos.append(NodeErrorInfo(e, call_executor.node))
-            chains_to_remove.add(id(async_chain))
+            chains_to_remove.append(async_chain)
             context.set_resolved_value(async_chain, Err(None))
 
     new_batch_tasks: Dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]] = {}
@@ -260,19 +350,27 @@ def _enqueue_batches(
             continue
 
         chains, args = zip(*chains_and_args)
-        for chain in chains:
-            chains_to_remove.add(id(chain))
+        chains_to_remove.extend(chains)
 
         batch_udfs = [chain.executor._udf for chain in chains]
         batch_nodes = [chain.executor.node for chain in chains]
-        batch_metric_tags = _get_batch_metric_tags(context, batch_udfs[0])
 
-        task = asyncio.create_task(
-            _execute_async_batch(semaphore, batch_udfs, batch_nodes, args, context, error_infos, batch_metric_tags)
-        )
+        if isinstance(batch_udfs[0], AsyncBatchableUDFBase):
+            task = asyncio.create_task(
+                _execute_async_batch(semaphore, batch_udfs, batch_nodes, args, context, error_infos)
+            )
+        else:
+            # Legacy sync batchable UDF — run in thread pool
+            async def _run_legacy_batch(s, u, n, a, c, e):
+                async with s:
+                    return await loop.run_in_executor(None, _execute_legacy_batch_sync, u, n, a, c, e)
+
+            task = asyncio.create_task(
+                _run_legacy_batch(semaphore, batch_udfs, batch_nodes, args, context, error_infos)
+            )
         new_batch_tasks[task] = chains
 
-    remaining = [chain for chain in ready_async if id(chain) not in chains_to_remove]
+    remaining = [chain for chain in ready_async if chain not in chains_to_remove]
     return remaining, new_batch_tasks
 
 
@@ -289,9 +387,11 @@ async def execute(
 ) -> ExecutionResult:
     """Async executor for the osprey rules engine.
 
-    Two paths:
+    Three paths:
     - Sync UDFs (execute_async=False): run inline, pure computation only
-    - AsyncUDFBase/AsyncBatchableUDFBase: awaited as tasks on event loop (native async)
+    - AsyncUDFBase: awaited as tasks directly on event loop (native async)
+    - Legacy UDFBase with execute_async=True: run in thread pool via run_in_executor
+      (may fail on gevent calls, errors captured gracefully)
     """
     if parent_tracer_span:
         parent_tracer_span.set_tag('action-name', action.action_name)
@@ -299,8 +399,8 @@ async def execute(
     context = ExecutionContext(execution_graph=execution_graph, helpers=udf_helpers, action=action)
     allow_async = max_concurrent > 0
     semaphore = asyncio.Semaphore(max_concurrent)
+    loop = asyncio.get_running_loop()
     error_infos: List[NodeErrorInfo] = []
-    base_metric_tags = _get_base_metric_tags(context)
 
     in_progress_singlets: Dict[asyncio.Task[NodeResult], DependencyChain] = {}
     in_progress_batches: Dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]] = {}
@@ -336,15 +436,23 @@ async def execute(
         # Enqueue async tasks
         if allow_async and ready_async:
             with tracer.start_span('osprey.rules.try_enqueue_batches', child_of=parent_tracer_span):
-                remaining_ready_async, new_batch_tasks = _enqueue_batches(
-                    semaphore, context, error_infos, ready_async
+                remaining_ready_async, new_batch_tasks = await _enqueue_batches(
+                    loop, semaphore, context, error_infos, ready_async
                 )
             in_progress_batches.update(new_batch_tasks)
 
             for async_chain in remaining_ready_async:
-                task = asyncio.create_task(
-                    _execute_async_udf(semaphore, async_chain, context, error_infos, base_metric_tags)
-                )
+                # Native async UDF → await on event loop
+                if (isinstance(async_chain.executor, CallExecutor)
+                        and isinstance(async_chain.executor._udf, (AsyncUDFBase, AsyncBatchableUDFBase))):
+                    task = asyncio.create_task(
+                        _execute_async_udf(semaphore, async_chain, context, error_infos)
+                    )
+                else:
+                    # Legacy sync UDF with execute_async=True → thread pool fallback
+                    task = asyncio.create_task(
+                        _execute_legacy_in_executor(loop, semaphore, async_chain, context, error_infos)
+                    )
                 in_progress_singlets[task] = async_chain
 
         # Execute sync chains inline (pure computation, fast, no I/O).
