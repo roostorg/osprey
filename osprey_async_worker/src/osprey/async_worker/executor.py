@@ -31,6 +31,7 @@ from osprey.engine.executor.execution_graph import ExecutionGraph
 from osprey.engine.executor.node_executor.call_executor import CallExecutor
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.stdlib.udfs.json_utils import MissingJsonPath
+from osprey.engine.udf.base import BatchableUDFBase as _BatchableUDFBase  # noqa: F401 — import kept for fork() CoW sharing
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.pigeon.exceptions import RPCException
