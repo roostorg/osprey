@@ -76,6 +76,7 @@ class AsyncRulesRunner:
             tag,
             f'action:{action.action_name}',
             f'sample_rate:{sample_config.sample_rate}',
+            f'rules_hash:{self._engine.execution_graph.validated_sources.sources.hash()}',
         ]
 
         if sample_config.drop:
