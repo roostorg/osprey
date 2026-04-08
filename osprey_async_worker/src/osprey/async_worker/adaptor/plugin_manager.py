@@ -1,7 +1,7 @@
 """Plugin manager for the async worker.
 
 Discovers plugins via the 'osprey_async_plugin' setuptools entry_point group.
-Also loads sync plugins from 'osprey_plugin' for UDFs (wrapped in adapters).
+All UDFs with I/O must have native async implementations — no sync fallbacks.
 """
 
 from __future__ import annotations
@@ -16,7 +16,6 @@ from osprey.engine.executor.udf_execution_helpers import HasHelper, UDFHelpers
 from osprey.engine.udf.base import UDFBase
 from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
-from osprey.worker.lib.storage.labels import LabelsProvider, LabelsServiceBase
 
 from osprey.async_worker.adaptor import hookspecs as async_hookspecs
 from osprey.async_worker.adaptor.constants import OSPREY_ASYNC_ADAPTOR
@@ -35,6 +34,8 @@ def _flatten(seq: List[List[Any]]) -> List[Any]:
     return sum(seq, [])
 
 
+# Stdlib UDFs that have async replacements in discord_osprey_async_plugins.
+# Each entry: (sync module path, sync class name, async module path, async class name)
 @lru_cache(maxsize=1)
 def load_all_async_plugins() -> None:
     """Load all plugins registered under the 'osprey_async_plugin' entry_point group."""
@@ -42,70 +43,53 @@ def load_all_async_plugins() -> None:
     plugin_manager.check_pending()
 
 
-def bootstrap_async_udfs(config: 'Config | None' = None, load_sync_plugins: bool = False) -> tuple[UDFRegistry, UDFHelpers]:
+def _deduplicate_udfs(
+    stdlib_udfs: List[Type[UDFBase[Any, Any]]],
+    plugin_udfs: List[Type[UDFBase[Any, Any]]],
+) -> List[Type[UDFBase[Any, Any]]]:
+    """Merge stdlib and plugin UDFs, with plugin UDFs winning on name conflicts.
+
+    Async plugin UDFs shadow their sync stdlib counterparts by class name.
+    This lets async plugins register e.g. `HasLabel` or `MXLookup` without
+    needing a separate replacement table — the plugin version just wins.
+    """
+    plugin_names = {udf.__name__ for udf in plugin_udfs}
+    deduplicated = [udf for udf in stdlib_udfs if udf.__name__ not in plugin_names]
+    deduplicated.extend(plugin_udfs)
+    return deduplicated
+
+
+def bootstrap_async_udfs(config: 'Config | None' = None) -> tuple[UDFRegistry, UDFHelpers]:
     """Bootstrap UDFs from async plugins + stdlib.
 
-    Always loads stdlib UDFs (JsonData, StringLength, Rule, etc.) since
-    they're needed for basic rule compilation. Optionally loads from
-    osprey_plugin too (triggers gevent side effects).
+    Loads stdlib UDFs (JsonData, StringLength, Rule, etc.) and async plugin UDFs.
+    Plugin UDFs override stdlib UDFs with the same name — this is how async
+    replacements (HasLabel, MXLookup, etc.) shadow their sync counterparts.
+    No sync fallbacks — all I/O UDFs must be native async.
     """
-    # Always load stdlib UDFs — they don't trigger gevent side effects
     from osprey.worker._stdlibplugin.udf_register import register_udfs as stdlib_register_udfs
 
     load_all_async_plugins()
     udf_helpers = UDFHelpers()
 
-    # Load stdlib + async plugin UDFs
-    all_udfs: List[Type[UDFBase[Any, Any]]] = list(stdlib_register_udfs()) + _flatten(plugin_manager.hook.register_udfs())
+    # Load stdlib + async plugin UDFs, plugin wins on name conflicts
+    stdlib_udfs = list(stdlib_register_udfs())
+    plugin_udfs = _flatten(plugin_manager.hook.register_udfs())
+    all_udfs = _deduplicate_udfs(stdlib_udfs, plugin_udfs)
 
-    if load_sync_plugins:
-        from osprey.worker.adaptor.plugin_manager import load_all_osprey_plugins, plugin_manager as sync_plugin_manager
-
-        load_all_osprey_plugins()
-        sync_udfs: List[Type[UDFBase[Any, Any]]] = _flatten(sync_plugin_manager.hook.register_udfs())
-
-        seen = {udf for udf in all_udfs}
-        for udf in sync_udfs:
-            if udf not in seen:
-                seen.add(udf)
-                all_udfs.append(udf)
-
+    # Auto-register helpers for UDFs that extend HasHelper
     for udf in all_udfs:
         if issubclass(udf, HasHelper):
-            try:
-                udf_helpers.set_udf_helper(udf, udf.create_provider())
-            except Exception:
-                # Skip helper creation for UDFs that fail (e.g., etcd not available).
-                # These UDFs will fail at execution time via the legacy fallback,
-                # which is expected — errors get captured in error_infos.
-                logging.warning('Failed to create provider for %s', udf.__name__, exc_info=True)
+            udf_helpers.set_udf_helper(udf, udf.create_provider())
 
-    # Bootstrap labels service (needed for HasLabel, LabelAdd, LabelRemove)
+    # Wire up labels service helper for AsyncHasLabel
     labels_hook_result = _get_labels_hook_result(config)
     if labels_hook_result:
-        from osprey.engine.stdlib.udfs.labels import LabelAdd, LabelRemove
+        from discord_smite.osprey_async_plugins.discord_osprey_async_plugins.udfs.async_has_label import (
+            HasLabel as AsyncHasLabel,
+        )
 
-        # Use AsyncHasLabel (native async) instead of sync HasLabel.
-        # AsyncHasLabel calls labels_service.async_read_labels() directly on
-        # the event loop — no thread pool, no run_coroutine_threadsafe.
-        try:
-            from discord_smite.osprey_async_plugins.discord_osprey_async_plugins.udfs.async_has_label import (
-                HasLabel as AsyncHasLabel,
-            )
-            from osprey.engine.stdlib.udfs.labels import HasLabel as SyncHasLabel
-
-            # Remove sync HasLabel (registered by stdlib) — replaced by AsyncHasLabel
-            all_udfs = [u for u in all_udfs if u is not SyncHasLabel]
-            all_udfs.extend([AsyncHasLabel, LabelAdd, LabelRemove])
-            udf_helpers.set_udf_helper(AsyncHasLabel, labels_hook_result)
-        except ImportError:
-            # Fall back to sync HasLabel with LabelsProvider wrapper
-            from osprey.engine.stdlib.udfs.labels import HasLabel
-
-            labels_provider = _wrap_as_labels_provider(labels_hook_result)
-            if labels_provider:
-                all_udfs.extend([HasLabel, LabelAdd, LabelRemove])
-                udf_helpers.set_udf_helper(HasLabel, labels_provider)
+        udf_helpers.set_udf_helper(AsyncHasLabel, labels_hook_result)
 
     udf_registry = UDFRegistry.with_udfs(*all_udfs)
     return udf_registry, udf_helpers
@@ -122,20 +106,6 @@ def _get_labels_hook_result(config: 'Config | None') -> Any:
     except Exception:
         logging.exception('Failed to register labels service/provider')
         return None
-
-
-def _wrap_as_labels_provider(hook_result: Any) -> LabelsProvider | None:
-    """Wrap a hook result in a LabelsProvider if needed. For sync HasLabel fallback."""
-    if hook_result is None:
-        return None
-    if isinstance(hook_result, LabelsProvider):
-        hook_result.initialize()
-        return hook_result
-    if isinstance(hook_result, LabelsServiceBase):
-        provider = LabelsProvider(hook_result)
-        provider.initialize()
-        return provider
-    return None
 
 
 def bootstrap_async_action_proto_deserializer() -> ActionProtoDeserializer | None:
@@ -173,24 +143,12 @@ def bootstrap_async_output_sinks(config: Config) -> AsyncMultiOutputSink:
     return AsyncMultiOutputSink(sinks)
 
 
-def bootstrap_async_ast_validators(load_sync_plugins: bool = False) -> None:
-    """Bootstrap AST validators from async plugins + stdlib.
-
-    Always loads stdlib validators (ValidateCallKwargs, etc.) since they're
-    needed for rule compilation. Optionally loads from osprey_plugin too.
-    """
-    # Always load stdlib validators — they don't trigger gevent side effects
+def bootstrap_async_ast_validators() -> None:
+    """Bootstrap AST validators from async plugins + stdlib."""
     from osprey.worker._stdlibplugin.validator_regsiter import register_ast_validators as stdlib_register_validators
 
     load_all_async_plugins()
     validators = list(stdlib_register_validators()) + _flatten(plugin_manager.hook.register_ast_validators())
-
-    if load_sync_plugins:
-        from osprey.worker.adaptor.plugin_manager import load_all_osprey_plugins, plugin_manager as sync_plugin_manager
-
-        load_all_osprey_plugins()
-        sync_validators = _flatten(sync_plugin_manager.hook.register_ast_validators())
-        validators = validators + sync_validators
 
     registry = ValidatorRegistry.get_instance()
     seen = set()
