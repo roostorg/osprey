@@ -67,13 +67,15 @@ def bootstrap_async_udfs(config: 'Config | None' = None) -> tuple[UDFRegistry, U
     replacements (HasLabel, MXLookup, etc.) shadow their sync counterparts.
     No sync fallbacks — all I/O UDFs must be native async.
     """
+    from osprey.async_worker.stdlib_udfs.async_mx_lookup import MXLookup as AsyncMXLookup
+    from osprey.engine.stdlib.udfs.mx_lookup import MXLookup as SyncMXLookup
     from osprey.worker._stdlibplugin.udf_register import register_udfs as stdlib_register_udfs
 
     load_all_async_plugins()
     udf_helpers = UDFHelpers()
 
-    # Load stdlib + async plugin UDFs, plugin wins on name conflicts
-    stdlib_udfs = list(stdlib_register_udfs())
+    # Load stdlib UDFs, replacing sync MXLookup with async version
+    stdlib_udfs = [u for u in stdlib_register_udfs() if u is not SyncMXLookup] + [AsyncMXLookup]
     plugin_udfs = _flatten(plugin_manager.hook.register_udfs())
     all_udfs = _deduplicate_udfs(stdlib_udfs, plugin_udfs)
 

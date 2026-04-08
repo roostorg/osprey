@@ -9,6 +9,9 @@ primitives will NOT work here — they must be ported to AsyncUDFBase.
 """
 
 import asyncio
+import os
+
+import sentry_sdk
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
@@ -61,14 +64,15 @@ def _get_ready_sync_and_async(
     return _ready_sync, _ready_async
 
 
+_SUPPRESS_IN_PROD = (ExpectedUdfException, NodeFailurePropagationException, MissingJsonPath, TypeError)
+
+
 def _is_spammy_exception(e: Optional[Exception]) -> bool:
-    return (
-        e is None
-        or isinstance(e, ExpectedUdfException)
-        or isinstance(e, NodeFailurePropagationException)
-        or isinstance(e, MissingJsonPath)
-        or isinstance(e, TypeError)
-    )
+    if e is None:
+        return True
+    if os.environ.get('ENVIRONMENT') in ('staging', 'development'):
+        return False
+    return isinstance(e, _SUPPRESS_IN_PROD)
 
 
 def _get_metric_tags(
@@ -104,6 +108,7 @@ def _record_udf_metric(
             'udf_execution',
             tags=metric_tags + [f'exc_name:{exc_name}', 'result:unexpected_failure'],
         )
+        sentry_sdk.capture_exception(caught_exception)
 
 
 # --- Sync execution (inline, for pure-computation UDFs) ---
