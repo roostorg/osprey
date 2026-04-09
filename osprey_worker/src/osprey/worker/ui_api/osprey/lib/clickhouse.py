@@ -63,10 +63,91 @@ class ClickHouseSqlBuilder:
         return f'{{{param_name}:{type_name or infer_clickhouse_param_type(value)}}}'
 
 
-class ClickHouseFilterTranslator:
+class ClickHouseFeatureMapper:
     def __init__(self, builder: ClickHouseSqlBuilder):
         self._builder = builder
-        self._feature_types = ENGINE.instance().get_post_execution_feature_name_to_value_type_mapping()
+        engine = ENGINE.instance()
+        self._feature_types = engine.get_post_execution_feature_name_to_value_type_mapping()
+        self._allowed_feature_names = (
+            frozenset(self._feature_types)
+            | frozenset(engine.get_feature_name_to_entity_type_mapping())
+            | {
+                'timestamp',
+                '__timestamp',
+                'action_id',
+                '__action_id',
+                'ActionName',
+                shared_constants.VERDICT_DIMENSION_NAME,
+                shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_NAME,
+            }
+        )
+
+    def validate_feature_name(self, name: str) -> str:
+        if name not in self._allowed_feature_names:
+            raise ValueError(f'Unknown feature name for ClickHouse query rendering: {name}')
+        return name
+
+    def feature_expression(self, feature: FeatureRef, force_array: bool = False) -> ClickHouseFeatureExpression:
+        name = self.validate_feature_name(feature.name)
+        if name in ('timestamp', '__timestamp'):
+            return ClickHouseFeatureExpression(sql='timestamp', raw_sql='timestamp', value_type=datetime)
+        elif name in ('action_id', '__action_id'):
+            return ClickHouseFeatureExpression(sql='action_id', raw_sql='action_id', value_type=int)
+        elif name == 'ActionName':
+            return ClickHouseFeatureExpression(sql='action_name', raw_sql='action_name', value_type=str)
+
+        name_param = self._builder.add_param(name, 'String')
+        raw_sql = f"nullIf(JSONExtractRaw(raw_features, {name_param}), '')"
+        value_type = self._feature_types.get(name)
+        origin = get_origin(value_type)
+
+        if force_array or name in (
+            shared_constants.VERDICT_DIMENSION_NAME,
+            shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_NAME,
+        ):
+            return ClickHouseFeatureExpression(
+                sql=f"JSONExtract(raw_features, {name_param}, 'Array(String)')",
+                raw_sql=raw_sql,
+                is_array=True,
+                value_type=list,
+            )
+        elif origin is list:
+            return ClickHouseFeatureExpression(
+                sql=f"JSONExtract(raw_features, {name_param}, '{clickhouse_array_type(value_type)}')",
+                raw_sql=raw_sql,
+                is_array=True,
+                value_type=list,
+            )
+        elif value_type is bool:
+            return ClickHouseFeatureExpression(
+                sql=f'JSONExtractBool(raw_features, {name_param})',
+                raw_sql=raw_sql,
+                value_type=bool,
+            )
+        elif value_type is int:
+            return ClickHouseFeatureExpression(
+                sql=f'JSONExtractInt(raw_features, {name_param})',
+                raw_sql=raw_sql,
+                value_type=int,
+            )
+        elif value_type is float:
+            return ClickHouseFeatureExpression(
+                sql=f'JSONExtractFloat(raw_features, {name_param})',
+                raw_sql=raw_sql,
+                value_type=float,
+            )
+
+        return ClickHouseFeatureExpression(
+            sql=f'JSONExtractString(raw_features, {name_param})',
+            raw_sql=raw_sql,
+            value_type=str,
+        )
+
+
+class ClickHouseFilterTranslator:
+    def __init__(self, builder: ClickHouseSqlBuilder, feature_mapper: ClickHouseFeatureMapper | None = None):
+        self._builder = builder
+        self._feature_mapper = feature_mapper or ClickHouseFeatureMapper(builder)
 
     def transform(self, filter_ir: FilterExpression) -> str:
         if isinstance(filter_ir, DruidRawFilter):
@@ -78,7 +159,7 @@ class ClickHouseFilterTranslator:
         elif isinstance(filter_ir, ComparisonFilter):
             return self._transform_comparison(filter_ir)
         elif isinstance(filter_ir, ContainsFilter):
-            feature = self._feature_ref(filter_ir.feature)
+            feature = self._feature_mapper.feature_expression(filter_ir.feature)
             param = self._builder.add_param(str(filter_ir.value.value), 'String')
             if feature.is_array:
                 return f'has({feature.sql}, {param})'
@@ -87,19 +168,19 @@ class ClickHouseFilterTranslator:
         elif isinstance(filter_ir, InFilter):
             if not filter_ir.values:
                 return '0'
-            feature = self._feature_ref(filter_ir.feature)
+            feature = self._feature_mapper.feature_expression(filter_ir.feature)
             param = self._builder.add_param(list(filter_ir.values), infer_clickhouse_array_param_type(filter_ir.values))
             return f'has({param}, {feature.sql})'
         elif isinstance(filter_ir, RegexFilter):
-            feature = self._feature_ref(filter_ir.feature)
+            feature = self._feature_mapper.feature_expression(filter_ir.feature)
             param = self._builder.add_param(filter_ir.pattern, 'String')
             return f'match(toString({feature.sql}), {param})'
         elif isinstance(filter_ir, LikeFilter):
-            feature = self._feature_ref(filter_ir.feature)
+            feature = self._feature_mapper.feature_expression(filter_ir.feature)
             param = self._builder.add_param(filter_ir.pattern, 'String')
             return f'toString({feature.raw_sql}) LIKE {param}'
         elif isinstance(filter_ir, ArrayContainsFilter):
-            feature = self._feature_ref(filter_ir.feature, force_array=True)
+            feature = self._feature_mapper.feature_expression(filter_ir.feature, force_array=True)
             param = self._builder.add_param(filter_ir.value.value)
             if feature.is_array:
                 return f'has({feature.sql}, {param})'
@@ -118,8 +199,8 @@ class ClickHouseFilterTranslator:
         operator_sql = get_clickhouse_comparison_operator(filter_ir.operator)
 
         if isinstance(filter_ir.left, FeatureRef) and isinstance(filter_ir.right, FeatureRef):
-            left = self._feature_ref(filter_ir.left)
-            right = self._feature_ref(filter_ir.right)
+            left = self._feature_mapper.feature_expression(filter_ir.left)
+            right = self._feature_mapper.feature_expression(filter_ir.right)
             return f'{left.sql} {operator_sql} {right.sql}'
 
         if isinstance(filter_ir.left, FeatureRef) and isinstance(filter_ir.right, LiteralValue):
@@ -140,7 +221,7 @@ class ClickHouseFilterTranslator:
     def _transform_feature_literal(
         self, feature: FeatureRef, operator: ComparisonOperator, literal: LiteralValue
     ) -> str:
-        feature_expr = self._feature_ref(feature)
+        feature_expr = self._feature_mapper.feature_expression(feature)
         if literal.value is None:
             if operator == ComparisonOperator.EQUALS:
                 return f'{feature_expr.raw_sql} IS NULL'
@@ -153,7 +234,7 @@ class ClickHouseFilterTranslator:
     def _transform_literal_feature(
         self, literal: LiteralValue, operator: ComparisonOperator, feature: FeatureRef
     ) -> str:
-        feature_expr = self._feature_ref(feature)
+        feature_expr = self._feature_mapper.feature_expression(feature)
         if literal.value is None:
             if operator == ComparisonOperator.EQUALS:
                 return f'{feature_expr.raw_sql} IS NULL'
@@ -162,61 +243,6 @@ class ClickHouseFilterTranslator:
 
         param = self._builder.add_param(literal.value)
         return f'{param} {get_clickhouse_comparison_operator(operator)} {feature_expr.sql}'
-
-    def _feature_ref(self, feature: FeatureRef, force_array: bool = False) -> ClickHouseFeatureExpression:
-        name = feature.name
-        if name in ('timestamp', '__timestamp'):
-            return ClickHouseFeatureExpression(sql='timestamp', raw_sql='timestamp', value_type=datetime)
-        elif name in ('action_id', '__action_id'):
-            return ClickHouseFeatureExpression(sql='action_id', raw_sql='action_id', value_type=int)
-        elif name == 'ActionName':
-            return ClickHouseFeatureExpression(sql='action_name', raw_sql='action_name', value_type=str)
-
-        raw_sql = f"nullIf(JSONExtractRaw(raw_features, {sql_string_literal(name)}), '')"
-        value_type = self._feature_types.get(name)
-        origin = get_origin(value_type)
-
-        if force_array or name in (
-            shared_constants.VERDICT_DIMENSION_NAME,
-            shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_NAME,
-        ):
-            return ClickHouseFeatureExpression(
-                sql=f"JSONExtract(raw_features, {sql_string_literal(name)}, 'Array(String)')",
-                raw_sql=raw_sql,
-                is_array=True,
-                value_type=list,
-            )
-        elif origin is list:
-            return ClickHouseFeatureExpression(
-                sql=f"JSONExtract(raw_features, {sql_string_literal(name)}, '{clickhouse_array_type(value_type)}')",
-                raw_sql=raw_sql,
-                is_array=True,
-                value_type=list,
-            )
-        elif value_type is bool:
-            return ClickHouseFeatureExpression(
-                sql=f'JSONExtractBool(raw_features, {sql_string_literal(name)})',
-                raw_sql=raw_sql,
-                value_type=bool,
-            )
-        elif value_type is int:
-            return ClickHouseFeatureExpression(
-                sql=f'JSONExtractInt(raw_features, {sql_string_literal(name)})',
-                raw_sql=raw_sql,
-                value_type=int,
-            )
-        elif value_type is float:
-            return ClickHouseFeatureExpression(
-                sql=f'JSONExtractFloat(raw_features, {sql_string_literal(name)})',
-                raw_sql=raw_sql,
-                value_type=float,
-            )
-
-        return ClickHouseFeatureExpression(
-            sql=f'JSONExtractString(raw_features, {sql_string_literal(name)})',
-            raw_sql=raw_sql,
-            value_type=str,
-        )
 
 
 class ClickHouseEventQueryBackend(EventQueryBackend):
@@ -232,13 +258,15 @@ class ClickHouseEventQueryBackend(EventQueryBackend):
         query_filter_abilities: Sequence[Optional['QueryFilterAbility[Any, Any]']] = (),
     ) -> Any:
         builder = ClickHouseSqlBuilder()
+        feature_mapper = ClickHouseFeatureMapper(builder)
         bucket = get_time_bucket_sql(query.granularity)
         where_conds = self._get_where_conds(query=query, builder=builder, query_filter_abilities=query_filter_abilities)
 
         if query.aggregation_dimensions and query.entity:
             select_parts = [f'{bucket} AS timestamp']
             for dim in query.aggregation_dimensions:
-                feature = ClickHouseFilterTranslator(builder)._feature_ref(FeatureRef(dim))
+                feature_mapper.validate_feature_name(dim)
+                feature = feature_mapper.feature_expression(FeatureRef(dim))
                 entity_id = builder.add_param(query.entity.id, 'String')
                 select_parts.append(f'countIf(toString({feature.sql}) = {entity_id}) AS {quote_identifier(dim)}')
             select_clause = ', '.join(select_parts)
@@ -259,7 +287,9 @@ class ClickHouseEventQueryBackend(EventQueryBackend):
 
     def groupby_approximate_count(self, query: GroupByApproximateCountDruidQuery, **kwargs: Any) -> int:
         builder = ClickHouseSqlBuilder()
-        feature = ClickHouseFilterTranslator(builder)._feature_ref(FeatureRef(query.dimension))
+        feature_mapper = ClickHouseFeatureMapper(builder)
+        feature_mapper.validate_feature_name(query.dimension)
+        feature = feature_mapper.feature_expression(FeatureRef(query.dimension))
         where_conds = self._get_where_conds(query=query, builder=builder, **kwargs)
         sql = self._build_base_query(
             select_clause=f'uniqCombined64({feature.sql}) AS cardinality',
@@ -336,7 +366,9 @@ class ClickHouseEventQueryBackend(EventQueryBackend):
         self, query: TopNDruidQuery, start: datetime, end: datetime, **kwargs: Any
     ) -> List[Dict[str, Any]]:
         builder = ClickHouseSqlBuilder()
-        feature = ClickHouseFilterTranslator(builder)._feature_ref(FeatureRef(query.dimension))
+        feature_mapper = ClickHouseFeatureMapper(builder)
+        feature_mapper.validate_feature_name(query.dimension)
+        feature = feature_mapper.feature_expression(FeatureRef(query.dimension))
         where_conds = self._get_where_conds(query=query, builder=builder, start=start, end=end, **kwargs)
         limit = builder.add_param(query.limit, 'UInt64')
 
@@ -371,7 +403,8 @@ class ClickHouseEventQueryBackend(EventQueryBackend):
 
         filter_ir = query._get_combined_filter_ir(query_filter_abilities=query_filter_abilities)
         if filter_ir is not None:
-            conds.append(ClickHouseFilterTranslator(builder).transform(filter_ir))
+            feature_mapper = ClickHouseFeatureMapper(builder)
+            conds.append(ClickHouseFilterTranslator(builder, feature_mapper=feature_mapper).transform(filter_ir))
 
         return conds
 
@@ -467,10 +500,6 @@ def to_datetime(value: Any) -> datetime:
 
 def quote_identifier(value: str) -> str:
     return '`' + value.replace('`', '``') + '`'
-
-
-def sql_string_literal(value: str) -> str:
-    return "'" + value.replace('\\', '\\\\').replace("'", "\\'") + "'"
 
 
 def infer_clickhouse_param_type(value: Any) -> str:

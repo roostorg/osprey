@@ -120,7 +120,7 @@ class DruidEventQueryBackend(EventQueryBackend):
 
         if query.next_page:
             date_in_milliseconds = int(base64.b64decode(query.next_page.encode('utf-8')))
-            pagination_datetime = datetime.fromtimestamp(date_in_milliseconds // 1000, tz=timezone.utc)
+            pagination_datetime = datetime.fromtimestamp(date_in_milliseconds / 1000, tz=timezone.utc)
 
             if query.order == Ordering.ASCENDING:
                 kwargs['start'] = pagination_datetime

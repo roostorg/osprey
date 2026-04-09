@@ -11,12 +11,12 @@ from .event_queries import (
     ComparisonData,
     DimensionData,
     DimensionDifference,
-    GroupByApproximateCountDruidQuery,
-    PaginatedScanDruidQuery,
+    GroupByApproximateCountEventQuery,
+    PaginatedScanEventQuery,
     PaginatedScanResult,
     PeriodData,
-    TimeseriesDruidQuery,
-    TopNDruidQuery,
+    TimeseriesEventQuery,
+    TopNEventQuery,
     TopNPoPResponse,
 )
 
@@ -32,20 +32,20 @@ class EventQueryBackend(ABC):
     @abstractmethod
     def timeseries(
         self,
-        query: TimeseriesDruidQuery,
+        query: TimeseriesEventQuery,
         query_filter_abilities: Sequence[Optional['QueryFilterAbility[Any, Any]']] = (),
     ) -> Any: ...
 
     @abstractmethod
-    def groupby_approximate_count(self, query: GroupByApproximateCountDruidQuery, **kwargs: Any) -> int: ...
+    def groupby_approximate_count(self, query: GroupByApproximateCountEventQuery, **kwargs: Any) -> int: ...
 
     @abstractmethod
-    def topn(self, query: TopNDruidQuery, **kwargs: Any) -> TopNPoPResponse: ...
+    def topn(self, query: TopNEventQuery, **kwargs: Any) -> TopNPoPResponse: ...
 
     @abstractmethod
     def scan(
         self,
-        query: PaginatedScanDruidQuery,
+        query: PaginatedScanEventQuery,
         query_filter_abilities: Sequence[Optional['QueryFilterAbility[Any, Any]']] = (),
     ) -> PaginatedScanResult: ...
 
@@ -66,7 +66,7 @@ class EventQueryBackend(ABC):
 
     @staticmethod
     def get_previous_period(
-        query: TopNDruidQuery, calculate_previous_period: bool = True
+        query: TopNEventQuery, calculate_previous_period: bool = True
     ) -> tuple[datetime, datetime] | None:
         if not calculate_previous_period:
             return None
@@ -85,7 +85,7 @@ class EventQueryBackend(ABC):
 
     @staticmethod
     def build_topn_pop_response(
-        query: TopNDruidQuery, current_results: list[PeriodData], previous_results: list[PeriodData]
+        query: TopNEventQuery, current_results: list[PeriodData], previous_results: list[PeriodData]
     ) -> TopNPoPResponse:
         if not previous_results:
             return TopNPoPResponse(current_period=current_results)

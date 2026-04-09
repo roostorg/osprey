@@ -21,6 +21,7 @@ def make_translator(
 ) -> tuple[clickhouse.ClickHouseFilterTranslator, clickhouse.ClickHouseSqlBuilder]:
     engine = mock.MagicMock()
     engine.get_post_execution_feature_name_to_value_type_mapping.return_value = feature_types
+    engine.get_feature_name_to_entity_type_mapping.return_value = {}
     monkeypatch.setattr(clickhouse.ENGINE, 'instance', mock.MagicMock(return_value=engine))
 
     builder = clickhouse.ClickHouseSqlBuilder()
@@ -33,9 +34,9 @@ def test_clickhouse_translates_string_contains(monkeypatch: pytest.MonkeyPatch) 
     sql = translator.transform(ContainsFilter(feature=FeatureRef('UserEmail'), value=LiteralValue('gmail.com')))
 
     assert sql == (
-        "positionCaseInsensitive(toString(JSONExtractString(raw_features, 'UserEmail')), {param_0:String}) > 0"
+        'positionCaseInsensitive(toString(JSONExtractString(raw_features, {param_0:String})), {param_1:String}) > 0'
     )
-    assert builder.params == {'param_0': 'gmail.com'}
+    assert builder.params == {'param_0': 'UserEmail', 'param_1': 'gmail.com'}
 
 
 def test_clickhouse_translates_in_filter(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -57,8 +58,8 @@ def test_clickhouse_translates_array_udf_filter(monkeypatch: pytest.MonkeyPatch)
         )
     )
 
-    assert sql == "has(JSONExtract(raw_features, '__verdicts', 'Array(String)'), {param_0:String})"
-    assert builder.params == {'param_0': 'reject'}
+    assert sql == "has(JSONExtract(raw_features, {param_0:String}, 'Array(String)'), {param_1:String})"
+    assert builder.params == {'param_0': '__verdicts', 'param_1': 'reject'}
 
 
 def test_clickhouse_translates_typed_numeric_comparison(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -72,8 +73,8 @@ def test_clickhouse_translates_typed_numeric_comparison(monkeypatch: pytest.Monk
         )
     )
 
-    assert sql == "JSONExtractInt(raw_features, 'Score') >= {param_0:Int64}"
-    assert builder.params == {'param_0': 10}
+    assert sql == 'JSONExtractInt(raw_features, {param_0:String}) >= {param_1:Int64}'
+    assert builder.params == {'param_0': 'Score', 'param_1': 10}
 
 
 def test_clickhouse_translates_typed_boolean_comparison(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -87,8 +88,8 @@ def test_clickhouse_translates_typed_boolean_comparison(monkeypatch: pytest.Monk
         )
     )
 
-    assert sql == "JSONExtractBool(raw_features, 'ContainsHello') = {param_0:Bool}"
-    assert builder.params == {'param_0': True}
+    assert sql == 'JSONExtractBool(raw_features, {param_0:String}) = {param_1:Bool}'
+    assert builder.params == {'param_0': 'ContainsHello', 'param_1': True}
 
 
 def test_clickhouse_preserves_literal_left_comparison(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -102,8 +103,21 @@ def test_clickhouse_preserves_literal_left_comparison(monkeypatch: pytest.Monkey
         )
     )
 
-    assert sql == "{param_0:Int64} > JSONExtractInt(raw_features, 'Score')"
-    assert builder.params == {'param_0': 10}
+    assert sql == '{param_1:Int64} > JSONExtractInt(raw_features, {param_0:String})'
+    assert builder.params == {'param_0': 'Score', 'param_1': 10}
+
+
+def test_clickhouse_rejects_unknown_feature_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    translator, _ = make_translator(monkeypatch, {'KnownFeature': str})
+
+    with pytest.raises(ValueError, match='Unknown feature name'):
+        translator.transform(
+            ComparisonFilter(
+                left=FeatureRef('BadFeature'),
+                operator=ComparisonOperator.EQUALS,
+                right=LiteralValue('value'),
+            )
+        )
 
 
 def test_serialize_timestamp_normalizes_naive_datetimes_to_utc() -> None:

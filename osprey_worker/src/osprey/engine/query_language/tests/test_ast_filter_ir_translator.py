@@ -1,4 +1,5 @@
 import pytest
+from osprey.engine.ast import grammar
 from osprey.engine.ast_validator.validators.imports_must_not_have_cycles import ImportsMustNotHaveCycles
 from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
@@ -8,7 +9,7 @@ from osprey.engine.ast_validator.validators.validate_dynamic_calls_have_annotate
 from osprey.engine.ast_validator.validators.validate_static_types import ValidateStaticTypes
 from osprey.engine.ast_validator.validators.variables_must_be_defined import VariablesMustBeDefined
 from osprey.engine.query_language import parse_query_to_validated_ast
-from osprey.engine.query_language.ast_filter_ir_translator import FilterIrTransformer
+from osprey.engine.query_language.ast_filter_ir_translator import FilterIrTransformer, evaluate_binary_operation
 from osprey.engine.query_language.filter_ir import (
     BooleanFilter,
     BooleanOperator,
@@ -104,6 +105,28 @@ def test_preserves_literal_side_for_binary_comparison(make_rules_sources: MakeRu
         operator=ComparisonOperator.GREATER_THAN,
         right=FeatureRef('A'),
     )
+
+
+@pytest.mark.parametrize(
+    ('operator_type', 'left_value', 'right_value', 'expected'),
+    [
+        (grammar.Add, 2, 3, 5),
+        (grammar.LeftShift, 1, 4, 16),
+    ],
+)
+def test_evaluate_binary_operation_constant_folding(
+    operator_type: type[grammar.Operator], left_value: int, right_value: int, expected: int
+) -> None:
+    source = grammar.Source(path='main.sml', contents='')
+    span = grammar.Span(source=source, start_line=1, start_pos=0)
+    node = grammar.BinaryOperation(
+        span=span,
+        left=grammar.Number(span=span, value=left_value),
+        right=grammar.Number(span=span, value=right_value),
+        operator=operator_type(span=span),
+    )
+
+    assert evaluate_binary_operation(node) == expected
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Any, List, Optional, Sequence
@@ -23,6 +24,8 @@ from .marshal import JsonBodyMarshaller
 
 if TYPE_CHECKING:
     from .abilities import QueryFilterAbility
+
+logger = logging.getLogger(__name__)
 
 
 class Ordering(str, Enum):
@@ -51,6 +54,13 @@ class EntityFilter(BaseModel):
             for feature_name, entity_type in feature_to_entity_mapping.items()
             if entity_type == self.type and (not self.feature_filters or feature_name in self.feature_filters)
         )
+
+        if not filters:
+            logger.warning(
+                'Entity filter produced no matching features for type=%s feature_filters=%s',
+                self.type,
+                self.feature_filters,
+            )
 
         return BooleanFilter(operator=BooleanOperator.OR, fields=filters)
 
@@ -170,6 +180,13 @@ class PaginatedScanDruidQuery(BaseDruidQuery):
         return get_event_query_backend().scan(self, query_filter_abilities=query_filter_abilities)
 
 
+BaseEventQuery = BaseDruidQuery
+TimeseriesEventQuery = TimeseriesDruidQuery
+GroupByApproximateCountEventQuery = GroupByApproximateCountDruidQuery
+TopNEventQuery = TopNDruidQuery
+PaginatedScanEventQuery = PaginatedScanDruidQuery
+
+
 def parse_query_filter_ir(query_filter: str, allow_druid_udf_fallback: bool = False) -> Optional[FilterExpression]:
     if query_filter == '':
         return None
@@ -184,16 +201,21 @@ def parse_query_filter_ir(query_filter: str, allow_druid_udf_fallback: bool = Fa
 
 __all__ = [
     'BaseDruidQuery',
+    'BaseEventQuery',
     'ComparisonData',
     'DimensionData',
     'DimensionDifference',
     'EntityFilter',
+    'GroupByApproximateCountEventQuery',
     'GroupByApproximateCountDruidQuery',
     'Ordering',
+    'PaginatedScanEventQuery',
     'PaginatedScanDruidQuery',
     'PaginatedScanResult',
     'PeriodData',
+    'TimeseriesEventQuery',
     'TimeseriesDruidQuery',
+    'TopNEventQuery',
     'TopNDruidQuery',
     'TopNPoPResponse',
     'parse_query_filter_ir',

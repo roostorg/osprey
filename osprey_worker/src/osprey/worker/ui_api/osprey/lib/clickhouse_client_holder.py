@@ -1,14 +1,23 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
 from osprey.worker.lib.config import Config
 from osprey.worker.lib.singletons import CONFIG
 
 
+class ClickHouseClientProtocol(Protocol):
+    def query(
+        self,
+        query: str,
+        parameters: dict[str, Any] | None = None,
+        settings: dict[str, Any] | None = None,
+    ) -> Any: ...
+
+
 class ClickHouseClientHolder:
     def __init__(self) -> None:
-        self._client: Any | None = None
+        self._client: ClickHouseClientProtocol | None = None
         self._database: str | None = None
         self._table: str | None = None
         self._timeout_seconds: int = 30
@@ -36,21 +45,21 @@ class ClickHouseClientHolder:
         )
 
     @property
-    def client(self) -> Any:
+    def client(self) -> ClickHouseClientProtocol:
         if self._client is None:
-            raise Exception('ClickHouse client not configured')
+            raise RuntimeError('ClickHouse client not configured')
         return self._client
 
     @property
     def database(self) -> str:
         if self._database is None:
-            raise Exception('ClickHouse database not configured')
+            raise RuntimeError('ClickHouse database not configured')
         return self._database
 
     @property
     def table(self) -> str:
         if self._table is None:
-            raise Exception('ClickHouse event table not configured')
+            raise RuntimeError('ClickHouse event table not configured')
         return self._table
 
     @property
