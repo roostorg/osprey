@@ -2,6 +2,7 @@ from typing import Dict
 
 from osprey.engine import shared_constants
 from osprey.engine.ast_validator.validation_context import ValidationContext
+from osprey.engine.query_language.filter_ir import ArrayContainsFilter, FeatureRef, FilterExpression, LiteralValue
 from osprey.engine.query_language.udfs.registry import register
 from osprey.engine.udf.arguments import ArgumentsBase, ConstExpr
 from osprey.engine.udf.base import QueryUdfBase
@@ -32,3 +33,9 @@ class DidDeclareVerdict(QueryUdfBase[Arguments, bool]):
             'elementMatchType': 'STRING',
             'elementMatchValue': self.verdict,
         }
+
+    def to_filter_ir(self) -> FilterExpression:
+        return ArrayContainsFilter(
+            feature=FeatureRef(shared_constants.VERDICT_DIMENSION_NAME),
+            value=LiteralValue(self.verdict),
+        )

@@ -61,6 +61,10 @@ def topn_query(request_model: TopNDruidQuery) -> TopNPoPResponse:
 def groupby_count(request_model: GroupByApproximateCountDruidQuery) -> Any:
     require_ability_with_request(request_model, CanViewEventsByEntity)
     require_ability_with_request(request_model, CanViewEventsByAction)
+    query_filter_ability = get_current_user().get_ability(CanViewEventsByAction)
+
+    if query_filter_ability:
+        return jsonify({'count': request_model.execute(query_filter_abilities=[query_filter_ability])})
     return jsonify({'count': request_model.execute()})
 
 
@@ -104,8 +108,14 @@ def topn_bulk_label(bulk_label_request: BulkLabelTopNRequest) -> Any:
 @blueprint.route('/events/timeseries', methods=['POST'])
 @marshal_with(TimeseriesDruidQuery)
 @require_ability(CanViewEventsByEntity)
+@require_ability(CanViewEventsByAction)
 def timeseries_query(request_model: TimeseriesDruidQuery) -> Any:
     require_ability_with_request(request_model, CanViewEventsByEntity)
+    require_ability_with_request(request_model, CanViewEventsByAction)
+    query_filter_ability = get_current_user().get_ability(CanViewEventsByAction)
+
+    if query_filter_ability:
+        return jsonify(request_model.execute(query_filter_abilities=[query_filter_ability]))
     return jsonify(request_model.execute())
 
 
@@ -148,8 +158,13 @@ def scan_query(request_model: PaginatedScanDruidQuery) -> Any:
 def topn_query_csv(topn_druid_query: TopNDruidQuery) -> Any:
     topn_druid_query.limit = min(topn_druid_query.limit, MAX_CSV_ROWS)
     require_ability_with_request(topn_druid_query, CanViewEventsByEntity)
+    require_ability_with_request(topn_druid_query, CanViewEventsByAction)
 
-    topn_results: TopNPoPResponse = topn_druid_query.execute()
+    query_filter_ability = get_current_user().get_ability(CanViewEventsByAction)
+    if query_filter_ability:
+        topn_results = topn_druid_query.execute(query_filter_abilities=[query_filter_ability])
+    else:
+        topn_results = topn_druid_query.execute()
 
     topn_rows: List[Any] = []
     fieldnames = [

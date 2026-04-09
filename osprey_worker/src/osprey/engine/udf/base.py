@@ -15,6 +15,7 @@ from .type_helpers import is_typevar, to_display_str
 if TYPE_CHECKING:
     from osprey.engine.ast_validator.validation_context import ValidationContext
     from osprey.engine.executor.node_executor.call_executor import CallExecutor
+    from osprey.engine.query_language.filter_ir import FilterExpression
 
 
 Arguments = TypeVar('Arguments', bound=ArgumentsBase)
@@ -254,6 +255,9 @@ class QueryUdfBase(Generic[Arguments, RValue], UDFBase[Arguments, RValue]):
     # subclasses don't have to define it to be non-abstract. We take it on honor system that this returns the right
     # type.
     def execute(self, execution_context: ExecutionContext, arguments: Arguments) -> RValue:
+        raise NotImplementedError
+
+    def to_filter_ir(self) -> 'FilterExpression':
         raise NotImplementedError
 
     @abstractmethod

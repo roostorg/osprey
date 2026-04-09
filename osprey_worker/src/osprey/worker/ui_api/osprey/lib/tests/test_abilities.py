@@ -1,6 +1,13 @@
 import copy
-from typing import Any, Dict, Optional
+from typing import Optional
 
+from osprey.engine.query_language.filter_ir import (
+    ComparisonFilter,
+    ComparisonOperator,
+    FeatureRef,
+    FilterExpression,
+    LiteralValue,
+)
 from osprey.worker.ui_api.osprey.lib.abilities import (
     CENSOR_TEXT,
     Ability,
@@ -28,14 +35,17 @@ class TestAbility(Ability[FakeRequest, str]):
 
 @_ability_registry.register('TEST_QUERY_FILTER_ABILITY')
 class TestQueryFilterAbility(QueryFilterAbility[FakeRequest, str]):
-    def _get_query_filter(self) -> Optional[Dict[str, Any]]:
+    def _get_query_filter(self) -> Optional[FilterExpression]:
         if self.allow_all:
             return None
 
         elif not self.allow_specific:
             return None
 
-        return {'allow_specific': self.allow_specific}
+        [allowance] = self.allow_specific
+        return ComparisonFilter(
+            left=FeatureRef('name'), operator=ComparisonOperator.EQUALS, right=LiteralValue(allowance)
+        )
 
 
 @_ability_registry.register('TEST_JSON_DATA_CENSOR_ABILITY')
@@ -86,7 +96,9 @@ def test_query_filter_ability() -> None:
     assert ability._get_query_filter() is None
 
     ability = TestQueryFilterAbility(name='TEST_QUERY_FILTER_ABILITY', allow_specific={'hello'})
-    assert ability._get_query_filter() == {'allow_specific': {'hello'}}
+    assert ability._get_query_filter() == ComparisonFilter(
+        left=FeatureRef('name'), operator=ComparisonOperator.EQUALS, right=LiteralValue('hello')
+    )
 
 
 """

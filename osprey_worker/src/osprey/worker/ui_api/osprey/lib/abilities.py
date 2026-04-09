@@ -6,6 +6,16 @@ from functools import wraps
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Generic, Optional, Set, Type, TypeVar, Union
 
 from flask import abort
+from osprey.engine.query_language.filter_ir import (
+    BooleanFilter,
+    BooleanOperator,
+    ComparisonFilter,
+    ComparisonOperator,
+    FeatureRef,
+    FilterExpression,
+    LiteralValue,
+    NotFilter,
+)
 from osprey.worker.ui_api.osprey.lib.druid import BaseDruidQuery
 from osprey.worker.ui_api.osprey.validators.entities import (
     GetLabelsForEntityRequest,
@@ -171,9 +181,9 @@ class QueryFilterAbility(Ability[ModelT, ItemT], Generic[ModelT, ItemT]):
         return True
 
     # The default query filter (None)
-    # This method works on the query that is going to be sent to Druid.
+    # This method works on the query that is going to be sent to the event query backend.
     @abstractmethod
-    def _get_query_filter(self) -> Optional[Dict[str, Any]]:
+    def _get_query_filter(self) -> Optional[FilterExpression]:
         raise NotImplementedError()
 
 
@@ -500,30 +510,37 @@ class CanViewEventsByEntity(Ability[BaseDruidQuery, HashableEntityKey]):
 
 @register_ability('CAN_VIEW_EVENTS_BY_ACTION')
 class CanViewEventsByAction(QueryFilterAbility[BaseDruidQuery, str]):
-    def _get_query_filter(self) -> Optional[Dict[str, Any]]:
+    def _get_query_filter(self) -> Optional[FilterExpression]:
         if self.allow_all:
             return None  # if allow all is set, then we don't need to inject an acl filter into the query
 
         if self.allow_specific:
-            return {
-                'type': 'or',
-                'fields': [
-                    {'type': 'selector', 'dimension': 'ActionName', 'value': allowance}
+            return BooleanFilter(
+                operator=BooleanOperator.OR,
+                fields=tuple(
+                    ComparisonFilter(
+                        left=FeatureRef('ActionName'),
+                        operator=ComparisonOperator.EQUALS,
+                        right=LiteralValue(allowance),
+                    )
                     for allowance in self.allow_specific
-                ],
-            }
+                ),
+            )
 
         if self.allow_all_except:
-            return {
-                'type': 'not',
-                'field': {
-                    'type': 'or',
-                    'fields': [
-                        {'type': 'selector', 'dimension': 'ActionName', 'value': allowance_exception}
+            return NotFilter(
+                field=BooleanFilter(
+                    operator=BooleanOperator.OR,
+                    fields=tuple(
+                        ComparisonFilter(
+                            left=FeatureRef('ActionName'),
+                            operator=ComparisonOperator.EQUALS,
+                            right=LiteralValue(allowance_exception),
+                        )
                         for allowance_exception in self.allow_all_except
-                    ],
-                },
-            }
+                    ),
+                )
+            )
 
         assert False, "Validation failed to assert that this ability had a present 'allow' variable"
 
