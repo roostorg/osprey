@@ -159,6 +159,33 @@ def wait_for_csv_rows(
     pytest.fail(f'Druid integration CSV did not converge in {timeout_seconds}s: {last_status=} {last_payload=}')
 
 
+def wait_for_druid_ingestion(
+    client: 'FlaskClient[Response]',
+    *,
+    start: str,
+    end: str,
+    expected_count: int,
+    timeout_seconds: int = 90,
+) -> Any:
+    return wait_for_json(
+        lambda: post_json(
+            client,
+            'events.timeseries_query',
+            {
+                'start': start,
+                'end': end,
+                'query_filter': '',
+                'entity': None,
+                'granularity': 'hour',
+            },
+        ),
+        lambda payload: isinstance(payload, list)
+        and len(payload) == 1
+        and payload[0]['result']['count'] == expected_count,
+        timeout_seconds=timeout_seconds,
+    )
+
+
 @pytest.mark.use_rules_sources(CONFIG_ALLOW_ALL)
 def test_druid_scan_and_event_detail(
     app: Flask,
@@ -233,6 +260,13 @@ def test_druid_scan_and_event_detail(
         ],
         'next_page': None,
     }
+
+    wait_for_druid_ingestion(
+        client,
+        start='2026-04-08T11:00:00+00:00',
+        end='2026-04-08T13:00:00+00:00',
+        expected_count=2,
+    )
 
     scan_payload = wait_for_json(
         lambda: post_json(
@@ -322,6 +356,13 @@ def test_druid_scan_filters_boolean_features(
             '__error_count': 0,
             '__timestamp': non_hello_timestamp.isoformat(),
         },
+    )
+
+    wait_for_druid_ingestion(
+        client,
+        start='2026-04-08T15:00:00+00:00',
+        end='2026-04-08T17:00:00+00:00',
+        expected_count=2,
     )
 
     scan_payload = wait_for_json(
@@ -512,6 +553,13 @@ def test_druid_scan_respects_action_acl_filter(
         },
     )
 
+    wait_for_druid_ingestion(
+        client,
+        start='2026-04-08T14:00:00+00:00',
+        end='2026-04-08T15:00:00+00:00',
+        expected_count=1,
+    )
+
     expected_payload = {
         'events': [
             {
@@ -606,6 +654,13 @@ def test_druid_scan_combines_boolean_query_with_action_acl_filter(
             '__error_count': 0,
             '__timestamp': acl_filtered_timestamp.isoformat(),
         },
+    )
+
+    wait_for_druid_ingestion(
+        client,
+        start='2026-04-08T19:00:00+00:00',
+        end='2026-04-08T21:00:00+00:00',
+        expected_count=2,
     )
 
     expected_payload = {
