@@ -133,6 +133,7 @@ def get_event_query_backend(config: 'Config | None' = None) -> EventQueryBackend
         config = GLOBAL_CONFIG.instance()
 
     backend_type = config.get_str('OSPREY_EVENT_QUERY_BACKEND', 'druid').lower()
+    # TODO: Cache backend instances per configured backend. The current POC resolves a fresh backend per request.
 
     if backend_type == 'druid':
         from osprey.worker.ui_api.osprey.lib.druid import DruidEventQueryBackend

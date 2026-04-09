@@ -7,6 +7,8 @@ from osprey.worker.lib.singletons import CONFIG
 
 
 class ClickHouseClientProtocol(Protocol):
+    def command(self, cmd: str, parameters: dict[str, Any] | None = None) -> Any: ...
+
     def query(
         self,
         query: str,

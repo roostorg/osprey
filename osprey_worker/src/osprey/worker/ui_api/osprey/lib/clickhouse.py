@@ -26,13 +26,13 @@ from osprey.worker.lib.singletons import ENGINE
 
 from ..singletons import CLICKHOUSE
 from .event_queries import (
-    GroupByApproximateCountDruidQuery,
+    GroupByApproximateCountEventQuery,
     Ordering,
-    PaginatedScanDruidQuery,
+    PaginatedScanEventQuery,
     PaginatedScanResult,
     PeriodData,
-    TimeseriesDruidQuery,
-    TopNDruidQuery,
+    TimeseriesEventQuery,
+    TopNEventQuery,
     TopNPoPResponse,
 )
 from .event_query_backend import EventQueryBackend
@@ -254,18 +254,22 @@ class ClickHouseEventQueryBackend(EventQueryBackend):
 
     def timeseries(
         self,
-        query: TimeseriesDruidQuery,
+        query: TimeseriesEventQuery,
         query_filter_abilities: Sequence[Optional['QueryFilterAbility[Any, Any]']] = (),
     ) -> Any:
         builder = ClickHouseSqlBuilder()
         feature_mapper = ClickHouseFeatureMapper(builder)
         bucket = get_time_bucket_sql(query.granularity)
-        where_conds = self._get_where_conds(query=query, builder=builder, query_filter_abilities=query_filter_abilities)
+        where_conds = self._get_where_conds(
+            query=query,
+            builder=builder,
+            query_filter_abilities=query_filter_abilities,
+            feature_mapper=feature_mapper,
+        )
 
         if query.aggregation_dimensions and query.entity:
             select_parts = [f'{bucket} AS timestamp']
             for dim in query.aggregation_dimensions:
-                feature_mapper.validate_feature_name(dim)
                 feature = feature_mapper.feature_expression(FeatureRef(dim))
                 entity_id = builder.add_param(query.entity.id, 'String')
                 select_parts.append(f'countIf(toString({feature.sql}) = {entity_id}) AS {quote_identifier(dim)}')
@@ -285,12 +289,11 @@ class ClickHouseEventQueryBackend(EventQueryBackend):
             {'timestamp': serialize_timestamp(row.get('timestamp')), 'result': strip_timestamp(row)} for row in rows
         ]
 
-    def groupby_approximate_count(self, query: GroupByApproximateCountDruidQuery, **kwargs: Any) -> int:
+    def groupby_approximate_count(self, query: GroupByApproximateCountEventQuery, **kwargs: Any) -> int:
         builder = ClickHouseSqlBuilder()
         feature_mapper = ClickHouseFeatureMapper(builder)
-        feature_mapper.validate_feature_name(query.dimension)
         feature = feature_mapper.feature_expression(FeatureRef(query.dimension))
-        where_conds = self._get_where_conds(query=query, builder=builder, **kwargs)
+        where_conds = self._get_where_conds(query=query, builder=builder, feature_mapper=feature_mapper, **kwargs)
         sql = self._build_base_query(
             select_clause=f'uniqCombined64({feature.sql}) AS cardinality',
             where_conds=where_conds,
@@ -301,7 +304,7 @@ class ClickHouseEventQueryBackend(EventQueryBackend):
             return int(rows[0]['cardinality'])
         return -1
 
-    def topn(self, query: TopNDruidQuery, **kwargs: Any) -> TopNPoPResponse:
+    def topn(self, query: TopNEventQuery, **kwargs: Any) -> TopNPoPResponse:
         calculate_previous_period = kwargs.pop('calculate_previous_period', True)
 
         current_results = self._execute_topn_single_period(query, query.start, query.end, **kwargs)
@@ -319,14 +322,16 @@ class ClickHouseEventQueryBackend(EventQueryBackend):
 
     def scan(
         self,
-        query: PaginatedScanDruidQuery,
+        query: PaginatedScanEventQuery,
         query_filter_abilities: Sequence[Optional['QueryFilterAbility[Any, Any]']] = (),
     ) -> PaginatedScanResult:
         builder = ClickHouseSqlBuilder()
+        feature_mapper = ClickHouseFeatureMapper(builder)
         paginated_limit = query.limit + 1
         where_conds = self._get_where_conds(
             query=query,
             builder=builder,
+            feature_mapper=feature_mapper,
             query_filter_abilities=query_filter_abilities,
         )
 
@@ -363,13 +368,19 @@ class ClickHouseEventQueryBackend(EventQueryBackend):
         return PaginatedScanResult(action_ids=[int(row['action_id']) for row in rows], next_page=next_page)
 
     def _execute_topn_single_period(
-        self, query: TopNDruidQuery, start: datetime, end: datetime, **kwargs: Any
+        self, query: TopNEventQuery, start: datetime, end: datetime, **kwargs: Any
     ) -> List[Dict[str, Any]]:
         builder = ClickHouseSqlBuilder()
         feature_mapper = ClickHouseFeatureMapper(builder)
-        feature_mapper.validate_feature_name(query.dimension)
         feature = feature_mapper.feature_expression(FeatureRef(query.dimension))
-        where_conds = self._get_where_conds(query=query, builder=builder, start=start, end=end, **kwargs)
+        where_conds = self._get_where_conds(
+            query=query,
+            builder=builder,
+            start=start,
+            end=end,
+            feature_mapper=feature_mapper,
+            **kwargs,
+        )
         limit = builder.add_param(query.limit, 'UInt64')
 
         sql = self._build_base_query(
@@ -386,6 +397,7 @@ class ClickHouseEventQueryBackend(EventQueryBackend):
         self,
         query: Any,
         builder: ClickHouseSqlBuilder,
+        feature_mapper: ClickHouseFeatureMapper | None = None,
         start: Optional[datetime] = None,
         end: Optional[datetime] = None,
         query_filter_abilities: Sequence[Optional['QueryFilterAbility[Any, Any]']] = (),
@@ -403,8 +415,8 @@ class ClickHouseEventQueryBackend(EventQueryBackend):
 
         filter_ir = query._get_combined_filter_ir(query_filter_abilities=query_filter_abilities)
         if filter_ir is not None:
-            feature_mapper = ClickHouseFeatureMapper(builder)
-            conds.append(ClickHouseFilterTranslator(builder, feature_mapper=feature_mapper).transform(filter_ir))
+            mapper = feature_mapper or ClickHouseFeatureMapper(builder)
+            conds.append(ClickHouseFilterTranslator(builder, feature_mapper=mapper).transform(filter_ir))
 
         return conds
 
@@ -439,7 +451,7 @@ class ClickHouseEventQueryBackend(EventQueryBackend):
         return normalize_clickhouse_rows(result)
 
     def _sanitize_topn_results(
-        self, query: TopNDruidQuery, rows: List[Dict[str, Any]], timestamp: datetime
+        self, query: TopNEventQuery, rows: List[Dict[str, Any]], timestamp: datetime
     ) -> List[PeriodData]:
         result_items = [{'count': row.get('count', 0), query.dimension: row.get(query.dimension)} for row in rows]
         return self.build_period_data(timestamp, result_items)

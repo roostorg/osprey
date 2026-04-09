@@ -38,6 +38,13 @@ blueprint = Blueprint('events', __name__)
 MAX_CSV_ROWS = 100_000
 
 
+def _execute_or_abort_bad_request(executor: Any) -> Any:
+    try:
+        return executor()
+    except ValueError as exc:
+        abort(Response(response=str(exc), status=400, mimetype='application/json'))
+
+
 @blueprint.route('/events/topn', methods=['POST'])
 @marshal_with(TopNDruidQuery)
 def topn_query(request_model: TopNDruidQuery) -> TopNPoPResponse:
@@ -46,12 +53,11 @@ def topn_query(request_model: TopNDruidQuery) -> TopNPoPResponse:
     query_filter_ability = get_current_user().get_ability(CanViewEventsByAction)
 
     if query_filter_ability:
-        topn_result = request_model.execute(query_filter_abilities=[query_filter_ability])
+        topn_result = _execute_or_abort_bad_request(
+            lambda: request_model.execute(query_filter_abilities=[query_filter_ability])
+        )
     else:
-        topn_result = request_model.execute()
-
-    if isinstance(topn_result, ValueError):
-        return abort(Response(response=str(topn_result), status=400, mimetype='application/json'))
+        topn_result = _execute_or_abort_bad_request(request_model.execute)
 
     return jsonify(topn_result.dict())
 
@@ -64,8 +70,11 @@ def groupby_count(request_model: GroupByApproximateCountDruidQuery) -> Any:
     query_filter_ability = get_current_user().get_ability(CanViewEventsByAction)
 
     if query_filter_ability:
-        return jsonify({'count': request_model.execute(query_filter_abilities=[query_filter_ability])})
-    return jsonify({'count': request_model.execute()})
+        count = _execute_or_abort_bad_request(
+            lambda: request_model.execute(query_filter_abilities=[query_filter_ability])
+        )
+        return jsonify({'count': count})
+    return jsonify({'count': _execute_or_abort_bad_request(request_model.execute)})
 
 
 @blueprint.route('/events/topn/bulk_label', methods=['POST'])
@@ -115,8 +124,11 @@ def timeseries_query(request_model: TimeseriesDruidQuery) -> Any:
     query_filter_ability = get_current_user().get_ability(CanViewEventsByAction)
 
     if query_filter_ability:
-        return jsonify(request_model.execute(query_filter_abilities=[query_filter_ability]))
-    return jsonify(request_model.execute())
+        result = _execute_or_abort_bad_request(
+            lambda: request_model.execute(query_filter_abilities=[query_filter_ability])
+        )
+        return jsonify(result)
+    return jsonify(_execute_or_abort_bad_request(request_model.execute))
 
 
 class ScanQueryResult(BaseModel):
@@ -136,7 +148,9 @@ def scan_query(request_model: PaginatedScanDruidQuery) -> Any:
     require_ability_with_request(request_model, CanViewEventsByAction)
 
     query_filter_ability = get_current_user().get_ability(CanViewEventsByAction)
-    paginated_scan_results = request_model.execute(query_filter_abilities=[query_filter_ability])
+    paginated_scan_results = _execute_or_abort_bad_request(
+        lambda: request_model.execute(query_filter_abilities=[query_filter_ability])
+    )
 
     action_data_censor_ability = get_current_user().get_ability(CanViewActionData)
     feature_data_censor_ability = get_current_user().get_ability(CanViewFeatureData)
@@ -162,9 +176,11 @@ def topn_query_csv(topn_druid_query: TopNDruidQuery) -> Any:
 
     query_filter_ability = get_current_user().get_ability(CanViewEventsByAction)
     if query_filter_ability:
-        topn_results = topn_druid_query.execute(query_filter_abilities=[query_filter_ability])
+        topn_results = _execute_or_abort_bad_request(
+            lambda: topn_druid_query.execute(query_filter_abilities=[query_filter_ability])
+        )
     else:
-        topn_results = topn_druid_query.execute()
+        topn_results = _execute_or_abort_bad_request(topn_druid_query.execute)
 
     topn_rows: List[Any] = []
     fieldnames = [

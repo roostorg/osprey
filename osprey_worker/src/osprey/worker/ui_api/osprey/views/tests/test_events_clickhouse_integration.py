@@ -765,3 +765,43 @@ def test_clickhouse_topn_csv_combines_boolean_query_with_action_acl_filter(
         'user_a_csv': '2',
         'user_b_csv': '1',
     }
+
+
+@pytest.mark.use_rules_sources(CONFIG_ALLOW_ALL)
+@pytest.mark.parametrize(
+    ('endpoint', 'payload'),
+    [
+        (
+            'events.groupby_count',
+            {
+                'start': '2026-04-08T17:00:00+00:00',
+                'end': '2026-04-08T18:00:00+00:00',
+                'query_filter': '',
+                'entity': None,
+                'dimension': 'UnknownFeature',
+            },
+        ),
+        (
+            'events.topn_query',
+            {
+                'start': '2026-04-08T17:00:00+00:00',
+                'end': '2026-04-08T18:00:00+00:00',
+                'query_filter': '',
+                'entity': None,
+                'dimension': 'UnknownFeature',
+                'limit': 10,
+                'precision': 0,
+            },
+        ),
+    ],
+)
+def test_clickhouse_event_endpoints_reject_unknown_feature_names_with_bad_request(
+    app: Flask,
+    client: 'FlaskClient[Response]',
+    endpoint: str,
+    payload: Dict[str, Any],
+) -> None:
+    response = client.post(url_for(endpoint), json=payload)
+
+    assert response.status_code == 400
+    assert response.get_data(as_text=True) == 'Unknown feature name for ClickHouse query rendering: UnknownFeature'
