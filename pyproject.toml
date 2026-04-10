@@ -22,7 +22,7 @@ common = [
     "google-cloud-audit-log==0.3.2",
     "google-cloud-bigquery==3.27.0",
     "google-cloud-bigtable==2.10.0",
-    "google-cloud-core==2.4.3",
+    "google-cloud-core==2.5.1",
     "google-cloud-kms==3.5.1",
     "google-cloud-logging==3.4.0",
     "google-cloud-pubsub==2.15.2",
