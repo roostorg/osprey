@@ -229,7 +229,8 @@ class ClickHouseFilterTranslator:
                 return f'{feature_expr.raw_sql} IS NOT NULL'
 
         param = self._builder.add_param(literal.value)
-        return f'{feature_expr.sql} {get_clickhouse_comparison_operator(operator)} {param}'
+        comparison_sql = f'{feature_expr.sql} {get_clickhouse_comparison_operator(operator)} {param}'
+        return self._wrap_literal_comparison(feature_expr, operator, comparison_sql)
 
     def _transform_literal_feature(
         self, literal: LiteralValue, operator: ComparisonOperator, feature: FeatureRef
@@ -242,7 +243,18 @@ class ClickHouseFilterTranslator:
                 return f'{feature_expr.raw_sql} IS NOT NULL'
 
         param = self._builder.add_param(literal.value)
-        return f'{param} {get_clickhouse_comparison_operator(operator)} {feature_expr.sql}'
+        comparison_sql = f'{param} {get_clickhouse_comparison_operator(operator)} {feature_expr.sql}'
+        return self._wrap_literal_comparison(feature_expr, operator, comparison_sql)
+
+    def _wrap_literal_comparison(
+        self,
+        feature_expr: ClickHouseFeatureExpression,
+        operator: ComparisonOperator,
+        comparison_sql: str,
+    ) -> str:
+        if operator == ComparisonOperator.NOT_EQUALS:
+            return f'({feature_expr.raw_sql} IS NULL OR {comparison_sql})'
+        return f'({feature_expr.raw_sql} IS NOT NULL AND {comparison_sql})'
 
 
 class ClickHouseEventQueryBackend(EventQueryBackend):
@@ -305,6 +317,7 @@ class ClickHouseEventQueryBackend(EventQueryBackend):
         return -1
 
     def topn(self, query: TopNEventQuery, **kwargs: Any) -> TopNPoPResponse:
+        self._validate_topn_precision(query)
         calculate_previous_period = kwargs.pop('calculate_previous_period', True)
 
         current_results = self._execute_topn_single_period(query, query.start, query.end, **kwargs)
@@ -336,15 +349,27 @@ class ClickHouseEventQueryBackend(EventQueryBackend):
         )
 
         if query.next_page:
-            date_in_milliseconds = int(base64.b64decode(query.next_page.encode('utf-8')))
-            pagination_datetime = datetime.fromtimestamp(date_in_milliseconds / 1000, tz=timezone.utc)
+            pagination_datetime, pagination_action_id = decode_scan_cursor(query.next_page)
             page_cursor = builder.add_param(pagination_datetime, "DateTime64(3, 'UTC')")
-            if query.order == Ordering.ASCENDING:
-                where_conds.append(f'timestamp >= {page_cursor}')
-            elif query.order == Ordering.DESCENDING:
-                where_conds.append(f'timestamp < {page_cursor}')
+            if pagination_action_id is None:
+                if query.order == Ordering.ASCENDING:
+                    where_conds.append(f'timestamp > {page_cursor}')
+                elif query.order == Ordering.DESCENDING:
+                    where_conds.append(f'timestamp < {page_cursor}')
+                else:
+                    raise ValueError(f'Unhandled order: {query.order}')
             else:
-                raise ValueError(f'Unhandled order: {query.order}')
+                action_cursor = builder.add_param(pagination_action_id, 'Int64')
+                if query.order == Ordering.ASCENDING:
+                    where_conds.append(
+                        f'((timestamp > {page_cursor}) OR (timestamp = {page_cursor} AND action_id > {action_cursor}))'
+                    )
+                elif query.order == Ordering.DESCENDING:
+                    where_conds.append(
+                        f'((timestamp < {page_cursor}) OR (timestamp = {page_cursor} AND action_id < {action_cursor}))'
+                    )
+                else:
+                    raise ValueError(f'Unhandled order: {query.order}')
 
         order_dir = 'ASC' if query.order == Ordering.ASCENDING else 'DESC'
         limit = builder.add_param(paginated_limit, 'UInt64')
@@ -352,7 +377,7 @@ class ClickHouseEventQueryBackend(EventQueryBackend):
         sql = self._build_base_query(
             select_clause='action_id, timestamp',
             where_conds=where_conds,
-            order_by=f'timestamp {order_dir}',
+            order_by=f'timestamp {order_dir}, action_id {order_dir}',
             limit=limit,
         )
 
@@ -360,12 +385,17 @@ class ClickHouseEventQueryBackend(EventQueryBackend):
         next_page = None
 
         if len(rows) == paginated_limit:
-            last_row = rows.pop()
-            timestamp_ms = int(to_datetime(last_row['timestamp']).timestamp() * 1000)
-            timestamp_string = str(timestamp_ms).encode('utf-8')
-            next_page = base64.b64encode(timestamp_string).decode('utf-8')
+            rows.pop()
+            cursor_row = rows[-1]
+            next_page = encode_scan_cursor(cursor_row['timestamp'], cursor_row['action_id'])
 
         return PaginatedScanResult(action_ids=[int(row['action_id']) for row in rows], next_page=next_page)
+
+    def _validate_topn_precision(self, query: TopNEventQuery) -> None:
+        if query.precision < 0 or query.precision >= 1:
+            raise ValueError('Precision specified was not valid; Must be a float between 0 and 1!')
+        if query.precision != 0:
+            raise ValueError('ClickHouse topn queries do not support non-zero precision')
 
     def _execute_topn_single_period(
         self, query: TopNEventQuery, start: datetime, end: datetime, **kwargs: Any
@@ -508,6 +538,19 @@ def to_datetime(value: Any) -> datetime:
     if isinstance(value, str):
         return datetime.fromisoformat(value)
     raise TypeError(f'Expected datetime-compatible value, got {type(value)}')
+
+
+def encode_scan_cursor(timestamp: Any, action_id: int) -> str:
+    timestamp_ms = int(to_datetime(timestamp).timestamp() * 1000)
+    cursor = f'{timestamp_ms}:{int(action_id)}'.encode('utf-8')
+    return base64.b64encode(cursor).decode('utf-8')
+
+
+def decode_scan_cursor(cursor: str) -> tuple[datetime, int | None]:
+    decoded = base64.b64decode(cursor.encode('utf-8')).decode('utf-8')
+    timestamp_ms, separator, action_id = decoded.partition(':')
+    pagination_datetime = datetime.fromtimestamp(int(timestamp_ms) / 1000, tz=timezone.utc)
+    return pagination_datetime, (int(action_id) if separator else None)
 
 
 def quote_identifier(value: str) -> str:

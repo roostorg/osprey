@@ -64,19 +64,21 @@ Observed delta:
 
 ## Integration Test Timing
 
-The isolated backend integration suites were also timed separately from a clean
-reset stack on the same machine.
+The isolated backend integration suites were re-timed on the same Apple
+Silicon host.
 
-| Command | Scope | Wall time |
-| --- | --- | ---: |
-| `make druid-test PYTEST_ARGS='osprey_worker/src/osprey/worker/ui_api/osprey/views/tests/test_events_druid_integration.py'` | full isolated Druid integration file | about `166s` |
-| `make clickhouse-test PYTEST_ARGS='osprey_worker/src/osprey/worker/ui_api/osprey/views/tests/test_events_clickhouse_integration.py'` | full isolated ClickHouse integration file | about `30s` |
+| Command | Scope | Current observation |
+| --- | --- | --- |
+| `make druid-test PYTEST_ARGS='osprey_worker/src/osprey/worker/ui_api/osprey/views/tests/test_events_druid_integration.py'` | full isolated Druid integration file | one successful cold run completed in about `178s`; a later cold rerun on the same host flaked and failed after `303s` |
+| `make clickhouse-test PYTEST_ARGS='osprey_worker/src/osprey/worker/ui_api/osprey/views/tests/test_events_clickhouse_integration.py'` | full isolated ClickHouse integration file | cold run passed in `49.20s` end-to-end (`13 passed` in `5.19s` of pytest time) |
 
 Observed delta:
 
-- ClickHouse completed the isolated backend integration run about 136s faster
-- the dominant cost on the Druid side is full cluster startup, not the pytest
-  body itself
+- ClickHouse completed the successful cold run about 129s faster than Druid
+- the dominant cost on the Druid side is still full cluster startup rather than
+  pytest body time
+- Druid remains materially less stable on this Apple Silicon setup, so the
+  cold-run cost is not only higher but less predictable
 - this is why `make test` now stays backend-neutral and the Druid and
   ClickHouse integration suites run behind separate Make targets
 - both suites now include ACL-composition cases, including `/events/topn/csv`,

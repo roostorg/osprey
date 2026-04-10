@@ -5,6 +5,8 @@ import os
 import time
 from datetime import UTC, datetime
 from typing import Any, Callable, Dict, Iterator, Tuple
+from urllib.error import HTTPError, URLError
+from urllib.request import urlopen
 
 import pytest
 from flask import Flask, Response, url_for
@@ -65,6 +67,9 @@ CONFIG_ACTION_FILTERED = {
     ),
 }
 
+_DRUID_INGESTION_PIPELINE_READY = False
+DRUID_SUPERVISOR_ID = 'osprey.execution_results'
+
 
 @pytest.fixture(scope='session')
 def kafka_output_producer() -> Iterator[KafkaProducer]:
@@ -103,6 +108,47 @@ def seed_event(app: Flask, kafka_output_producer: KafkaProducer) -> Callable[...
         return extracted_features
 
     return _seed_event
+
+
+@pytest.fixture(autouse=True)
+def warm_druid_ingestion_pipeline() -> Iterator[None]:
+    global _DRUID_INGESTION_PIPELINE_READY
+
+    if not _DRUID_INGESTION_PIPELINE_READY:
+        wait_for_druid_supervisor_ready(timeout_seconds=180)
+        _DRUID_INGESTION_PIPELINE_READY = True
+
+    yield
+
+
+def wait_for_druid_supervisor_ready(*, timeout_seconds: int = 90) -> Dict[str, Any]:
+    status_url = f'http://druid-coordinator:8081/druid/indexer/v1/supervisor/{DRUID_SUPERVISOR_ID}/status'
+
+    def fetch() -> Tuple[int, Any]:
+        try:
+            with urlopen(status_url, timeout=5) as response:
+                return response.status, json.loads(response.read().decode('utf-8'))
+        except HTTPError as exc:
+            try:
+                payload: Any = json.loads(exc.read().decode('utf-8'))
+            except (OSError, json.JSONDecodeError):
+                payload = None
+            return exc.code, payload
+        except (URLError, TimeoutError, json.JSONDecodeError) as exc:
+            return 0, str(exc)
+
+    return wait_for_json(fetch, _druid_supervisor_is_ready, timeout_seconds=timeout_seconds)
+
+
+def _druid_supervisor_is_ready(payload: Any) -> bool:
+    if not isinstance(payload, dict):
+        return False
+
+    supervisor_status = payload.get('payload', payload)
+    if not isinstance(supervisor_status, dict):
+        return False
+
+    return supervisor_status.get('healthy') is True and supervisor_status.get('state') == 'RUNNING'
 
 
 def wait_for_json(
@@ -422,6 +468,118 @@ def test_druid_scan_filters_boolean_features(
         ],
         'next_page': None,
     }
+
+
+@pytest.mark.use_rules_sources(CONFIG_ALLOW_ALL)
+def test_druid_scan_matches_explicit_false_without_matching_missing_feature(
+    app: Flask,
+    client: 'FlaskClient[Response]',
+    seed_event: Callable[..., Dict[str, Any]],
+) -> None:
+    missing_timestamp = datetime(2026, 4, 8, 9, 0, tzinfo=UTC)
+    false_timestamp = datetime(2026, 4, 8, 9, 5, tzinfo=UTC)
+    true_timestamp = datetime(2026, 4, 8, 9, 10, tzinfo=UTC)
+
+    seed_event(
+        action_id=416,
+        timestamp=missing_timestamp,
+        action_data={
+            'user_id': 'user_bool_missing_druid',
+            'event_type': 'create_post',
+            'post': {'text': 'feature intentionally omitted'},
+        },
+        extracted_features={
+            'ActionName': 'create_post',
+            'UserId': 'user_bool_missing_druid',
+            'EventType': 'create_post',
+            'PostText': 'feature intentionally omitted',
+            '__action_id': 416,
+            '__error_count': 0,
+            '__timestamp': missing_timestamp.isoformat(),
+        },
+    )
+    seed_event(
+        action_id=417,
+        timestamp=false_timestamp,
+        action_data={
+            'user_id': 'user_bool_false_druid',
+            'event_type': 'create_post',
+            'post': {'text': 'no greeting here'},
+        },
+        extracted_features={
+            'ActionName': 'create_post',
+            'UserId': 'user_bool_false_druid',
+            'EventType': 'create_post',
+            'PostText': 'no greeting here',
+            'ContainsHello': False,
+            '__action_id': 417,
+            '__error_count': 0,
+            '__timestamp': false_timestamp.isoformat(),
+        },
+    )
+    seed_event(
+        action_id=418,
+        timestamp=true_timestamp,
+        action_data={
+            'user_id': 'user_bool_true_druid',
+            'event_type': 'create_post',
+            'post': {'text': 'hello there'},
+        },
+        extracted_features={
+            'ActionName': 'create_post',
+            'UserId': 'user_bool_true_druid',
+            'EventType': 'create_post',
+            'PostText': 'hello there',
+            'ContainsHello': True,
+            '__action_id': 418,
+            '__error_count': 0,
+            '__timestamp': true_timestamp.isoformat(),
+        },
+    )
+
+    wait_for_druid_ingestion(
+        client,
+        start='2026-04-08T08:00:00+00:00',
+        end='2026-04-08T10:00:00+00:00',
+        expected_count=3,
+    )
+
+    expected_payload = {
+        'events': [
+            {
+                'id': 417,
+                'timestamp': false_timestamp.isoformat(),
+                'extracted_features': {
+                    'ActionName': 'create_post',
+                    'UserId': 'user_bool_false_druid',
+                    'EventType': 'create_post',
+                    'PostText': 'no greeting here',
+                    'ContainsHello': False,
+                    '__action_id': 417,
+                    '__error_count': 0,
+                    '__timestamp': false_timestamp.isoformat(),
+                },
+            }
+        ],
+        'next_page': None,
+    }
+
+    scan_payload = wait_for_json(
+        lambda: post_json(
+            client,
+            'events.scan_query',
+            {
+                'start': '2026-04-08T08:00:00+00:00',
+                'end': '2026-04-08T10:00:00+00:00',
+                'query_filter': 'ContainsHello == false',
+                'entity': None,
+                'limit': 10,
+            },
+        ),
+        lambda payload: payload == expected_payload,
+    )
+
+    assert scan_payload == expected_payload
 
 
 @pytest.mark.use_rules_sources(CONFIG_ALLOW_ALL)

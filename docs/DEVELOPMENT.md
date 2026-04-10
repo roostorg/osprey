@@ -273,16 +273,16 @@ make clickhouse-test
 This uses a separate compose project named `osprey-clickhouse-test`, so it can
 run without interfering with the local dev stack.
 
-Measured on the same Apple Silicon macOS host from a clean reset stack:
+Re-measured on the same Apple Silicon macOS host:
 
-| Command | Scope | Wall time |
-| --- | --- | ---: |
-| `make druid-test PYTEST_ARGS='osprey_worker/src/osprey/worker/ui_api/osprey/views/tests/test_events_druid_integration.py'` | full isolated Druid integration file | about `166s` |
-| `make clickhouse-test PYTEST_ARGS='osprey_worker/src/osprey/worker/ui_api/osprey/views/tests/test_events_clickhouse_integration.py'` | full isolated ClickHouse integration file | about `30s` |
+| Command | Scope | Current observation |
+| --- | --- | --- |
+| `make druid-test PYTEST_ARGS='osprey_worker/src/osprey/worker/ui_api/osprey/views/tests/test_events_druid_integration.py'` | full isolated Druid integration file | one successful cold run completed in about `178s`; a later cold rerun on the same host flaked and failed after `303s` |
+| `make clickhouse-test PYTEST_ARGS='osprey_worker/src/osprey/worker/ui_api/osprey/views/tests/test_events_clickhouse_integration.py'` | full isolated ClickHouse integration file | cold run passed in `49.20s` end-to-end (`13 passed` in `5.19s` of pytest time) |
 
-That gap is large enough that the backend integration suites should stay
-separate from `make test`. The default fast path is meant to cover the main
-suite without paying for Druid or ClickHouse stack startup on every run.
+The backend suites should stay separate from `make test`. ClickHouse is
+meaningfully faster and more stable in this local flow, while Druid still pays
+for a heavier cluster startup and can be flaky on this Apple Silicon setup.
 
 These isolated integration suites now cover:
 

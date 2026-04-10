@@ -301,6 +301,180 @@ def test_clickhouse_scan_filters_boolean_features(
 
 
 @pytest.mark.use_rules_sources(CONFIG_ALLOW_ALL)
+def test_clickhouse_scan_matches_explicit_false_without_matching_missing_feature(
+    app: Flask,
+    client: 'FlaskClient[Response]',
+    seed_event: Callable[..., Dict[str, Any]],
+) -> None:
+    missing_timestamp = datetime(2026, 4, 8, 12, 0, tzinfo=UTC)
+    false_timestamp = datetime(2026, 4, 8, 12, 5, tzinfo=UTC)
+    true_timestamp = datetime(2026, 4, 8, 12, 10, tzinfo=UTC)
+
+    seed_event(
+        action_id=113,
+        timestamp=missing_timestamp,
+        action_name='create_post',
+        action_data={
+            'user_id': 'user_bool_missing',
+            'event_type': 'create_post',
+            'post': {'text': 'feature intentionally omitted'},
+        },
+        extracted_features={
+            'ActionName': 'create_post',
+            'UserId': 'user_bool_missing',
+            'EventType': 'create_post',
+            'PostText': 'feature intentionally omitted',
+            '__action_id': 113,
+            '__error_count': 0,
+            '__timestamp': missing_timestamp.isoformat(),
+        },
+    )
+    seed_event(
+        action_id=114,
+        timestamp=false_timestamp,
+        action_name='create_post',
+        action_data={
+            'user_id': 'user_bool_false',
+            'event_type': 'create_post',
+            'post': {'text': 'no greeting here'},
+        },
+        extracted_features={
+            'ActionName': 'create_post',
+            'UserId': 'user_bool_false',
+            'EventType': 'create_post',
+            'PostText': 'no greeting here',
+            'ContainsHello': False,
+            '__action_id': 114,
+            '__error_count': 0,
+            '__timestamp': false_timestamp.isoformat(),
+        },
+    )
+    seed_event(
+        action_id=115,
+        timestamp=true_timestamp,
+        action_name='create_post',
+        action_data={
+            'user_id': 'user_bool_true',
+            'event_type': 'create_post',
+            'post': {'text': 'hello there'},
+        },
+        extracted_features={
+            'ActionName': 'create_post',
+            'UserId': 'user_bool_true',
+            'EventType': 'create_post',
+            'PostText': 'hello there',
+            'ContainsHello': True,
+            '__action_id': 115,
+            '__error_count': 0,
+            '__timestamp': true_timestamp.isoformat(),
+        },
+    )
+
+    response = client.post(
+        url_for('events.scan_query'),
+        json={
+            'start': '2026-04-08T11:00:00+00:00',
+            'end': '2026-04-08T13:00:00+00:00',
+            'query_filter': 'ContainsHello == false',
+            'entity': None,
+            'limit': 10,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        'events': [
+            {
+                'id': 114,
+                'timestamp': false_timestamp.isoformat(),
+                'extracted_features': {
+                    'ActionName': 'create_post',
+                    'UserId': 'user_bool_false',
+                    'EventType': 'create_post',
+                    'PostText': 'no greeting here',
+                    'ContainsHello': False,
+                    '__action_id': 114,
+                    '__error_count': 0,
+                    '__timestamp': false_timestamp.isoformat(),
+                },
+            }
+        ],
+        'next_page': None,
+    }
+
+
+@pytest.mark.use_rules_sources(CONFIG_ALLOW_ALL)
+def test_clickhouse_scan_paginates_duplicate_timestamps_without_gaps_or_duplicates(
+    app: Flask,
+    client: 'FlaskClient[Response]',
+    seed_event: Callable[..., Dict[str, Any]],
+) -> None:
+    shared_timestamp = datetime(2026, 4, 8, 12, 0, tzinfo=UTC)
+
+    for action_id in [121, 122, 123, 124]:
+        seed_event(
+            action_id=action_id,
+            timestamp=shared_timestamp,
+            action_name='create_post',
+            action_data={
+                'user_id': f'user_page_{action_id}',
+                'event_type': 'create_post',
+                'post': {'text': f'post for {action_id}'},
+            },
+            extracted_features={
+                'ActionName': 'create_post',
+                'UserId': f'user_page_{action_id}',
+                'EventType': 'create_post',
+                'PostText': f'post for {action_id}',
+                'ContainsHello': False,
+                '__action_id': action_id,
+                '__error_count': 0,
+                '__timestamp': shared_timestamp.isoformat(),
+            },
+        )
+
+    first_page = client.post(
+        url_for('events.scan_query'),
+        json={
+            'start': '2026-04-08T11:00:00+00:00',
+            'end': '2026-04-08T13:00:00+00:00',
+            'query_filter': 'ActionName == "create_post"',
+            'entity': None,
+            'limit': 2,
+        },
+    )
+
+    assert first_page.status_code == 200
+    first_payload = first_page.get_json()
+    assert first_payload is not None
+    assert first_payload['next_page'] is not None
+    first_ids = {event['id'] for event in first_payload['events']}
+    assert len(first_ids) == 2
+
+    second_page = client.post(
+        url_for('events.scan_query'),
+        json={
+            'start': '2026-04-08T11:00:00+00:00',
+            'end': '2026-04-08T13:00:00+00:00',
+            'query_filter': 'ActionName == "create_post"',
+            'entity': None,
+            'limit': 2,
+            'next_page': first_payload['next_page'],
+        },
+    )
+
+    assert second_page.status_code == 200
+    second_payload = second_page.get_json()
+    assert second_payload is not None
+    assert second_payload['next_page'] is None
+    second_ids = {event['id'] for event in second_payload['events']}
+
+    assert len(second_ids) == 2
+    assert first_ids.isdisjoint(second_ids)
+    assert first_ids | second_ids == {121, 122, 123, 124}
+
+
+@pytest.mark.use_rules_sources(CONFIG_ALLOW_ALL)
 def test_clickhouse_aggregate_event_endpoints(
     app: Flask,
     client: 'FlaskClient[Response]',
@@ -805,3 +979,25 @@ def test_clickhouse_event_endpoints_reject_unknown_feature_names_with_bad_reques
 
     assert response.status_code == 400
     assert response.get_data(as_text=True) == 'Unknown feature name for ClickHouse query rendering: UnknownFeature'
+
+
+@pytest.mark.use_rules_sources(CONFIG_ALLOW_ALL)
+def test_clickhouse_topn_rejects_non_zero_precision_with_bad_request(
+    app: Flask,
+    client: 'FlaskClient[Response]',
+) -> None:
+    response = client.post(
+        url_for('events.topn_query'),
+        json={
+            'start': '2026-04-08T17:00:00+00:00',
+            'end': '2026-04-08T18:00:00+00:00',
+            'query_filter': '',
+            'entity': None,
+            'dimension': 'UserId',
+            'limit': 10,
+            'precision': 0.1,
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.get_data(as_text=True) == 'ClickHouse topn queries do not support non-zero precision'
