@@ -23,7 +23,7 @@ from typing import Optional, Set, TextIO, cast
 
 import click
 import gevent
-import kafka
+from confluent_kafka import Consumer
 import sentry_sdk
 from google.api_core.exceptions import AlreadyExists
 from google.cloud import pubsub_v1
@@ -51,7 +51,6 @@ from osprey.worker.sinks.sink.bulk_label_sink import BulkLabelSink
 from osprey.worker.sinks.sink.input_stream import PostgresInputStream
 from osprey.worker.sinks.sink.osprey_coordinator_input_stream import OspreyCoordinatorInputStream
 from osprey.worker.sinks.sink.rules_sink import RulesSink
-from osprey.worker.sinks.utils.kafka import PatchedKafkaConsumer
 
 LOGGER = get_logger()
 
@@ -81,9 +80,23 @@ def tail_kafka_output_sink() -> None:
     output_topic = config.get_str('OSPREY_KAFKA_OUTPUT_SINK_TOPIC', 'osprey.execution_results')
     bootstrap_servers = config.get_str_list('OSPREY_KAFKA_BOOTSTRAP_SERVERS', ['localhost'])
 
-    kakfa_consumer = kafka.KafkaConsumer(output_topic, bootstrap_servers=bootstrap_servers)
-    for event in kakfa_consumer:
-        print(event)
+    consumer = Consumer({
+        'bootstrap.servers': ','.join(bootstrap_servers),
+        'group.id': 'osprey-tail-output',
+        'auto.offset.reset': 'latest',
+    })
+    consumer.subscribe([output_topic])
+    try:
+        while True:
+            msg = consumer.poll(timeout=1.0)
+            if msg is None:
+                continue
+            if msg.error():
+                print(f'Error: {msg.error()}')
+                continue
+            print(msg.value())
+    finally:
+        consumer.close()
 
 
 @cli.command()
@@ -101,9 +114,25 @@ def tail_kafka_input_sink() -> None:
     client_id = config.get_str('OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID', 'localhost')
     bootstrap_servers = config.get_str_list('OSPREY_KAFKA_BOOTSTRAP_SERVERS', ['localhost'])
     input_topic = config.get_str('OSPREY_KAFKA_INPUT_STREAM_TOPIC', 'osprey.actions_input')
-    kafka_consumer = PatchedKafkaConsumer(input_topic, bootstrap_servers=bootstrap_servers, client_id=client_id)
-    for event in kafka_consumer:
-        print(event)
+
+    consumer = Consumer({
+        'bootstrap.servers': ','.join(bootstrap_servers),
+        'client.id': client_id,
+        'group.id': 'osprey-tail-input',
+        'auto.offset.reset': 'latest',
+    })
+    consumer.subscribe([input_topic])
+    try:
+        while True:
+            msg = consumer.poll(timeout=1.0)
+            if msg is None:
+                continue
+            if msg.error():
+                print(f'Error: {msg.error()}')
+                continue
+            print(msg.value())
+    finally:
+        consumer.close()
 
 
 @cli.command()

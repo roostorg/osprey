@@ -31,6 +31,7 @@ overrides = [{ name = "ddtrace", specifier = ">=2.17.2,<3.0.0" }]
 common = [
     { name = "blinker", specifier = "==1.9.0" },
     { name = "click", specifier = "==7.1.2" },
+    { name = "confluent-kafka", specifier = ">=2.14.0" },
     { name = "datadog", specifier = "==0.51.0" },
     { name = "ddtrace", specifier = "==2.21.11" },
     { name = "deepmerge", specifier = "==0.3.0" },
@@ -70,7 +71,6 @@ common = [
     { name = "hash-ring", url = "https://storage.googleapis.com/discord-devops/hash_ring-src-b4b56bc93053881b68b829ee9d1a4871b4aee592.zip" },
     { name = "intervals", specifier = "==0.9.2" },
     { name = "jsonpath-rw", url = "https://github.com/kennknowles/python-jsonpath-rw/archive/6f5647bb3ad2395c20f0191fef07a1df51c9fed8.tar.gz" },
-    { name = "kafka-python", specifier = "==1.4.7" },
     { name = "minio", specifier = ">=7.2.16" },
     { name = "mmh3", specifier = "==3.0.0" },
     { name = "msgpack", specifier = "==1.0.8" },
@@ -1314,15 +1314,6 @@ requires-dist = [
     { name = "decorator" },
     { name = "ply" },
     { name = "six" },
-]
-
-[[package]]
-name = "kafka-python"
-version = "1.4.7"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/58/20/2a2494fe7b4bf4cb36c060f88a55adcd944b7876877691a2f28cd544467b/kafka-python-1.4.7.tar.gz", hash = "sha256:2f29baad4b3efe05a2bb81ac268855aa01cbc68397f15bac77b494ffd7e2cada", size = 290977, upload-time = "2019-09-30T21:13:20.078Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/49/c9/9863483a1353700ba87821b4f39085eb18fd1bcbb1e954c697177d67f03f/kafka_python-1.4.7-py2.py3-none-any.whl", hash = "sha256:4fbebebfcb6fc94903fb720fe883d7bbec7298f4f1acb857c21dd3b4b114ba4b", size = 266121, upload-time = "2019-09-30T21:13:17.697Z" },
 ]
 
 [[package]]
