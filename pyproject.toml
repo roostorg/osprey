@@ -46,7 +46,7 @@ common = [
     "intervals==0.9.2",
     "jslog4kube==1.0.6",
     "jsonpath-rw",
-    "kafka-python==1.4.7",
+    "kafka-python==2.3.1",
     "minio>=7.2.16",
     "mmh3==3.0.0",
     "msgpack==1.0.8",
