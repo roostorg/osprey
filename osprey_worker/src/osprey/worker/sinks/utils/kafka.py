@@ -1,22 +1,26 @@
 """Threaded wrappers for confluent-kafka that keep librdkafka's C threads off the gevent event loop.
 
-confluent-kafka uses librdkafka (C) under the hood. Its internal threads and network I/O bypass
+confluent-kafka uses librdkafka under the hood. Its internal threads and network I/O bypass
 gevent's monkey-patching entirely, which means they can hold the GIL and starve greenlets. These
-wrappers run all confluent-kafka operations on dedicated OS threads and bridge back to greenlet-land
-via gevent queues.
+wrappers run all confluent-kafka operations on dedicated OS threads instead of greenlets, then
+bridge back to greenlet-land via gevent async watchers.
 """
 
-import threading
 from typing import Any, Optional
 
+import gevent._threading as _real_threading
 import gevent.queue
 import sentry_sdk
-from confluent_kafka import Consumer, KafkaError, KafkaException, Message, Producer
+from confluent_kafka import Consumer, KafkaException, Message, Producer
 from osprey.worker.lib.osprey_shared.logging import get_logger
 
 logger = get_logger()
 
 _SENTINEL = object()
+
+import gevent.monkey
+
+_real_sleep = gevent.monkey.get_original('time', 'sleep')
 
 
 class ThreadedKafkaConsumer:
@@ -25,12 +29,11 @@ class ThreadedKafkaConsumer:
     def __init__(self, consumer: Consumer, queue_maxsize: int = 1000) -> None:
         self._consumer = consumer
         self._queue: gevent.queue.Queue[Optional[Message]] = gevent.queue.Queue(maxsize=queue_maxsize)
-        self._stop_event = threading.Event()
-        self._thread = threading.Thread(target=self._poll_loop, daemon=True, name='kafka-consumer-thread')
-        self._thread.start()
+        self._running = True
+        self._thread_ident = _real_threading.start_new_thread(self._poll_loop, ())
 
     def _poll_loop(self) -> None:
-        while not self._stop_event.is_set():
+        while self._running:
             try:
                 msg = self._consumer.poll(timeout=1.0)
                 if msg is not None:
@@ -47,8 +50,7 @@ class ThreadedKafkaConsumer:
             return None
 
     def close(self) -> None:
-        self._stop_event.set()
-        self._thread.join(timeout=5)
+        self._running = False
         self._consumer.close()
 
 
@@ -59,19 +61,17 @@ class ThreadedKafkaProducer:
         self._producer = producer
         self._queue: gevent.queue.Queue = gevent.queue.Queue()
         self._poll_interval = poll_interval
-        self._stop_event = threading.Event()
-        self._thread = threading.Thread(target=self._produce_loop, daemon=True, name='kafka-producer-thread')
-        self._thread.start()
+        self._running = True
+        self._thread_ident = _real_threading.start_new_thread(self._produce_loop, ())
 
     def _produce_loop(self) -> None:
-        while not self._stop_event.is_set():
+        while self._running:
             self._producer.poll(0)
 
             try:
                 item = self._queue.get_nowait()
             except gevent.queue.Empty:
-                # No pending produce requests — just poll and sleep briefly
-                self._stop_event.wait(self._poll_interval)
+                _real_sleep(self._poll_interval)
                 continue
 
             if item is _SENTINEL:
@@ -95,7 +95,6 @@ class ThreadedKafkaProducer:
 
     def close(self, timeout: float = 10) -> int:
         """Stop the producer thread and flush remaining messages."""
-        self._stop_event.set()
+        self._running = False
         self._queue.put(_SENTINEL)
-        self._thread.join(timeout=5)
         return self._producer.flush(timeout)
