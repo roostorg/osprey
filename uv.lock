@@ -69,6 +69,7 @@ common = [
     { name = "gunicorn", git = "https://github.com/discord/gunicorn.git?rev=979efdcb918daa536d8923668241c6e6bf1edb58" },
     { name = "hash-ring", url = "https://storage.googleapis.com/discord-devops/hash_ring-src-b4b56bc93053881b68b829ee9d1a4871b4aee592.zip" },
     { name = "intervals", specifier = "==0.9.2" },
+    { name = "jslog4kube", specifier = "==1.0.6" },
     { name = "jsonpath-rw", url = "https://github.com/kennknowles/python-jsonpath-rw/archive/6f5647bb3ad2395c20f0191fef07a1df51c9fed8.tar.gz" },
     { name = "kafka-python", specifier = "==1.4.7" },
     { name = "minio", specifier = ">=7.2.16" },
@@ -1268,6 +1269,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/4f/e7/65300e6b32e69768ded990494809106f87da1d436418d5f1367ed3966fd7/Jinja2-2.11.3.tar.gz", hash = "sha256:a6d58433de0ae800347cab1fa3043cebbabe8baa9d29e668f1c768cb87a333c6", size = 257589, upload-time = "2021-01-31T16:33:09.175Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7e/c2/1eece8c95ddbc9b1aeb64f5783a9e07a286de42191b7204d67b7496ddf35/Jinja2-2.11.3-py2.py3-none-any.whl", hash = "sha256:03e47ad063331dd6a3f04a43eddca8a966a26ba0c5b7207a9a9e4e08f1b29419", size = 125699, upload-time = "2021-01-31T16:33:07.289Z" },
+]
+
+[[package]]
+name = "jslog4kube"
+version = "1.0.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "python-json-logger" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/58/19/a1d395d5de8998e889304b76ba2239659611bc43a2bae23cc0c9c792cbb2/jslog4kube-1.0.6.tar.gz", hash = "sha256:4b2fa3a9f9b920b74dae9d6707359b2bf62730ba502b8e92a918e8a5def036ff", size = 10971, upload-time = "2019-06-25T16:04:07.676Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cc/7d/484b541fdd060ac9a145e061dcd3c45ad29292db21b828add95667728550/jslog4kube-1.0.6-py2.py3-none-any.whl", hash = "sha256:07cbf494e5265198726b8203460401105e099a2816ba4ec9dae3ed5fe21322fb", size = 10881, upload-time = "2019-06-25T16:04:06.37Z" },
 ]
 
 [[package]]

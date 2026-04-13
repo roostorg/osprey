@@ -44,6 +44,7 @@ common = [
     "gunicorn",
     "hash-ring",
     "intervals==0.9.2",
+    "jslog4kube==1.0.6",
     "jsonpath-rw",
     "kafka-python==1.4.7",
     "minio>=7.2.16",
