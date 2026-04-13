@@ -71,7 +71,7 @@ common = [
     { name = "intervals", specifier = "==0.9.2" },
     { name = "jslog4kube", specifier = "==1.0.6" },
     { name = "jsonpath-rw", url = "https://github.com/kennknowles/python-jsonpath-rw/archive/6f5647bb3ad2395c20f0191fef07a1df51c9fed8.tar.gz" },
-    { name = "kafka-python", specifier = "==1.4.7" },
+    { name = "kafka-python", specifier = "==2.3.1" },
     { name = "minio", specifier = ">=7.2.16" },
     { name = "mmh3", specifier = "==3.0.0" },
     { name = "msgpack", specifier = "==1.0.8" },
@@ -1303,11 +1303,11 @@ requires-dist = [
 
 [[package]]
 name = "kafka-python"
-version = "1.4.7"
+version = "2.3.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/58/20/2a2494fe7b4bf4cb36c060f88a55adcd944b7876877691a2f28cd544467b/kafka-python-1.4.7.tar.gz", hash = "sha256:2f29baad4b3efe05a2bb81ac268855aa01cbc68397f15bac77b494ffd7e2cada", size = 290977, upload-time = "2019-09-30T21:13:20.078Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a4/98/cbecbe20ec9e4e6f978c42229e7c777f498eec5061f986b4acfa34a7ec46/kafka_python-2.3.1.tar.gz", hash = "sha256:90f1caa12d8faa9fd059852b0c73adf169b979279aa2e3ff370f9fe615d654b6", size = 357302, upload-time = "2026-04-09T21:10:22.861Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/49/c9/9863483a1353700ba87821b4f39085eb18fd1bcbb1e954c697177d67f03f/kafka_python-1.4.7-py2.py3-none-any.whl", hash = "sha256:4fbebebfcb6fc94903fb720fe883d7bbec7298f4f1acb857c21dd3b4b114ba4b", size = 266121, upload-time = "2019-09-30T21:13:17.697Z" },
+    { url = "https://files.pythonhosted.org/packages/78/83/6f79b5e03f7d259cba60d3e48c97f7b76a86d20486a515e8ffadea97434e/kafka_python-2.3.1-py2.py3-none-any.whl", hash = "sha256:4908865da9e57f0f966a83788c71cb0ae91c33451a26ab6e6984a00b15c6ed71", size = 326065, upload-time = "2026-04-09T21:10:24.685Z" },
 ]
 
 [[package]]
