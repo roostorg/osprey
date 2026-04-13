@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 from google.cloud import pubsub_v1
 from confluent_kafka import Consumer
+from osprey.worker.sinks.utils.kafka import ThreadedKafkaConsumer
 from osprey.engine.executor.execution_context import Action
 from osprey.worker.adaptor.plugin_manager import bootstrap_input_stream
 from osprey.worker.lib.singletons import CONFIG
@@ -122,11 +123,12 @@ def get_rules_sink_input_stream(
 
         consumer = Consumer(consumer_config)
         consumer.subscribe([input_topic])
+        threaded_consumer = ThreadedKafkaConsumer(consumer)
 
         from osprey.worker.sinks.sink.input_stream import KafkaInputStream
 
         return KafkaInputStream(
-            kafka_consumer=consumer,
+            kafka_consumer=threaded_consumer,
         )
     elif input_stream_source == InputStreamSource.PLUGIN:
         stream = bootstrap_input_stream(config=config)

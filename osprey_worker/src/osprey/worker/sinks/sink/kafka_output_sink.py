@@ -7,6 +7,7 @@ from confluent_kafka.admin import AdminClient, NewTopic
 from osprey.engine.executor.execution_context import ExecutionResult
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.sinks.sink.output_sink import BaseOutputSink
+from osprey.worker.sinks.utils.kafka import ThreadedKafkaProducer
 
 logger = get_logger()
 
@@ -27,7 +28,6 @@ class KafkaOutputSink(BaseOutputSink):
         bootstrap_servers: list[str],
         output_topic: str,
         client_id: str | None,
-        poll_every: int = 20,
     ) -> None:
         if len(bootstrap_servers) == 0:
             raise EmptyBootstrapServersException()
@@ -39,8 +39,6 @@ class KafkaOutputSink(BaseOutputSink):
 
         self._bootstrap_servers = bootstrap_servers
         self._output_topic = output_topic
-        self._poll_every = poll_every
-        self._message_count = 0
 
         # NOTE(haileyok): this is...not necessary probably
         self.topic_ensured = False
@@ -71,7 +69,8 @@ class KafkaOutputSink(BaseOutputSink):
             'message.max.bytes': 20_000_000,
         }
 
-        self.producer = Producer(config)
+        self._producer = Producer(config)
+        self._threaded_producer = ThreadedKafkaProducer(self._producer)
         self.ensure_topic()
 
         super().__init__()
@@ -100,39 +99,22 @@ class KafkaOutputSink(BaseOutputSink):
         except Exception as e:
             self.logger.error(f'Error creating topic, unable to ensure topic: {e}')
 
-    def _handle_polling(self) -> None:
-        """Poll periodically based on message count"""
-        self._message_count += 1
-        if self._message_count % self._poll_every == 0:
-            self.producer.poll(0)
-
     def will_do_work(self, result: ExecutionResult) -> bool:
         return True
 
     def push(self, result: ExecutionResult) -> None:
-        try:
-            self.producer.produce(
-                self._output_topic,
-                value=result.extracted_features_json.encode('utf-8'),
-                on_delivery=self._on_delivery,
-            )
-        except BufferError:
-            self.logger.warning('Producer queue full, flushing before retry')
-            self.producer.flush(timeout=5)
-            self.producer.produce(
-                self._output_topic,
-                value=result.extracted_features_json.encode('utf-8'),
-                on_delivery=self._on_delivery,
-            )
-
-        self._handle_polling()
+        self._threaded_producer.produce(
+            self._output_topic,
+            value=result.extracted_features_json.encode('utf-8'),
+            on_delivery=self._on_delivery,
+        )
 
     def _on_delivery(self, err: Any, msg: Any) -> None:
         if err is not None:
             self.push_err_to_sentry(err)
 
     def flush(self, timeout: float = 30) -> int:
-        return self.producer.flush(timeout)
+        return self._threaded_producer.flush(timeout)
 
     @classmethod
     def push_err_to_sentry(cls, e: Exception) -> None:
@@ -140,6 +122,6 @@ class KafkaOutputSink(BaseOutputSink):
         sentry_sdk.capture_exception(error=e)
 
     def stop(self) -> None:
-        remaining = self.flush(timeout=10)
+        remaining = self._threaded_producer.close(timeout=10)
         if remaining > 0:
             logger.warning(f'{remaining} messages were not delivered')

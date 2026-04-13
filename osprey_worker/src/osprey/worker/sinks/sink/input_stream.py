@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Generic, Iterator, List, Optional, Sequence, T
 import gevent
 import msgpack
 import sentry_sdk
-from confluent_kafka import Consumer
 from confluent_kafka import Message as KafkaMessage
 from gevent.lock import RLock
 from gevent.queue import Queue as GeventQueue
@@ -43,6 +42,7 @@ _PydanticModelT = TypeVar('_PydanticModelT', bound=BaseModel, covariant=True)
 
 if TYPE_CHECKING:
     from google.cloud.pubsub_v1.types import PullResponse
+    from osprey.worker.sinks.utils.kafka import ThreadedKafkaConsumer
 
 
 class BaseInputStream(abc.ABC, Generic[_T]):
@@ -413,9 +413,9 @@ class PostgresInputStream(BaseInputStream[_ModelT]):
 class KafkaInputStream(BaseInputStream[BaseAckingContext[Action]]):
     """An input stream that consumes messages from a Kafka topic and yields Action objects wrapped in an AckingContext."""
 
-    def __init__(self, kafka_consumer: Consumer):
+    def __init__(self, kafka_consumer: 'ThreadedKafkaConsumer'):
         super().__init__()
-        self._consumer: Consumer = kafka_consumer
+        self._consumer = kafka_consumer
 
     def _gen(self) -> Iterator[BaseAckingContext[Action]]:
         while True:
