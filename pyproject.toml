@@ -44,6 +44,7 @@ common = [
     "gunicorn",
     "hash-ring",
     "intervals==0.9.2",
+    "jslog4kube==1.0.6",
     "jsonpath-rw",
     "confluent-kafka>=2.14.0",
     "minio>=7.2.16",
@@ -212,6 +213,8 @@ ignore_unused = [
     "setuptools",
     # Runtime CLI: started via command line, not imported in source
     "gunicorn",
+    # Gunicorn logger class: loaded via --logger-class flag, not imported in source
+    "jslog4kube",
     # Optional runtime dep of sentry-sdk for FlaskIntegration
     "blinker",
     # gRPC server extensions: registered at startup, not imported directly
