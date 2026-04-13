@@ -68,7 +68,7 @@ class KafkaOutputSink(BaseOutputSink):
             'enable.idempotence': True,
             'acks': 'all',
             'max.in.flight.requests.per.connection': 5,
-            'max.message.bytes': 20_000_000,
+            'message.max.bytes': 20_000_000,
         }
 
         self.producer = Producer(config)
