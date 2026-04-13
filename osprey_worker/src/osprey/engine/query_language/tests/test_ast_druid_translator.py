@@ -73,6 +73,22 @@ def test_parses_query_with_null_value(
     assert check_json_output(transformed_query)
 
 
+def test_parses_query_with_lowercase_boolean_value(make_rules_sources: MakeRulesSourcesFunction) -> None:
+    validated_sources = parse_query_to_validated_ast(
+        'ContainsHello == true',
+        make_rules_sources([('ContainsHello', 'True')]),
+    )
+    transformed_query = DruidQueryTransformer(validated_sources=validated_sources).transform()
+
+    assert transformed_query == {
+        'filter': {
+            'type': 'selector',
+            'dimension': 'ContainsHello',
+            'value': 1,
+        }
+    }
+
+
 def test_parses_query_with_regex(
     make_rules_sources: MakeRulesSourcesFunction, check_json_output: CheckJsonOutputFunction
 ) -> None:

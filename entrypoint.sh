@@ -19,16 +19,23 @@ EOF
 }
 
 cli-osprey-ui-api() {
-  exec uv run gunicorn \
-    --reload \
-    --access-logfile - \
-    --error-logfile - \
-    --logger-class jslog4kube.GunicornLogger \
-    --name osprey_ui_api \
-    --worker-class gevent \
-    --chdir /osprey/osprey_worker/src \
-    --bind :5004 \
+  gunicorn_args=(
+    uv run gunicorn
+    --reload
+    --access-logfile -
+    --error-logfile -
+    --name osprey_ui_api
+    --worker-class gevent
+    --chdir /osprey/osprey_worker/src
+    --bind :5004
     "osprey.worker.ui_api.osprey.app:create_app()"
+  )
+
+  if /osprey/.venv/bin/python -c 'import jslog4kube' >/dev/null 2>&1; then
+    gunicorn_args+=(--logger-class jslog4kube.GunicornLogger)
+  fi
+
+  exec "${gunicorn_args[@]}"
 }
 
 cli-osprey-worker() {

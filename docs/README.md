@@ -9,7 +9,9 @@ New to the project? We recommend reading the documentation in this order:
 1. **[Code of Conduct](https://github.com/roostorg/.github/blob/main/CODE_OF_CONDUCT.md)** - Understand our community standards
 2. **[Contributing Guidelines](https://github.com/roostorg/.github/blob/main/CONTRIBUTING.md)** - Learn how to contribute
 3. **[Development Guide](DEVELOPMENT.md)** - Set up your development environment and get started using Osprey
-4. **[Osprey UI](UI.md)** - Understand how to use and navigate the UI
+4. **[Event Query Backends](development/event_query_backends.md)** - Add a new event-query provider such as BigQuery
+5. **[ClickHouse Local Footprint](development/clickhouse_local_footprint.md)** - Compare the local Docker cost of Druid and ClickHouse dev stacks
+6. **[Osprey UI](UI.md)** - Understand how to use and navigate the UI
 
 ## Reporting a Bug or Issue
 

@@ -1,4 +1,6 @@
-# Volumes for druid purposes only
+name: osprey
+
+# Volumes for local service state.
 volumes:
   metadata_data: {}
   middle_var: {}
@@ -8,6 +10,7 @@ volumes:
   router_var: {}
   druid_shared: {}
   minio_data: {}
+  clickhouse_data: {}
 
 services:
   osprey-kafka:
@@ -44,7 +47,7 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: minio
+    container_name: osprey-minio
     hostname: minio
     ports:
       - "127.0.0.1:9000:9000" # minio API
@@ -82,6 +85,28 @@ services:
         kafka-topics --bootstrap-server osprey-kafka:29092 --create --if-not-exists --topic osprey.execution_results --partitions 3 --replication-factor 1 &&
         kafka-topics --bootstrap-server osprey-kafka:29092 --list
       "
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.3
+    container_name: osprey-clickhouse
+    hostname: clickhouse
+    profiles:
+      - clickhouse
+    depends_on:
+      osprey-kafka:
+        condition: service_healthy
+      osprey-kafka-topic-creator:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:8123:8123"
+      - "127.0.0.1:9009:9000"
+    environment:
+      - CLICKHOUSE_DB=osprey
+      - CLICKHOUSE_USER=osprey
+      - CLICKHOUSE_PASSWORD=osprey
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse/init:/docker-entrypoint-initdb.d
 
   osprey-worker:
     container_name: osprey-worker
@@ -152,11 +177,25 @@ services:
       - FLASK_DEBUG=1
       - FLASK_ENV=development
       - DRUID_URL=http://druid-broker:8082
+      - OSPREY_EVENT_QUERY_BACKEND=${OSPREY_EVENT_QUERY_BACKEND:-druid}
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-clickhouse}
+      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8123}
+      - CLICKHOUSE_USERNAME=${CLICKHOUSE_USERNAME:-osprey}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-osprey}
+      - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-osprey}
+      - CLICKHOUSE_EVENT_TABLE=${CLICKHOUSE_EVENT_TABLE:-execution_results}
       - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
       - DD_TRACE_ENABLED=False
       - DD_DOGSTATSD_DISABLE=True
       - OSPREY_RULES_PATH=/osprey/example_rules
       - OSPREY_DISABLE_VALIDATION_EXPORTER=true
+      - OSPREY_DISABLE_ANALYTICS_PUBLISHER=true
+      - OSPREY_EXECUTION_RESULT_STORAGE_BACKEND=minio
+      - OSPREY_MINIO_ENDPOINT=minio:9000
+      - OSPREY_MINIO_ACCESS_KEY=minioadmin
+      - OSPREY_MINIO_SECRET_KEY=minioadmin123
+      - OSPREY_MINIO_SECURE=false
+      - OSPREY_MINIO_EXECUTION_RESULTS_BUCKET=execution-output
       - BIGTABLE_EMULATOR_HOST=bigtable:8361
       - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
       - SNOWFLAKE_EPOCH=1420070400000
@@ -177,14 +216,14 @@ services:
       - "127.0.0.1:5002:5002"
     environment:
       - NODE_ENV=development
-      - REACT_APP_API_BASE_URL=http://localhost:5004
+      - REACT_APP_API_BASE_URL=http://127.0.0.1:5004
     volumes:
       - ./osprey_ui:/app
       - /app/node_modules
 
   snowflake-id-worker:
     hostname: snowflake-id-worker
-    container_name: snowflake-id-worker
+    container_name: osprey-snowflake-id-worker
     image: ghcr.io/ayubun/snowflake-id-worker:0
     ports:
       - "127.0.0.1:8088:8088"
@@ -197,7 +236,9 @@ services:
 
   bigtable:
     hostname: bigtable
-    container_name: bigtable
+    container_name: osprey-bigtable
+    profiles:
+      - bigtable
     image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
     ports:
       - "127.0.0.1:8361:8361"
@@ -213,7 +254,9 @@ services:
     restart: unless-stopped
 
   bigtable-initializer:
-    container_name: bigtable-initializer
+    container_name: osprey-bigtable-initializer
+    profiles:
+      - bigtable
     image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
     depends_on:
       bigtable:
@@ -247,7 +290,7 @@ services:
 
   postgres:
     hostname: postgres
-    container_name: postgres
+    container_name: osprey-postgres
     image: postgres:18
     ports:
       - "127.0.0.1:5432:5432"
@@ -268,7 +311,7 @@ services:
   # Need 3.5 or later for container nodes
   druid-zookeeper:
     hostname: druid-zookeeper
-    container_name: druid-zookeeper
+    container_name: osprey-druid-zookeeper
     image: zookeeper:3.5.10
     ports:
       - "127.0.0.1:2181:2181"
@@ -278,7 +321,7 @@ services:
   druid-coordinator:
     image: apache/druid:34.0.0
     hostname: druid-coordinator
-    container_name: druid-coordinator
+    container_name: osprey-druid-coordinator
     volumes:
       - druid_shared:/opt/shared
       - coordinator_var:/opt/druid/var
@@ -294,7 +337,7 @@ services:
 
   druid-broker:
     image: apache/druid:34.0.0
-    container_name: druid-broker
+    container_name: osprey-druid-broker
     hostname: druid-broker
     volumes:
       - broker_var:/opt/druid/var
@@ -311,7 +354,7 @@ services:
 
   druid-historical:
     image: apache/druid:34.0.0
-    container_name: druid-historical
+    container_name: osprey-druid-historical
     hostname: druid-historical
     volumes:
       - druid_shared:/opt/shared
@@ -329,7 +372,7 @@ services:
 
   druid-middlemanager:
     image: apache/druid:34.0.0
-    container_name: druid-middlemanager
+    container_name: osprey-druid-middlemanager
     hostname: druid-middlemanager
     volumes:
       - druid_shared:/opt/shared
@@ -348,7 +391,7 @@ services:
 
   druid-router:
     image: apache/druid:34.0.0
-    container_name: druid-router
+    container_name: osprey-druid-router
     hostname: druid-router
     volumes:
       - router_var:/opt/druid/var
