@@ -51,7 +51,7 @@ pub use tonic::server::NamedService;
 
 pub async fn serve<GS>(
     grpc_service: GS,
-    service_name: &'static str,
+    service_name: &str,
     service_port: u16,
     announce_delay: Duration,
 ) -> Result<()>

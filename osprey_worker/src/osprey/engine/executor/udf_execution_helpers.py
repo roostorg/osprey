@@ -3,10 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Dict, Generic, Hashable, Type, TypeVar, cast
 
-from osprey.engine.executor.external_service_utils import (
-    ExternalService,
-    ExternalServiceAccessor,
-)
+from osprey.engine.executor.external_service_utils_base import ExternalService
 
 if TYPE_CHECKING:
     from osprey.engine.executor.execution_context import ExecutionContext
@@ -23,7 +20,7 @@ class HasHelperInternal(Generic[HelperT]):
     def accessor_get(self, execution_context: ExecutionContext, key: KeyT, lock: bool = False) -> ValueT:  # type: ignore[type-var]
         udf = cast(HasHelperInternal[ExternalService[KeyT, ValueT]], self)
         provider: ExternalService[KeyT, ValueT] = execution_context.get_udf_helper(udf)
-        accessor: ExternalServiceAccessor[KeyT, ValueT] = execution_context.get_external_service_accessor(provider)
+        accessor = execution_context.get_external_service_accessor(provider)
         return accessor.get(key)
 
 
