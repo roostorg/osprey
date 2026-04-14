@@ -426,6 +426,8 @@ def execute(
             'osprey.action_error_count', len(actionable_error_infos), tags=[f'action:{action.action_name}']
         )
 
+    trace_id = str(parent_tracer_span.trace_id) if parent_tracer_span else None
+
     result = ExecutionResult(
         extracted_features=context.get_extracted_features(),
         action=action,
@@ -433,5 +435,7 @@ def execute(
         validator_results=validator_results,
         error_infos=unexpected_error_infos,
         sample_rate=sample_rate,
+        trace_id=trace_id,
+        rule_audit_entries=context.get_rule_audit_entries(),
     )
     return result

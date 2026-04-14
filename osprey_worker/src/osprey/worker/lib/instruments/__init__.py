@@ -206,6 +206,19 @@ class _DogStatsd(DogStatsd):
 metrics = _DogStatsd()
 
 
+def set_worker_type_tag(worker_type: str) -> None:
+    """Add worker_type as a constant tag on the metrics singleton.
+
+    Must be called once at startup. All subsequent metrics will include
+    the worker_type tag automatically — no per-call-site changes needed.
+    """
+    tag = f'worker_type:{worker_type}'
+    if metrics.constant_tags is None:
+        metrics.constant_tags = [tag]
+    elif tag not in metrics.constant_tags:
+        metrics.constant_tags.append(tag)
+
+
 class concurrency(contextlib.ContextDecorator):
     """A decorator for tracking concurrent calls of a function as a Gauge
 
