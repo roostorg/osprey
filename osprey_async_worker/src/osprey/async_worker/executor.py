@@ -412,6 +412,12 @@ async def execute(
 
     ready_sync, ready_async = _get_ready_sync_and_async(allow_async, context)
 
+    # Executor path counters for diagnosing CPU overhead
+    _sync_chains_executed = 0
+    _async_native_executed = 0
+    _async_legacy_executed = 0
+    _yields_performed = 0
+
     while ready_sync or ready_async or in_progress_singlets or in_progress_batches:
         # Check for already-finished tasks (non-blocking)
         finished_singlets = [t for t in in_progress_singlets if t.done()]
@@ -453,11 +459,13 @@ async def execute(
                     task = asyncio.create_task(
                         _execute_async_udf(semaphore, async_chain, context, error_infos)
                     )
+                    _async_native_executed += 1
                 else:
                     # Legacy sync UDF with execute_async=True → thread pool fallback
                     task = asyncio.create_task(
                         _execute_legacy_in_executor(loop, semaphore, async_chain, context, error_infos)
                     )
+                    _async_legacy_executed += 1
                 in_progress_singlets[task] = async_chain
 
         # Execute sync chains inline (pure computation, fast, no I/O).
@@ -467,10 +475,19 @@ async def execute(
         for i, sync_chain in enumerate(ready_sync):
             if (in_progress_singlets or in_progress_batches) and i % 100 == 0:
                 await asyncio.sleep(0)
+                _yields_performed += 1
+            _sync_chains_executed += 1
             result = _execute_sync(sync_chain, context, error_infos)
             context.set_resolved_value(sync_chain, result)
 
         ready_sync, ready_async = _get_ready_sync_and_async(allow_async, context)
+
+    # Emit executor path metrics
+    action_tags = [f'action:{action.action_name}']
+    metrics.histogram('osprey.executor.sync_chains', _sync_chains_executed, tags=action_tags)
+    metrics.histogram('osprey.executor.async_native', _async_native_executed, tags=action_tags)
+    metrics.histogram('osprey.executor.async_legacy', _async_legacy_executed, tags=action_tags)
+    metrics.histogram('osprey.executor.yields', _yields_performed, tags=action_tags)
 
     # --- Build result ---
 
