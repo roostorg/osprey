@@ -461,10 +461,11 @@ async def execute(
                 in_progress_singlets[task] = async_chain
 
         # Execute sync chains inline (pure computation, fast, no I/O).
-        # Yield every 10 chains so concurrent tasks can send acks/receive actions
-        # between rule evaluations — prevents GIL starvation in multi-stream workers.
+        # Only yield when async tasks are in flight (matches gevent behavior).
+        # Each sleep(0) triggers a full event loop cycle including gRPC C-core polling,
+        # so unnecessary yields cause significant context-switch overhead.
         for i, sync_chain in enumerate(ready_sync):
-            if i > 0 and i % 10 == 0:
+            if (in_progress_singlets or in_progress_batches) and i % 100 == 0:
                 await asyncio.sleep(0)
             result = _execute_sync(sync_chain, context, error_infos)
             context.set_resolved_value(sync_chain, result)
