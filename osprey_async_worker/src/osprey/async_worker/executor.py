@@ -469,11 +469,13 @@ async def execute(
                 in_progress_singlets[task] = async_chain
 
         # Execute sync chains inline (pure computation, fast, no I/O).
-        # Only yield when async tasks are in flight (matches gevent behavior).
+        # Only yield deep into a long sync round when async tasks are in flight.
         # Each sleep(0) triggers a full event loop cycle including gRPC C-core polling,
         # so unnecessary yields cause significant context-switch overhead.
+        # Short rounds (<100 chains) skip yielding entirely — the asyncio.wait() at the
+        # top of the loop provides natural yield points between rounds.
         for i, sync_chain in enumerate(ready_sync):
-            if (in_progress_singlets or in_progress_batches) and i % 100 == 0:
+            if (in_progress_singlets or in_progress_batches) and i > 0 and i % 100 == 0:
                 await asyncio.sleep(0)
                 _yields_performed += 1
             _sync_chains_executed += 1
