@@ -101,7 +101,7 @@ def cached_property(func: Callable[[SelfT], ReturnT]) -> Property[SelfT, ReturnT
         self_id = id(self)
         if self_id not in value_cache:
             value_cache[self_id] = func(self)
-            weakref.finalize(self, lambda: value_cache.pop(self_id))
+            weakref.finalize(self, lambda: value_cache.pop(self_id, None))
 
         return value_cache[self_id]
 

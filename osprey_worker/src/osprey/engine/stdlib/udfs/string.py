@@ -24,6 +24,8 @@ class StringArguments(ArgumentsBase):
 
 
 class StringLength(UDFBase[StringArguments, int]):
+    """Returns the length of the string."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> int:
@@ -31,6 +33,8 @@ class StringLength(UDFBase[StringArguments, int]):
 
 
 class StringToLower(UDFBase[StringArguments, str]):
+    """Converts the string to lowercase."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> str:
@@ -38,6 +42,8 @@ class StringToLower(UDFBase[StringArguments, str]):
 
 
 class StringToUpper(UDFBase[StringArguments, str]):
+    """Converts the string to uppercase."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> str:
@@ -50,6 +56,8 @@ class StringStartsWithArgument(StringArguments):
 
 
 class StringStartsWith(UDFBase[StringStartsWithArgument, bool]):
+    """Returns true if the string starts with the given prefix."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringStartsWithArgument) -> bool:
@@ -61,6 +69,8 @@ class StringEndsWithArgument(StringArguments):
 
 
 class StringEndsWith(UDFBase[StringEndsWithArgument, bool]):
+    """Returns true if the string ends with the given suffix."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringEndsWithArgument) -> bool:
@@ -72,6 +82,8 @@ class StringStripArguments(StringArguments):
 
 
 class StringStrip(UDFBase[StringStripArguments, str]):
+    """Strips whitespace (or specified characters) from both ends of the string."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringStripArguments) -> str:
@@ -79,6 +91,8 @@ class StringStrip(UDFBase[StringStripArguments, str]):
 
 
 class StringRStrip(UDFBase[StringStripArguments, str]):
+    """Strips whitespace (or specified characters) from the right side of the string."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringStripArguments) -> str:
@@ -86,6 +100,8 @@ class StringRStrip(UDFBase[StringStripArguments, str]):
 
 
 class StringLStrip(UDFBase[StringStripArguments, str]):
+    """Strips whitespace (or specified characters) from the left side of the string."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringStripArguments) -> str:
@@ -98,6 +114,8 @@ class StringReplaceArguments(StringArguments):
 
 
 class StringReplace(UDFBase[StringReplaceArguments, str]):
+    """Replaces all occurrences of a substring with another string."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringReplaceArguments) -> str:
@@ -109,6 +127,8 @@ class StringJoinArguments(StringArguments):
 
 
 class StringJoin(UDFBase[StringJoinArguments, str]):
+    """Joins a list of strings using the given separator."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringJoinArguments) -> str:
@@ -121,6 +141,8 @@ class StringSplitArguments(StringArguments):
 
 
 class StringSplit(UDFBase[StringSplitArguments, List[str]]):
+    """Splits the string by a delimiter into a list of strings."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringSplitArguments) -> List[str]:
@@ -133,6 +155,8 @@ class StringSliceArguments(StringArguments):
 
 
 class StringSlice(UDFBase[StringSliceArguments, str]):
+    """Returns a substring from start index to end index."""
+
     category = UdfCategories.STRING
 
     def __init__(self, validation_context: ValidationContext, arguments: StringSliceArguments):
