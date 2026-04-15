@@ -48,7 +48,7 @@ from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase, AsyncU
 
 logger = get_logger(__name__)
 
-_DEFAULT_MAX_ASYNC_PER_EXECUTION = 12
+_DEFAULT_MAX_ASYNC_PER_EXECUTION = int(os.environ.get('OSPREY_MAX_ASYNC_PER_EXECUTION', '12'))
 
 
 def _get_ready_sync_and_async(
