@@ -87,6 +87,7 @@ fn handle_action_request(
             ack_or_nack
         )),
         (ActionRequest::AckOrNack(ack_or_nack), ClientState::OutstandingAction(state)) => {
+            metrics.bidi_acks_received.incr();
             let duration = Instant::now().duration_since(state.send_time);
             metrics.action_outstanding_duration.record(duration);
             state.action_acker.ack_or_nack(
@@ -145,6 +146,7 @@ async fn handle_request(
                 .record(Instant::now().duration_since(priority_queue_receive_start_time));
             let (action, action_acker) = ackable_action.into_action();
             sender.send(Ok(action)).await?;
+            metrics.bidi_actions_sent.incr();
             Ok(UpdateClientStateOrDisconnect::UpdateClientState(
                 ClientState::OutstandingAction(OutstandingActionState {
                     action_acker,
