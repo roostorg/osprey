@@ -202,6 +202,12 @@ class OspreyCoordinatorBiDirectionalStream:
             if request is None:
                 # Sentinel value — stop the outgoing side of the stream
                 return
+            # Measure queue depth and drain latency
+            metrics.gauge('osprey_coordinator_input_stream.outgoing_queue_depth', self._outgoing_queue.qsize())
+            enqueue_time = getattr(request, '_enqueue_time', None)
+            if enqueue_time is not None:
+                drain_latency_ms = (time.time() - enqueue_time) * 1000
+                metrics.histogram('osprey_coordinator_input_stream.ack_enqueue_to_iterator_drain_ms', drain_latency_ms)
             yield request
 
     async def _send(self, request: Request) -> None:
@@ -223,19 +229,21 @@ class OspreyCoordinatorBiDirectionalStream:
         await self._outgoing_queue.put(Request(disconnect=Disconnect(ack_or_nack=ack_or_nack)))
         await self._enqueue_stop_signal()
 
-    async def send_ack_or_nack(
+    def send_ack_or_nack(
         self, ack_id: int, ack: bool = True, verdicts: Optional[Verdicts] = None
     ) -> None:
+        """Fire-and-forget ack — uses put_nowait to match gevent's non-blocking Queue.put()."""
         ack_or_nack = (
             AckOrNack(ack_id=ack_id, ack=Ack(verdicts=verdicts if verdicts else None))
             if ack
             else AckOrNack(ack_id=ack_id, nack=Nack())
         )
         req = Request(action_request=ActionRequest(ack_or_nack=ack_or_nack))
+        req._enqueue_time = time.time()  # stamp for drain latency measurement
         metrics.increment('ack_or_nack', tags=[f'ack:{ack}', f'verdicts:{verdicts is not None}'])
         logger.debug('submitting acking action request')
         self._last_action_request_time = time.time()
-        await self._outgoing_queue.put(req)
+        self._outgoing_queue.put_nowait(req)
 
     def get_uptime(self) -> float:
         assert self._connect_time is not None, 'This was called before a connection was established'

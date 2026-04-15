@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass
 from random import randint
 from typing import Optional
@@ -129,9 +130,14 @@ class AsyncRulesSink:
         async for message_context in self._input_stream:
             try:
                 with message_context as action:
-                    if action.data.get('osprey_skip_async_classification', False) or action.data.get(
-                        'osprey_skip_async', False
-                    ):
+                    action_tags = [f'action:{action.action_name}']
+                    metrics.increment('rules_sink.input_action_received', tags=action_tags)
+
+                    if action.data.get('osprey_skip_async_classification', False):
+                        metrics.increment('rules_sink.skipped', tags=action_tags + ['reason:osprey_skip_async_classification'])
+                        continue
+                    if action.data.get('osprey_skip_async', False):
+                        metrics.increment('rules_sink.skipped', tags=action_tags + ['reason:osprey_skip_async'])
                         continue
 
                     with tracer.start_span('osprey.async.classify_one', child_of=None) as span:
@@ -141,11 +147,13 @@ class AsyncRulesSink:
                             action.action_id = generate_snowflake(retries=3).to_int()
 
                         info_log_osprey_action(action.action_id, action.action_name, 'beginning async classify_one')
+                        classify_start = time.monotonic()
                         result = await self._rules_runner.classify_one(
                             action,
                             tag='sink:async-rules-sink',
                             parent_tracer_span=span,
                         )
+                        classify_done = time.monotonic()
 
                         if isinstance(message_context, VerdictsAckingContext):
                             if result is None:
@@ -155,6 +163,15 @@ class AsyncRulesSink:
                                 metrics.increment('rules_sink.captured_verdicts')
 
                         info_log_osprey_action(action.action_id, action.action_name, 'async classify_one complete')
+
+                    # Measure time from classify done to after ack is enqueued
+                    # (ack happens in context manager __exit__ → send_ack_or_nack)
+                    ack_enqueue_time = time.monotonic()
+                    metrics.histogram(
+                        'osprey_coordinator_input_stream.classify_to_ack_enqueue_ms',
+                        (ack_enqueue_time - classify_done) * 1000,
+                        tags=action_tags,
+                    )
             except asyncio.CancelledError:
                 return
             except Exception as e:
