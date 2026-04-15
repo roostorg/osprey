@@ -186,7 +186,7 @@ class OspreyCoordinatorBiDirectionalStream:
 
     def __init__(self, client_id: str, channel: grpc.aio.Channel, service: Service) -> None:
         self._client_id = client_id
-        self._outgoing_queue: asyncio.Queue[Optional[Request]] = asyncio.Queue()
+        self._outgoing_queue: asyncio.Queue[Optional[Tuple[Request, Optional[float]]]] = asyncio.Queue()
         self._stub = OspreyCoordinatorServiceStub(channel=channel)
         self._tags = [f'coordinator_connection_address:{service.connection_address}']
         self._connect_time: Optional[float] = None
@@ -198,20 +198,20 @@ class OspreyCoordinatorBiDirectionalStream:
     async def _outgoing_iterator(self) -> AsyncIterator[Request]:
         """Async generator that drains the outgoing queue for the gRPC call."""
         while True:
-            request = await self._outgoing_queue.get()
-            if request is None:
+            item = await self._outgoing_queue.get()
+            if item is None:
                 # Sentinel value — stop the outgoing side of the stream
                 return
+            request, enqueue_time = item
             # Measure queue depth and drain latency
             metrics.gauge('osprey_coordinator_input_stream.outgoing_queue_depth', self._outgoing_queue.qsize())
-            enqueue_time = getattr(request, '_enqueue_time', None)
             if enqueue_time is not None:
                 drain_latency_ms = (time.time() - enqueue_time) * 1000
                 metrics.histogram('osprey_coordinator_input_stream.ack_enqueue_to_iterator_drain_ms', drain_latency_ms)
             yield request
 
     async def _send(self, request: Request) -> None:
-        await self._outgoing_queue.put(request)
+        await self._outgoing_queue.put((request, None))
 
     async def _enqueue_stop_signal(self) -> None:
         await self._outgoing_queue.put(None)
@@ -226,7 +226,7 @@ class OspreyCoordinatorBiDirectionalStream:
         )
         metrics.increment('ack_or_nack.disconnect', tags=[f'ack:{ack}', f'verdicts:{verdicts is not None}'])
         logger.debug('submitting acking disconnect')
-        await self._outgoing_queue.put(Request(disconnect=Disconnect(ack_or_nack=ack_or_nack)))
+        await self._outgoing_queue.put((Request(disconnect=Disconnect(ack_or_nack=ack_or_nack)), None))
         await self._enqueue_stop_signal()
 
     def send_ack_or_nack(
@@ -239,11 +239,10 @@ class OspreyCoordinatorBiDirectionalStream:
             else AckOrNack(ack_id=ack_id, nack=Nack())
         )
         req = Request(action_request=ActionRequest(ack_or_nack=ack_or_nack))
-        req._enqueue_time = time.time()  # stamp for drain latency measurement
         metrics.increment('ack_or_nack', tags=[f'ack:{ack}', f'verdicts:{verdicts is not None}'])
         logger.debug('submitting acking action request')
         self._last_action_request_time = time.time()
-        self._outgoing_queue.put_nowait(req)
+        self._outgoing_queue.put_nowait((req, time.time()))
 
     def get_uptime(self) -> float:
         assert self._connect_time is not None, 'This was called before a connection was established'

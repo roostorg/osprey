@@ -129,6 +129,8 @@ class AsyncRulesSink:
     async def run(self) -> None:
         async for message_context in self._input_stream:
             try:
+                action_tags: Optional[list[str]] = None
+                classify_done: Optional[float] = None
                 with message_context as action:
                     action_tags = [f'action:{action.action_name}']
                     metrics.increment('rules_sink.input_action_received', tags=action_tags)
@@ -147,7 +149,6 @@ class AsyncRulesSink:
                             action.action_id = generate_snowflake(retries=3).to_int()
 
                         info_log_osprey_action(action.action_id, action.action_name, 'beginning async classify_one')
-                        classify_start = time.monotonic()
                         result = await self._rules_runner.classify_one(
                             action,
                             tag='sink:async-rules-sink',
@@ -164,12 +165,13 @@ class AsyncRulesSink:
 
                         info_log_osprey_action(action.action_id, action.action_name, 'async classify_one complete')
 
-                    # Measure time from classify done to after ack is enqueued
-                    # (ack happens in context manager __exit__ → send_ack_or_nack)
-                    ack_enqueue_time = time.monotonic()
+                # Measure time from classify completion to after the context manager exits.
+                # The ack is sent in message_context.__exit__(), so this captures the real
+                # classify-done -> ack-enqueued boundary instead of the pre-exit gap.
+                if action_tags is not None and classify_done is not None:
                     metrics.histogram(
                         'osprey_coordinator_input_stream.classify_to_ack_enqueue_ms',
-                        (ack_enqueue_time - classify_done) * 1000,
+                        (time.monotonic() - classify_done) * 1000,
                         tags=action_tags,
                     )
             except asyncio.CancelledError:
