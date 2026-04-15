@@ -8,6 +8,7 @@ from typing import Optional
 
 import sentry_sdk
 from ddtrace import tracer
+from ddtrace.span import Span as TracerSpan
 from osprey.engine.executor.execution_context import Action, ExecutionResult
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.worker.lib.instruments import metrics
@@ -70,7 +71,12 @@ class AsyncRulesRunner:
         self._udf_helpers = udf_helpers
         self._max_concurrent_udfs = max_concurrent_udfs
 
-    async def classify_one(self, action: Action, tag: str) -> Optional[ExecutionResult]:
+    async def classify_one(
+        self,
+        action: Action,
+        tag: str,
+        parent_tracer_span: Optional[TracerSpan] = None,
+    ) -> Optional[ExecutionResult]:
         sample_config = self._sampler.sample(action)
         tags = [
             tag,
@@ -92,6 +98,7 @@ class AsyncRulesRunner:
                     action,
                     max_concurrent=self._max_concurrent_udfs,
                     sample_rate=sample_config.sample_rate,
+                    parent_tracer_span=parent_tracer_span,
                 )
             with metrics.timed('handled_output', tags=tags, use_ms=True):
                 await self._output_sink.push(result)
@@ -134,7 +141,11 @@ class AsyncRulesSink:
                             action.action_id = generate_snowflake(retries=3).to_int()
 
                         info_log_osprey_action(action.action_id, action.action_name, 'beginning async classify_one')
-                        result = await self._rules_runner.classify_one(action, tag='sink:async-rules-sink')
+                        result = await self._rules_runner.classify_one(
+                            action,
+                            tag='sink:async-rules-sink',
+                            parent_tracer_span=span,
+                        )
 
                         if isinstance(message_context, VerdictsAckingContext):
                             if result is None:
