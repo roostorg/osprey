@@ -42,6 +42,7 @@ from osprey.worker.lib.sources_config import get_config_registry
 from osprey.worker.lib.sources_provider_base import BaseSourcesProvider
 
 from osprey.async_worker.executor import execute as async_execute
+from osprey.worker.lib.singletons import CONFIG
 
 log = logging.getLogger(__name__)
 
@@ -130,11 +131,15 @@ class AsyncOspreyEngine:
         self,
         udf_helpers: UDFHelpers,
         action: Action,
-        max_concurrent: int = _DEFAULT_MAX_ASYNC_PER_EXECUTION,
+        max_concurrent: Optional[int] = None,
         sample_rate: int = 100,
         parent_tracer_span: Optional[TracerSpan] = None,
     ) -> ExecutionResult:
         """Execute an action against the rules using the async executor."""
+        if max_concurrent is None:
+            max_concurrent = CONFIG.instance().get_int(
+                'OSPREY_MAX_ASYNC_PER_EXECUTION', _DEFAULT_MAX_ASYNC_PER_EXECUTION
+            )
         return await async_execute(
             self._execution_graph,
             udf_helpers,
