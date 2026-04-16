@@ -83,7 +83,7 @@ def bootstrap_async_udfs(config: 'Config | None' = None) -> tuple[UDFRegistry, U
     # Auto-register helpers for UDFs that extend HasHelper
     for udf in all_udfs:
         if issubclass(udf, HasHelper):
-            udf_helpers.set_udf_helper(udf, udf.create_provider())
+            udf_helpers.set_udf_helper_factory(udf, udf.create_provider)
 
     # Wire up labels service helper for AsyncHasLabel
     labels_hook_result = _get_labels_hook_result(config)

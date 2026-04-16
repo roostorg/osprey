@@ -79,3 +79,30 @@ def test_helper_raises_unhashable_type_error(execute: ExecuteFunction) -> None:
             """,
             udf_helpers=helpers,
         )
+
+
+def test_lazy_helper_factory_creates_helper_once(execute: ExecuteFunction) -> None:
+    created: List[CountingService] = []
+
+    def create_helper() -> CountingService:
+        helper = CountingService()
+        created.append(helper)
+        return helper
+
+    helpers = (
+        UDFHelpers()
+        .set_udf_helper_factory(CountingCallsUDF1, create_helper)
+        .set_udf_helper_factory(CountingCallsUDF2, create_helper)
+    )
+
+    data = execute(
+        """
+        _MessageContent = 'this is weird'
+        r1 = CountingCallsUDF1(message=_MessageContent)
+        r2 = CountingCallsUDF2(message=_MessageContent)
+        """,
+        udf_helpers=helpers,
+    )
+
+    assert 1 == data['r1'] == data['r2']
+    assert len(created) == 2

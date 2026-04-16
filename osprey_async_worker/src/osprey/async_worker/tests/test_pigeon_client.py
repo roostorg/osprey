@@ -80,3 +80,60 @@ def test_service_definition_type():
     sd: ServiceDefinition = {'address': 'localhost', 'ip': '127.0.0.1', 'port': 5000}
     assert sd['address'] == 'localhost'
     assert sd['port'] == 5000
+
+
+class _TestStub:
+    def __init__(self, channel):
+        self.Predict = AsyncMock(return_value='ok')
+
+
+class _TestService:
+    def __init__(self, connection_key=(('localhost', None), 5000), name='test_service'):
+        self.connection_key = connection_key[0]
+        self.grpc_port = connection_key[1]
+        self.connection_address = 'localhost'
+        self.name = name
+
+
+def test_idle_timeout_env_parsing(monkeypatch):
+    from osprey.async_worker.lib.pigeon.client import _get_idle_timeout_ns
+
+    monkeypatch.setenv('OSPREY_PIGEON_CHANNEL_IDLE_TIMEOUT_SECONDS', '2.5')
+    assert _get_idle_timeout_ns() == 2_500_000_000
+
+
+def test_evict_idle_clients_closes_only_idle(monkeypatch):
+    from osprey.async_worker.lib.pigeon.client import RoutedClient, RoutingType
+
+    stale_channel = MagicMock()
+    stale_channel.close = AsyncMock()
+    active_channel = MagicMock()
+    active_channel.close = AsyncMock()
+    monkeypatch.setenv('OSPREY_PIGEON_CHANNEL_IDLE_TIMEOUT_SECONDS', '1')
+
+    with patch('osprey.async_worker.lib.pigeon.client.grpc.aio.insecure_channel') as insecure_channel:
+        insecure_channel.side_effect = [stale_channel, active_channel]
+        client = RoutedClient(
+            'test_service',
+            read_timeout=1,
+            stub_cls=_TestStub,
+            routing_type=RoutingType.ENVOY,
+            envoy_endpoint={'address': 'localhost', 'port': 5000},
+        )
+
+        stale_service = _TestService((('localhost', None), 5001))
+        active_service = _TestService((('localhost', None), 5002))
+        stale_key = client._get_service_key(stale_service)
+        active_key = client._get_service_key(active_service)
+
+        client._get_client(stale_service)
+        client._get_client(active_service)
+        client._client_last_used_ns[stale_key] = 0
+        client._client_last_used_ns[active_key] = 0
+        client._client_active_requests[active_key] = 1
+
+        client._evict_idle_clients()
+
+        assert stale_key not in client._clients
+        assert active_key in client._clients
+        assert stale_key not in client._open_channels

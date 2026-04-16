@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Generic, Hashable, Type, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, Hashable, Type, TypeVar, cast
 
 from osprey.engine.executor.external_service_utils_base import ExternalService
 
@@ -39,10 +39,24 @@ class UDFHelpers:
 
     def __init__(self) -> None:
         self._helpers: Dict[Type[HasHelperInternal[Any]], object] = {}
+        self._helper_factories: Dict[Type[HasHelperInternal[Any]], Callable[[], object]] = {}
 
     def set_udf_helper(self, udf_class: Type[HasHelperInternal[HelperT]], helper: HelperT) -> 'UDFHelpers':
         self._helpers[udf_class] = helper
+        self._helper_factories.pop(udf_class, None)
+        return self
+
+    def set_udf_helper_factory(
+        self,
+        udf_class: Type[HasHelperInternal[HelperT]],
+        helper_factory: Callable[[], HelperT],
+    ) -> 'UDFHelpers':
+        self._helper_factories[udf_class] = helper_factory
+        self._helpers.pop(udf_class, None)
         return self
 
     def get_udf_helper(self, udf: HasHelperInternal[HelperT]) -> HelperT:
-        return cast(HelperT, self._helpers[type(udf)])
+        udf_class = type(udf)
+        if udf_class not in self._helpers:
+            self._helpers[udf_class] = self._helper_factories[udf_class]()
+        return cast(HelperT, self._helpers[udf_class])
