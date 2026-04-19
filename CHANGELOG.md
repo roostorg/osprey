@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🛠 Breaking changes
 
 ### 🎉 New features
-- Add `validate_query_filter_to_json` — first-party JSON serialization of SML query-filter validation, enabling UI consumers to validate over HTTP and render parsed ASTs / errors without reimplementing a second parser ([#TBD](https://github.com/roostorg/osprey/pull/TBD) by [@haileyok](https://github.com/haileyok))
+- Add `validate_query_filter_to_json`, a query-filter validator that returns JSON for frontends ([#224](https://github.com/roostorg/osprey/pull/224) by [@haileyok](https://github.com/haileyok))
 - Add Postgres execution result store ([#171](https://github.com/roostorg/osprey/pull/171) by [@serendipty01](https://github.com/serendipty01))
 - Add `ParseInt` UDF — converts a numeric string to an integer ([#190](https://github.com/roostorg/osprey/pull/190) by [@bealsbe](https://github.com/bealsbe))
 - Add `StringSlice` UDF which extracts a substring by index range ([#189](https://github.com/roostorg/osprey/pull/189) by [@bealsbe](https://github.com/bealsbe))
