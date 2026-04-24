@@ -3,7 +3,9 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union, cast
 
 import pytest
-from osprey.engine.conftest import ExecuteFunction
+from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
+from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
+from osprey.engine.conftest import CheckFailureFunction, ExecuteFunction, RunValidationFunction
 from osprey.engine.stdlib.udfs.string import (
     StringClean,
     StringEndsWith,
@@ -14,6 +16,7 @@ from osprey.engine.stdlib.udfs.string import (
     StringLStrip,
     StringReplace,
     StringRStrip,
+    StringSlice,
     StringSplit,
     StringStartsWith,
     StringStrip,
@@ -22,7 +25,8 @@ from osprey.engine.stdlib.udfs.string import (
 )
 from osprey.engine.udf.registry import UDFRegistry
 
-pytestmark = [
+pytestmark: List[Callable[[Any], Any]] = [
+    pytest.mark.use_validators([ValidateCallKwargs, UniqueStoredNames]),
     pytest.mark.use_udf_registry(
         UDFRegistry.with_udfs(
             StringEndsWith,
@@ -32,6 +36,7 @@ pytestmark = [
             StringClean,
             StringReplace,
             StringRStrip,
+            StringSlice,
             StringSplit,
             StringStartsWith,
             StringStrip,
@@ -58,6 +63,39 @@ def test_string_join(execute: ExecuteFunction) -> None:
         """
     )
     assert data == {'Result': ','.join(THE_QUICK_BROWN_FOX_LIST)}
+
+
+@pytest.mark.parametrize(
+    's,start,end,expected',
+    [
+        ('abcdef', 0, 3, 'abc'),
+        ('abcdef', 2, 5, 'cde'),
+        (THE_QUICK_BROWN_FOX, 0, 0, ''),
+        (THE_QUICK_BROWN_FOX, 4, 9, 'Quick'),
+    ],
+)
+def test_string_slice(execute: ExecuteFunction, s: str, start: int, end: int, expected: str) -> None:
+    data = execute(
+        f"""
+        Result = StringSlice(s="{s}", start={start}, end={end})
+        """
+    )
+    assert data == {'Result': expected}
+
+
+@pytest.mark.parametrize(
+    'sml',
+    [
+        'Result = StringSlice(s="abcdef", start=-1, end=3)',
+        'Result = StringSlice(s="abcdef", start=0, end=-1)',
+        'Result = StringSlice(s="abcdef", start=5, end=2)',
+    ],
+)
+def test_string_slice_validation(
+    run_validation: RunValidationFunction, check_failure: CheckFailureFunction, sml: str
+) -> None:
+    with check_failure():
+        run_validation(sml)
 
 
 @pytest.mark.parametrize('sep,maxsplit', [(None, -1), (None, 2), ('o', -1), ('o', 2)])
