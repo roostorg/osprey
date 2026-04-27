@@ -77,7 +77,7 @@ def test_parses_query_with_regex(
     make_rules_sources: MakeRulesSourcesFunction, check_json_output: CheckJsonOutputFunction
 ) -> None:
     validated_sources = parse_query_to_validated_ast(
-        "RegexMatch(item=A, regex='^foo$') and C == D",
+        "RegexMatch(target=A, pattern='^foo$') and C == D",
         make_rules_sources([('A', '"hello"'), 'C', 'D']),
     )
     transformed_query = DruidQueryTransformer(validated_sources=validated_sources).transform()
