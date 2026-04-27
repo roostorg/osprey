@@ -3,7 +3,8 @@ import random
 from datetime import datetime, timedelta
 
 from google.cloud import pubsub_v1
-from kafka.coordinator.assignors.roundrobin import RoundRobinPartitionAssignor
+from confluent_kafka import Consumer
+from osprey.worker.sinks.utils.kafka import ThreadedKafkaConsumer
 from osprey.engine.executor.execution_context import Action
 from osprey.worker.adaptor.plugin_manager import bootstrap_input_stream
 from osprey.worker.lib.singletons import CONFIG
@@ -15,7 +16,6 @@ from osprey.worker.sinks.sink.input_stream import (
 )
 from osprey.worker.sinks.sink.osprey_coordinator_input_stream import OspreyCoordinatorInputStream
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext, NoopAckingContext
-from osprey.worker.sinks.utils.kafka import PatchedKafkaConsumer
 
 
 def get_rules_sink_input_stream(
@@ -113,17 +113,22 @@ def get_rules_sink_input_stream(
         if client_id_suffix:
             client_id = f'{client_id}-{client_id_suffix}'
 
-        consumer: PatchedKafkaConsumer = PatchedKafkaConsumer(
-            input_topic,
-            bootstrap_servers=input_bootstrap_servers,
-            client_id=client_id,
-            group_id=group_id,
-            partition_assignment_strategy=(RoundRobinPartitionAssignor,),
-        )
+        consumer_config = {
+            'bootstrap.servers': ','.join(input_bootstrap_servers),
+            'client.id': client_id,
+            'group.id': group_id or 'osprey-consumer',
+            'partition.assignment.strategy': 'roundrobin',
+            'auto.offset.reset': 'latest',
+        }
+
+        consumer = Consumer(consumer_config)
+        consumer.subscribe([input_topic])
+        threaded_consumer = ThreadedKafkaConsumer(consumer)
+
         from osprey.worker.sinks.sink.input_stream import KafkaInputStream
 
         return KafkaInputStream(
-            kafka_consumer=consumer,
+            kafka_consumer=threaded_consumer,
         )
     elif input_stream_source == InputStreamSource.PLUGIN:
         stream = bootstrap_input_stream(config=config)
