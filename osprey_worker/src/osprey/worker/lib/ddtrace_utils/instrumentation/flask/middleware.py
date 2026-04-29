@@ -30,6 +30,14 @@ def _redact_entity_ids_in_path(path: str) -> str:
     return ENTITY_ID_IN_PATH_REGEX.sub('?', path)
 
 
+def _span_is_sampled(span: Optional[Span]) -> bool:
+    if not span:
+        return False
+
+    sampling_priority = span.context.sampling_priority
+    return sampling_priority is None or sampling_priority > 0
+
+
 class TraceMiddleware:
     def __init__(
         self,
@@ -207,7 +215,7 @@ class TraceMiddleware:
 
     def _process_response(self, response: flask.Response) -> None:
         span = getattr(g, 'flask_datadog_span', None)
-        if not (span and span.sampled):
+        if span is None or not _span_is_sampled(span):
             return
 
         code: Union[str, int] = response.status_code if response else ''
@@ -228,7 +236,7 @@ class TraceMiddleware:
             _set_error_on_span(span, exception)
 
     def _finish_span(self, span: Span, exception: Optional[Exception] = None) -> None:
-        if not span or not span.sampled:
+        if not _span_is_sampled(span):
             return
 
         code: Union[int, str] = span.get_tag(http.STATUS_CODE) or 0

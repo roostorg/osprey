@@ -1,0 +1,110 @@
+name: osprey-druid-test
+
+# Druid-specific test overlay.
+# Usage:
+#   docker compose \
+#     -f docker-compose.yaml \
+#     -f docker-compose.test.yaml \
+#     -f docker-compose.test.druid.yaml \
+#     -p osprey-druid-test \
+#     --profile test \
+#     run --rm --remove-orphans test_runner run-tests <pytest args>
+
+services:
+  osprey-kafka:
+    container_name: osprey-druid-test-kafka
+    ports: !reset []
+
+  osprey-worker:
+    container_name: osprey-druid-test-worker
+    ports: !reset []
+
+  osprey-ui-api:
+    container_name: osprey-druid-test-ui-api
+    ports: !reset []
+
+  osprey-ui:
+    container_name: osprey-druid-test-ui
+    ports: !reset []
+
+  osprey-kafka-test-data-producer:
+    container_name: osprey-druid-test-kafka-test-data-producer
+
+  postgres:
+    container_name: osprey-druid-test-postgres
+    ports: !reset []
+    volumes: !reset []
+
+  minio:
+    container_name: osprey-druid-test-minio
+    ports: !reset []
+    volumes: !reset []
+
+  etcd:
+    container_name: osprey-druid-test-etcd
+    ports: !reset []
+
+  snowflake-id-worker:
+    container_name: osprey-druid-test-snowflake-id-worker
+    ports: !reset []
+
+  druid-zookeeper:
+    container_name: osprey-druid-test-druid-zookeeper
+    ports: !reset []
+
+  druid-coordinator:
+    container_name: osprey-druid-test-druid-coordinator
+    ports: !reset []
+
+  druid-broker:
+    container_name: osprey-druid-test-druid-broker
+    ports: !reset []
+
+  druid-historical:
+    container_name: osprey-druid-test-druid-historical
+    ports: !reset []
+
+  druid-middlemanager:
+    container_name: osprey-druid-test-druid-middlemanager
+    ports: !reset []
+
+  druid-router:
+    container_name: osprey-druid-test-druid-router
+    ports: !reset []
+
+  druid-spec-submitter:
+    container_name: osprey-druid-test-druid-spec-submitter
+
+  test_runner:
+    container_name: osprey-druid-test-runner
+    depends_on: !override
+      osprey-kafka:
+        condition: service_healthy
+      osprey-kafka-topic-creator:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+      minio-bucket-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      snowflake-id-worker:
+        condition: service_started
+      etcd:
+        condition: service_healthy
+      druid-zookeeper:
+        condition: service_started
+      druid-coordinator:
+        condition: service_started
+      druid-broker:
+        condition: service_started
+      druid-historical:
+        condition: service_started
+      druid-middlemanager:
+        condition: service_started
+      druid-router:
+        condition: service_started
+      druid-spec-submitter:
+        condition: service_completed_successfully
+    environment:
+      - RUN_DRUID_INTEGRATION_TESTS=true
