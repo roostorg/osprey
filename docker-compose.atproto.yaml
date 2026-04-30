@@ -10,7 +10,6 @@ services:
     environment:
       OSPREY_INPUT_STREAM_SOURCE: plugin
       OSPREY_RULES_PATH: ./example_atproto_rules
-    ports: !reset []
     volumes:
       - ./example_atproto_rules:/osprey/example_atproto_rules
       - ./example_atproto_plugins:/osprey/example_atproto_plugins
@@ -20,10 +19,3 @@ services:
       OSPREY_RULES_PATH: /osprey/example_atproto_rules
     volumes:
       - ./example_atproto_rules:/osprey/example_atproto_rules
-
-  # Avoid host-port conflicts with supervisord-managed services in
-  # the Discord monorepo dev environment (which often holds :9000 and :8082).
-  # Worker -> minio uses the internal docker network, so dropping the
-  # host bindings doesn't affect the sample.
-  minio:
-    ports: !reset []

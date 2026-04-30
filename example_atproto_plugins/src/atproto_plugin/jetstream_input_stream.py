@@ -9,6 +9,7 @@ import websocket
 from osprey.engine.executor.execution_context import Action
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
+from osprey.worker.lib.snowflake import generate_snowflake_batch
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext, NoopAckingContext
 
@@ -21,7 +22,9 @@ DEFAULT_COLLECTIONS = (
     'app.bsky.feed.like',
     'app.bsky.feed.repost',
     'app.bsky.graph.follow',
+    'app.bsky.actor.profile',
 )
+SNOWFLAKE_BATCH_SIZE = 250
 
 
 class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
@@ -31,9 +34,11 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
     plain JSON (no CBOR/CAR), making it a convenient high-volume source for exercising Osprey
     against real production traffic. See https://docs.bsky.app/blog/jetstream.
 
-    Each ATProto commit is mapped to an Osprey :class:`Action` whose data dictionary exposes
-    the actor DID, collection, operation, and the raw record. Identity and account events are
-    skipped — the sample is concerned with content events.
+    The Action shape this stream emits is intended to be source-compatible with
+    https://github.com/haileyok/atproto-ruleset, so rules written against that ruleset can be
+    pointed at this input stream without translation. Identity events become
+    ``action_name='identity'``; commit events become ``operation#<create|update|delete>``.
+    Account events are skipped — the sample is concerned with content events.
     """
 
     def __init__(
@@ -46,10 +51,17 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
         self._endpoint = endpoint or DEFAULT_ENDPOINT
         self._wanted_collections = list(wanted_collections) if wanted_collections else list(DEFAULT_COLLECTIONS)
         self._reconnect_seconds = reconnect_seconds
+        self._snowflake_buffer: List[int] = []
 
     def _build_url(self) -> str:
         params = [('wantedCollections', c) for c in self._wanted_collections]
         return f'{self._endpoint}?{urlencode(params)}'
+
+    def _next_action_id(self) -> int:
+        if not self._snowflake_buffer:
+            batch = generate_snowflake_batch(count=SNOWFLAKE_BATCH_SIZE, retries=3)
+            self._snowflake_buffer = [s.to_int() for s in batch]
+        return self._snowflake_buffer.pop()
 
     def _gen(self) -> Iterator[BaseAckingContext[Action]]:
         url = self._build_url()
@@ -65,11 +77,11 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
                         continue
                     try:
                         event = json.loads(raw)
-                    except json.JSONDecodeError:
-                        logger.warning(f'Failed to parse JetStream event: {raw[:200]!r}')
+                        action = _event_to_action(event, action_id=self._next_action_id())
+                    except Exception:
+                        logger.exception('skipping malformed JetStream event')
+                        sentry_sdk.capture_exception()
                         continue
-
-                    action = _event_to_action(event)
                     if action is None:
                         continue
                     metrics.increment('jetstream_input_stream.events', tags=[f'action_name:{action.action_name}'])
@@ -82,41 +94,57 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
                     try:
                         ws.close()
                     except Exception:
-                        pass
+                        logger.debug('ignored error while closing JetStream socket', exc_info=True)
             time.sleep(self._reconnect_seconds)
 
 
-def _event_to_action(event: Dict[str, Any]) -> Optional[Action]:
-    """Map a JetStream event dict into an Osprey :class:`Action`, or return ``None`` to skip it."""
-    if event.get('kind') != 'commit':
-        return None
-    commit = event.get('commit') or {}
-    operation = commit.get('operation')
-    collection = commit.get('collection', '') or ''
-    did = event.get('did', '') or ''
+def _event_to_action(event: Dict[str, Any], action_id: int) -> Optional[Action]:
+    """Map a JetStream event dict into an Osprey :class:`Action`, or return ``None`` to skip it.
+
+    Identity events become ``action_name='identity'``; commit events become
+    ``operation#<create|update|delete>`` with the body under ``$.operation.*``. Account events
+    and any other event kind are skipped.
+    """
     time_us = event.get('time_us')
-    if not time_us:
+    if time_us is None:
         return None
+    timestamp = datetime.fromtimestamp(time_us / 1_000_000, tz=timezone.utc)
+    did = event.get('did') or ''
 
-    short = collection.rsplit('.', 1)[-1] if collection else 'unknown'
-    action_name = f'{operation}_{short}' if operation else short
+    kind = event.get('kind')
+    if kind == 'identity':
+        identity = event.get('identity') or {}
+        return Action(
+            action_id=action_id,
+            action_name='identity',
+            data={
+                'did': did,
+                'identity': {'handle': identity.get('handle')},
+                'eventMetadata': {},
+            },
+            timestamp=timestamp,
+        )
 
-    record = commit.get('record') or {}
+    if kind == 'commit':
+        commit = event.get('commit') or {}
+        operation = commit.get('operation')
+        collection = commit.get('collection') or ''
+        rkey = commit.get('rkey') or ''
+        return Action(
+            action_id=action_id,
+            action_name=f'operation#{operation}' if operation else 'operation',
+            data={
+                'did': did,
+                'operation': {
+                    'action': operation,
+                    'collection': collection,
+                    'path': f'{collection}/{rkey}' if collection and rkey else '',
+                    'cid': commit.get('cid'),
+                    'record': commit.get('record') or {},
+                },
+                'eventMetadata': {},
+            },
+            timestamp=timestamp,
+        )
 
-    data: Dict[str, Any] = {
-        'did': did,
-        'collection': collection,
-        'operation': operation,
-        'rkey': commit.get('rkey'),
-        'rev': commit.get('rev'),
-        'cid': commit.get('cid'),
-        'event_type': action_name,
-        'record': record,
-    }
-
-    return Action(
-        action_id=int(time_us),
-        action_name=action_name,
-        data=data,
-        timestamp=datetime.fromtimestamp(time_us / 1_000_000, tz=timezone.utc),
-    )
+    return None

@@ -1,9 +1,10 @@
-from atproto_plugin.jetstream_input_stream import JetStreamInputStream
 from osprey.engine.executor.execution_context import Action
 from osprey.worker.adaptor.plugin_manager import hookimpl_osprey
 from osprey.worker.lib.config import Config
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
+
+from atproto_plugin.jetstream_input_stream import JetStreamInputStream
 
 
 @hookimpl_osprey

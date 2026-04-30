@@ -12,7 +12,7 @@ Top-level modules:
 - `osprey_coordinator/` — Rust gRPC coordinator (tokio, tonic, etcd, rdkafka). Rust code belongs here.
 - `proto/osprey/rpc/` — protobuf source of truth for `osprey_rpc` and `osprey_coordinator` types.
 - `example_plugins/` — reference plugins (UDFs, output sinks, labels service) using the pluggy-based plugin system. Do not add production code here.
-- `example_atproto_plugins/` — reference plugin demonstrating a custom input stream that consumes Bluesky's ATProto JetStream firehose. Stack `docker-compose.atproto.yaml` on top of the main compose file (or use `./run-atproto.sh`) to run Osprey against live ATProto traffic. Do not add production code here.
+- `example_atproto_plugins/` — reference plugin demonstrating a custom input stream that consumes the Bluesky firehose. Stack `docker-compose.atproto.yaml` on top of the main compose file (or use `./run-atproto.sh`) to run Osprey against live ATProto traffic. Do not add production code here.
 - `example_rules/` — sample SML rules and YAML config.
 - `example_atproto_rules/` — sample SML rules paired with `example_atproto_plugins/`.
 

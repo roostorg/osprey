@@ -1,25 +1,32 @@
-Did: Entity[str] = EntityJson(
-  type='Did',
+ActionName = GetActionName()
+
+UserId: Entity[str] = EntityJson(
+  type='UserId',
   path='$.did',
-  coerce_type=True
+  required=False,
 )
 
-Collection: Entity[str] = EntityJson(
-  type='Collection',
-  path='$.collection',
-  coerce_type=True
+Handle: Entity[str] = EntityJson(
+  type='Handle',
+  path='$.eventMetadata.handle',
+  required=False,
 )
 
-EventType: Entity[str] = EntityJson(
-  type='EventType',
-  path='$.event_type',
-  coerce_type=True
+PdsHost: Entity[str] = EntityJson(
+  type='PdsHost',
+  path='$.eventMetadata.pdsHost',
+  required=False,
 )
 
-PostText: Entity[str] = EntityJson(
-  type='PostText',
-  path='$.record.text',
-  coerce_type=True
+OperationKind: Optional[str] = JsonData(
+  path='$.operation.action',
+  required=False,
 )
 
-ActionName=GetActionName()
+IsOperation = OperationKind != None
+
+Second: int = 1
+Minute: int = Second * 60
+Hour: int = Minute * 60
+Day: int = Hour * 24
+Week: int = Day * 7
