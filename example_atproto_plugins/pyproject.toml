@@ -1,0 +1,18 @@
+[project]
+name = "example_atproto_plugins"
+version = "0.1.0"
+description = "Example Osprey plugin that consumes Bluesky's ATProto JetStream firehose"
+requires-python = ">=3.11"
+dependencies = [
+    "pluggy==1.5.0",
+    "websocket-client==1.8.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.entry-points.osprey_plugin]
+atproto_plugins = "atproto_plugin.register_plugins"
