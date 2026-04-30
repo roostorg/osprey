@@ -6,20 +6,8 @@ UserId: Entity[str] = EntityJson(
   required=False,
 )
 
-Handle: Entity[str] = EntityJson(
-  type='Handle',
-  path='$.eventMetadata.handle',
-  required=False,
-)
-
-PdsHost: Entity[str] = EntityJson(
-  type='PdsHost',
-  path='$.eventMetadata.pdsHost',
-  required=False,
-)
-
 OperationKind: Optional[str] = JsonData(
-  path='$.operation.action',
+  path='$.commit.operation',
   required=False,
 )
 

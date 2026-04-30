@@ -19,23 +19,21 @@ SAMPLE_POST_COMMIT = {
 }
 
 
-def test_post_commit_maps_to_operation_create():
+def test_post_commit_passes_through_jetstream_payload():
     action = _event_to_action(SAMPLE_POST_COMMIT, action_id=42)
 
     assert action is not None
     assert action.action_id == 42
-    assert action.action_name == 'operation#create'
+    assert action.action_name == 'commit'
+    # Action.data is the raw JetStream event — rules read $.did, $.commit.*, etc.
+    assert action.data is SAMPLE_POST_COMMIT
     assert action.data['did'] == 'did:plc:abc123'
-    op = action.data['operation']
-    assert op['action'] == 'create'
-    assert op['collection'] == 'app.bsky.feed.post'
-    assert op['path'] == 'app.bsky.feed.post/abcdefg'
-    assert op['cid'] == 'bafyrei...'
-    assert op['record']['text'] == 'this is a test post'
-    assert action.data['eventMetadata'] == {}
+    assert action.data['commit']['operation'] == 'create'
+    assert action.data['commit']['collection'] == 'app.bsky.feed.post'
+    assert action.data['commit']['record']['text'] == 'this is a test post'
 
 
-def test_like_commit_maps_to_operation_create_without_record_text():
+def test_like_commit_passes_through_jetstream_payload():
     like = {
         **SAMPLE_POST_COMMIT,
         'commit': {
@@ -47,12 +45,12 @@ def test_like_commit_maps_to_operation_create_without_record_text():
     action = _event_to_action(like, action_id=1)
 
     assert action is not None
-    assert action.action_name == 'operation#create'
-    assert action.data['operation']['collection'] == 'app.bsky.feed.like'
-    assert 'text' not in action.data['operation']['record']
+    assert action.action_name == 'commit'
+    assert action.data['commit']['collection'] == 'app.bsky.feed.like'
+    assert 'text' not in action.data['commit']['record']
 
 
-def test_delete_commit_maps_with_empty_record():
+def test_delete_commit_passes_through_without_record():
     delete = {
         **SAMPLE_POST_COMMIT,
         'commit': {
@@ -65,12 +63,12 @@ def test_delete_commit_maps_with_empty_record():
     action = _event_to_action(delete, action_id=2)
 
     assert action is not None
-    assert action.action_name == 'operation#delete'
-    assert action.data['operation']['action'] == 'delete'
-    assert action.data['operation']['record'] == {}
+    assert action.action_name == 'commit'
+    assert action.data['commit']['operation'] == 'delete'
+    assert 'record' not in action.data['commit']
 
 
-def test_identity_event_maps_to_identity_action():
+def test_identity_event_passes_through():
     identity = {
         'did': 'did:plc:xyz',
         'time_us': 1714500000000001,
@@ -82,7 +80,6 @@ def test_identity_event_maps_to_identity_action():
     assert action is not None
     assert action.action_name == 'identity'
     assert action.data['identity']['handle'] == 'someone.bsky.social'
-    assert action.data['did'] == 'did:plc:xyz'
 
 
 def test_account_event_is_skipped():

@@ -5,19 +5,19 @@ IsUpdate = OperationKind == 'update'
 IsDelete = OperationKind == 'delete'
 
 Collection: str = JsonData(
-  path='$.operation.collection',
+  path='$.commit.collection',
   required=False,
   coerce_type=True,
 )
 
-Path: str = JsonData(
-  path='$.operation.path',
+Rkey: str = JsonData(
+  path='$.commit.rkey',
   required=False,
   coerce_type=True,
 )
 
 Cid: str = JsonData(
-  path='$.operation.cid',
+  path='$.commit.cid',
   required=False,
   coerce_type=True,
 )

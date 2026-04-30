@@ -1,7 +1,7 @@
 Import(rules=['models/base.sml'])
 
 PostText: str = JsonData(
-  path='$.operation.record.text',
+  path='$.commit.record.text',
   required=False,
   coerce_type=True,
 )

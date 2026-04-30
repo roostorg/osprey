@@ -34,11 +34,11 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
     plain JSON (no CBOR/CAR), making it a convenient high-volume source for exercising Osprey
     against real production traffic. See https://docs.bsky.app/blog/jetstream.
 
-    The Action shape this stream emits is intended to be source-compatible with
-    https://github.com/haileyok/atproto-ruleset, so rules written against that ruleset can be
-    pointed at this input stream without translation. Identity events become
-    ``action_name='identity'``; commit events become ``operation#<create|update|delete>``.
-    Account events are skipped — the sample is concerned with content events.
+    The JetStream JSON event is passed through unchanged as the Action's data dict, so rules
+    target JetStream-native paths directly: ``$.did``, ``$.kind``, ``$.commit.operation``,
+    ``$.commit.collection``, ``$.commit.record.text``, ``$.identity.handle``, etc. The
+    ``action_name`` is set to the event's ``kind`` (``'commit'`` / ``'identity'``). Account
+    events are skipped — the sample is concerned with content events.
     """
 
     def __init__(
@@ -101,52 +101,22 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
 
 
 def _event_to_action(event: Dict[str, Any], action_id: int) -> Optional[Action]:
-    """Map a JetStream event dict into an Osprey :class:`Action`, or return ``None`` to skip it.
+    """Wrap a JetStream event as an Osprey :class:`Action`, or return ``None`` to skip it.
 
-    Identity events become ``action_name='identity'``; commit events become
-    ``operation#<create|update|delete>`` with the body under ``$.operation.*``. Account events
-    and any other event kind are skipped.
+    The event JSON is passed through as-is so rules can read JetStream-native paths
+    (``$.did``, ``$.commit.collection``, ``$.commit.record.text``, etc.). ``action_name``
+    is set to the event's ``kind``. Only ``commit`` and ``identity`` events are emitted —
+    account events and any unrecognised kind are skipped.
     """
+    kind = event.get('kind')
+    if kind not in ('commit', 'identity'):
+        return None
     time_us = event.get('time_us')
     if time_us is None:
         return None
-    timestamp = datetime.fromtimestamp(time_us / 1_000_000, tz=timezone.utc)
-    did = event.get('did') or ''
-
-    kind = event.get('kind')
-    if kind == 'identity':
-        identity = event.get('identity') or {}
-        return Action(
-            action_id=action_id,
-            action_name='identity',
-            data={
-                'did': did,
-                'identity': {'handle': identity.get('handle')},
-                'eventMetadata': {},
-            },
-            timestamp=timestamp,
-        )
-
-    if kind == 'commit':
-        commit = event.get('commit') or {}
-        operation = commit.get('operation')
-        collection = commit.get('collection') or ''
-        rkey = commit.get('rkey') or ''
-        return Action(
-            action_id=action_id,
-            action_name=f'operation#{operation}' if operation else 'operation',
-            data={
-                'did': did,
-                'operation': {
-                    'action': operation,
-                    'collection': collection,
-                    'path': f'{collection}/{rkey}' if collection and rkey else '',
-                    'cid': commit.get('cid'),
-                    'record': commit.get('record') or {},
-                },
-                'eventMetadata': {},
-            },
-            timestamp=timestamp,
-        )
-
-    return None
+    return Action(
+        action_id=action_id,
+        action_name=kind,
+        data=event,
+        timestamp=datetime.fromtimestamp(time_us / 1_000_000, tz=timezone.utc),
+    )
