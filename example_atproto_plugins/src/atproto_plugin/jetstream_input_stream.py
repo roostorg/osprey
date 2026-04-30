@@ -66,36 +66,38 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
     def _gen(self) -> Iterator[BaseAckingContext[Action]]:
         url = self._build_url()
         while True:
-            ws: Optional[websocket.WebSocket] = None
             try:
-                logger.info(f'Connecting to JetStream at {url}')
-                ws = websocket.create_connection(url)
-                logger.info('JetStream connection established')
-                while True:
-                    raw = ws.recv()
-                    if not raw:
-                        continue
-                    try:
-                        event = json.loads(raw)
-                        action = _event_to_action(event, action_id=self._next_action_id())
-                    except Exception:
-                        logger.exception('skipping malformed JetStream event')
-                        sentry_sdk.capture_exception()
-                        continue
-                    if action is None:
-                        continue
-                    metrics.increment('jetstream_input_stream.events', tags=[f'action_name:{action.action_name}'])
-                    yield NoopAckingContext(action)
+                yield from self._stream_one_connection(url)
             except Exception as e:
                 logger.exception(f'JetStream stream error; reconnecting in {self._reconnect_seconds}s: {e}')
                 sentry_sdk.capture_exception(e)
-            finally:
-                if ws is not None:
-                    try:
-                        ws.close()
-                    except Exception:
-                        logger.debug('ignored error while closing JetStream socket', exc_info=True)
             time.sleep(self._reconnect_seconds)
+
+    def _stream_one_connection(self, url: str) -> Iterator[BaseAckingContext[Action]]:
+        logger.info(f'Connecting to JetStream at {url}')
+        ws = websocket.create_connection(url)
+        logger.info('JetStream connection established')
+        try:
+            while True:
+                raw = ws.recv()
+                if not raw:
+                    continue
+                try:
+                    event = json.loads(raw)
+                    action = _event_to_action(event, action_id=self._next_action_id())
+                except Exception:
+                    logger.exception('skipping malformed JetStream event')
+                    sentry_sdk.capture_exception()
+                    continue
+                if action is None:
+                    continue
+                metrics.increment('jetstream_input_stream.events', tags=[f'action_name:{action.action_name}'])
+                yield NoopAckingContext(action)
+        finally:
+            try:
+                ws.close()
+            except Exception:
+                logger.debug('ignored error while closing JetStream socket', exc_info=True)
 
 
 def _event_to_action(event: Dict[str, Any], action_id: int) -> Optional[Action]:
