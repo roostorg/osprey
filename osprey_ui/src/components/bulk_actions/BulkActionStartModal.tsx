@@ -25,7 +25,7 @@ interface JobFormValues {
 }
 
 interface JobUploadModalProps {
-  visible: boolean;
+  open: boolean;
   onCancel: () => void;
   onSubmit: (values: JobFormValues) => void;
   initialValues?: Partial<JobFormValues>;
@@ -36,7 +36,7 @@ const workflowOptions: WorkflowOption[] = [
   { value: 'custom', label: 'Custom Workflow' },
 ];
 
-const BulkActionStartModal: React.FC<JobUploadModalProps> = ({ visible, onCancel, onSubmit, initialValues }) => {
+const BulkActionStartModal: React.FC<JobUploadModalProps> = ({ open, onCancel, onSubmit, initialValues }) => {
   const { modal } = App.useApp();
   const [form] = Form.useForm<JobFormValues>();
   const [customWorkflow, setCustomWorkflow] = useState<boolean>(false);
@@ -111,7 +111,7 @@ const BulkActionStartModal: React.FC<JobUploadModalProps> = ({ visible, onCancel
   return (
     <Modal
       title="Create New Job"
-      open={visible}
+      open={open}
       onCancel={() => {
         form.resetFields();
         setFileSelected(null);
@@ -206,7 +206,7 @@ const BulkActionStartModalContainer = () => {
       <Button type="primary" onClick={handleOpenModal}>
         Create New Job
       </Button>
-      <BulkActionStartModal visible={visible} onCancel={handleCloseModal} onSubmit={handleSubmit} />
+      <BulkActionStartModal open={visible} onCancel={handleCloseModal} onSubmit={handleSubmit} />
     </>
   );
 };
