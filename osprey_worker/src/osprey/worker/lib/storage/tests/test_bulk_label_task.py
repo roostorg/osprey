@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
+from collections.abc import Iterator
 from datetime import datetime, timedelta
-from typing import Iterator
 
 import pytest
 from osprey.worker.lib.bulk_label import TaskStatus

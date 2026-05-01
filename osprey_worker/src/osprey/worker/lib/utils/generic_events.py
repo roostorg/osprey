@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 
 from google.cloud import pubsub_v1
 
@@ -7,10 +7,10 @@ DEFAULT_PUBLISHER_CLIENT = pubsub_v1.PublisherClient()
 
 
 def publish_generic_event(
-    event: Dict[str, Any],
+    event: dict[str, Any],
     env: str,
     topic: str = 'projects/osprey-data-{}/topics/generic-events',
-    client: Optional[pubsub_v1.PublisherClient] = None,
+    client: pubsub_v1.PublisherClient | None = None,
 ) -> pubsub_v1.publisher.futures.Future:
     client = client or DEFAULT_PUBLISHER_CLIENT
     env_to_project_mapping = {'staging': 'stg', 'production': 'prd'}

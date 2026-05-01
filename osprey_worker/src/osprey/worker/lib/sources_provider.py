@@ -1,6 +1,6 @@
 import abc
 import logging
-from typing import Callable, Dict, Optional
+from collections.abc import Callable
 
 from osprey.engine.ast.sources import Sources
 from osprey.worker.lib.etcd import EtcdClient
@@ -42,18 +42,18 @@ class EtcdSourcesProvider(BaseSourcesProvider):
     def __init__(
         self,
         etcd_key: str,
-        etcd_client: Optional[EtcdClient] = None,
-        input_stream_ready_signaler: Optional[InputStreamReadySignaler] = None,
+        etcd_client: EtcdClient | None = None,
+        input_stream_ready_signaler: InputStreamReadySignaler | None = None,
     ):
         self._sources_dict: ReadOnlyEtcdDict[str, str] = ReadOnlyEtcdDict(etcd_key=etcd_key, etcd_client=etcd_client)
         self._current_sources = Sources.from_dict(self._sources_dict.copy())
-        self._sources_watcher_callback: Optional[SourcesWatcherCallback] = None
+        self._sources_watcher_callback: SourcesWatcherCallback | None = None
         self._input_stream_ready_signaler = input_stream_ready_signaler
 
         self._sources_dict.add_watcher(self._notify_watcher)
         self._sources_dict.watch()
 
-    def _notify_watcher(self, sources_dict: Dict[str, str]) -> None:
+    def _notify_watcher(self, sources_dict: dict[str, str]) -> None:
         if self._input_stream_ready_signaler is not None:
             logging.info('Pausing input streams')
             self._input_stream_ready_signaler.pause_input_stream()

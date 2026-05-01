@@ -19,7 +19,7 @@ gevent_config.track_greenlet_tree = False
 import multiprocessing
 import os
 from concurrent.futures import ProcessPoolExecutor
-from typing import Optional, Set, TextIO, cast
+from typing import TextIO, cast
 
 import click
 import gevent
@@ -294,9 +294,7 @@ def run_bulk_label_sink(pooled: bool) -> None:
 @click.pass_context
 @click.argument('task_id', type=int)
 @click.option('--include-ids-from-file', type=click.File('r'))
-def rollback_bulk_label_effects(
-    ctx: click.Context, task_id: int, include_ids_from_file: Optional[TextIO] = None
-) -> None:
+def rollback_bulk_label_effects(ctx: click.Context, task_id: int, include_ids_from_file: TextIO | None = None) -> None:
     # TODO: Clean up this copy pasta.
     config = init_config()
     postgres.init_from_config('osprey_db')
@@ -324,7 +322,7 @@ def rollback_bulk_label_effects(
         click.echo(f'Task with id {task_id} is not in final status, status is {task.task_status!r}.')
         ctx.abort()
 
-    include_ids: Optional[Set[str]] = None
+    include_ids: set[str] | None = None
     if include_ids_from_file is not None:
         include_ids = {line.strip() for line in include_ids_from_file}
         include_ids.discard('')

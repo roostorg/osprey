@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Mapping, Tuple
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any
 
 from osprey.engine.ast.ast_utils import filter_nodes
 from osprey.engine.ast.grammar import Assign, Call, Literal, Name, Source, Store, UnaryOperation
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
     from ..validation_context import ValidationContext
 
 
-UDFNodeMapping = Dict[int, Tuple[UDFBase[Any, Any], ArgumentsBase]]
+UDFNodeMapping = dict[int, tuple[UDFBase[Any, Any], ArgumentsBase]]
 
 
 class ValidateCallKwargs(SourceValidator, HasResult[UDFNodeMapping]):

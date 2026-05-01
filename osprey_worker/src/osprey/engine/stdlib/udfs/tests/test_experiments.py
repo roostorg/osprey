@@ -1,4 +1,5 @@
-from typing import Any, Callable, List, Tuple
+from collections.abc import Callable
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -12,13 +13,12 @@ from osprey.engine.stdlib.udfs.experiments import (
     EXPERIMENT_GRANULARITY,
     Experiment,
     ExperimentWhen,
-    InExperiment,
 )
 from osprey.engine.stdlib.udfs.rules import Rule
 from osprey.engine.udf.registry import UDFRegistry
 
-pytestmark: List[Callable[[Any], Any]] = [
-    pytest.mark.use_udf_registry(UDFRegistry.with_udfs(Entity, Rule, Experiment, ExperimentWhen, InExperiment)),
+pytestmark: list[Callable[[Any], Any]] = [
+    pytest.mark.use_udf_registry(UDFRegistry.with_udfs(Entity, Rule, Experiment, ExperimentWhen)),
     pytest.mark.use_validators([ValidateCallKwargs, UniqueStoredNames]),
 ]
 
@@ -36,7 +36,7 @@ def test_hash_mod_should_mod(experiment_name: str, entity_id: str) -> None:
     'hash_keys',
     [(('E1', 'ID1'), ('E1', 'ID1'), ('E1', 'ID1'))],
 )
-def test_consistent_hash_mod(hash_keys: List[Tuple[str, str]]) -> None:
+def test_consistent_hash_mod(hash_keys: list[tuple[str, str]]) -> None:
     hash_mod_values = []
     for experiment_name, entity_id in hash_keys:
         hash_mod_values.append(Experiment.hash_mod(experiment_name, entity_id))
@@ -153,8 +153,8 @@ def test_consistent_bucketing_with_rollout(execute: ExecuteFunction) -> None:
 def test_experiment_bucket_size_too_large(
     run_validation: RunValidationFunction,
     check_failure: CheckFailureFunction,
-    buckets: List[str],
-    bucket_sizes: List[float],
+    buckets: list[str],
+    bucket_sizes: list[float],
 ) -> None:
     with check_failure():
         run_validation(
@@ -276,8 +276,8 @@ def test_experiment_revision_error(run_validation: RunValidationFunction, check_
 def test_experiment_resolution(
     hash_mod_mock: mock.MagicMock,
     execute: ExecuteFunction,
-    buckets: List[str],
-    bucket_sizes: List[float],
+    buckets: list[str],
+    bucket_sizes: list[float],
     mock_hash_value: int,
     expected_bucket: str,
     expected_bucket_index: int,

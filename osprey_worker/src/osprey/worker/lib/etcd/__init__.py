@@ -7,8 +7,9 @@ import logging
 import os
 import random
 import socket
+from collections.abc import Callable
 from email.message import Message
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 import gevent
 import six
@@ -252,9 +253,7 @@ class EtcdClient(object):
     def __repr__(self):
         return '<%s: %s>' % (self.__class__.__name__, ', '.join(self.peers))
 
-    def create(
-        self, key: str, value: Optional[str] = None, ttl: Optional[int] = None, sequential=False, directory=False
-    ):
+    def create(self, key: str, value: str | None = None, ttl: int | None = None, sequential=False, directory=False):
         """Create a node with all possible options.
 
         >>> client = EtcdClient()
@@ -273,7 +272,7 @@ class EtcdClient(object):
         :type directory: bool
         :rtype: EtcdEvent
         """
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if ttl is not None:
             params['ttl'] = ttl
             if value is not None:
@@ -325,10 +324,10 @@ class EtcdClient(object):
         self,
         key: str,
         value='',
-        ttl: Optional[int] = None,
-        prev_exist: Optional[str] = None,
-        prev_value: Optional[str] = None,
-        prev_index: Optional[int] = None,
+        ttl: int | None = None,
+        prev_exist: str | None = None,
+        prev_value: str | None = None,
+        prev_index: int | None = None,
         directory=False,
     ):
         """Set the value of a node.
@@ -349,7 +348,7 @@ class EtcdClient(object):
         :type directory: bool
         :rtype: EtcdEvent
         """
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if prev_exist is not None:
             params['prevExist'] = prev_exist
         if ttl:
@@ -387,8 +386,8 @@ class EtcdClient(object):
     def delete(
         self,
         key: str,
-        prev_value: Optional[str] = None,
-        prev_index: Optional[int] = None,
+        prev_value: str | None = None,
+        prev_index: int | None = None,
         directory=True,
         recursive=True,
     ):
@@ -408,7 +407,7 @@ class EtcdClient(object):
         :type recursive: bool
         :rtype: EtcdEvent
         """
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if prev_value is not None:
             params['prevValue'] = prev_value
         if prev_index is not None:
@@ -529,9 +528,9 @@ class HTTPHandler(six.moves.urllib.request.HTTPHandler):
 
 def walk_etcd_tree(
     start_path: str,
-    matcher_fn: Optional[Callable[[EtcdNode], bool]] = None,
-    action_fn: Optional[Callable[[EtcdNode], Any]] = None,
-    max_depth: Optional[int] = None,
+    matcher_fn: Callable[[EtcdNode], bool] | None = None,
+    action_fn: Callable[[EtcdNode], Any] | None = None,
+    max_depth: int | None = None,
     _current_depth=0,
 ):
     """
@@ -548,7 +547,7 @@ def walk_etcd_tree(
         List of results from action_fn for all matching nodes
     """
     etcd_client = EtcdClient()
-    results: List[Any] = []
+    results: list[Any] = []
 
     if max_depth is not None and _current_depth > max_depth:
         return results

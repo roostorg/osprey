@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Self, cast
+from typing import Self, cast
 
 from osprey.engine.executor.custom_extracted_features import CustomExtractedFeature
 from osprey.engine.executor.execution_context import ExecutionContext
@@ -16,7 +16,7 @@ class BanUserArguments(ArgumentsBase):
 
 
 @dataclass
-class BanUserEffect(EffectToCustomExtractedFeatureBase[List[str]]):
+class BanUserEffect(EffectToCustomExtractedFeatureBase[list[str]]):
     """Adds a 'ban user' effect to the action."""
 
     entity: str
@@ -29,20 +29,20 @@ class BanUserEffect(EffectToCustomExtractedFeatureBase[List[str]]):
         return f'{self.entity}|{self.comment}'
 
     @classmethod
-    def build_custom_extracted_feature_from_list(cls, values: List[Self]) -> CustomExtractedFeature[List[str]]:
-        return BanEffectsExtractedFeature(effects=cast(List[BanUserEffect], values))
+    def build_custom_extracted_feature_from_list(cls, values: list[Self]) -> CustomExtractedFeature[list[str]]:
+        return BanEffectsExtractedFeature(effects=cast(list[BanUserEffect], values))
 
 
 @add_slots
 @dataclass
-class BanEffectsExtractedFeature(CustomExtractedFeature[List[str]]):
-    effects: List[BanUserEffect]
+class BanEffectsExtractedFeature(CustomExtractedFeature[list[str]]):
+    effects: list[BanUserEffect]
 
     @classmethod
     def feature_name(cls) -> str:
         return 'ban_user'
 
-    def get_serializable_feature(self) -> List[str] | None:
+    def get_serializable_feature(self) -> list[str] | None:
         return [effect.to_str() for effect in self.effects]
 
 
