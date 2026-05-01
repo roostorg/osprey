@@ -16,6 +16,7 @@ import SavedQueryBar from './components/saved_queries/SavedQueryBar';
 import usePromiseResult from './hooks/usePromiseResult';
 import useApplicationConfigStore from './stores/ApplicationConfigStore';
 import useThemeStore from './stores/ThemeStore';
+import { THEME_STORAGE_KEY } from './stores/ThemeStore';
 import { history } from './stores/QueryStore';
 import { renderFromPromiseResult } from './utils/PromiseResultUtils';
 
@@ -34,8 +35,29 @@ const AppRouter: React.FC = () => {
     updateApplicationConfig(appConfig);
   });
 
-  const brandPrimary =
-    getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#1227ce';
+  const [brandPrimary, setBrandPrimary] = React.useState(
+    () => getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#1227ce'
+  );
+
+  React.useLayoutEffect(() => {
+    // Apply dark-theme class to <html> synchronously before paint to prevent FOUC.
+    // This must run here (not in ThemeToggle) because EventPage bypasses NavBar
+    // and needs the class even on cold-start.
+    const root = document.documentElement;
+    if (themeMode === 'dark') {
+      root.classList.add('dark-theme');
+    } else {
+      root.classList.remove('dark-theme');
+    }
+    // Persist the user's explicit choice. This also runs on first render, which is
+    // intentional: if the OS prefers dark and we honored that, we want subsequent
+    // visits to keep returning dark even after the user changes their OS preference,
+    // until they explicitly toggle.
+    window.localStorage.setItem(THEME_STORAGE_KEY, String(themeMode === 'dark'));
+    // Re-read --brand-primary now that the class is applied so ConfigProvider's
+    // colorPrimary token tracks the current theme.
+    setBrandPrimary(getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#1227ce');
+  }, [themeMode]);
 
   return renderFromPromiseResult(applicationConfigResult, () => (
     <ConfigProvider
