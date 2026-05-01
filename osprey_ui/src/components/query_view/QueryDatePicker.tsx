@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { EditOutlined } from '@ant-design/icons';
 import { DatePicker } from 'antd';
-import type { RangePickerProps } from 'antd/lib/date-picker';
-import moment, { Moment } from 'moment';
+import type { RangePickerProps } from 'antd/es/date-picker';
+import dayjs, { type Dayjs } from 'dayjs';
 
 import { DefaultIntervals } from '../../types/QueryTypes';
 import Text, { TextColors, TextSizes, TextWeights } from '../../uikit/Text';
@@ -19,8 +19,10 @@ interface QueryDatePickerProps {
   dateRange: { start: string; end: string };
 }
 
+type RangePickerValue = [Dayjs, Dayjs];
+
 const QueryDatePicker = ({ onIntervalChange, onDateRangeChange, interval, dateRange }: QueryDatePickerProps) => {
-  const handleRangePickerChange: RangePickerProps['onChange'] = (dates, _) => {
+  const handleRangePickerChange: RangePickerProps['onChange'] = (dates, _dateStrings) => {
     if (dates == null) return;
 
     const start = dates[0];
@@ -37,9 +39,9 @@ const QueryDatePicker = ({ onIntervalChange, onDateRangeChange, interval, dateRa
 
   const renderQueryIntervalOrDatePicker = () => {
     if (interval === CUSTOM_RANGE_OPTION) {
-      const value = isEmptyDateRange(dateRange.start, dateRange.end)
+      const value: RangePickerValue | undefined = isEmptyDateRange(dateRange.start, dateRange.end)
         ? undefined
-        : ([moment(dateRange.start), moment(dateRange.end)] as unknown as RangePickerProps['value']);
+        : [dayjs(dateRange.start), dayjs(dateRange.end)];
 
       return (
         <DatePicker.RangePicker
