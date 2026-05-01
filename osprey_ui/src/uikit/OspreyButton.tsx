@@ -41,7 +41,7 @@ const OspreyButton = ({
   weight = ButtonWeights.SEMIBOLD,
   textSelectable = false,
   ...props
-}: ButtonProps & OspreyButtonProps) => {
+}: Omit<ButtonProps, 'color'> & OspreyButtonProps) => {
   return (
     <Button
       className={classNames(
