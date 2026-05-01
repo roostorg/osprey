@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Hashable, Iterator, List, Type, TypeVar
+from collections.abc import Hashable, Iterator
+from typing import TYPE_CHECKING, Any, ClassVar, Type, TypeVar
 
 import yaml
 from osprey.engine.ast.grammar import Source
@@ -37,11 +38,11 @@ class WithLineAndCol:
         return instance
 
 
-class _ListWithLineAndCol(List[object], WithLineAndCol):
+class _ListWithLineAndCol(list[object], WithLineAndCol):
     __slots__ = ('line_num', 'column_num', 'source')
 
 
-class _DictWithLineAndCol(Dict[Hashable, Any], WithLineAndCol):
+class _DictWithLineAndCol(dict[Hashable, Any], WithLineAndCol):
     __slots__ = ('line_num', 'column_num', 'source')
 
 

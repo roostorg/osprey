@@ -9,7 +9,7 @@ from werkzeug.exceptions import HTTPException
 ddtrace.patch_all(gevent=True)
 
 from http import HTTPStatus
-from typing import NoReturn, Tuple, Union
+from typing import NoReturn
 
 import sentry_sdk
 from flask import Flask, Response
@@ -40,7 +40,7 @@ def _register_with_prefix(app, blueprint):
     app.register_blueprint(blueprint, url_prefix='/api')
 
 
-def health() -> Union[str, Tuple[str, int]]:
+def health() -> str | tuple[str, int]:
     # TODO: Real health reporting
     healthy = True
     if not healthy:

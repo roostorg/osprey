@@ -1,4 +1,4 @@
-from typing import Sequence, Tuple, Union
+from collections.abc import Sequence
 
 import pytest
 from osprey.engine.ast_validator.validation_context import ValidatedSources
@@ -16,12 +16,12 @@ from typing_extensions import Protocol
 
 
 class MakeRulesSourcesFunction(Protocol):
-    def __call__(self, names: Sequence[Union[str, Tuple[str, str]]]) -> ValidatedSources: ...
+    def __call__(self, names: Sequence[str | tuple[str, str]]) -> ValidatedSources: ...
 
 
 @pytest.fixture()
 def make_rules_sources(run_validation: RunValidationFunction) -> MakeRulesSourcesFunction:
-    def _make_rules_sources(names: Sequence[Union[str, Tuple[str, str]]]) -> ValidatedSources:
+    def _make_rules_sources(names: Sequence[str | tuple[str, str]]) -> ValidatedSources:
         source_lines = []
         for name_and_value in names:
             if isinstance(name_and_value, tuple):

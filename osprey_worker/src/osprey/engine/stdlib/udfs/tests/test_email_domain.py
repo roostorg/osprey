@@ -1,5 +1,3 @@
-from typing import Dict, Optional
-
 import pytest
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
 from osprey.engine.conftest import ExecuteFunction
@@ -59,7 +57,7 @@ def test_accepts_json_data_email_empty(execute: ExecuteFunction) -> None:
     ],
 )
 def test_invalid_email_addresses(
-    execute: ExecuteFunction, data: Dict[str, object], expected_result: Optional[str]
+    execute: ExecuteFunction, data: dict[str, object], expected_result: str | None
 ) -> None:
     result = execute(sources, data=data)
 
@@ -79,7 +77,7 @@ def test_invalid_email_addresses(
     ],
 )
 def test_invalid_email_subdomain_addresses(
-    execute: ExecuteFunction, data: Dict[str, object], expected_result: Optional[str]
+    execute: ExecuteFunction, data: dict[str, object], expected_result: str | None
 ) -> None:
     result = execute(sources, data=data)
 

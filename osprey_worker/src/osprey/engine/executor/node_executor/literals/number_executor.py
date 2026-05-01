@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from osprey.engine.ast.grammar import Number
 
@@ -10,8 +10,8 @@ if TYPE_CHECKING:
 
 
 @NodeExecutorRegistry.register_globally
-class NumberExecutor(BaseNodeExecutor[Number, Union[int, float]]):
+class NumberExecutor(BaseNodeExecutor[Number, int | float]):
     node_type = Number
 
-    def execute(self, execution_context: 'ExecutionContext') -> Union[int, float]:
+    def execute(self, execution_context: 'ExecutionContext') -> int | float:
         return self._node.value
