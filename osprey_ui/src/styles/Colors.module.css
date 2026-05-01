@@ -77,7 +77,7 @@
   --text-dark-secondary: #cdd0d6;
   --text-dark-disabled: #858e9b;
 
-  /* Brand — stays the same in dark mode for continuity */
+  /* Brand — lighter shade in dark mode for AA contrast */
   --brand-primary: #4858e0;
   --brand-dark: #1227ce;
 
