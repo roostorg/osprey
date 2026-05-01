@@ -1,65 +1,93 @@
 .appWrapper {
   display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.navBar {
-  background-color: var(--background-primary);
-  height: 42px;
-  width: 100%;
-  display: flex;
   flex-direction: row;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  background-color: var(--background-primary);
+  border-right: 1px solid var(--divider);
+  transition: width 0.2s ease;
+  overflow: hidden;
+}
+
+.sidebarExpanded {
+  width: 220px;
+}
+
+.sidebarCollapsed {
+  width: 56px;
+}
+
+.sidebarHeader {
+  display: flex;
   align-items: center;
-  border-bottom: 2px solid var(--divider);
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  justify-content: flex-end;
+  height: 48px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--divider);
 }
 
-.menuOutlinedIcon {
-  font-size: 18px;
-  margin-left: 16px;
-  margin-right: 12px;
+.collapseButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  width: 32px;
+  border: none;
+  background: transparent;
   color: var(--icon-primary);
+  cursor: pointer;
+  border-radius: 4px;
 }
 
-.isRecording :global(.ant-btn.ant-btn-link) {
-  user-select: none !important;
+.collapseButton:hover {
+  background-color: var(--background-base-lower);
+  color: var(--icon-active);
 }
 
-.navMenuContainer {
-  position: absolute;
-  width: 250px;
-  z-index: 1;
-  pointer-events: none;
-  height: 100%;
+.sidebarMenu {
+  flex: 1 1 auto;
+  border-right: none !important; /* Antd Menu inline mode adds a right border we don't want here */
 }
 
-.expanded {
-  pointer-events: all;
-}
-
-.navMenuContainer :global(.ant-menu-inline-collapsed) {
-  width: 0 !important;
-}
-
-.navMenuContainer :global(.ant-menu-inline-collapsed-noicon) {
+/* Hide group titles when sidebar is collapsed (Antd 5 + type:'group' has known styling
+   issues at inlineCollapsed=true; this enforces design AC2.4: collapsed = icons only). */
+.sidebarCollapsed .sidebarMenu :global(.ant-menu-item-group-title) {
   display: none;
 }
 
-.navMenuContainer :global(.ant-menu-inline-collapsed) > li {
-  padding: 0 !important;
+/* Main column (top bar + content) */
+.mainColumn {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* allow children to shrink past intrinsic content width */
 }
 
-.navMenu {
-  height: 100%;
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 16px;
+  background-color: var(--background-primary);
+  border-bottom: 1px solid var(--divider);
+}
+
+.topBarLeft,
+.topBarRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px; /* reserve vertical space even when empty (AC2.6 ThemeToggle slot) */
 }
 
 .contentWrapper {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  position: relative;
-  flex-grow: 1;
+  flex: 1 1 auto;
+  min-height: 0;
 }
