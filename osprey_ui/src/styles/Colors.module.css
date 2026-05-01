@@ -4,7 +4,10 @@
   --background-secondary: #f7f8f9;
   --background-secondary-alt: #f2f3f5;
   --background-tertiary: #dbdcdf;
+  --background-base-lowest: #ffffff;
+  --background-base-low: #fafbfc;
   --background-base-lower: #f0f1f3;
+  --background-mod-normal: rgba(15, 23, 42, 0.04);
 
   /* Text for Light Backgrounds */
   --text-light-headings-primary: #252527;
@@ -41,6 +44,7 @@
 
   /* Icons */
   --icon-primary: #535a65;
+  --icon-strong: #1f232b;
   --icon-active: #25282d;
   --icon-hover: #3c4149;
   --icon-muted: #9aa1ac;
