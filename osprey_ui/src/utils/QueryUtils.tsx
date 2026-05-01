@@ -1,5 +1,5 @@
 import { isEqual } from 'lodash';
-import moment from 'moment';
+import dayjs from 'dayjs';
 
 import useApplicationConfigStore from '../stores/ApplicationConfigStore';
 import { Feature } from '../types/EntityTypes';
@@ -24,8 +24,8 @@ export function getQueryDateRange(
     } = IntervalOptions[interval];
 
     return {
-      start: moment.utc().subtract(amount, unit).format(),
-      end: moment.utc().format(),
+      start: dayjs.utc().subtract(amount, unit).format(),
+      end: dayjs.utc().format(),
     };
   }
 
@@ -116,8 +116,8 @@ export function addFeaturesToQueryFilter(featureAdditions: Feature[], queryFilte
 
 export function baseQueryEquals(a: BaseQuery, b: BaseQuery): boolean {
   return (
-    moment(a.start).isSame(b.start) &&
-    moment(a.end).isSame(b.end) &&
+    dayjs(a.start).isSame(b.start) &&
+    dayjs(a.end).isSame(b.end) &&
     a.interval === b.interval &&
     a.queryFilter === b.queryFilter
   );
