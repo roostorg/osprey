@@ -32,9 +32,11 @@ const AppRouter: React.FC = () => {
     updateApplicationConfig(appConfig);
   });
 
+  const brandPrimary =
+    getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#1227ce';
+
   return renderFromPromiseResult(applicationConfigResult, () => (
-    // keep in sync with --brand-primary in styles/Colors.module.css
-    <ConfigProvider theme={{ token: { colorPrimary: '#1227ce' } }}>
+    <ConfigProvider theme={{ token: { colorPrimary: brandPrimary } }}>
       <AntdApp>
         <Router history={history}>
           <Switch>
