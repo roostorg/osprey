@@ -5,7 +5,6 @@ html {
 html,
 body {
   background-color: var(--background-secondary) !important;
-  height: auto !important;
   min-height: 100%;
 }
 
@@ -22,6 +21,7 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
-#root {
+#root,
+.ant-app {
   height: 100%;
 }
