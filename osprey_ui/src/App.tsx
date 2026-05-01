@@ -5,6 +5,7 @@ import { Router, Switch, Route } from 'react-router-dom';
 import { getApplicationConfig } from './actions/ConfigActions';
 import UdfDocsView from './components/docs/UdfDocsView';
 import BulkJobHistoryView from './components/bulk_job_history/BulkJobHistory';
+import { FeaturesPage } from './components/features/FeaturesPage';
 import RulesVisualizerView from './components/rules_visualizer/RulesVisualizer';
 import EntityViewBar from './components/entities/EntityViewBar';
 import EventPage from './components/event_stream/EventPage';
@@ -95,6 +96,9 @@ const AppRouter: React.FC = () => {
                   </Route>
                   <Route path={Routes.RULES_VISUALIZER}>
                     <RulesVisualizerView />
+                  </Route>
+                  <Route path={Routes.FEATURES}>
+                    <FeaturesPage />
                   </Route>
                   <Route exact path={[Routes.ENTITY, Routes.HOME, Routes.SAVED_QUERY]}>
                     <QueryView />
