@@ -33,6 +33,7 @@ const AppRouter: React.FC = () => {
   });
 
   return renderFromPromiseResult(applicationConfigResult, () => (
+    // keep in sync with --brand-primary in styles/Colors.module.css
     <ConfigProvider theme={{ token: { colorPrimary: '#1227ce' } }}>
       <AntdApp>
         <Router history={history}>

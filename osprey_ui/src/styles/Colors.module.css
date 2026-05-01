@@ -19,7 +19,7 @@
   --text-dark-disabled: #858e9b;
 
   /* Brand */
-  --brand-primary: #1227ce;
+  --brand-primary: #1227ce; /* keep in sync with colorPrimary in App.tsx */
   --brand-dark: #0c1b8d;
 
   /* Links */
