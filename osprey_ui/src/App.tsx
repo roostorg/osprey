@@ -15,8 +15,7 @@ import SavedQueries from './components/saved_queries/SavedQueries';
 import SavedQueryBar from './components/saved_queries/SavedQueryBar';
 import usePromiseResult from './hooks/usePromiseResult';
 import useApplicationConfigStore from './stores/ApplicationConfigStore';
-import useThemeStore from './stores/ThemeStore';
-import { THEME_STORAGE_KEY } from './stores/ThemeStore';
+import useThemeStore, { THEME_STORAGE_KEY } from './stores/ThemeStore';
 import { history } from './stores/QueryStore';
 import { renderFromPromiseResult } from './utils/PromiseResultUtils';
 
