@@ -110,7 +110,7 @@ const BulkActionStartModal: React.FC<JobUploadModalProps> = ({ visible, onCancel
   return (
     <Modal
       title="Create New Job"
-      visible={visible}
+      open={visible}
       onCancel={() => {
         form.resetFields();
         setFileSelected(null);

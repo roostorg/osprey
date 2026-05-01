@@ -125,7 +125,7 @@ const BulkLabelDrawer: React.FC = () => {
     <Drawer
       width={450}
       title="Bulk Edit Labels"
-      visible={showBulkLabelDrawer}
+      open={showBulkLabelDrawer}
       onClose={() => {
         handleDrawerClose(true);
       }}
@@ -134,7 +134,7 @@ const BulkLabelDrawer: React.FC = () => {
       <BulkLabelDrawerContent onCancel={handleDrawerClose} onEntityUnchecked={setEntitiesHaveBeenUnchecked} />
       <Modal
         title="Are you sure you want to close?"
-        visible={showConfirmModal}
+        open={showConfirmModal}
         onOk={handleConfirmationOk}
         onCancel={handleConfirmationCancel}
       >

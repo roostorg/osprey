@@ -46,7 +46,7 @@ const LabelDrawer = ({ childDrawerProps }: LabelDrawerProps) => {
     <Drawer
       placement="right"
       width={400}
-      visible={childDrawerProps == null ? showLabelDrawer : childDrawerProps.isVisible}
+      open={childDrawerProps == null ? showLabelDrawer : childDrawerProps.isVisible}
       onClose={handleDrawerClose}
       closable={false}
       destroyOnClose

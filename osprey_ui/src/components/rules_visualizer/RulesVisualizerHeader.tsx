@@ -73,7 +73,7 @@ const RulesVisualizerHeader = ({
       placement="right"
       closable={false}
       onClose={() => setIsDrawerVisible(false)}
-      visible={isDrawerVisible}
+      open={isDrawerVisible}
       width="600"
     >
       <div className={styles.drawerBody}>
