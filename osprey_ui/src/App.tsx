@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { App as AntdApp, ConfigProvider, Spin } from 'antd';
+import { App as AntdApp, ConfigProvider, Spin, theme } from 'antd';
 import { Router, Switch, Route } from 'react-router-dom';
 
 import { getApplicationConfig } from './actions/ConfigActions';
@@ -15,6 +15,7 @@ import SavedQueries from './components/saved_queries/SavedQueries';
 import SavedQueryBar from './components/saved_queries/SavedQueryBar';
 import usePromiseResult from './hooks/usePromiseResult';
 import useApplicationConfigStore from './stores/ApplicationConfigStore';
+import useThemeStore from './stores/ThemeStore';
 import { history } from './stores/QueryStore';
 import { renderFromPromiseResult } from './utils/PromiseResultUtils';
 
@@ -26,6 +27,7 @@ import { BulkActionPage } from './components/bulk_actions/BulkActionPage';
 
 const AppRouter: React.FC = () => {
   const updateApplicationConfig = useApplicationConfigStore((state) => state.updateApplicationConfig);
+  const themeMode = useThemeStore((state) => state.mode);
 
   const applicationConfigResult = usePromiseResult(async () => {
     const appConfig = await getApplicationConfig();
@@ -39,6 +41,7 @@ const AppRouter: React.FC = () => {
     <ConfigProvider
       theme={{
         token: { colorPrimary: brandPrimary },
+        algorithm: themeMode === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
         components: { Menu: { collapsedWidth: 56 } },
       }}
     >
