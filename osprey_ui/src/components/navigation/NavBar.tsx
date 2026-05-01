@@ -10,6 +10,7 @@ import {
   SearchOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  DatabaseOutlined,
 } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -76,6 +77,11 @@ const NavBar = ({ children }: { children: React.ReactNode }) => {
           icon: <FunctionOutlined />,
           label: <Link to={Routes.DOCS_UDFS}>UDF Registry</Link>,
         },
+        {
+          key: Routes.FEATURES,
+          icon: <DatabaseOutlined />,
+          label: <Link to={Routes.FEATURES}>Features</Link>,
+        },
       ],
     },
     {
@@ -105,6 +111,7 @@ const NavBar = ({ children }: { children: React.ReactNode }) => {
       Routes.SAVED_QUERIES,
       Routes.RULES_VISUALIZER,
       Routes.DOCS_UDFS,
+      Routes.FEATURES,
       Routes.BULK_ACTION,
       Routes.BULK_JOB_HISTORY,
     ];
