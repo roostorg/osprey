@@ -1,10 +1,10 @@
-import dayjs, { type Dayjs } from 'dayjs';
+import dayjs, { type Dayjs, type ManipulateType } from 'dayjs';
 
 import { IntervalOptions, MomentRangeValues } from '../types/QueryTypes';
 
 import { DATE_FORMAT } from '../Constants';
 
-const DURATIONS = ['month', 'week', 'day', 'hour'];
+const DURATIONS: readonly ManipulateType[] = ['month', 'week', 'day', 'hour'];
 
 export function formatUtcTimestamp(timestamp: string | Dayjs): string {
   return dayjs.utc(timestamp).format(DATE_FORMAT);
@@ -24,7 +24,7 @@ export function getIntervalFromDateRange({ start, end }: { start: string; end: s
   let numUnits = 0;
 
   for (const timeUnit of DURATIONS) {
-    const num = Math.abs(dayjsDuration.as(timeUnit as any));
+    const num = Math.abs(dayjsDuration.as(timeUnit));
     if (num % 1 === 0) {
       unit = timeUnit;
       numUnits = num;
