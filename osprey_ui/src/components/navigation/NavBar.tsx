@@ -28,12 +28,12 @@ const NavBar = ({ children }: { children: React.ReactNode }) => {
     return stored === 'true';
   });
 
-  React.useEffect(() => {
-    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(isExpanded));
-  }, [isExpanded]);
-
   const toggleSidebar = React.useCallback(() => {
-    setIsExpanded((prev) => !prev);
+    setIsExpanded((prev) => {
+      const next = !prev;
+      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next));
+      return next;
+    });
   }, []);
 
   const menuItems: MenuProps['items'] = [
