@@ -143,9 +143,7 @@ const NavBar = ({ children }: { children: React.ReactNode }) => {
       <div className={styles.mainColumn}>
         <header className={styles.topBar}>
           <div className={styles.topBarLeft} />
-          <div className={styles.topBarRight}>
-            {/* ThemeToggle slot — filled in Phase 3 (AC2.6). Intentionally empty in Phase 2. */}
-          </div>
+          <div className={styles.topBarRight} />
         </header>
         <main className={styles.contentWrapper}>{children}</main>
       </div>
