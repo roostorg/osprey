@@ -9,7 +9,7 @@ const getInitialMode = (): ThemeMode => {
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (stored === 'true') return 'dark';
   if (stored === 'false') return 'light';
-  // No localStorage value: honor the OS preference (AC3.3).
+  // No localStorage value: honor the OS preference.
   if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
     return 'dark';
   }
