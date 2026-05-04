@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 
+import Logo from '../../assets/Logo';
 import { Routes } from '../../Constants';
 import styles from './NavBar.module.css';
 
@@ -121,7 +122,9 @@ const NavBar = ({ children }: { children: React.ReactNode }) => {
         aria-label="Primary navigation"
       >
         <div className={styles.sidebarHeader}>
-          {/* Brand / collapse toggle */}
+          <Link to={Routes.HOME} aria-label="Osprey home" className={styles.logoLink}>
+            <Logo variant={isExpanded ? 'full' : 'mark'} />
+          </Link>
           <button
             type="button"
             className={styles.collapseButton}
