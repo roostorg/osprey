@@ -37,6 +37,7 @@
     "zustand": "3.5.2"
   },
   "devDependencies": {
+    "@playwright/mcp": "0.0.73",
     "@types/classnames": "2.2.9",
     "@types/cytoscape": "^3.19.4",
     "@types/cytoscape-dagre": "^2.3.0",
