@@ -41,7 +41,7 @@
 .logoLink {
   display: inline-flex;
   align-items: center;
-  color: var(--text-primary);
+  color: inherit;
   text-decoration: none;
 }
 
