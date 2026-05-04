@@ -55,10 +55,21 @@
   border-right: none !important; /* Antd Menu inline mode adds a right border we don't want here */
 }
 
-/* Hide group titles when sidebar is collapsed (Antd 5 + type:'group' has known styling
-   issues at inlineCollapsed=true). */
+/* Group titles transition smoothly when the sidebar collapses/expands instead of
+   popping via display:none — the discontinuous reflow at React-commit time was the
+   main source of the disorienting feel during the width animation. */
+.sidebarMenu :global(.ant-menu-item-group-title) {
+  overflow: hidden;
+  transition:
+    opacity 0.2s ease,
+    max-height 0.2s ease,
+    padding-block 0.2s ease;
+}
+
 .sidebarCollapsed .sidebarMenu :global(.ant-menu-item-group-title) {
-  display: none;
+  opacity: 0;
+  max-height: 0;
+  padding-block: 0;
 }
 
 /* Main column (top bar + content) */
