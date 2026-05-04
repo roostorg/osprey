@@ -1,8 +1,4 @@
-"""Shared AST traversal helpers used by features.py.
-
-Extracted from rules.py so features.py and any future AST-walking view can share
-the same implementation.
-"""
+"""Shared AST traversal helpers used by features.py."""
 
 from typing import Any, Optional
 
