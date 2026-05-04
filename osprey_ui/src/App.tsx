@@ -36,7 +36,12 @@ const AppRouter: React.FC = () => {
     getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#1227ce';
 
   return renderFromPromiseResult(applicationConfigResult, () => (
-    <ConfigProvider theme={{ token: { colorPrimary: brandPrimary } }}>
+    <ConfigProvider
+      theme={{
+        token: { colorPrimary: brandPrimary },
+        components: { Menu: { collapsedWidth: 56 } },
+      }}
+    >
       <AntdApp>
         <Router history={history}>
           <Switch>
