@@ -4,7 +4,7 @@ html {
 
 html,
 body {
-  background-color: var(--background-secondary) !important;
+  background-color: var(--background-base-lower) !important;
   min-height: 100%;
 }
 

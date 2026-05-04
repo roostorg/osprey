@@ -1,65 +1,122 @@
 .appWrapper {
   display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.navBar {
-  background-color: var(--background-primary);
-  height: 42px;
-  width: 100%;
-  display: flex;
   flex-direction: row;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  background-color: var(--background-primary);
+  border-right: 1px solid var(--divider);
+  transition: width 0.2s ease;
+  overflow: hidden;
+}
+
+.sidebarExpanded {
+  width: 220px;
+}
+
+.sidebarCollapsed {
+  width: 56px;
+}
+
+.sidebarHeader {
+  display: flex;
   align-items: center;
-  border-bottom: 2px solid var(--divider);
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--divider);
 }
 
-.menuOutlinedIcon {
-  font-size: 18px;
-  margin-left: 16px;
-  margin-right: 12px;
+/* Tighten padding and shrink the toggle so the bird mark + toggle fit in the
+   56px-wide collapsed sidebar (mark 18 + gap + toggle 24 + 4px padding × 2 = 52). */
+.sidebarCollapsed .sidebarHeader {
+  padding: 0 4px;
+}
+
+.logoLink {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+.collapseButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  width: 32px;
+  border: none;
+  background: transparent;
   color: var(--icon-primary);
+  cursor: pointer;
+  border-radius: 4px;
 }
 
-.isRecording :global(.ant-btn.ant-btn-link) {
-  user-select: none !important;
+.sidebarCollapsed .collapseButton {
+  height: 24px;
+  width: 24px;
 }
 
-.navMenuContainer {
-  position: absolute;
-  width: 250px;
-  z-index: 1;
-  pointer-events: none;
-  height: 100%;
+.collapseButton:hover {
+  background-color: var(--background-base-lower);
+  color: var(--icon-active);
 }
 
-.expanded {
-  pointer-events: all;
+.sidebarMenu {
+  flex: 1 1 auto;
+  border-right: none !important; /* Antd Menu inline mode adds a right border we don't want here */
 }
 
-.navMenuContainer :global(.ant-menu-inline-collapsed) {
-  width: 0 !important;
+/* Group titles transition smoothly when the sidebar collapses/expands instead of
+   popping via display:none — the discontinuous reflow at React-commit time was the
+   main source of the disorienting feel during the width animation. */
+.sidebarMenu :global(.ant-menu-item-group-title) {
+  overflow: hidden;
+  transition:
+    opacity 0.2s ease,
+    max-height 0.2s ease,
+    padding-block 0.2s ease;
 }
 
-.navMenuContainer :global(.ant-menu-inline-collapsed-noicon) {
-  display: none;
+.sidebarCollapsed .sidebarMenu :global(.ant-menu-item-group-title) {
+  opacity: 0;
+  max-height: 0;
+  padding-block: 0;
 }
 
-.navMenuContainer :global(.ant-menu-inline-collapsed) > li {
-  padding: 0 !important;
+/* Main column (top bar + content) */
+.mainColumn {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* allow children to shrink past intrinsic content width */
 }
 
-.navMenu {
-  height: 100%;
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 16px;
+  background-color: var(--background-primary);
+  border-bottom: 1px solid var(--divider);
+}
+
+.topBarLeft,
+.topBarRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px; /* reserve vertical space even when empty */
 }
 
 .contentWrapper {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  position: relative;
-  flex-grow: 1;
+  flex: 1 1 auto;
+  min-height: 0;
 }
