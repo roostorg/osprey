@@ -1,0 +1,66 @@
+.viewContainer {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scrollArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.statsRow {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.statsRow > * {
+  flex: 1;
+}
+
+.statCardClickable {
+  cursor: pointer;
+}
+
+.statCardActive {
+  border-color: var(--brand-primary);
+}
+
+.featureName {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-weight: 600;
+}
+
+.featureSource {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  color: var(--text-light-secondary);
+  font-size: 12px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.definitionBlock {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12px;
+  padding: 8px 10px;
+  background: var(--background-secondary);
+  border: 1px solid var(--divider);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
