@@ -34,31 +34,25 @@ const AppRouter: React.FC = () => {
     updateApplicationConfig(appConfig);
   });
 
-  const [brandPrimary, setBrandPrimary] = React.useState(
-    () => getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#1227ce'
-  );
+  const isDark = themeMode === 'dark';
+  // Mirror of --brand-primary in Colors.module.css. Antd's algorithm needs a
+  // concrete color string at render time to compute its derivatives, so we
+  // can't pass var(--brand-primary) directly. Keep these two values in sync.
+  const brandPrimary = isDark ? '#4858e0' : '#1227ce';
 
   React.useLayoutEffect(() => {
     // Apply dark-theme class to <html> synchronously before paint to prevent FOUC.
     // This must run here (not in ThemeToggle) because EventPage bypasses NavBar
     // and needs the class even on cold-start.
     const root = document.documentElement;
-    if (themeMode === 'dark') {
+    if (isDark) {
       root.classList.add('dark-theme');
     } else {
       root.classList.remove('dark-theme');
     }
-    // Persist the user's explicit choice. This also runs on first render, which is
-    // intentional: if the OS prefers dark and we honored that, we want subsequent
-    // visits to keep returning dark even after the user changes their OS preference,
-    // until they explicitly toggle.
-    window.localStorage.setItem(THEME_STORAGE_KEY, String(themeMode === 'dark'));
-    // Re-read --brand-primary now that the class is applied so ConfigProvider's
-    // colorPrimary token tracks the current theme.
-    setBrandPrimary(getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#1227ce');
-  }, [themeMode]);
+    window.localStorage.setItem(THEME_STORAGE_KEY, String(isDark));
+  }, [isDark]);
 
-  const isDark = themeMode === 'dark';
   return renderFromPromiseResult(applicationConfigResult, () => (
     <ConfigProvider
       theme={{
