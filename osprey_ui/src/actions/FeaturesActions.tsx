@@ -6,5 +6,5 @@ export async function getFeaturesList(): Promise<FeaturesListResponse> {
   if (response.ok) {
     return response.data;
   }
-  throw new Error('Failed to fetch features list');
+  throw new Error(response.error.message ?? 'Failed to fetch features list');
 }
