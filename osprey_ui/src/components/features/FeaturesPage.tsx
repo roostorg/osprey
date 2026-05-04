@@ -67,7 +67,7 @@ export const FeaturesPage: React.FC = () => {
     return [...list].sort((a, b) => a.total_references - b.total_references || a.name.localeCompare(b.name));
   }, [features, search, categoryFilter, extractionFnFilter, unusedOnly, sortKey]);
 
-  // AC5.8: page resets to 1 on any filter/sort change.
+  // Reset to page 1 on any filter/sort change.
   React.useEffect(() => {
     setPage(1);
   }, [search, categoryFilter, extractionFnFilter, unusedOnly, sortKey]);
