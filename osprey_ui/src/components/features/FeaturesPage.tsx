@@ -1,11 +1,28 @@
 import * as React from 'react';
-import { Card, Empty, Input, Pagination, Select, Spin, Switch, Tag, Tooltip } from 'antd';
+import {
+  Card,
+  Collapse,
+  Descriptions,
+  Empty,
+  Input,
+  Pagination,
+  Select,
+  Space,
+  Spin,
+  Statistic,
+  Switch,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 
 import { getFeaturesList } from '../../actions/FeaturesActions';
 import { FeatureInfo, FeaturesListResponse } from '../../types/FeaturesTypes';
 
 import styles from './FeaturesPage.module.css';
+
+const { Title, Paragraph } = Typography;
 
 type SortKey = 'name' | 'most-referenced' | 'least-referenced';
 
@@ -67,7 +84,6 @@ export const FeaturesPage: React.FC = () => {
     return [...list].sort((a, b) => a.total_references - b.total_references || a.name.localeCompare(b.name));
   }, [features, search, categoryFilter, extractionFnFilter, unusedOnly, sortKey]);
 
-  // Reset to page 1 on any filter/sort change.
   React.useEffect(() => {
     setPage(1);
   }, [search, categoryFilter, extractionFnFilter, unusedOnly, sortKey]);
@@ -95,36 +111,46 @@ export const FeaturesPage: React.FC = () => {
     [extractionFns]
   );
 
+  const collapseItems = paginated.map((f) => ({
+    key: f.name,
+    label: <FeatureHeader feature={f} />,
+    children: <FeatureDetail feature={f} />,
+  }));
+
   return (
     <div className={styles.viewContainer}>
       <div className={styles.scrollArea}>
-        <div className={styles.pageTitle}>Features Registry</div>
-        <div className={styles.pageSubtitle}>
+        <Title level={3} style={{ marginBottom: 4 }}>
+          Features Registry
+        </Title>
+        <Paragraph type="secondary">
           Extracted data fields from event payloads — the queryable dimensions rules reference. Sourced from{' '}
           <code>models/</code>, <code>lib/</code>, and <code>counters/</code> in the rules engine.
-        </div>
+        </Paragraph>
 
         {loading ? (
-          <div className={styles.loadingContainer}>
-            <Spin size="large" />
-          </div>
+          <Spin size="large" style={{ display: 'block', margin: '48px auto' }} />
         ) : error ? (
-          <div className={styles.emptyState}>Failed to load features: {error}</div>
+          <Empty description={`Failed to load features: ${error}`} />
         ) : (
           <>
             <div className={styles.statsRow}>
               <Tooltip title="Total extracted features — named values produced by feature-extraction functions like JsonData, Entity, and SnowflakeAge.">
-                <Card className={styles.statCard} size="small">
-                  <div className={styles.statLabel}>Features</div>
-                  <div className={styles.statValue}>{data?.total ?? 0}</div>
-                  <div className={styles.statSub}>{Object.keys(categories).length} categories</div>
+                <Card size="small">
+                  <Statistic
+                    title="Features"
+                    value={data?.total ?? 0}
+                    suffix={
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        {Object.keys(categories).length} categories
+                      </Typography.Text>
+                    }
+                  />
                 </Card>
               </Tooltip>
               <Tooltip title="Unique extraction functions across all features.">
-                <Card className={styles.statCard} size="small">
-                  <div className={styles.statLabel}>Extraction functions</div>
-                  <div className={styles.statValue}>{Object.keys(extractionFns).length}</div>
-                  <div className={styles.statSub}>JsonData, Entity, …</div>
+                <Card size="small">
+                  <Statistic title="Extraction functions" value={Object.keys(extractionFns).length} />
                 </Card>
               </Tooltip>
               <Tooltip
@@ -135,10 +161,8 @@ export const FeaturesPage: React.FC = () => {
                 }
               >
                 <Card
-                  className={`${styles.statCard} ${styles.statCardClickable} ${
-                    unusedOnly ? styles.statCardActive : ''
-                  }`}
                   size="small"
+                  className={`${styles.statCardClickable} ${unusedOnly ? styles.statCardActive : ''}`}
                   role="button"
                   tabIndex={0}
                   aria-pressed={unusedOnly}
@@ -150,14 +174,12 @@ export const FeaturesPage: React.FC = () => {
                     }
                   }}
                 >
-                  <div className={styles.statLabel}>Unused features</div>
-                  <div className={styles.statValue}>{unusedCount}</div>
-                  <div className={styles.statSub}>{unusedOnly ? 'filter active' : 'no references'}</div>
+                  <Statistic title="Unused features" value={unusedCount} />
                 </Card>
               </Tooltip>
             </div>
 
-            <div className={styles.filtersBar}>
+            <Space wrap style={{ marginBottom: 12 }}>
               <Input
                 size="small"
                 prefix={<SearchOutlined />}
@@ -165,70 +187,70 @@ export const FeaturesPage: React.FC = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 allowClear
-                className={styles.searchInput}
+                style={{ width: 280 }}
               />
               <Select
                 size="small"
                 mode="multiple"
                 placeholder="Category"
-                className={styles.filterSelect}
                 value={categoryFilter}
                 onChange={setCategoryFilter}
                 options={categoryOptions}
                 allowClear
                 maxTagCount="responsive"
+                style={{ minWidth: 180, maxWidth: 320 }}
               />
               <Select
                 size="small"
                 mode="multiple"
                 placeholder="Extraction fn"
-                className={styles.filterSelect}
                 value={extractionFnFilter}
                 onChange={setExtractionFnFilter}
                 options={extractionFnOptions}
                 allowClear
                 maxTagCount="responsive"
+                style={{ minWidth: 180, maxWidth: 320 }}
               />
               <Select
                 size="small"
                 value={sortKey}
-                onChange={(v) => setSortKey(v)}
-                className={styles.sortSelect}
+                onChange={setSortKey}
+                style={{ width: 170 }}
                 options={[
                   { value: 'most-referenced', label: 'Most referenced' },
                   { value: 'least-referenced', label: 'Least referenced' },
                   { value: 'name', label: 'Name (A-Z)' },
                 ]}
               />
-              <span className={styles.unusedToggle}>
+              <Space size={6}>
                 <Switch size="small" checked={unusedOnly} onChange={setUnusedOnly} />
-                Unused only
-              </span>
-            </div>
+                <span style={{ fontSize: 12 }}>Unused only</span>
+              </Space>
+            </Space>
 
-            <div className={styles.sectionHeader}>Features ({filtered.length})</div>
+            <Title level={5} style={{ marginTop: 8 }}>
+              Features ({filtered.length})
+            </Title>
             {filtered.length === 0 ? (
               <Empty description="No features match the current filters" />
             ) : (
               <>
-                {paginated.map((f) => (
-                  <FeatureCard key={f.name} feature={f} />
-                ))}
-                <div className={styles.paginationBar}>
-                  <Pagination
-                    current={page}
-                    pageSize={pageSize}
-                    total={filtered.length}
-                    onChange={(p, ps) => {
-                      setPage(p);
-                      setPageSize(ps);
-                    }}
-                    showSizeChanger
-                    pageSizeOptions={['25', '50', '100', '200']}
-                    showTotal={(total, [start, end]) => `${start}–${end} of ${total}`}
-                    size="small"
-                  />
-                </div>
+                <Collapse items={collapseItems} bordered={false} />
+                <Pagination
+                  current={page}
+                  pageSize={pageSize}
+                  total={filtered.length}
+                  onChange={(p, ps) => {
+                    setPage(p);
+                    setPageSize(ps);
+                  }}
+                  showSizeChanger
+                  pageSizeOptions={['25', '50', '100', '200']}
+                  showTotal={(total, [start, end]) => `${start}–${end} of ${total}`}
+                  size="small"
+                  align="center"
+                  style={{ marginTop: 20 }}
+                />
               </>
             )}
           </>
@@ -238,112 +260,79 @@ export const FeaturesPage: React.FC = () => {
   );
 };
 
-const FeatureCard: React.FC<{ feature: FeatureInfo }> = ({ feature }) => {
-  const [expanded, setExpanded] = React.useState(false);
+const FeatureHeader: React.FC<{ feature: FeatureInfo }> = ({ feature }) => {
   const isUnused = feature.total_references === 0;
-  const toggle = () => setExpanded((e) => !e);
   return (
-    <div
-      className={`${styles.itemCard} ${expanded ? styles.itemCardExpanded : ''}`}
-      role="button"
-      tabIndex={0}
-      aria-expanded={expanded}
-      onClick={toggle}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          toggle();
-        }
-      }}
-    >
-      <div className={styles.itemHeader}>
-        <code className={styles.itemName}>{feature.name}</code>
-        {feature.type_annotation && (
-          <Tag color="blue" className={styles.inlineBadge}>
-            {feature.type_annotation}
-          </Tag>
-        )}
-        <Tag color="purple" className={styles.inlineBadge}>
-          {feature.extraction_fn}
-        </Tag>
-        {isUnused && (
-          <Tooltip title="This feature is defined but no rule, WhenRules, or other feature references it. Possible cleanup candidate.">
-            <Tag color="orange" className={styles.inlineBadge}>
-              unused
-            </Tag>
-          </Tooltip>
-        )}
-        <span className={styles.itemDesc}>{feature.source_file}</span>
-        <div className={styles.itemMeta}>
-          <span className={styles.itemStat}>
-            <strong>{feature.referenced_by_rules.length}</strong> rules
-          </span>
-          <span className={styles.itemStat}>
-            <strong>{feature.referenced_by_features.length}</strong> features
-          </span>
-          {feature.referenced_by_whenrules > 0 && (
-            <span className={styles.itemStat}>
-              <strong>{feature.referenced_by_whenrules}</strong> when-rules
-            </span>
-          )}
-        </div>
-      </div>
-      {expanded && (
-        <div className={styles.itemDetail} onClick={(e) => e.stopPropagation()}>
-          <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>Category</span>
-            <span className={styles.detailValue}>
-              <Tag className={styles.inlineBadge}>{feature.category}</Tag>
-            </span>
-          </div>
-          <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>Source file</span>
-            <span className={styles.detailValue}>
-              <code>{feature.source_file}</code>
-            </span>
-          </div>
-          <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>Definition</span>
-            <div className={styles.definitionBlock}>
-              {feature.name}
-              {feature.type_annotation ? `: ${feature.type_annotation}` : ''} = {feature.definition}
-            </div>
-          </div>
-          <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>Rules ({feature.referenced_by_rules.length})</span>
-            <span className={styles.detailValue}>
-              {feature.referenced_by_rules.length === 0
-                ? '—'
-                : feature.referenced_by_rules.map((ruleName) => (
-                    <span key={ruleName} className={styles.ruleLink}>
-                      {ruleName}
-                    </span>
-                  ))}
-            </span>
-          </div>
-          <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>Features ({feature.referenced_by_features.length})</span>
-            <span className={styles.detailValue}>
-              {feature.referenced_by_features.length === 0
-                ? '—'
-                : feature.referenced_by_features.map((name) => (
-                    <span key={name} className={styles.referenceChip}>
-                      {name}
-                    </span>
-                  ))}
-            </span>
-          </div>
-          {feature.referenced_by_whenrules > 0 && (
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>WhenRules</span>
-              <span className={styles.detailValue}>
-                {feature.referenced_by_whenrules} block{feature.referenced_by_whenrules === 1 ? '' : 's'} (effects /
-                apply_if)
-              </span>
-            </div>
-          )}
-        </div>
+    <div className={styles.headerRow}>
+      <code className={styles.featureName}>{feature.name}</code>
+      {feature.type_annotation && <Tag color="blue">{feature.type_annotation}</Tag>}
+      <Tag color="purple">{feature.extraction_fn}</Tag>
+      {isUnused && (
+        <Tooltip title="This feature is defined but no rule, WhenRules, or other feature references it. Possible cleanup candidate.">
+          <Tag color="orange">unused</Tag>
+        </Tooltip>
       )}
+      <span className={styles.featureSource}>{feature.source_file}</span>
+      <Space size={6} style={{ flexShrink: 0 }}>
+        <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+          <strong>{feature.referenced_by_rules.length}</strong> rules
+        </Typography.Text>
+        <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+          <strong>{feature.referenced_by_features.length}</strong> features
+        </Typography.Text>
+        {feature.referenced_by_whenrules > 0 && (
+          <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+            <strong>{feature.referenced_by_whenrules}</strong> when-rules
+          </Typography.Text>
+        )}
+      </Space>
     </div>
+  );
+};
+
+const FeatureDetail: React.FC<{ feature: FeatureInfo }> = ({ feature }) => {
+  const definition = `${feature.name}${feature.type_annotation ? `: ${feature.type_annotation}` : ''} = ${
+    feature.definition
+  }`;
+  return (
+    <Descriptions size="small" column={1} colon={false} labelStyle={{ width: 120, fontWeight: 600 }}>
+      <Descriptions.Item label="Category">
+        <Tag>{feature.category}</Tag>
+      </Descriptions.Item>
+      <Descriptions.Item label="Source file">
+        <code>{feature.source_file}</code>
+      </Descriptions.Item>
+      <Descriptions.Item label="Definition">
+        <pre className={styles.definitionBlock}>{definition}</pre>
+      </Descriptions.Item>
+      <Descriptions.Item label={`Rules (${feature.referenced_by_rules.length})`}>
+        {feature.referenced_by_rules.length === 0 ? (
+          '—'
+        ) : (
+          <Space size={6} wrap>
+            {feature.referenced_by_rules.map((ruleName) => (
+              <code key={ruleName}>{ruleName}</code>
+            ))}
+          </Space>
+        )}
+      </Descriptions.Item>
+      <Descriptions.Item label={`Features (${feature.referenced_by_features.length})`}>
+        {feature.referenced_by_features.length === 0 ? (
+          '—'
+        ) : (
+          <Space size={6} wrap>
+            {feature.referenced_by_features.map((name) => (
+              <code key={name}>{name}</code>
+            ))}
+          </Space>
+        )}
+      </Descriptions.Item>
+      {feature.referenced_by_whenrules > 0 && (
+        <Descriptions.Item label="WhenRules">
+          {feature.referenced_by_whenrules} block
+          {feature.referenced_by_whenrules === 1 ? '' : 's'} (effects / apply_if)
+        </Descriptions.Item>
+      )}
+    </Descriptions>
   );
 };
