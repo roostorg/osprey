@@ -53,7 +53,7 @@
   --divider: #dbdcdf;
 }
 
-:root.dark-theme {
+:root:global(.dark-theme) {
   /* Backgrounds */
   --background-primary: #14161a;
   --background-secondary: #1a1d22;
