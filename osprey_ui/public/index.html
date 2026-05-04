@@ -18,6 +18,21 @@
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
     <title>Osprey</title>
+    <script>
+      // Apply theme before paint so dark-mode users don't see a flash of light
+      // mode. Mirrors getInitialMode() in stores/ThemeStore.tsx — keep in sync.
+      (function () {
+        try {
+          var stored = window.localStorage.getItem('osprey-ui-dark-theme');
+          var isDark =
+            stored === 'true' ||
+            (stored === null &&
+              window.matchMedia &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) document.documentElement.classList.add('dark-theme');
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

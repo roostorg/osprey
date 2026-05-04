@@ -4,7 +4,10 @@
   --background-secondary: #f7f8f9;
   --background-secondary-alt: #f2f3f5;
   --background-tertiary: #dbdcdf;
+  --background-base-lowest: #ffffff;
+  --background-base-low: #fafbfc;
   --background-base-lower: #f0f1f3;
+  --background-mod-normal: rgba(15, 23, 42, 0.04);
 
   /* Text for Light Backgrounds */
   --text-light-headings-primary: #252527;
@@ -41,10 +44,66 @@
 
   /* Icons */
   --icon-primary: #535a65;
+  --icon-strong: #1f232b;
   --icon-active: #25282d;
   --icon-hover: #3c4149;
   --icon-muted: #9aa1ac;
 
   /* Dividers */
   --divider: #dbdcdf;
+}
+
+:root:global(.dark-theme) {
+  /* Backgrounds */
+  --background-primary: #14161a;
+  --background-secondary: #1a1d22;
+  --background-secondary-alt: #1e2228;
+  --background-tertiary: #2a2f37;
+  --background-base-lowest: #14161a;
+  --background-base-low: #1a1d22;
+  --background-base-lower: #0f1115;
+  --background-mod-normal: rgba(255, 255, 255, 0.06);
+
+  /* Text for Light Backgrounds (used on light surfaces; in dark mode these surfaces are rare) */
+  --text-light-headings-primary: #ebebeb;
+  --text-light-headings-secondary: #cdd0d6;
+  --text-light-primary: #e3e5e8;
+  --text-light-secondary: #a8aeb8;
+  --text-light-disabled: #5f626d;
+
+  /* Text for Dark Backgrounds (the primary text in dark mode) */
+  --text-dark-headings: #ffffff;
+  --text-dark-primary: #ebebeb;
+  --text-dark-secondary: #cdd0d6;
+  --text-dark-disabled: #858e9b;
+
+  /* Brand — lighter shade in dark mode for AA contrast */
+  --brand-primary: #4858e0;
+  --brand-dark: #1227ce;
+
+  /* Links */
+  --link-primary: #5aa9ff;
+  --link-dark: #0075e0;
+  --link-muted: #1f3a5e;
+  --link-white: #ffffff;
+  --link-grey: #cdd0d6;
+  --link-light-hover: #1f3a5e;
+
+  /* Status */
+  --success-primary: #6dbc4e;
+  --success-muted: #1f3a1c;
+  --error-primary: #e37671;
+  --error-muted: #3a1c1c;
+  --warning-primary: #faad14;
+  --warning-muted: #3a2e0e;
+
+  /* Icons */
+  --icon-primary: #a8aeb8;
+  --icon-strong: #ebebeb;
+  --icon-active: #ffffff;
+  --icon-hover: #cdd0d6;
+  --icon-muted: #5f626d;
+
+  /* Dividers */
+  --divider: #2a2f37;
 }

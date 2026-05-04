@@ -25,3 +25,12 @@ code {
 .ant-app {
   height: 100%;
 }
+
+.dark-theme .ant-spin-text {
+  color: #ebebeb;
+  text-shadow: none !important;
+}
+
+.dark-theme .ant-spin-dot-item {
+  background-color: #ebebeb;
+}

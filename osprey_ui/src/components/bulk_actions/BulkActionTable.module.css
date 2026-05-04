@@ -9,28 +9,28 @@
 .jobTable {
   width: 100%;
   border-collapse: collapse;
-  background-color: white;
+  background-color: var(--background-primary);
   font-size: 14px;
 }
 
 .tableHeader {
-  background-color: #f8f9fa;
-  border-bottom: 2px solid #dee2e6;
+  background-color: var(--background-secondary);
+  border-bottom: 2px solid var(--divider);
 }
 
 .tableHeader th {
   padding: 12px 16px;
   text-align: left;
   font-weight: 600;
-  color: #495057;
+  color: var(--text-light-primary);
 }
 
 .tableRow {
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid var(--divider);
 }
 
 .tableRow:hover {
-  background-color: #f8f9fa;
+  background-color: var(--background-secondary);
 }
 
 .tableCell {
