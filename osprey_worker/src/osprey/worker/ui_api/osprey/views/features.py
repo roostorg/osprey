@@ -20,8 +20,9 @@ from osprey.engine.ast.grammar import (
     List as AstList,
 )
 from osprey.worker.lib.singletons import ENGINE
+from osprey.worker.ui_api.osprey.lib.abilities import CanViewDocs, require_ability
 
-from ._ast_utils import ast_to_string, get_func_identifier
+from ._features_ast_utils import ast_to_string, get_func_identifier
 
 logger = logging.getLogger(__name__)
 
@@ -267,6 +268,7 @@ def _extract_features_from_engine() -> List[Dict[str, Any]]:
 
 
 @blueprint.route('/features', methods=['GET'])
+@require_ability(CanViewDocs)
 def features_list() -> Any:
     """Return the catalog of extracted features across the rules engine."""
     features = _extract_features_from_engine()
