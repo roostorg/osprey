@@ -2,7 +2,7 @@
     "mcpServers": {
         "playwright": {
             "command": "bash",
-            "args": ["-c", "cd osprey_ui && exec npx @playwright/mcp@0.0.73 --headless"]
+            "args": ["-c", "cd osprey_ui && exec npx @playwright/mcp@0.0.73 --headless --browser chromium"]
         }
     }
 }
