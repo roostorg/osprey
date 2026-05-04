@@ -89,6 +89,21 @@ cargo clippy -- -D warnings   # advisory
 cargo test --verbose          # advisory
 ```
 
+## Browser MCP (UI verification)
+
+`osprey_ui/` registers `@playwright/mcp` as a project-scoped MCP server (`.mcp.json` at repo root). When Claude Code launches in this repo it gets `browser_navigate`, `browser_snapshot`, `browser_evaluate`, `browser_take_screenshot`, and the rest of the `browser_*` tool surface — useful for verifying visual UI changes against the running dev server without a full automated test suite. There is intentionally no `playwright.config.ts` / `@playwright/test` integration; the MCP is for ad-hoc verification, not CI.
+
+Prereqs (one-time per machine):
+
+```bash
+cd osprey_ui && node node_modules/playwright/cli.js install chromium
+sudo node osprey_ui/node_modules/playwright/cli.js install-deps chromium  # Debian/Ubuntu fresh install only
+```
+
+Before calling `browser_navigate("http://localhost:5002")`, start the dev server (`cd osprey_ui && npm start`, listens on `:5002`).
+
+If the MCP approval prompt doesn't fire on a fresh `claude` launch, run `claude mcp reset-project-choices` and re-launch.
+
 ## CI
 
 CI runs entirely via GitHub Actions on `pull_request` and `push` to `main`. Each line below is one literal CI `run:` step, in workflow order. Run them in your shell (paste-as-is — no `&&` chaining, no error suppression — so each step's exit code matches the corresponding CI step's exit code):
