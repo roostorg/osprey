@@ -4,7 +4,21 @@ import pytest
 from flask import Response, url_for
 from flask.testing import FlaskClient
 
-_base_sources_dict = {'config.yaml': json.dumps({'ui_config': {}, 'labels': {}})}
+_base_sources_dict = {
+    'config.yaml': json.dumps(
+        {
+            'ui_config': {},
+            'labels': {},
+            'acl': {
+                'users': {
+                    'local-dev@localhost': {'abilities': [{'name': 'CAN_VIEW_DOCS', 'allow_all': True}]},
+                }
+            },
+        }
+    )
+}
+
+_no_ability_sources_dict = {'config.yaml': json.dumps({'ui_config': {}, 'labels': {}})}
 
 
 @pytest.mark.use_rules_sources(
@@ -186,15 +200,14 @@ def test_dual_route_registration(client: 'FlaskClient[Response]') -> None:
 
 @pytest.mark.use_rules_sources(
     {
-        **_base_sources_dict,
+        **_no_ability_sources_dict,
         'main.sml': "Feat = JsonData(path='$.foo')",
     }
 )
-def test_endpoint_does_not_require_auth(client: 'FlaskClient[Response]') -> None:
-    """/features has no @require_ability decorator. Calling it without
-    any auth-related headers/cookies returns 200, not 401."""
+def test_endpoint_requires_can_view_docs(client: 'FlaskClient[Response]') -> None:
+    """A user without CAN_VIEW_DOCS gets 401."""
     res = client.get(url_for('features.features_list'))
-    assert res.status_code == 200
+    assert res.status_code == 401
 
 
 @pytest.mark.use_rules_sources(
