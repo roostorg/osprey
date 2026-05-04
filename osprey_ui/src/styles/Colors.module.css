@@ -64,12 +64,14 @@
   --background-base-lower: #0f1115;
   --background-mod-normal: rgba(255, 255, 255, 0.06);
 
-  /* Text for Light Backgrounds (used on light surfaces; in dark mode these surfaces are rare) */
-  --text-light-headings-primary: #ebebeb;
-  --text-light-headings-secondary: #cdd0d6;
-  --text-light-primary: #e3e5e8;
-  --text-light-secondary: #a8aeb8;
-  --text-light-disabled: #5f626d;
+  /* Text for Light Backgrounds (used on light surfaces; in dark mode these surfaces are rare,
+     so these values are tuned to read well against dark surfaces too — same family as
+     --text-dark-* — since OspreyButton.ghost / linkGray etc. use them in both modes). */
+  --text-light-headings-primary: #ffffff;
+  --text-light-headings-secondary: #ebebeb;
+  --text-light-primary: #ebebeb;
+  --text-light-secondary: #cdd0d6;
+  --text-light-disabled: #858e9b;
 
   /* Text for Dark Backgrounds (the primary text in dark mode) */
   --text-dark-headings: #ffffff;
