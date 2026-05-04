@@ -25,3 +25,10 @@ code {
 .ant-app {
   height: 100%;
 }
+
+/* Antd 5's Spin tip text has a hardcoded white `text-shadow` (invisible on
+   light backgrounds, designed for that case) that produces a glowing halo
+   behind the text on dark backgrounds. Strip it in dark mode. */
+.dark-theme .ant-spin-text {
+  text-shadow: none !important;
+}
