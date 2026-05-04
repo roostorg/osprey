@@ -52,6 +52,9 @@ const AppRouter: React.FC = () => {
   }, [isDark]);
 
   React.useLayoutEffect(() => {
+    // Cold-start theme is set by the inline script in public/index.html so the
+    // first paint matches the stored preference. This effect keeps the class in
+    // sync when the user toggles themes.
     const root = document.documentElement;
     if (isDark) {
       root.classList.add('dark-theme');
