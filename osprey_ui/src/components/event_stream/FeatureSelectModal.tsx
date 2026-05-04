@@ -154,7 +154,7 @@ const FeatureSelectModal = () => {
         title={renderModalTitle()}
         className={styles.featureModal}
         width={526}
-        visible={isOpen}
+        open={isOpen}
         onCancel={handleCancel}
         footer={<ModalFooter onOK={handleSaveSelectedFeatures} onCancel={handleCancel} />}
       >

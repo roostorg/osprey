@@ -52,14 +52,7 @@ const SavedQueryDrawer = ({ savedQuery, onClose }: SavedQueryDrawerProps) => {
   };
 
   return (
-    <Drawer
-      placement="right"
-      width={750}
-      visible={savedQuery != null}
-      closable={false}
-      onClose={onClose}
-      destroyOnClose
-    >
+    <Drawer placement="right" width={750} open={savedQuery != null} closable={false} onClose={onClose} destroyOnClose>
       {renderDrawerContent()}
     </Drawer>
   );

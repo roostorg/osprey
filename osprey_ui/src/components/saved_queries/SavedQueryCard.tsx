@@ -1,5 +1,5 @@
 import * as React from 'react';
-import moment from 'moment-timezone';
+import dayjs from 'dayjs';
 
 import { SavedQuery, IntervalOptions, MomentRangeValues, QueryRecord } from '../../types/QueryTypes';
 import { MenuOption } from '../../uikit/DropdownMenu';
@@ -104,7 +104,7 @@ const SavedQueryCard = ({
             <QueryCardHeader>
               <div className={styles.titleRow}>
                 <Text weight={TextWeights.SEMIBOLD}>{`Version saved at: ${localizeAndFormatTimestamp(
-                  moment.unix(queryRecord.executed_at)
+                  dayjs.unix(queryRecord.executed_at)
                 )}`}</Text>
               </div>
             </QueryCardHeader>

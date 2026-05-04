@@ -40,7 +40,7 @@ const EditSavedQueryNameModal = ({ savedQuery, onClose, onUpdate }: EditSavedQue
           isSubmitting={isSubmitting}
         />
       }
-      visible
+      open
     >
       <Form onValuesChange={handleValuesChange} onFinish={handleUpdateQueryName} layout="vertical">
         <Form.Item

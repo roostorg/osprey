@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Alert, Checkbox, Form, Input, Select } from 'antd';
 import { Store } from 'antd/lib/form/interface';
-import moment from 'moment-timezone';
+import dayjs from 'dayjs';
 
 import useApplicationConfigStore from '../../stores/ApplicationConfigStore';
 import { LabelStatus, LabelMutation, Label } from '../../types/LabelTypes';
@@ -69,7 +69,7 @@ const LabelForm = ({
         durationConstructor: [number, unit],
       } = IntervalOptions[expiresAt];
       /* eslint-disable-next-line */
-      labelMutation.expires_at = moment.utc().add(number, unit).format();
+      labelMutation.expires_at = dayjs.utc().add(number, unit).format();
     }
 
     onSubmit(labelMutation, noLimit);

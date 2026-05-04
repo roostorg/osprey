@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Spin } from 'antd';
+import { App as AntdApp, ConfigProvider, Spin } from 'antd';
 import { Router, Switch, Route } from 'react-router-dom';
 
 import { getApplicationConfig } from './actions/ConfigActions';
@@ -32,50 +32,57 @@ const AppRouter: React.FC = () => {
     updateApplicationConfig(appConfig);
   });
 
+  const brandPrimary =
+    getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#1227ce';
+
   return renderFromPromiseResult(applicationConfigResult, () => (
-    <Router history={history}>
-      <Switch>
-        <Route path="/events/:eventId">
-          <EventPage />
-        </Route>
-        <Route>
-          <NavBar>
-            <Route exact path={[Routes.SAVED_QUERY, Routes.SAVED_QUERY_LATEST]}>
-              <SavedQueryBar />
+    <ConfigProvider theme={{ token: { colorPrimary: brandPrimary } }}>
+      <AntdApp>
+        <Router history={history}>
+          <Switch>
+            <Route path="/events/:eventId">
+              <EventPage />
             </Route>
-            <Route exact path={Routes.ENTITY}>
-              <EntityViewBar />
+            <Route>
+              <NavBar>
+                <Route exact path={[Routes.SAVED_QUERY, Routes.SAVED_QUERY_LATEST]}>
+                  <SavedQueryBar />
+                </Route>
+                <Route exact path={Routes.ENTITY}>
+                  <EntityViewBar />
+                </Route>
+                <Switch>
+                  <Route path={Routes.QUERY_HISTORY}>
+                    <QueryHistory />
+                  </Route>
+                  <Route path={Routes.SAVED_QUERIES}>
+                    <SavedQueries />
+                  </Route>
+                  <Route path={Routes.DOCS_UDFS}>
+                    <UdfDocsView />
+                  </Route>
+                  <Route path={Routes.BULK_JOB_HISTORY}>
+                    <BulkJobHistoryView />
+                  </Route>
+                  <Route path={Routes.RULES_VISUALIZER}>
+                    <RulesVisualizerView />
+                  </Route>
+                  <Route exact path={[Routes.ENTITY, Routes.HOME, Routes.SAVED_QUERY]}>
+                    <QueryView />
+                  </Route>
+                  <Route exact path={Routes.SAVED_QUERY_LATEST}>
+                    <div className={styles.spinner}>
+                      <Spin size="large" />
+                    </div>
+                  </Route>
+                  <Route exact path={Routes.BULK_ACTION} component={BulkActionPage} />
+                </Switch>
+              </NavBar>
             </Route>
-            <Switch>
-              <Route path={Routes.QUERY_HISTORY}>
-                <QueryHistory />
-              </Route>
-              <Route path={Routes.SAVED_QUERIES}>
-                <SavedQueries />
-              </Route>
-              <Route path={Routes.DOCS_UDFS}>
-                <UdfDocsView />
-              </Route>
-              <Route path={Routes.BULK_JOB_HISTORY}>
-                <BulkJobHistoryView />
-              </Route>
-              <Route path={Routes.RULES_VISUALIZER}>
-                <RulesVisualizerView />
-              </Route>
-              <Route exact path={[Routes.ENTITY, Routes.HOME, Routes.SAVED_QUERY]}>
-                <QueryView />
-              </Route>
-              <Route exact path={Routes.SAVED_QUERY_LATEST}>
-                <div className={styles.spinner}>
-                  <Spin size="large" />
-                </div>
-              </Route>
-              <Route exact path={Routes.BULK_ACTION} component={BulkActionPage} />
-            </Switch>
-          </NavBar>
-        </Route>
-      </Switch>
-    </Router>
+          </Switch>
+        </Router>
+      </AntdApp>
+    </ConfigProvider>
   ));
 };
 
