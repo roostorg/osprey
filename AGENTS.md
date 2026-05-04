@@ -91,16 +91,16 @@ cargo test --verbose          # advisory
 
 ## Browser MCP (UI verification)
 
-`osprey_ui/` registers `@playwright/mcp` as a project-scoped MCP server (`.mcp.json` at repo root). When Claude Code launches in this repo it gets `browser_navigate`, `browser_snapshot`, `browser_evaluate`, `browser_take_screenshot`, and the rest of the `browser_*` tool surface — useful for verifying visual UI changes against the running dev server without a full automated test suite. There is intentionally no `playwright.config.ts` / `@playwright/test` integration; the MCP is for ad-hoc verification, not CI.
+A project-scoped MCP server (`.mcp.json` at repo root) registers `@playwright/mcp@0.0.73` via `pnpm dlx`. When Claude Code launches in this repo it gets `browser_navigate`, `browser_snapshot`, `browser_evaluate`, `browser_take_screenshot`, and the rest of the `browser_*` tool surface — useful for verifying visual UI changes against the running dev server without a full automated test suite. There is intentionally no `playwright.config.ts` / `@playwright/test` integration and no devDep in `osprey_ui/package.json`; the MCP is for ad-hoc verification, not CI.
 
 All setup commands below are **operator-run**. Agents should not execute them directly — if a prereq is missing, surface it and ask the operator.
 
 Operator one-time prereqs per machine. The MCP needs Playwright's bundled Chromium binary plus its system shared libs. Setup is platform-specific — Playwright's docs cover it across macOS / Windows / WSL / Linux: <https://playwright.dev/docs/browsers#install-browsers>.
 
-Binary install (no sudo, user-cache only):
+Binary install (no sudo, user-cache only). Pinned via `@playwright/mcp@0.0.73`'s bundled `playwright-core`, so the downloaded Chromium build matches what the MCP server will launch:
 
 ```bash
-cd osprey_ui && npx playwright install chromium
+pnpm dlx @playwright/mcp@0.0.73 install-browser chromium
 ```
 
 System libs:
@@ -109,7 +109,7 @@ System libs:
 - **Linux**: distro-specific. Preview the package list `install-deps` would apt-install (and then run apt yourself, rather than sudo-ing a node script):
 
   ```bash
-  cd osprey_ui && npx playwright install-deps chromium --dry-run
+  pnpm dlx playwright install-deps chromium --dry-run
   ```
 
   `install-deps` only auto-supports recent Ubuntu / Debian. Fedora, Arch, Alpine, and NixOS need manual lib installation — Playwright's troubleshooting docs cover their package names.
