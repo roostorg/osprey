@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upgrade `requests-mock` from 1.9.3 to 1.12.1 ([#176](https://github.com/roostorg/osprey/pull/176) by [@dependabot](https://github.com/dependabot))
 - Upgrade `antd` and `@ant-design/icons` to v5 (Ant Design 5 migration) ([#238](https://github.com/roostorg/osprey/pull/238) by [@haileyok](https://github.com/haileyok))
 - Replace `moment` with `dayjs` ([#238](https://github.com/roostorg/osprey/pull/238) by [@haileyok](https://github.com/haileyok))
+- Add `@playwright/mcp` devDep + project-scoped MCP registration so Claude Code can drive a browser against `osprey_ui` for ad-hoc UI verification ([#243](https://github.com/roostorg/osprey/pull/243) by [@haileyok](https://github.com/haileyok))
 
 ### 🛠 Breaking changes
 
