@@ -89,6 +89,37 @@ cargo clippy -- -D warnings   # advisory
 cargo test --verbose          # advisory
 ```
 
+## Browser MCP (UI verification)
+
+A project-scoped MCP server (`.mcp.json` at repo root) registers `@playwright/mcp@0.0.73` via `pnpm dlx`. When Claude Code launches in this repo it gets `browser_navigate`, `browser_snapshot`, `browser_evaluate`, `browser_take_screenshot`, and the rest of the `browser_*` tool surface — useful for verifying visual UI changes against the running dev server without a full automated test suite. There is intentionally no `playwright.config.ts` / `@playwright/test` integration and no devDep in `osprey_ui/package.json`; the MCP is for ad-hoc verification, not CI.
+
+All commands in this section — including any `--dry-run` previews — are **operator-run only**. Agents must never execute them. If a prereq is missing, the agent surfaces *what the operator should run* and waits.
+
+The MCP needs Playwright's bundled Chromium binary plus its system shared libs. Setup is platform-specific — Playwright's docs cover it across macOS / Windows / WSL / Linux: <https://playwright.dev/docs/browsers#install-browsers>.
+
+**Operator runs the binary install** (no sudo, user-cache only). Pinned via `@playwright/mcp@0.0.73`'s bundled `playwright-core`, so the downloaded Chromium build matches what the MCP server will launch:
+
+```bash
+pnpm dlx @playwright/mcp@0.0.73 install-browser chromium
+```
+
+System libs:
+
+- **macOS, recent Windows / WSL**: nothing extra to install.
+- **Linux**: distro-specific. **The operator** runs the dry-run to preview the package list `install-deps` would apt-install:
+
+  ```bash
+  pnpm dlx playwright install-deps chromium --dry-run
+  ```
+
+  …and then **the operator** runs the printed `apt-get install` line themselves. The agent does neither step.
+
+  `install-deps` only auto-supports recent Ubuntu / Debian. Fedora, Arch, Alpine, and NixOS need manual lib installation — Playwright's troubleshooting docs cover their package names.
+
+Before calling `browser_navigate("http://localhost:5002")`, **the operator** starts the dev server (`cd osprey_ui && npm start`, listens on `:5002`).
+
+If the MCP approval prompt doesn't fire on a fresh `claude` launch, **the operator** runs `claude mcp reset-project-choices` and re-launches.
+
 ## CI
 
 CI runs entirely via GitHub Actions on `pull_request` and `push` to `main`. Each line below is one literal CI `run:` step, in workflow order. Run them in your shell (paste-as-is — no `&&` chaining, no error suppression — so each step's exit code matches the corresponding CI step's exit code):
