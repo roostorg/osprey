@@ -42,7 +42,16 @@ const AppRouter: React.FC = () => {
     return {
       token: { colorPrimary: isDark ? '#4858e0' : '#1227ce' },
       algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
-      components: { Menu: { collapsedWidth: 56 } },
+      components: {
+        Menu: {
+          collapsedWidth: 56,
+          // Antd's darkAlgorithm derives itemSelectedColor and itemSelectedBg from
+          // colorPrimary; with brandPrimary tuned for AA contrast (#4858e0), both
+          // fall in the same dark-blue family and the selected item's text becomes
+          // unreadable against its own pill bg. Force a near-white text in dark.
+          ...(isDark ? { itemSelectedColor: '#ebebeb' } : {}),
+        },
+      },
     };
   }, [isDark]);
 
