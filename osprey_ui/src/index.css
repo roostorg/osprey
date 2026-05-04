@@ -26,12 +26,6 @@ code {
   height: 100%;
 }
 
-/* Antd 5's Spin tip text has a hardcoded white `text-shadow` (invisible on
-   light backgrounds, designed for that case) that produces a glowing halo
-   behind the text on dark backgrounds. Strip it in dark mode. The default
-   color also derives from colorPrimary (brand-blue) which is a low-contrast
-   read on the dark surface, so override both the tip text and the rotating
-   dot color to a readable near-white. */
 .dark-theme .ant-spin-text {
   color: #ebebeb;
   text-shadow: none !important;
