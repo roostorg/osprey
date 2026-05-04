@@ -45,6 +45,10 @@
   border-color: var(--brand-primary);
 }
 
+.statCardClickable {
+  cursor: pointer;
+}
+
 .statLabel {
   font-size: 13px;
   color: var(--text-light-secondary);
@@ -78,6 +82,26 @@
   gap: 12px;
   margin-bottom: 12px;
   flex-wrap: wrap;
+}
+
+.searchInput {
+  width: 280px;
+}
+
+.filterSelect {
+  min-width: 180px;
+  max-width: 320px;
+}
+
+.sortSelect {
+  width: 170px;
+}
+
+.unusedToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
 }
 
 /* Item rows */

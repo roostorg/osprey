@@ -135,7 +135,9 @@ export const FeaturesPage: React.FC = () => {
                 }
               >
                 <Card
-                  className={`${styles.statCard} ${unusedOnly ? styles.statCardActive : ''}`}
+                  className={`${styles.statCard} ${styles.statCardClickable} ${
+                    unusedOnly ? styles.statCardActive : ''
+                  }`}
                   size="small"
                   role="button"
                   tabIndex={0}
@@ -147,7 +149,6 @@ export const FeaturesPage: React.FC = () => {
                       setUnusedOnly((v) => !v);
                     }
                   }}
-                  style={{ cursor: 'pointer' }}
                 >
                   <div className={styles.statLabel}>Unused features</div>
                   <div className={styles.statValue}>{unusedCount}</div>
@@ -164,13 +165,13 @@ export const FeaturesPage: React.FC = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 allowClear
-                style={{ width: 280 }}
+                className={styles.searchInput}
               />
               <Select
                 size="small"
                 mode="multiple"
                 placeholder="Category"
-                style={{ minWidth: 180, maxWidth: 320 }}
+                className={styles.filterSelect}
                 value={categoryFilter}
                 onChange={setCategoryFilter}
                 options={categoryOptions}
@@ -181,7 +182,7 @@ export const FeaturesPage: React.FC = () => {
                 size="small"
                 mode="multiple"
                 placeholder="Extraction fn"
-                style={{ minWidth: 180, maxWidth: 320 }}
+                className={styles.filterSelect}
                 value={extractionFnFilter}
                 onChange={setExtractionFnFilter}
                 options={extractionFnOptions}
@@ -192,14 +193,14 @@ export const FeaturesPage: React.FC = () => {
                 size="small"
                 value={sortKey}
                 onChange={(v) => setSortKey(v)}
-                style={{ width: 170 }}
+                className={styles.sortSelect}
                 options={[
                   { value: 'most-referenced', label: 'Most referenced' },
                   { value: 'least-referenced', label: 'Least referenced' },
                   { value: 'name', label: 'Name (A-Z)' },
                 ]}
               />
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+              <span className={styles.unusedToggle}>
                 <Switch size="small" checked={unusedOnly} onChange={setUnusedOnly} />
                 Unused only
               </span>
