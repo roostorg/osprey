@@ -98,8 +98,22 @@ All setup commands below are **operator-run**. Agents should not execute them di
 Operator one-time prereqs per machine:
 
 ```bash
+# Download the bundled Chromium (Chrome-for-Testing) into ~/.cache/ms-playwright/.
+# No sudo needed — writes only to the user cache.
 cd osprey_ui && node node_modules/playwright/cli.js install chromium
-sudo node osprey_ui/node_modules/playwright/cli.js install-deps chromium  # Debian/Ubuntu fresh install only
+
+# System shared libs Chromium needs (Ubuntu 22.04 / jammy package names below).
+# This is the same set `playwright install-deps chromium` would `apt-get install`
+# on this distro, listed explicitly so the operator isn't running sudo against a
+# node script. For other Debian/Ubuntu releases the package set shifts — preview
+# with: `node osprey_ui/node_modules/playwright/cli.js install-deps chromium --dry-run`.
+sudo apt-get install -y \
+  libasound2 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 \
+  libcairo2 libcups2 libdbus-1-3 libdrm2 \
+  libgbm1 libglib2.0-0 libnspr4 libnss3 \
+  libpango-1.0-0 libwayland-client0 libx11-6 libxcb1 \
+  libxcomposite1 libxdamage1 libxext6 libxfixes3 \
+  libxkbcommon0 libxrandr2
 ```
 
 Before calling `browser_navigate("http://localhost:5002")`, the operator must start the dev server (`cd osprey_ui && npm start`, listens on `:5002`).
