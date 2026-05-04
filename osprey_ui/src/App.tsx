@@ -41,9 +41,9 @@ const AppRouter: React.FC = () => {
   const brandPrimary = isDark ? '#4858e0' : '#1227ce';
 
   React.useLayoutEffect(() => {
-    // Apply dark-theme class to <html> synchronously before paint to prevent FOUC.
-    // This must run here (not in ThemeToggle) because EventPage bypasses NavBar
-    // and needs the class even on cold-start.
+    // Cold-start theme is set by the inline script in public/index.html so the
+    // first paint matches the stored preference. This effect keeps the class in
+    // sync when the user toggles themes.
     const root = document.documentElement;
     if (isDark) {
       root.classList.add('dark-theme');
