@@ -32,11 +32,17 @@ const AppRouter: React.FC = () => {
     updateApplicationConfig(appConfig);
   });
 
-  const brandPrimary =
-    getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#1227ce';
+  const theme = React.useMemo(() => {
+    return {
+      token: {
+        colorPrimary:
+          getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#1227ce',
+      },
+    };
+  }, []);
 
   return renderFromPromiseResult(applicationConfigResult, () => (
-    <ConfigProvider theme={{ token: { colorPrimary: brandPrimary } }}>
+    <ConfigProvider theme={theme}>
       <AntdApp>
         <Router history={history}>
           <Switch>
