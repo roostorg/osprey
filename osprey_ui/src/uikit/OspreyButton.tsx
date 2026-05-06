@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Button } from 'antd';
-import { ButtonProps } from 'antd/lib/button';
+import type { ButtonProps } from 'antd';
 import classNames from 'classnames';
 
 import styles from './OspreyButton.module.css';
@@ -41,7 +41,7 @@ const OspreyButton = ({
   weight = ButtonWeights.SEMIBOLD,
   textSelectable = false,
   ...props
-}: ButtonProps & OspreyButtonProps) => {
+}: Omit<ButtonProps, 'color'> & OspreyButtonProps) => {
   return (
     <Button
       className={classNames(

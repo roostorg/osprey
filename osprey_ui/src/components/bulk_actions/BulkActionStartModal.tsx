@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Form, Input, Select, Upload, Button } from 'antd';
+import { App, Modal, Form, Input, Select, Upload, Button } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import type { FormInstance } from 'antd/es/form';
@@ -25,7 +25,7 @@ interface JobFormValues {
 }
 
 interface JobUploadModalProps {
-  visible: boolean;
+  open: boolean;
   onCancel: () => void;
   onSubmit: (values: JobFormValues) => void;
   initialValues?: Partial<JobFormValues>;
@@ -36,7 +36,8 @@ const workflowOptions: WorkflowOption[] = [
   { value: 'custom', label: 'Custom Workflow' },
 ];
 
-const BulkActionStartModal: React.FC<JobUploadModalProps> = ({ visible, onCancel, onSubmit, initialValues }) => {
+const BulkActionStartModal: React.FC<JobUploadModalProps> = ({ open, onCancel, onSubmit, initialValues }) => {
+  const { modal } = App.useApp();
   const [form] = Form.useForm<JobFormValues>();
   const [customWorkflow, setCustomWorkflow] = useState<boolean>(false);
   const [fileSelected, setFileSelected] = useState<File | null>(null);
@@ -93,7 +94,7 @@ const BulkActionStartModal: React.FC<JobUploadModalProps> = ({ visible, onCancel
       // ~10 million rows of bigint entity-ids in a CSV file would be around 250MB
       const isValidSize = file.size ? file.size / 1024 / 1024 / 1024 < 250 : false; // 250MB limit
       if (!isValidSize) {
-        Modal.error({
+        modal.error({
           title: 'File too large',
           content: 'File size must be less than 250MB',
         });
@@ -110,7 +111,7 @@ const BulkActionStartModal: React.FC<JobUploadModalProps> = ({ visible, onCancel
   return (
     <Modal
       title="Create New Job"
-      visible={visible}
+      open={open}
       onCancel={() => {
         form.resetFields();
         setFileSelected(null);
@@ -165,6 +166,7 @@ const BulkActionStartModal: React.FC<JobUploadModalProps> = ({ visible, onCancel
 };
 
 const BulkActionStartModalContainer = () => {
+  const { modal } = App.useApp();
   const [visible, setVisible] = useState(false);
   const bulkActions = useBulkActionStore();
 
@@ -179,7 +181,7 @@ const BulkActionStartModalContainer = () => {
   const handleSubmit = async (values: JobFormValues) => {
     const workflow = values.workflow === 'custom' ? values.customWorkflowInput : values.workflow;
     if (!workflow) {
-      Modal.error({
+      modal.error({
         title: 'Workflow is required',
         content: 'Please select or enter a workflow',
       });
@@ -204,7 +206,7 @@ const BulkActionStartModalContainer = () => {
       <Button type="primary" onClick={handleOpenModal}>
         Create New Job
       </Button>
-      <BulkActionStartModal visible={visible} onCancel={handleCloseModal} onSubmit={handleSubmit} />
+      <BulkActionStartModal open={visible} onCancel={handleCloseModal} onSubmit={handleSubmit} />
     </>
   );
 };

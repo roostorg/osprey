@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Select, Spin } from 'antd';
 import Highcharts, { SeriesOptionsType } from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
-import moment from 'moment-timezone';
+import dayjs from 'dayjs';
 import shallow from 'zustand/shallow';
 
 import { getTimeseriesQueryResults } from '../../actions/EventActions';
@@ -74,9 +74,9 @@ function getDefaultGranularityForTimeSpan(start: string | null, end: string | nu
   }
 
   // ms difference between start and end dates
-  const startDate = moment(start);
-  const endDate = moment(end);
-  const duration = Math.abs(moment.duration(endDate.diff(startDate)).asMilliseconds());
+  const startDate = dayjs(start);
+  const endDate = dayjs(end);
+  const duration = Math.abs(dayjs.duration(endDate.diff(startDate)).asMilliseconds());
 
   // sort granularities by desc duration
   const sortedGranularities = (Object.entries(Granularities) as Array<[Granularity, number]>).sort(
@@ -273,9 +273,9 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
       xDateFormat: getDateFormatForGranularity('other'),
     },
     time: {
-      // our time data is UTC, but we'll convert it to whatever timezone moment
+      // our time data is UTC, but we'll convert it to whatever timezone dayjs
       // thinks the user is in
-      timezone: moment.tz.guess(),
+      timezone: dayjs.tz.guess(),
       // don't render time as UTC
       useUTC: false,
     },
