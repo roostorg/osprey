@@ -11,6 +11,7 @@ from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext, NoopAckingContext
+from websocket import WebSocketConnectionClosedException
 
 logger = get_logger()
 
@@ -73,7 +74,11 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
         logger.info('JetStream connection established')
         try:
             while True:
-                raw = ws.recv()
+                try:
+                    raw = ws.recv()
+                except WebSocketConnectionClosedException:
+                    logger.info('JetStream connection closed; will reconnect')
+                    return
                 if not raw:
                     continue
                 try:

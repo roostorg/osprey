@@ -164,7 +164,7 @@ def test_stream_one_connection_handles_malformed_json_and_gracefully_closes():
         actions = list(stream._stream_one_connection('wss://example.com/sub'))
 
     assert len(actions) == 1
-    assert actions[0].item.action_id == 0
-    assert actions[0].item.action_name == 'commit'
-    assert actions[0].item.data['did'] == 'did:plc:x'
+    assert actions[0]._item.action_id == 0
+    assert actions[0]._item.action_name == 'commit'
+    assert actions[0]._item.data['did'] == 'did:plc:x'
     assert fake_ws.closed
