@@ -20,7 +20,7 @@ export function isTimestampPast(timestamp: string): boolean {
 
 export function getIntervalFromDateRange({ start, end }: { start: string; end: string }): MomentRangeValues | null {
   const dayjsDuration = dayjs.duration(dayjs(start).diff(dayjs(end)));
-  let unit: string | null = null;
+  let unit: ManipulateType | null = null;
   let numUnits = 0;
 
   for (const timeUnit of DURATIONS) {
