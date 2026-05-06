@@ -114,7 +114,7 @@ def _event_to_action(event: Dict[str, Any], action_id: int) -> Optional[Action]:
     if kind not in ('commit', 'identity'):
         return None
     time_us = event.get('time_us')
-    if not isinstance(time_us, (int, float)) or time_us <= 0:
+    if not isinstance(time_us, int) or time_us <= 0:
         return None
     return Action(
         action_id=action_id,
