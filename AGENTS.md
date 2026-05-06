@@ -91,7 +91,7 @@ cargo test --verbose          # advisory
 
 ## Browser MCP (UI verification)
 
-A project-scoped MCP server (`.mcp.json` at repo root) registers `@playwright/mcp@0.0.73` via `pnpm dlx`. When Claude Code launches in this repo it gets `browser_navigate`, `browser_snapshot`, `browser_evaluate`, `browser_take_screenshot`, and the rest of the `browser_*` tool surface — useful for verifying visual UI changes against the running dev server without a full automated test suite. There is intentionally no `playwright.config.ts` / `@playwright/test` integration and no devDep in `osprey_ui/package.json`; the MCP is for ad-hoc verification, not CI.
+A project-scoped MCP server (`.mcp.json` at repo root) registers `@playwright/mcp@0.0.73` via `npx`. When Claude Code launches in this repo it gets `browser_navigate`, `browser_snapshot`, `browser_evaluate`, `browser_take_screenshot`, and the rest of the `browser_*` tool surface — useful for verifying visual UI changes against the running dev server without a full automated test suite. There is intentionally no `playwright.config.ts` / `@playwright/test` integration and no devDep in `osprey_ui/package.json`; the MCP is for ad-hoc verification, not CI.
 
 All commands in this section — including any `--dry-run` previews — are **operator-run only**. Agents must never execute them. If a prereq is missing, the agent surfaces *what the operator should run* and waits.
 
@@ -100,7 +100,7 @@ The MCP needs Playwright's bundled Chromium binary plus its system shared libs. 
 **Operator runs the binary install** (no sudo, user-cache only). Pinned via `@playwright/mcp@0.0.73`'s bundled `playwright-core`, so the downloaded Chromium build matches what the MCP server will launch:
 
 ```bash
-pnpm dlx @playwright/mcp@0.0.73 install-browser chromium
+npx -y @playwright/mcp@0.0.73 install-browser chromium
 ```
 
 System libs:
@@ -109,7 +109,7 @@ System libs:
 - **Linux**: distro-specific. **The operator** runs the dry-run to preview the package list `install-deps` would apt-install:
 
   ```bash
-  pnpm dlx playwright install-deps chromium --dry-run
+  npx -y playwright install-deps chromium --dry-run
   ```
 
   …and then **the operator** runs the printed `apt-get install` line themselves. The agent does neither step.
