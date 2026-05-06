@@ -9,7 +9,6 @@ import websocket
 from osprey.engine.executor.execution_context import Action
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
-from osprey.worker.lib.snowflake import generate_snowflake_batch
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext, NoopAckingContext
 
@@ -24,7 +23,6 @@ DEFAULT_COLLECTIONS = (
     'app.bsky.graph.follow',
     'app.bsky.actor.profile',
 )
-SNOWFLAKE_BATCH_SIZE = 250
 
 
 class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
@@ -51,22 +49,18 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
         self._endpoint = endpoint or DEFAULT_ENDPOINT
         self._wanted_collections = list(wanted_collections) if wanted_collections else list(DEFAULT_COLLECTIONS)
         self._reconnect_seconds = reconnect_seconds
-        self._snowflake_buffer: List[int] = []
+        self._last_time_us: Optional[int] = None
 
     def _build_url(self) -> str:
         params = [('wantedCollections', c) for c in self._wanted_collections]
+        if self._last_time_us is not None:
+            params.append(('cursor', str(self._last_time_us)))
         return f'{self._endpoint}?{urlencode(params)}'
 
-    def _next_action_id(self) -> int:
-        if not self._snowflake_buffer:
-            batch = generate_snowflake_batch(count=SNOWFLAKE_BATCH_SIZE, retries=3)
-            self._snowflake_buffer = [s.to_int() for s in batch]
-        return self._snowflake_buffer.pop()
-
     def _gen(self) -> Iterator[BaseAckingContext[Action]]:
-        url = self._build_url()
         while True:
             try:
+                url = self._build_url()
                 yield from self._stream_one_connection(url)
             except Exception as e:
                 logger.exception(f'JetStream stream error; reconnecting in {self._reconnect_seconds}s: {e}')
@@ -75,7 +69,7 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
 
     def _stream_one_connection(self, url: str) -> Iterator[BaseAckingContext[Action]]:
         logger.info(f'Connecting to JetStream at {url}')
-        ws = websocket.create_connection(url)
+        ws = websocket.create_connection(url, timeout=30)
         logger.info('JetStream connection established')
         try:
             while True:
@@ -84,20 +78,23 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
                     continue
                 try:
                     event = json.loads(raw)
-                    action = _event_to_action(event, action_id=self._next_action_id())
+                    action = _event_to_action(event, action_id=0)
                 except Exception:
                     logger.exception('skipping malformed JetStream event')
                     sentry_sdk.capture_exception()
                     continue
                 if action is None:
                     continue
+                time_us = event.get('time_us')
+                if time_us and isinstance(time_us, int) and time_us > 0:
+                    self._last_time_us = time_us
                 metrics.increment('jetstream_input_stream.events', tags=[f'action_name:{action.action_name}'])
                 yield NoopAckingContext(action)
         finally:
             try:
                 ws.close()
             except Exception:
-                logger.debug('ignored error while closing JetStream socket', exc_info=True)
+                logger.info('ignored error while closing JetStream socket', exc_info=True)
 
 
 def _event_to_action(event: Dict[str, Any], action_id: int) -> Optional[Action]:
@@ -112,7 +109,7 @@ def _event_to_action(event: Dict[str, Any], action_id: int) -> Optional[Action]:
     if kind not in ('commit', 'identity'):
         return None
     time_us = event.get('time_us')
-    if time_us is None:
+    if not isinstance(time_us, (int, float)) or time_us <= 0:
         return None
     return Action(
         action_id=action_id,

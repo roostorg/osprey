@@ -1,4 +1,7 @@
-from atproto_plugin.jetstream_input_stream import _event_to_action
+from unittest import mock
+
+from atproto_plugin.jetstream_input_stream import JetStreamInputStream, _event_to_action
+from websocket import WebSocketConnectionClosedException
 
 SAMPLE_POST_COMMIT = {
     'did': 'did:plc:abc123',
@@ -97,6 +100,71 @@ def test_event_without_time_us_is_skipped():
     assert _event_to_action(bad, action_id=5) is None
 
 
+def test_event_with_zero_time_us_is_skipped():
+    zero_time = {**SAMPLE_POST_COMMIT, 'time_us': 0}
+    assert _event_to_action(zero_time, action_id=5) is None
+
+
+def test_event_with_negative_time_us_is_skipped():
+    neg_time = {**SAMPLE_POST_COMMIT, 'time_us': -1}
+    assert _event_to_action(neg_time, action_id=5) is None
+
+
 def test_unknown_kind_is_skipped():
     weird = {'did': 'did:plc:xyz', 'time_us': 1, 'kind': 'something-new'}
     assert _event_to_action(weird, action_id=6) is None
+
+
+def test_build_url_includes_wanted_collections():
+    stream = JetStreamInputStream(
+        endpoint='wss://example.com/sub',
+        wanted_collections=['app.bsky.feed.post', 'app.bsky.feed.like'],
+    )
+    url = stream._build_url()
+    assert 'wss://example.com/sub' in url
+    assert 'wantedCollections=app.bsky.feed.post' in url
+    assert 'wantedCollections=app.bsky.feed.like' in url
+    assert 'cursor=' not in url
+
+
+def test_build_url_includes_cursor_when_last_time_us_set():
+    stream = JetStreamInputStream(
+        endpoint='wss://example.com/sub',
+        wanted_collections=['app.bsky.feed.post'],
+    )
+    stream._last_time_us = 1714500000000000
+    url = stream._build_url()
+    assert 'wss://example.com/sub' in url
+    assert 'wantedCollections=app.bsky.feed.post' in url
+    assert 'cursor=1714500000000000' in url
+
+
+def test_stream_one_connection_handles_malformed_json_and_gracefully_closes():
+    class FakeWebSocket:
+        def __init__(self):
+            self.closed = False
+            self.recv_calls = 0
+
+        def recv(self):
+            self.recv_calls += 1
+            if self.recv_calls == 1:
+                return b'not-json'
+            elif self.recv_calls == 2:
+                return b'{"did": "did:plc:x", "time_us": 1714500000000000, "kind": "commit", "commit": {"operation": "create", "collection": "app.bsky.feed.post", "rkey": "abc", "rev": "3kf...", "cid": "bafy...", "record": {"$type": "app.bsky.feed.post", "text": "hello"}}}'
+            else:
+                raise WebSocketConnectionClosedException()
+
+        def close(self):
+            self.closed = True
+
+    fake_ws = FakeWebSocket()
+    stream = JetStreamInputStream(reconnect_seconds=0.1)
+
+    with mock.patch('websocket.create_connection', return_value=fake_ws):
+        actions = list(stream._stream_one_connection('wss://example.com/sub'))
+
+    assert len(actions) == 1
+    assert actions[0].item.action_id == 0
+    assert actions[0].item.action_name == 'commit'
+    assert actions[0].item.data['did'] == 'did:plc:x'
+    assert fake_ws.closed
