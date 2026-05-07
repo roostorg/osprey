@@ -107,15 +107,7 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
 
 
 def _event_to_action(event: Dict[str, Any], action_id: int) -> Optional[Action]:
-    """Wraps a JetStream event as an Osprey action, or returns None if it should be skipped.
-    """
-
-    The event JSON is passed through as-is so rules can read JetStream-native paths
-    (``$.did``, ``$.commit.collection``, ``$.commit.record.text``, etc.). For commit
-    events ``action_name`` is ``<operation>_<short>`` (e.g. ``create_post``); for
-    identity events it is ``'identity'``. Account events, commits for collections not
-    in :data:`COLLECTION_NAMES`, and commits with unexpected operations are skipped.
-    """
+    """Wraps a JetStream event as an Osprey action, or returns None if it should be skipped."""
     kind = event.get('kind')
     if kind not in ('commit', 'identity'):
         return None
