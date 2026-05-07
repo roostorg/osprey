@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "osprey-async-worker"
+version = "0.1.0"
+description = "Asyncio-based Osprey worker"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "osprey_rpc",
+    "osprey_worker",
+]
+
+[project.scripts]
+osprey-async-cli = "osprey.async_worker.cli.main:cli"
+
+[project.entry-points."osprey_async_plugin"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"*" = ["*.json", "*.yaml", "*.yml"]

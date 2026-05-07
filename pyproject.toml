@@ -44,7 +44,6 @@ common = [
     "gunicorn",
     "hash-ring",
     "intervals==0.9.2",
-    "jslog4kube==1.0.6",
     "jsonpath-rw",
     "kafka-python==1.4.7",
     "minio>=7.2.16",
@@ -69,7 +68,7 @@ common = [
     "requests==2.32.4",
     "result==0.5.0",
     "sentry-sdk==1.5.12",
-    "simplejson==3.20.2",
+    "simplejson==3.19.3",
     "six==1.16.0",
     "sqlalchemy==1.4.31",
     "sqlalchemy-utils==0.41.1",
@@ -132,12 +131,14 @@ jsonpath-rw = { url = "https://github.com/kennknowles/python-jsonpath-rw/archive
 nostril = { url = "https://github.com/casics/nostril/archive/v1.2.0.tar.gz" }
 osprey_rpc = { workspace = true }
 osprey_worker = { workspace = true }
+osprey_async_worker = { workspace = true }
 example_plugins = { workspace = true }
 
 [tool.uv.workspace]
 members = [
     "osprey_rpc",
     "osprey_worker",
+    "osprey_async_worker",
     "example_plugins",
 ]
 
@@ -171,10 +172,10 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["osprey_worker", "osprey_rpc", "example_plugins"]
+known-first-party = ["osprey_worker", "osprey_async_worker", "osprey_rpc", "example_plugins"]
 
 [tool.fawltydeps]
-code = ["osprey_worker/src", "osprey_rpc/src", "example_plugins/src"]
+code = ["osprey_worker/src", "osprey_async_worker/src", "osprey_rpc/src", "example_plugins/src"]
 deps = ["pyproject.toml"]
 ignore_unused = [
     # Type stubs: used by mypy, never imported directly
@@ -213,8 +214,6 @@ ignore_unused = [
     "setuptools",
     # Runtime CLI: started via command line, not imported in source
     "gunicorn",
-    # Gunicorn logger class: loaded via --logger-class flag, not imported in source
-    "jslog4kube",
     # Optional runtime dep of sentry-sdk for FlaskIntegration
     "blinker",
     # gRPC server extensions: registered at startup, not imported directly
@@ -238,6 +237,7 @@ disable_error_code = ["annotation-unchecked"]
 mypy_path = [
     "osprey_rpc/src",
     "osprey_worker/src",
+    "osprey_async_worker/src",
     "example_plugins/src",
 ]
 
