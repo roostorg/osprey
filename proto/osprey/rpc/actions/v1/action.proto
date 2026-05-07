@@ -27,6 +27,7 @@ message Action {
     OspreyAutoClusteringKey osprey_auto_clustering_key = 11;
     HashMatcherIconMatched hash_matcher_icon_matched = 12;
     SafetyVisualPrediction safety_visual_prediction = 13;
+    GuildBatchMLScore guild_batch_ml_score = 14;
   }
 }
 
@@ -68,6 +69,17 @@ message OrchestrationJob {
 message UserBatchMLScore {
   google.protobuf.Timestamp timestamp = 1;
   UserBatchML user = 2;
+  OrchestrationJob orchestration_job = 3;
+  string application_name = 4;
+  string application_version = 5;
+  double score = 6;
+  BatchMLCluster cluster = 7;
+  BatchMLSourceEvent source_event = 8;
+}
+
+message GuildBatchMLScore {
+  google.protobuf.Timestamp timestamp = 1;
+  GuildBatchML guild = 2;
   OrchestrationJob orchestration_job = 3;
   string application_name = 4;
   string application_version = 5;
@@ -164,6 +176,11 @@ message UserFlink {
 
 // User field for Batch ML jobs
 message UserBatchML {
+  fixed64 id = 1;
+}
+
+// Guild field for Batch ML jobs
+message GuildBatchML {
   fixed64 id = 1;
 }
 
