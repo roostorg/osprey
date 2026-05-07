@@ -12,6 +12,7 @@ from typing import (
     Iterable,
     List,
     Mapping,
+    Optional,
     Sequence,
     Set,
     Type,
@@ -19,7 +20,19 @@ from typing import (
     TypeVar,
 )
 
+from functools import lru_cache
+
 from google.protobuf.timestamp_pb2 import Timestamp
+
+
+@lru_cache(maxsize=1)
+def _is_gevent_patched() -> bool:
+    try:
+        from gevent.monkey import is_module_patched
+
+        return is_module_patched('socket')
+    except ImportError:
+        return False
 from osprey.engine.ast.grammar import ASTNode, Load, Name, Source
 from osprey.engine.ast.printer import print_ast
 from osprey.engine.executor.custom_extracted_features import (
@@ -27,7 +40,24 @@ from osprey.engine.executor.custom_extracted_features import (
 )
 from osprey.engine.executor.dependency_chain import DependencyChain
 from osprey.engine.executor.execution_graph import ExecutionGraph
-from osprey.engine.executor.external_service_utils import ExternalService, ExternalServiceAccessor, KeyT, ValueT
+from osprey.engine.executor.external_service_utils_base import (
+    ExternalService,
+    KeyT,
+    PlainExternalServiceAccessor,
+    ValueT,
+)
+
+if TYPE_CHECKING:
+    from osprey.engine.executor.external_service_utils import ExternalServiceAccessor
+
+try:
+    from osprey.async_worker.lib.external_service import (
+        AsyncExternalService,
+        ExternalServiceAccessor as AsyncExternalServiceAccessor,
+    )
+except ImportError:
+    AsyncExternalService = None  # type: ignore[assignment,misc]
+    AsyncExternalServiceAccessor = None  # type: ignore[assignment,misc]
 from osprey.engine.executor.topological_sorter import TopologicalSorter
 from osprey.engine.executor.udf_execution_helpers import HasHelperInternal, HelperT, UDFHelpers
 from osprey.engine.language_types.effects import (
@@ -65,6 +95,19 @@ class ExternalServiceException(Exception):
     """Indicates that an external service call failed or returned unexpected data."""
 
 
+@add_slots
+@dataclass
+class WhenRulesAuditEntry:
+    """Audit record for a single WhenRules evaluation."""
+
+    rules_evaluated: List[str]
+    rules_matched: List[str]
+    rules_failed: List[str]
+    effects_emitted: List[str]
+    effects_failed: int
+    is_degraded: bool
+
+
 class ExecutionContext:
     """The execution context stores any outputs or intermediate state of an execution."""
 
@@ -80,9 +123,11 @@ class ExecutionContext:
         '_effects',
         '_udf_helpers',
         '_external_service_accessors_by_getter_id',
+        '_async_external_service_accessors_by_getter_id',
         '_dependency_dag',
         '_chain_by_id',
         '_custom_extracted_features',
+        '_rule_audit_entries',
     )
 
     def __init__(self, execution_graph: ExecutionGraph, action: 'Action', helpers: UDFHelpers):
@@ -97,11 +142,13 @@ class ExecutionContext:
         self._visited_executions: Set[DependencyChain] = set()
         # a k/v store of effects, by effect type
         self._effects: DefaultDict[Type[EffectBase], List[EffectBase]] = defaultdict(list)
-        self._external_service_accessors_by_getter_id: Dict[int, ExternalServiceAccessor[Any, Any]] = {}
+        self._external_service_accessors_by_getter_id: Dict[int, Any] = {}
+        self._async_external_service_accessors_by_getter_id: Dict[int, Any] = {}
         self._dependency_dag = TopologicalSorter()
         self._chain_by_id: Dict[int, DependencyChain] = {}
         # feature name -> serializable feature
         self._custom_extracted_features: Dict[str, Any] = {}
+        self._rule_audit_entries: List[WhenRulesAuditEntry] = []
 
         self.enqueue_source(execution_graph.get_entry_point())
 
@@ -202,6 +249,12 @@ class ExecutionContext:
     def get_effects(self) -> Mapping[Type[EffectBase], Sequence[EffectBase]]:
         return dict(self._effects)
 
+    def add_rule_audit_entry(self, entry: WhenRulesAuditEntry) -> None:
+        self._rule_audit_entries.append(entry)
+
+    def get_rule_audit_entries(self) -> List[WhenRulesAuditEntry]:
+        return list(self._rule_audit_entries)
+
     def add_custom_extracted_feature(
         self, custom_extracted_feature: CustomExtractedFeature[Any], error_on_duplicate_key: bool = True
     ) -> None:
@@ -278,15 +331,34 @@ class ExecutionContext:
 
     def get_external_service_accessor(
         self, external_service: ExternalService[KeyT, ValueT]
-    ) -> ExternalServiceAccessor[KeyT, ValueT]:
+    ) -> 'ExternalServiceAccessor[KeyT, ValueT]':
         """Given an external service, wraps that service in an accessor that ensures that requests to the service are
-        cached and debounced by key within this execution."""
+        cached and debounced by key within this execution.
+
+        Returns PlainExternalServiceAccessor (no gevent dependency) when gevent is not monkey-patched,
+        allowing sync ExternalService calls to work in the async worker's thread pool.
+        """
         # No need to lock since not doing any IO
         accessor = self._external_service_accessors_by_getter_id.get(id(external_service))
         if accessor is None:
-            accessor = ExternalServiceAccessor(external_service)
+            if _is_gevent_patched():
+                from osprey.engine.executor.external_service_utils import ExternalServiceAccessor
+
+                accessor = ExternalServiceAccessor(external_service)
+            else:
+                accessor = PlainExternalServiceAccessor(external_service)
             self._external_service_accessors_by_getter_id[id(external_service)] = accessor
 
+        return accessor
+
+    def get_async_external_service_accessor(
+        self, external_service: 'AsyncExternalService[KeyT, ValueT]'
+    ) -> 'AsyncExternalServiceAccessor[KeyT, ValueT]':
+        """Async version of get_external_service_accessor, using asyncio.Future for caching."""
+        accessor = self._async_external_service_accessors_by_getter_id.get(id(external_service))
+        if accessor is None:
+            accessor = AsyncExternalServiceAccessor(external_service)
+            self._async_external_service_accessors_by_getter_id[id(external_service)] = accessor
         return accessor
 
 
@@ -355,6 +427,8 @@ class ExecutionResult:
     # some kind of typing when outputing `validator_results`
     validator_results: Dict[Any, Any] = field(default_factory=dict)
     sample_rate: int = 100
+    trace_id: Optional[str] = None
+    rule_audit_entries: Sequence[WhenRulesAuditEntry] = field(default_factory=list)
 
     def add_custom_extracted_feature(self, custom_extracted_feature: CustomExtractedFeature[Any]) -> None:
         name = custom_extracted_feature.feature_name()

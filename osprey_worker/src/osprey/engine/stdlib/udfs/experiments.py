@@ -299,20 +299,5 @@ class ExperimentWhen(UDFBase[ExperimentWhenArguments, List[bool]]):
         return arguments.extra_arguments[bucket]
 
 
-class InExperimentArguments(ArgumentsBase):
-    experiment: ExperimentT
-
-
-class InExperiment(UDFBase[InExperimentArguments, bool]):
-    """
-    Returns True if the entity was assigned to any bucket in the experiment,
-    False if the entity fell outside all bucket ranges
-    """
-
-    category = UdfCategories.ENGINE
-
-    def execute(self, execution_context: ExecutionContext, arguments: InExperimentArguments) -> bool:
-        return arguments.experiment.resolved_bucket is not NOT_IN_EXPERIMENT_BUCKET
-
-
 ExperimentsBucketAssignment = Experiment.build_cls('experiment_bucket_assignment')
+ExperimentsBucketAssignment.__doc__ = 'Returns the experiment bucket assignment for the entity, used for A/B testing.'
