@@ -30,18 +30,11 @@ SNOWFLAKE_BATCH_SIZE = 250
 
 
 class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
-    """Subscribes to Bluesky's ATProto JetStream WebSocket and yields Osprey Actions.
+    """An Osprey event input stream that subscribes to the ATProto JetStream websocket and yields
+    Osprey actions.
 
-    JetStream is Bluesky's public real-time firehose for ATProto network activity emitted as
-    plain JSON (no CBOR/CAR), making it a convenient high-volume source for exercising Osprey
-    against real production traffic. See https://docs.bsky.app/blog/jetstream.
-
-    The JetStream JSON event is passed through unchanged as the Action's data dict, so rules
-    target JetStream-native paths directly: ``$.did``, ``$.kind``, ``$.commit.operation``,
-    ``$.commit.collection``, ``$.commit.record.text``, ``$.identity.handle``, etc. The
-    ``action_name`` is ``<operation>_<short>`` for commit events (e.g. ``create_post``,
-    ``delete_like``) using the short names in :data:`COLLECTION_NAMES`, or ``'identity'``
-    for identity events. Account events and commits for unmapped collections are skipped.
+    The JetStream JSON event is passed through unchanged as the Action's data dict, so rules may
+    target the JetStream-native paths directly, like $.did, $.kind, or $.commit.operation.
     """
 
     def __init__(
@@ -114,7 +107,8 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
 
 
 def _event_to_action(event: Dict[str, Any], action_id: int) -> Optional[Action]:
-    """Wrap a JetStream event as an Osprey :class:`Action`, or return ``None`` to skip it.
+    """Wraps a JetStream event as an Osprey action, or returns None if it should be skipped.
+    """
 
     The event JSON is passed through as-is so rules can read JetStream-native paths
     (``$.did``, ``$.commit.collection``, ``$.commit.record.text``, etc.). For commit

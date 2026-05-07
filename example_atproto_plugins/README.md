@@ -1,11 +1,9 @@
 # example_atproto_plugins
 
-A sample Osprey plugin that consumes Bluesky's [JetStream](https://docs.bsky.app/blog/jetstream) — the public ATProto firehose — as the input event source.
-
-This is the missing companion to `example_plugins/`: it shows how a real-world adopter wires Osprey up to their own platform's events. Out of the box it gives you:
+A sample Osprey plugin that consumes ATProto's [JetStream](https://docs.bsky.app/blog/jetstream) as the input event source. It gives you:
 
 - a `register_input_stream` hook implementation that subscribes to JetStream over WebSocket and yields Osprey `Action`s with the JetStream JSON event passed through as-is,
-- realistic per-second event volume from the live Bluesky network — useful for load and soak testing changes that the synthetic 1-event/second producer doesn't exercise,
+- realistic per-second event volume from the live Bluesky network, which is useful for load and soak testing changes that the synthetic 1-event/second producer doesn't exercise,
 - a companion `example_atproto_rules/` tree showing how to organize rules against ATProto event shapes, with file structure modeled on [haileyok/atproto-ruleset](https://github.com/haileyok/atproto-ruleset).
 
 ## Running
@@ -16,7 +14,7 @@ From the repo root:
 ./run-atproto.sh
 ```
 
-This brings up the full Osprey local stack (Druid, Postgres, Bigtable, MinIO, Kafka) along with a JetStream WebSocket override, and swaps the worker's input source from Kafka to the JetStream plugin, pointing it at `example_atproto_rules` instead of `example_rules`. First-run startup takes a few minutes.
+This brings up the full Osprey local stack (Druid, Postgres, MinIO, Kafka) along with a JetStream websocket override, and swaps the worker's input source from Kafka to the JetStream plugin, pointing it at `example_atproto_rules` instead of `example_rules`. First-run startup takes a few minutes.
 
 ## Configuration
 
@@ -69,7 +67,6 @@ Account events, commits for collections not in `COLLECTION_NAMES`, and commits w
 
 ## Caveats
 
-- **Not production-ready.** No durable cursor on process restart, no zstd compression, no DID-level filtering. Good for sample / load-testing purposes; not a drop-in for a Bluesky deployment. In-process reconnect resumes from last seen event via socket-level cursor.
+- **Not production-ready.** No durable cursor on process restart, no zstd compression, no DID-level filtering. Good for sample / load-testing purposes; not a drop-in for a real ATProto deployment.
 - **No event enrichment.** JetStream only carries what's in the commit itself; rulesets that depend on handle / profile / account age (such as much of [atproto-ruleset](https://github.com/haileyok/atproto-ruleset)) are fed by a separate enrichment pipeline, not JetStream directly. This plugin emits JetStream-native paths ($.did, $.commit.collection, etc.); enrichment-fed rulesets would need an enrichment service in front of this one or a different plugin.
 - **No application-level keepalive.** Connection health is monitored via socket read timeout (30s). A stalled connection will be detected and trigger reconnection.
-- **Schema drift.** Bluesky has not committed to JetStream as a stable long-term API. Treat this as illustrative.
