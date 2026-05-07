@@ -35,11 +35,18 @@ def _flatten(seq: List[List[Any]]) -> List[Any]:
     return sum(seq, [])
 
 
-# Stdlib UDFs that have async replacements in discord_osprey_async_plugins.
-# Each entry: (sync module path, sync class name, async module path, async class name)
 @lru_cache(maxsize=1)
 def load_all_async_plugins() -> None:
-    """Load all plugins registered under the 'osprey_async_plugin' entry_point group."""
+    """Load the first-party async-stdlib plugin and any third-party plugins.
+
+    The first-party plugin (osprey.async_worker.stdlib_udfs._async_stdlib_plugin)
+    contributes async-native replacements for sync stdlib UDFs (e.g. MXLookup).
+    Third-party plugins are discovered via the 'osprey_async_plugin' setuptools
+    entry_point group.
+    """
+    from osprey.async_worker.stdlib_udfs import _async_stdlib_plugin
+
+    plugin_manager.register(_async_stdlib_plugin)
     plugin_manager.load_setuptools_entrypoints(OSPREY_ASYNC_ADAPTOR)
     plugin_manager.check_pending()
 
@@ -66,17 +73,17 @@ def bootstrap_async_udfs(config: 'Config | None' = None) -> tuple[UDFRegistry, U
     Loads stdlib UDFs (JsonData, StringLength, Rule, etc.) and async plugin UDFs.
     Plugin UDFs override stdlib UDFs with the same name — this is how async
     replacements (HasLabel, MXLookup, etc.) shadow their sync counterparts.
-    No sync fallbacks — all I/O UDFs must be native async.
+    Async-native replacements for sync stdlib UDFs come from the first-party
+    `_async_stdlib_plugin`, which registers through the same `register_udfs`
+    hook as third-party plugins. No sync fallbacks — all I/O UDFs must be
+    native async.
     """
-    from osprey.async_worker.stdlib_udfs.async_mx_lookup import MXLookup as AsyncMXLookup
-    from osprey.engine.stdlib.udfs.mx_lookup import MXLookup as SyncMXLookup
     from osprey.worker._stdlibplugin.udf_register import register_udfs as stdlib_register_udfs
 
     load_all_async_plugins()
     udf_helpers = UDFHelpers()
 
-    # Load stdlib UDFs, replacing sync MXLookup with async version
-    stdlib_udfs = [u for u in stdlib_register_udfs() if u is not SyncMXLookup] + [AsyncMXLookup]
+    stdlib_udfs = list(stdlib_register_udfs())
     plugin_udfs = _flatten(plugin_manager.hook.register_udfs())
     all_udfs = _deduplicate_udfs(stdlib_udfs, plugin_udfs)
 
