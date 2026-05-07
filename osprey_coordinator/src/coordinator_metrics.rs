@@ -63,4 +63,8 @@ define_metrics!(OspreyCoordinatorMetrics, [
     // How many times action ID generation from snowflake is used (when pubsub_action.id is None)
     action_id_snowflake_generation_json => StaticCounter("action_id_snowflake_generation", ["proto"=>"false"]),
     action_id_snowflake_generation_proto => StaticCounter("action_id_snowflake_generation", ["proto"=>"true"]),
+
+    // Bidi stream dispatch counters (for throughput investigation)
+    bidi_actions_sent => StaticCounter("bidi_stream.actions_sent"),
+    bidi_acks_received => StaticCounter("bidi_stream.acks_received"),
 ]);
