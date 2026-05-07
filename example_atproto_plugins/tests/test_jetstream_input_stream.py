@@ -201,12 +201,14 @@ def test_stream_one_connection_handles_malformed_json_and_gracefully_closes():
 
     fake_ws = FakeWebSocket()
     stream = JetStreamInputStream(reconnect_seconds=0.1)
+    # Pre-fill so _next_action_id() doesn't hit the snowflake-id-worker.
+    stream._snowflake_buffer = [12345]
 
     with mock.patch('websocket.create_connection', return_value=fake_ws):
         actions = list(stream._stream_one_connection('wss://example.com/sub'))
 
     assert len(actions) == 1
-    assert actions[0]._item.action_id == 0
+    assert actions[0]._item.action_id == 12345
     assert actions[0]._item.action_name == 'create_post'
     assert actions[0]._item.data['did'] == 'did:plc:x'
     assert fake_ws.closed

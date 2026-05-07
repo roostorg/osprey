@@ -9,6 +9,7 @@ import websocket
 from osprey.engine.executor.execution_context import Action
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
+from osprey.worker.lib.snowflake import generate_snowflake_batch
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext, NoopAckingContext
 from websocket import WebSocketConnectionClosedException
@@ -25,6 +26,7 @@ COLLECTION_NAMES = {
     'app.bsky.actor.profile': 'profile',
 }
 DEFAULT_COLLECTIONS = tuple(COLLECTION_NAMES.keys())
+SNOWFLAKE_BATCH_SIZE = 250
 
 
 class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
@@ -53,6 +55,13 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
         self._wanted_collections = list(wanted_collections) if wanted_collections else list(DEFAULT_COLLECTIONS)
         self._reconnect_seconds = reconnect_seconds
         self._last_time_us: Optional[int] = None
+        self._snowflake_buffer: List[int] = []
+
+    def _next_action_id(self) -> int:
+        if not self._snowflake_buffer:
+            batch = generate_snowflake_batch(count=SNOWFLAKE_BATCH_SIZE, retries=3)
+            self._snowflake_buffer = [s.to_int() for s in batch]
+        return self._snowflake_buffer.pop()
 
     def _build_url(self) -> str:
         params = [('wantedCollections', c) for c in self._wanted_collections]
@@ -85,7 +94,7 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
                     continue
                 try:
                     event = json.loads(raw)
-                    action = _event_to_action(event, action_id=0)
+                    action = _event_to_action(event, action_id=self._next_action_id())
                 except Exception:
                     logger.exception('skipping malformed JetStream event')
                     sentry_sdk.capture_exception()
