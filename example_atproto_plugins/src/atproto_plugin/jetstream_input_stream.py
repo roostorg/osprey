@@ -17,13 +17,14 @@ logger = get_logger()
 
 
 DEFAULT_ENDPOINT = 'wss://jetstream2.us-west.bsky.network/subscribe'
-DEFAULT_COLLECTIONS = (
-    'app.bsky.feed.post',
-    'app.bsky.feed.like',
-    'app.bsky.feed.repost',
-    'app.bsky.graph.follow',
-    'app.bsky.actor.profile',
-)
+COLLECTION_NAMES = {
+    'app.bsky.feed.post': 'post',
+    'app.bsky.feed.like': 'like',
+    'app.bsky.feed.repost': 'repost',
+    'app.bsky.graph.follow': 'follow',
+    'app.bsky.actor.profile': 'profile',
+}
+DEFAULT_COLLECTIONS = tuple(COLLECTION_NAMES.keys())
 
 
 class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
@@ -36,8 +37,9 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
     The JetStream JSON event is passed through unchanged as the Action's data dict, so rules
     target JetStream-native paths directly: ``$.did``, ``$.kind``, ``$.commit.operation``,
     ``$.commit.collection``, ``$.commit.record.text``, ``$.identity.handle``, etc. The
-    ``action_name`` is set to the event's ``kind`` (``'commit'`` / ``'identity'``). Account
-    events are skipped — the sample is concerned with content events.
+    ``action_name`` is ``<operation>_<short>`` for commit events (e.g. ``create_post``,
+    ``delete_like``) using the short names in :data:`COLLECTION_NAMES`, or ``'identity'``
+    for identity events. Account events and commits for unmapped collections are skipped.
     """
 
     def __init__(
@@ -106,9 +108,10 @@ def _event_to_action(event: Dict[str, Any], action_id: int) -> Optional[Action]:
     """Wrap a JetStream event as an Osprey :class:`Action`, or return ``None`` to skip it.
 
     The event JSON is passed through as-is so rules can read JetStream-native paths
-    (``$.did``, ``$.commit.collection``, ``$.commit.record.text``, etc.). ``action_name``
-    is set to the event's ``kind``. Only ``commit`` and ``identity`` events are emitted —
-    account events and any unrecognised kind are skipped.
+    (``$.did``, ``$.commit.collection``, ``$.commit.record.text``, etc.). For commit
+    events ``action_name`` is ``<operation>_<short>`` (e.g. ``create_post``); for
+    identity events it is ``'identity'``. Account events, commits for collections not
+    in :data:`COLLECTION_NAMES`, and commits with unexpected operations are skipped.
     """
     kind = event.get('kind')
     if kind not in ('commit', 'identity'):
@@ -116,9 +119,18 @@ def _event_to_action(event: Dict[str, Any], action_id: int) -> Optional[Action]:
     time_us = event.get('time_us')
     if not isinstance(time_us, int) or time_us <= 0:
         return None
+    if kind == 'commit':
+        commit = event.get('commit') or {}
+        operation = commit.get('operation')
+        short = COLLECTION_NAMES.get(commit.get('collection', ''))
+        if short is None or operation not in ('create', 'update', 'delete'):
+            return None
+        action_name = f'{operation}_{short}'
+    else:
+        action_name = 'identity'
     return Action(
         action_id=action_id,
-        action_name=kind,
+        action_name=action_name,
         data=event,
         timestamp=datetime.fromtimestamp(time_us / 1_000_000, tz=timezone.utc),
     )

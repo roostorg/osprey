@@ -1,5 +1,6 @@
 from unittest import mock
 
+import pytest
 from atproto_plugin.jetstream_input_stream import JetStreamInputStream, _event_to_action
 from websocket import WebSocketConnectionClosedException
 
@@ -27,7 +28,7 @@ def test_post_commit_passes_through_jetstream_payload():
 
     assert action is not None
     assert action.action_id == 42
-    assert action.action_name == 'commit'
+    assert action.action_name == 'create_post'
     # Action.data is the raw JetStream event — rules read $.did, $.commit.*, etc.
     assert action.data is SAMPLE_POST_COMMIT
     assert action.data['did'] == 'did:plc:abc123'
@@ -48,7 +49,7 @@ def test_like_commit_passes_through_jetstream_payload():
     action = _event_to_action(like, action_id=1)
 
     assert action is not None
-    assert action.action_name == 'commit'
+    assert action.action_name == 'create_like'
     assert action.data['commit']['collection'] == 'app.bsky.feed.like'
     assert 'text' not in action.data['commit']['record']
 
@@ -66,7 +67,7 @@ def test_delete_commit_passes_through_without_record():
     action = _event_to_action(delete, action_id=2)
 
     assert action is not None
-    assert action.action_name == 'commit'
+    assert action.action_name == 'delete_post'
     assert action.data['commit']['operation'] == 'delete'
     assert 'record' not in action.data['commit']
 
@@ -113,6 +114,47 @@ def test_event_with_negative_time_us_is_skipped():
 def test_unknown_kind_is_skipped():
     weird = {'did': 'did:plc:xyz', 'time_us': 1, 'kind': 'something-new'}
     assert _event_to_action(weird, action_id=6) is None
+
+
+@pytest.mark.parametrize(
+    'collection,operation,expected_name',
+    [
+        ('app.bsky.feed.post', 'create', 'create_post'),
+        ('app.bsky.feed.post', 'update', 'update_post'),
+        ('app.bsky.feed.post', 'delete', 'delete_post'),
+        ('app.bsky.feed.like', 'create', 'create_like'),
+        ('app.bsky.feed.like', 'delete', 'delete_like'),
+        ('app.bsky.feed.repost', 'create', 'create_repost'),
+        ('app.bsky.feed.repost', 'delete', 'delete_repost'),
+        ('app.bsky.graph.follow', 'create', 'create_follow'),
+        ('app.bsky.graph.follow', 'delete', 'delete_follow'),
+        ('app.bsky.actor.profile', 'update', 'update_profile'),
+    ],
+)
+def test_commit_action_name_combines_operation_and_collection(collection, operation, expected_name):
+    event = {
+        **SAMPLE_POST_COMMIT,
+        'commit': {**SAMPLE_POST_COMMIT['commit'], 'collection': collection, 'operation': operation},
+    }
+    action = _event_to_action(event, action_id=1)
+    assert action is not None
+    assert action.action_name == expected_name
+
+
+def test_commit_for_unmapped_collection_is_skipped():
+    event = {
+        **SAMPLE_POST_COMMIT,
+        'commit': {**SAMPLE_POST_COMMIT['commit'], 'collection': 'app.bsky.graph.starterpack'},
+    }
+    assert _event_to_action(event, action_id=1) is None
+
+
+def test_commit_with_unexpected_operation_is_skipped():
+    event = {
+        **SAMPLE_POST_COMMIT,
+        'commit': {**SAMPLE_POST_COMMIT['commit'], 'operation': 'wat'},
+    }
+    assert _event_to_action(event, action_id=1) is None
 
 
 def test_build_url_includes_wanted_collections():
@@ -165,6 +207,6 @@ def test_stream_one_connection_handles_malformed_json_and_gracefully_closes():
 
     assert len(actions) == 1
     assert actions[0]._item.action_id == 0
-    assert actions[0]._item.action_name == 'commit'
+    assert actions[0]._item.action_name == 'create_post'
     assert actions[0]._item.data['did'] == 'did:plc:x'
     assert fake_ws.closed

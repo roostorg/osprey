@@ -1,0 +1,16 @@
+ui_config:
+  default_summary_features:
+    - actions: ['*']
+      features: [UserId]
+    - actions: ['create_post', 'update_post']
+      features: [PostText, Rkey]
+    - actions: ['delete_post']
+      features: [Rkey]
+    - actions: ['create_like', 'delete_like']
+      features: [LikeSubjectUri, Rkey]
+    - actions: ['create_follow', 'delete_follow']
+      features: [FollowSubject, Rkey]
+    - actions: ['create_repost', 'delete_repost']
+      features: [Rkey]
+    - actions: ['identity']
+      features: [IdentityHandle]

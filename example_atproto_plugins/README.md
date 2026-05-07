@@ -28,9 +28,9 @@ This brings up the full Osprey local stack (Druid, Postgres, Bigtable, MinIO, Ka
 
 ## Action shape
 
-The JetStream JSON event is passed through unchanged as the Action's `data` dict, so rules read JetStream-native paths directly. `action_name` is set to the event's `kind`.
+The JetStream JSON event is passed through unchanged as the Action's `data` dict, so rules read JetStream-native paths directly. `action_name` is `<operation>_<short>` for commit events (`create_post`, `delete_like`, `update_profile`, …) using the short names defined in `COLLECTION_NAMES`, or `identity` for identity events.
 
-### Commit events (`action_name='commit'`)
+### Commit events (e.g. `create_post`, `delete_like`)
 
 ```
 {
@@ -59,7 +59,11 @@ The JetStream JSON event is passed through unchanged as the Action's `data` dict
 }
 ```
 
-Account events and any unrecognised kind are skipped.
+Account events, commits for collections not in `COLLECTION_NAMES`, and commits with operations other than `create` / `update` / `delete` are skipped.
+
+### UI default features
+
+`example_atproto_rules/config/ui_config.yaml` declares the per-action default features the Osprey UI surfaces in the event stream — e.g. `PostText` for `create_post`, `IdentityHandle` for `identity`, `LikeSubjectUri` for like events. Add new entries there to expose more fields without touching rule code.
 
 `action_id` is set to 0; the sink's fallback path (`RulesSink`) generates a real snowflake ID during classification.
 
