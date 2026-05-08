@@ -180,6 +180,27 @@ def test_build_url_includes_cursor_when_last_time_us_set():
     assert 'cursor=1714500000000000' in url
 
 
+def test_backoff_doubles_then_caps_after_no_event_sessions():
+    stream = JetStreamInputStream(reconnect_seconds=1.0, max_reconnect_seconds=8.0)
+    assert stream._next_reconnect_seconds == 1.0
+
+    expected_after = [2.0, 4.0, 8.0, 8.0, 8.0]
+    for expected in expected_after:
+        stream._advance_backoff(had_event=False)
+        assert stream._next_reconnect_seconds == expected
+
+
+def test_backoff_resets_after_session_that_yielded_events():
+    stream = JetStreamInputStream(reconnect_seconds=1.0, max_reconnect_seconds=8.0)
+
+    for _ in range(5):
+        stream._advance_backoff(had_event=False)
+    assert stream._next_reconnect_seconds == 8.0
+
+    stream._advance_backoff(had_event=True)
+    assert stream._next_reconnect_seconds == 1.0
+
+
 def test_stream_one_connection_handles_malformed_json_and_gracefully_closes():
     class FakeWebSocketApp:
         def __init__(self, url, on_open=None, on_message=None, on_close=None, on_error=None):

@@ -45,11 +45,14 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
         endpoint: Optional[str] = None,
         wanted_collections: Optional[List[str]] = None,
         reconnect_seconds: float = 2.0,
+        max_reconnect_seconds: float = 60.0,
     ):
         super().__init__()
         self._endpoint = endpoint or DEFAULT_ENDPOINT
         self._wanted_collections = list(wanted_collections) if wanted_collections else list(DEFAULT_COLLECTIONS)
         self._reconnect_seconds = reconnect_seconds
+        self._max_reconnect_seconds = max_reconnect_seconds
+        self._next_reconnect_seconds = reconnect_seconds
         self._last_time_us: Optional[int] = None
         self._snowflake_buffer: List[int] = []
 
@@ -65,15 +68,31 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
             params.append(('cursor', str(self._last_time_us)))
         return f'{self._endpoint}?{urlencode(params)}'
 
+    def _advance_backoff(self, had_event: bool) -> None:
+        # Reset on a session that produced events; otherwise grow exponentially up to the cap
+        # so a dead host doesn't get hammered.
+        if had_event:
+            self._next_reconnect_seconds = self._reconnect_seconds
+        else:
+            self._next_reconnect_seconds = min(
+                self._next_reconnect_seconds * 2, self._max_reconnect_seconds
+            )
+
     def _gen(self) -> Iterator[BaseAckingContext[Action]]:
         while True:
+            had_event = False
             try:
                 url = self._build_url()
-                yield from self._stream_one_connection(url)
+                for ctx in self._stream_one_connection(url):
+                    had_event = True
+                    yield ctx
             except Exception as e:
-                logger.exception(f'JetStream stream error; reconnecting in {self._reconnect_seconds}s: {e}')
+                logger.exception(f'JetStream stream error: {e}')
                 sentry_sdk.capture_exception(e)
-            time.sleep(self._reconnect_seconds)
+
+            self._advance_backoff(had_event)
+            logger.info(f'Reconnecting in {self._next_reconnect_seconds:.1f}s')
+            time.sleep(self._next_reconnect_seconds)
 
     def _stream_one_connection(self, url: str) -> Iterator[BaseAckingContext[Action]]:
         # WebSocketApp drives PING/PONG keepalive on its own greenlet; we bridge its
