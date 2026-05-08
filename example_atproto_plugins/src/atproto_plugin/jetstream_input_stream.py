@@ -4,15 +4,16 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Iterator, List, Optional
 from urllib.parse import urlencode
 
+import gevent
 import sentry_sdk
 import websocket
+from gevent.queue import Queue
 from osprey.engine.executor.execution_context import Action
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.snowflake import generate_snowflake_batch
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext, NoopAckingContext
-from websocket import WebSocketConnectionClosedException
 
 logger = get_logger()
 
@@ -27,6 +28,8 @@ COLLECTION_NAMES = {
 }
 DEFAULT_COLLECTIONS = tuple(COLLECTION_NAMES.keys())
 SNOWFLAKE_BATCH_SIZE = 250
+PING_INTERVAL_SECONDS = 20
+PING_TIMEOUT_SECONDS = 10
 
 
 class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
@@ -73,15 +76,43 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
             time.sleep(self._reconnect_seconds)
 
     def _stream_one_connection(self, url: str) -> Iterator[BaseAckingContext[Action]]:
+        # WebSocketApp drives PING/PONG keepalive on its own greenlet; we bridge its
+        # callback API into this generator via a gevent.queue.Queue. The 'done' sentinel
+        # is pushed by on_close/on_error, and also as a safety net by greenlet.link in
+        # case run_forever exits without firing on_close (e.g., uncaught exception).
+        queue: 'Queue[tuple[str, Optional[bytes]]]' = Queue()
+
+        def on_open(ws: Any) -> None:
+            logger.info('JetStream connection established')
+
+        def on_message(ws: Any, raw: Any) -> None:
+            queue.put(('message', raw))
+
+        def on_close(ws: Any, status: Any, msg: Any) -> None:
+            logger.info(f'JetStream connection closed (status={status}); will reconnect')
+            queue.put(('done', None))
+
+        def on_error(ws: Any, err: Any) -> None:
+            logger.warning(f'JetStream connection error: {err}; will reconnect')
+            queue.put(('done', None))
+
         logger.info(f'Connecting to JetStream at {url}')
-        ws = websocket.create_connection(url, timeout=30)
-        logger.info('JetStream connection established')
+        app = websocket.WebSocketApp(
+            url,
+            on_open=on_open,
+            on_message=on_message,
+            on_close=on_close,
+            on_error=on_error,
+        )
+        runner = gevent.spawn(
+            app.run_forever, ping_interval=PING_INTERVAL_SECONDS, ping_timeout=PING_TIMEOUT_SECONDS
+        )
+        runner.link(lambda _g: queue.put(('done', None)))
+
         try:
             while True:
-                try:
-                    raw = ws.recv()
-                except WebSocketConnectionClosedException:
-                    logger.info('JetStream connection closed; will reconnect')
+                kind, raw = queue.get()
+                if kind == 'done':
                     return
                 if not raw:
                     continue
@@ -101,9 +132,10 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
                 yield NoopAckingContext(action)
         finally:
             try:
-                ws.close()
+                app.close()
             except Exception:
-                logger.info('ignored error while closing JetStream socket', exc_info=True)
+                logger.info('ignored error while closing JetStream WebSocketApp', exc_info=True)
+            runner.join(timeout=5)
 
 
 def _event_to_action(event: Dict[str, Any], action_id: int) -> Optional[Action]:

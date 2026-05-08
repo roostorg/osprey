@@ -2,7 +2,6 @@ from unittest import mock
 
 import pytest
 from atproto_plugin.jetstream_input_stream import JetStreamInputStream, _event_to_action
-from websocket import WebSocketConnectionClosedException
 
 SAMPLE_POST_COMMIT = {
     'did': 'did:plc:abc123',
@@ -182,33 +181,44 @@ def test_build_url_includes_cursor_when_last_time_us_set():
 
 
 def test_stream_one_connection_handles_malformed_json_and_gracefully_closes():
-    class FakeWebSocket:
-        def __init__(self):
+    class FakeWebSocketApp:
+        def __init__(self, url, on_open=None, on_message=None, on_close=None, on_error=None):
+            self.url = url
+            self.on_open = on_open
+            self.on_message = on_message
+            self.on_close = on_close
             self.closed = False
-            self.recv_calls = 0
 
-        def recv(self):
-            self.recv_calls += 1
-            if self.recv_calls == 1:
-                return b'not-json'
-            elif self.recv_calls == 2:
-                return b'{"did": "did:plc:x", "time_us": 1714500000000000, "kind": "commit", "commit": {"operation": "create", "collection": "app.bsky.feed.post", "rkey": "abc", "rev": "3kf...", "cid": "bafy...", "record": {"$type": "app.bsky.feed.post", "text": "hello"}}}'
-            else:
-                raise WebSocketConnectionClosedException()
+        def run_forever(self, **kwargs):
+            self.on_open(self)
+            self.on_message(self, b'not-json')
+            self.on_message(
+                self,
+                b'{"did": "did:plc:x", "time_us": 1714500000000000, "kind": "commit",'
+                b' "commit": {"operation": "create", "collection": "app.bsky.feed.post",'
+                b' "rkey": "abc", "rev": "3kf...", "cid": "bafy...",'
+                b' "record": {"$type": "app.bsky.feed.post", "text": "hello"}}}',
+            )
+            self.on_close(self, 1000, 'normal')
 
         def close(self):
             self.closed = True
 
-    fake_ws = FakeWebSocket()
+    captured = {}
+
+    def factory(*args, **kwargs):
+        captured['app'] = FakeWebSocketApp(*args, **kwargs)
+        return captured['app']
+
     stream = JetStreamInputStream(reconnect_seconds=0.1)
     # Pre-fill so _next_action_id() doesn't hit the snowflake-id-worker.
     stream._snowflake_buffer = [12345]
 
-    with mock.patch('websocket.create_connection', return_value=fake_ws):
+    with mock.patch('websocket.WebSocketApp', factory):
         actions = list(stream._stream_one_connection('wss://example.com/sub'))
 
     assert len(actions) == 1
     assert actions[0]._item.action_id == 12345
     assert actions[0]._item.action_name == 'create_post'
     assert actions[0]._item.data['did'] == 'did:plc:x'
-    assert fake_ws.closed
+    assert captured['app'].closed
