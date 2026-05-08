@@ -5,7 +5,6 @@ from typing import Any, Dict, Iterator, List, Optional
 from urllib.parse import urlencode
 
 import gevent
-import sentry_sdk
 import websocket
 from gevent.queue import Queue
 from osprey.engine.executor.execution_context import Action
@@ -88,7 +87,6 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
                     yield ctx
             except Exception as e:
                 logger.exception(f'JetStream stream error: {e}')
-                sentry_sdk.capture_exception(e)
 
             self._advance_backoff(had_event)
             logger.info(f'Reconnecting in {self._next_reconnect_seconds:.1f}s')
@@ -137,11 +135,25 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
                     continue
                 try:
                     event = json.loads(raw)
-                    action = _event_to_action(event, action_id=self._next_action_id())
-                except Exception:
-                    logger.exception('skipping malformed JetStream event')
-                    sentry_sdk.capture_exception()
+                except json.JSONDecodeError as e:
+                    raw_bytes = raw if isinstance(raw, bytes) else str(raw).encode('utf-8', errors='replace')
+                    logger.warning(
+                        f'JetStream payload was not valid JSON ({e}); '
+                        f'first 200 bytes: {raw_bytes[:200]!r}'
+                    )
                     continue
+                if not isinstance(event, dict):
+                    logger.warning(
+                        f'JetStream payload parsed to non-object JSON '
+                        f'(got {type(event).__name__}); skipping'
+                    )
+                    continue
+                try:
+                    action_id = self._next_action_id()
+                except Exception:
+                    logger.exception('failed to mint action_id from snowflake-id-worker; skipping event')
+                    continue
+                action = _event_to_action(event, action_id=action_id)
                 if action is None:
                     continue
                 time_us = event.get('time_us')
