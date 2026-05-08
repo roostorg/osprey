@@ -15,7 +15,7 @@ import SavedQueries from './components/saved_queries/SavedQueries';
 import SavedQueryBar from './components/saved_queries/SavedQueryBar';
 import usePromiseResult from './hooks/usePromiseResult';
 import useApplicationConfigStore from './stores/ApplicationConfigStore';
-import useThemeStore, { THEME_STORAGE_KEY } from './stores/ThemeStore';
+import useThemeStore from './stores/ThemeStore';
 import { history } from './stores/QueryStore';
 import { renderFromPromiseResult } from './utils/PromiseResultUtils';
 
@@ -61,7 +61,6 @@ const AppRouter: React.FC = () => {
     } else {
       root.classList.remove('dark-theme');
     }
-    window.localStorage.setItem(THEME_STORAGE_KEY, String(isDark));
   }, [isDark]);
 
   return renderFromPromiseResult(applicationConfigResult, () => (

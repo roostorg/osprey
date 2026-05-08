@@ -27,10 +27,10 @@ code {
 }
 
 .dark-theme .ant-spin-text {
-  color: #ebebeb;
+  color: var(--text-dark-primary);
   text-shadow: none !important;
 }
 
 .dark-theme .ant-spin-dot-item {
-  background-color: #ebebeb;
+  background-color: var(--text-dark-primary);
 }
