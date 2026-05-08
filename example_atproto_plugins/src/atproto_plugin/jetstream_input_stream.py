@@ -8,6 +8,7 @@ import gevent
 import websocket
 from gevent.queue import Queue
 from osprey.engine.executor.execution_context import Action
+from osprey.worker.lib.backoff import Backoff
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.snowflake import generate_snowflake_batch
@@ -49,9 +50,7 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
         super().__init__()
         self._endpoint = endpoint or DEFAULT_ENDPOINT
         self._wanted_collections = list(wanted_collections) if wanted_collections else list(DEFAULT_COLLECTIONS)
-        self._reconnect_seconds = reconnect_seconds
-        self._max_reconnect_seconds = max_reconnect_seconds
-        self._next_reconnect_seconds = reconnect_seconds
+        self._backoff = Backoff(min_delay=reconnect_seconds, max_delay=max_reconnect_seconds)
         self._last_time_us: Optional[int] = None
         self._snowflake_buffer: List[int] = []
 
@@ -67,16 +66,6 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
             params.append(('cursor', str(self._last_time_us)))
         return f'{self._endpoint}?{urlencode(params)}'
 
-    def _advance_backoff(self, had_event: bool) -> None:
-        # Reset on a session that produced events; otherwise grow exponentially up to the cap
-        # so a dead host doesn't get hammered.
-        if had_event:
-            self._next_reconnect_seconds = self._reconnect_seconds
-        else:
-            self._next_reconnect_seconds = min(
-                self._next_reconnect_seconds * 2, self._max_reconnect_seconds
-            )
-
     def _gen(self) -> Iterator[BaseAckingContext[Action]]:
         while True:
             had_event = False
@@ -88,9 +77,13 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
             except Exception as e:
                 logger.exception(f'JetStream stream error: {e}')
 
-            self._advance_backoff(had_event)
-            logger.info(f'Reconnecting in {self._next_reconnect_seconds:.1f}s')
-            time.sleep(self._next_reconnect_seconds)
+            if had_event:
+                self._backoff.succeed()
+                delay = self._backoff.current
+            else:
+                delay = self._backoff.fail()
+            logger.info(f'Reconnecting in {delay:.1f}s')
+            time.sleep(delay)
 
     def _stream_one_connection(self, url: str) -> Iterator[BaseAckingContext[Action]]:
         # WebSocketApp drives PING/PONG keepalive on its own greenlet; we bridge its
