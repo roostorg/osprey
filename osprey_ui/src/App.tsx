@@ -38,6 +38,7 @@ const AppRouter: React.FC = () => {
         colorPrimary:
           getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#1227ce',
       },
+      components: { Menu: { collapsedWidth: 56 } },
     };
   }, []);
 
