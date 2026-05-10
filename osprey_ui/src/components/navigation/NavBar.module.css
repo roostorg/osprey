@@ -120,3 +120,10 @@
   flex: 1 1 auto;
   min-height: 0;
 }
+
+/* Suppress browser extend-selection on antd link buttons while shift-click
+   filter recording is active, so the click registers cleanly instead of
+   dragging the text selection along with it. */
+.isRecording :global(.ant-btn.ant-btn-link) {
+  user-select: none !important;
+}

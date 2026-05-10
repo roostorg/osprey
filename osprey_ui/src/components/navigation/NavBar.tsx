@@ -14,6 +14,8 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 
 import Logo from '../../assets/Logo';
+import useApplicationConfigStore from '../../stores/ApplicationConfigStore';
+
 import { Routes } from '../../Constants';
 import styles from './NavBar.module.css';
 
@@ -67,6 +69,9 @@ const NAV_KEYS: string[] = NAV_GROUPS.flatMap((group) => {
 
 const NavBar = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
+  const isRecordingClicks = useApplicationConfigStore((state) => {
+    return state.isRecordingClicks;
+  });
 
   const [isExpanded, setIsExpanded] = React.useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
@@ -119,7 +124,7 @@ const NavBar = ({ children }: { children: React.ReactNode }) => {
   }, [location.pathname]);
 
   return (
-    <div className={styles.appWrapper}>
+    <div className={`${styles.appWrapper}${isRecordingClicks ? ` ${styles.isRecording}` : ''}`}>
       <aside
         className={`${styles.sidebar} ${isExpanded ? styles.sidebarExpanded : styles.sidebarCollapsed}`}
         aria-label="Primary navigation"
