@@ -16,7 +16,7 @@ import SavedQueries from './components/saved_queries/SavedQueries';
 import SavedQueryBar from './components/saved_queries/SavedQueryBar';
 import usePromiseResult from './hooks/usePromiseResult';
 import useApplicationConfigStore from './stores/ApplicationConfigStore';
-import useThemeStore, { THEME_STORAGE_KEY } from './stores/ThemeStore';
+import useThemeStore from './stores/ThemeStore';
 import { history } from './stores/QueryStore';
 import { renderFromPromiseResult } from './utils/PromiseResultUtils';
 
@@ -28,7 +28,9 @@ import { BulkActionPage } from './components/bulk_actions/BulkActionPage';
 
 const AppRouter: React.FC = () => {
   const updateApplicationConfig = useApplicationConfigStore((state) => state.updateApplicationConfig);
-  const themeMode = useThemeStore((state) => state.mode);
+  const themeMode = useThemeStore((state) => {
+    return state.mode;
+  });
 
   const applicationConfigResult = usePromiseResult(async () => {
     const appConfig = await getApplicationConfig();
@@ -36,9 +38,11 @@ const AppRouter: React.FC = () => {
   });
 
   const isDark = themeMode === 'dark';
-  // Mirror of --brand-primary in Colors.module.css. Antd's algorithm needs a
-  // concrete color string at render time to compute its derivatives, so we
-  // can't pass var(--brand-primary) directly. Keep these two values in sync.
+  // Mirror of CSS tokens in Colors.module.css. Antd's algorithm needs concrete
+  // color strings at render time to compute its derivatives, so we can't pass
+  // var(--*) directly. Keep these literals in sync with their tokens:
+  //   colorPrimary           ↔ --brand-primary
+  //   Menu.itemSelectedColor ↔ --text-dark-primary
   const themeConfig = React.useMemo(() => {
     return {
       token: { colorPrimary: isDark ? '#4858e0' : '#1227ce' },
@@ -62,61 +66,62 @@ const AppRouter: React.FC = () => {
     } else {
       root.classList.remove('dark-theme');
     }
-    window.localStorage.setItem(THEME_STORAGE_KEY, String(isDark));
   }, [isDark]);
 
-  return renderFromPromiseResult(applicationConfigResult, () => (
+  return (
     <ConfigProvider theme={themeConfig}>
-      <AntdApp>
-        <Router history={history}>
-          <Switch>
-            <Route path="/events/:eventId">
-              <EventPage />
-            </Route>
-            <Route>
-              <NavBar>
-                <Route exact path={[Routes.SAVED_QUERY, Routes.SAVED_QUERY_LATEST]}>
-                  <SavedQueryBar />
-                </Route>
-                <Route exact path={Routes.ENTITY}>
-                  <EntityViewBar />
-                </Route>
-                <Switch>
-                  <Route path={Routes.QUERY_HISTORY}>
-                    <QueryHistory />
+      {renderFromPromiseResult(applicationConfigResult, () => (
+        <AntdApp>
+          <Router history={history}>
+            <Switch>
+              <Route path="/events/:eventId">
+                <EventPage />
+              </Route>
+              <Route>
+                <NavBar>
+                  <Route exact path={[Routes.SAVED_QUERY, Routes.SAVED_QUERY_LATEST]}>
+                    <SavedQueryBar />
                   </Route>
-                  <Route path={Routes.SAVED_QUERIES}>
-                    <SavedQueries />
+                  <Route exact path={Routes.ENTITY}>
+                    <EntityViewBar />
                   </Route>
-                  <Route path={Routes.DOCS_UDFS}>
-                    <UdfDocsView />
-                  </Route>
-                  <Route path={Routes.BULK_JOB_HISTORY}>
-                    <BulkJobHistoryView />
-                  </Route>
-                  <Route path={Routes.RULES_VISUALIZER}>
-                    <RulesVisualizerView />
-                  </Route>
-                  <Route path={Routes.FEATURES}>
-                    <FeaturesPage />
-                  </Route>
-                  <Route exact path={[Routes.ENTITY, Routes.HOME, Routes.SAVED_QUERY]}>
-                    <QueryView />
-                  </Route>
-                  <Route exact path={Routes.SAVED_QUERY_LATEST}>
-                    <div className={styles.spinner}>
-                      <Spin size="large" />
-                    </div>
-                  </Route>
-                  <Route exact path={Routes.BULK_ACTION} component={BulkActionPage} />
-                </Switch>
-              </NavBar>
-            </Route>
-          </Switch>
-        </Router>
-      </AntdApp>
+                  <Switch>
+                    <Route path={Routes.QUERY_HISTORY}>
+                      <QueryHistory />
+                    </Route>
+                    <Route path={Routes.SAVED_QUERIES}>
+                      <SavedQueries />
+                    </Route>
+                    <Route path={Routes.DOCS_UDFS}>
+                      <UdfDocsView />
+                    </Route>
+                    <Route path={Routes.BULK_JOB_HISTORY}>
+                      <BulkJobHistoryView />
+                    </Route>
+                    <Route path={Routes.RULES_VISUALIZER}>
+                      <RulesVisualizerView />
+                    </Route>
+                    <Route path={Routes.FEATURES}>
+                      <FeaturesPage />
+                    </Route>
+                    <Route exact path={[Routes.ENTITY, Routes.HOME, Routes.SAVED_QUERY]}>
+                      <QueryView />
+                    </Route>
+                    <Route exact path={Routes.SAVED_QUERY_LATEST}>
+                      <div className={styles.spinner}>
+                        <Spin size="large" />
+                      </div>
+                    </Route>
+                    <Route exact path={Routes.BULK_ACTION} component={BulkActionPage} />
+                  </Switch>
+                </NavBar>
+              </Route>
+            </Switch>
+          </Router>
+        </AntdApp>
+      ))}
     </ConfigProvider>
-  ));
+  );
 };
 
 export default AppRouter;

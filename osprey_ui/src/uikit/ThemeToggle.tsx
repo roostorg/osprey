@@ -4,8 +4,12 @@ import { MoonOutlined, SunOutlined } from '@ant-design/icons';
 import useThemeStore from '../stores/ThemeStore';
 
 const ThemeToggle = () => {
-  const mode = useThemeStore((state) => state.mode);
-  const toggleMode = useThemeStore((state) => state.toggleMode);
+  const mode = useThemeStore((state) => {
+    return state.mode;
+  });
+  const toggleMode = useThemeStore((state) => {
+    return state.toggleMode;
+  });
 
   return (
     <Switch

@@ -22,11 +22,23 @@ type ThemeStore = {
   toggleMode: () => void;
 };
 
+const persist = (mode: ThemeMode) => {
+  window.localStorage.setItem(STORAGE_KEY, String(mode === 'dark'));
+};
+
 const useThemeStore = create<ThemeStore>((set) => ({
   mode: getInitialMode(),
-  setMode: (mode) => set({ mode }),
-  toggleMode: () => set((state) => ({ mode: state.mode === 'dark' ? 'light' : 'dark' })),
+  setMode: (mode) => {
+    persist(mode);
+    set({ mode });
+  },
+  toggleMode: () => {
+    return set((state) => {
+      const next: ThemeMode = state.mode === 'dark' ? 'light' : 'dark';
+      persist(next);
+      return { mode: next };
+    });
+  },
 }));
 
 export default useThemeStore;
-export { STORAGE_KEY as THEME_STORAGE_KEY };

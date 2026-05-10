@@ -15,14 +15,66 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 
 import Logo from '../../assets/Logo';
+import useApplicationConfigStore from '../../stores/ApplicationConfigStore';
+
 import { Routes } from '../../Constants';
 import ThemeToggle from '../../uikit/ThemeToggle';
 import styles from './NavBar.module.css';
 
 const SIDEBAR_STORAGE_KEY = 'osprey-sidebar-expanded';
 
+type NavItem = {
+  key: string;
+  icon: React.ReactNode;
+  label: string;
+};
+
+type NavGroup = {
+  key: string;
+  label: string;
+  children: NavItem[];
+};
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    key: 'investigate',
+    label: 'Investigate',
+    children: [
+      { key: Routes.HOME, icon: <SearchOutlined />, label: 'Query' },
+      { key: Routes.QUERY_HISTORY, icon: <HistoryOutlined />, label: 'Query History' },
+      { key: Routes.SAVED_QUERIES, icon: <SaveOutlined />, label: 'Saved Queries' },
+    ],
+  },
+  {
+    key: 'manage',
+    label: 'Manage',
+    children: [
+      { key: Routes.RULES_VISUALIZER, icon: <ApartmentOutlined />, label: 'Rules Visualizer' },
+      { key: Routes.DOCS_UDFS, icon: <FunctionOutlined />, label: 'UDF Registry' },
+      { key: Routes.FEATURES, icon: <DatabaseOutlined />, label: 'Features' },
+    ],
+  },
+  {
+    key: 'operate',
+    label: 'Operate',
+    children: [
+      { key: Routes.BULK_ACTION, icon: <ThunderboltOutlined />, label: 'Bulk Actions' },
+      { key: Routes.BULK_JOB_HISTORY, icon: <ClockCircleOutlined />, label: 'Bulk Job History' },
+    ],
+  },
+];
+
+const NAV_KEYS: string[] = NAV_GROUPS.flatMap((group) => {
+  return group.children.map((item) => {
+    return item.key;
+  });
+});
+
 const NavBar = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
+  const isRecordingClicks = useApplicationConfigStore((state) => {
+    return state.isRecordingClicks;
+  });
 
   const [isExpanded, setIsExpanded] = React.useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
@@ -39,92 +91,43 @@ const NavBar = ({ children }: { children: React.ReactNode }) => {
     });
   }, []);
 
-  const menuItems: MenuProps['items'] = [
-    {
-      key: 'investigate',
+  const menuItems: MenuProps['items'] = NAV_GROUPS.map((group) => {
+    return {
+      key: group.key,
       type: 'group',
-      label: 'Investigate',
-      children: [
-        {
-          key: Routes.HOME,
-          icon: <SearchOutlined />,
-          label: <Link to={Routes.HOME}>Query</Link>,
-        },
-        {
-          key: Routes.QUERY_HISTORY,
-          icon: <HistoryOutlined />,
-          label: <Link to={Routes.QUERY_HISTORY}>Query History</Link>,
-        },
-        {
-          key: Routes.SAVED_QUERIES,
-          icon: <SaveOutlined />,
-          label: <Link to={Routes.SAVED_QUERIES}>Saved Queries</Link>,
-        },
-      ],
-    },
-    {
-      key: 'manage',
-      type: 'group',
-      label: 'Manage',
-      children: [
-        {
-          key: Routes.RULES_VISUALIZER,
-          icon: <ApartmentOutlined />,
-          label: <Link to={Routes.RULES_VISUALIZER}>Rules Visualizer</Link>,
-        },
-        {
-          key: Routes.DOCS_UDFS,
-          icon: <FunctionOutlined />,
-          label: <Link to={Routes.DOCS_UDFS}>UDF Registry</Link>,
-        },
-        {
-          key: Routes.FEATURES,
-          icon: <DatabaseOutlined />,
-          label: <Link to={Routes.FEATURES}>Features</Link>,
-        },
-      ],
-    },
-    {
-      key: 'operate',
-      type: 'group',
-      label: 'Operate',
-      children: [
-        {
-          key: Routes.BULK_ACTION,
-          icon: <ThunderboltOutlined />,
-          label: <Link to={Routes.BULK_ACTION}>Bulk Actions</Link>,
-        },
-        {
-          key: Routes.BULK_JOB_HISTORY,
-          icon: <ClockCircleOutlined />,
-          label: <Link to={Routes.BULK_JOB_HISTORY}>Bulk Job History</Link>,
-        },
-      ],
-    },
-  ];
+      label: group.label,
+      children: group.children.map((item) => {
+        return {
+          key: item.key,
+          icon: item.icon,
+          label: (
+            <Link to={item.key} aria-current={location.pathname === item.key ? 'page' : undefined}>
+              {item.label}
+            </Link>
+          ),
+        };
+      }),
+    };
+  });
 
   const selectedKeys = React.useMemo(() => {
     // Match the menu item whose key is the longest prefix of pathname.
-    const candidateKeys = [
-      Routes.HOME,
-      Routes.QUERY_HISTORY,
-      Routes.SAVED_QUERIES,
-      Routes.RULES_VISUALIZER,
-      Routes.DOCS_UDFS,
-      Routes.FEATURES,
-      Routes.BULK_ACTION,
-      Routes.BULK_JOB_HISTORY,
-    ];
-    const exact = candidateKeys.find((k) => k === location.pathname);
+    const exact = NAV_KEYS.find((k) => {
+      return k === location.pathname;
+    });
     if (exact) return [exact];
     // pathname like /entity/... or /events/... — fall back to no selection
     // unless the path starts with one of the known top-level routes (other than '/').
-    const prefix = candidateKeys.filter((k) => k !== Routes.HOME).find((k) => location.pathname.startsWith(`${k}/`));
+    const prefix = NAV_KEYS.filter((k) => {
+      return k !== Routes.HOME;
+    }).find((k) => {
+      return location.pathname.startsWith(`${k}/`);
+    });
     return prefix ? [prefix] : [];
   }, [location.pathname]);
 
   return (
-    <div className={styles.appWrapper}>
+    <div className={`${styles.appWrapper}${isRecordingClicks ? ` ${styles.isRecording}` : ''}`}>
       <aside
         className={`${styles.sidebar} ${isExpanded ? styles.sidebarExpanded : styles.sidebarCollapsed}`}
         aria-label="Primary navigation"
