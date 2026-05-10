@@ -27,7 +27,9 @@ import { BulkActionPage } from './components/bulk_actions/BulkActionPage';
 
 const AppRouter: React.FC = () => {
   const updateApplicationConfig = useApplicationConfigStore((state) => state.updateApplicationConfig);
-  const themeMode = useThemeStore((state) => state.mode);
+  const themeMode = useThemeStore((state) => {
+    return state.mode;
+  });
 
   const applicationConfigResult = usePromiseResult(async () => {
     const appConfig = await getApplicationConfig();
