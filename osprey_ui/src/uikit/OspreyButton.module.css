@@ -41,13 +41,13 @@
 }
 
 .ghost {
-  background-color: var(--background-base-low);
+  background-color: var(--background-primary);
   color: var(--text-light-secondary);
-  border: 1px solid var(--background-base-lowest);
+  border: 1px solid var(--background-tertiary);
 }
 
 .ghost:hover {
-  background-color: var(--background-base-lower);
+  background-color: var(--background-secondary);
   color: var(--text-light-primary);
   border: 1px solid var(--divider);
 }
