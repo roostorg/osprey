@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from osprey.worker.lib.storage.stored_execution_result import ExecutionResultStore
     from osprey.worker.sinks.sink.input_stream import BaseInputStream
     from osprey.worker.sinks.sink.output_sink import BaseOutputSink
+    from osprey.worker.ui_api.osprey.lib.event_query_backend import EventQueryBackend
 
 hookspec: pluggy.HookspecMarker = pluggy.HookspecMarker(OSPREY_ADAPTOR)
 
@@ -53,6 +54,12 @@ def register_input_stream(config: Config) -> BaseInputStream[BaseAckingContext[A
 def register_execution_result_store(config: Config) -> ExecutionResultStore:
     """Register an execution result storage backend instance."""
     raise NotImplementedError('register_execution_result_store must be implemented by the plugin')
+
+
+@hookspec(firstresult=True)
+def register_event_query_backend(config: Config) -> EventQueryBackend | None:
+    """Register an event query backend instance for the UI event query API."""
+    raise NotImplementedError('register_event_query_backend must be implemented by the plugin')
 
 
 @hookspec(firstresult=True)

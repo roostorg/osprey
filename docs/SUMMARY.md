@@ -7,6 +7,8 @@
   - [Tools Overview](development/tools.md)
   - [Troubleshooting](development/troubleshooting.md)
   - [IDE Setup](development/ide.md)
+  - [Event Query Backends](development/event_query_backends.md)
+  - [ClickHouse Local Footprint](development/clickhouse_local_footprint.md)
   - [Release Process](development/releases.md)
 - [User Interface](UI.md)
 - [Writing Rules](rules.md)

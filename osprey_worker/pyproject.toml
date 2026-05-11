@@ -23,3 +23,15 @@ include-package-data = true
 
 [tool.setuptools.package-data]
 "*" = ["*.json", "*.yaml", "*.yml"]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:The span module is deprecated and will be moved\\.:ddtrace.internal.utils.deprecations.DDTraceDeprecationWarning",
+    "ignore:The ddtrace\\.filters module and the ``FilterRequestsOnUrl`` class is deprecated and will be removed\\.:ddtrace.internal.utils.deprecations.DDTraceDeprecationWarning",
+    "ignore:ddtrace\\.contrib\\.dbapi is deprecated and will be removed in version '3\\.0\\.0':ddtrace.internal.utils.deprecations.DDTraceDeprecationWarning",
+    "ignore:ddtrace\\.contrib\\.dbapi_async is deprecated and will be removed in version '3\\.0\\.0':ddtrace.internal.utils.deprecations.DDTraceDeprecationWarning",
+    "ignore:pkg_resources is deprecated as an API\\.:UserWarning",
+    "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('google'\\)`\\.:DeprecationWarning",
+    "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('google\\.cloud'\\)`\\.:DeprecationWarning",
+    "ignore:Deprecated call to `pkg_resources\\.declare_namespace\\('zope'\\)`\\.:DeprecationWarning",
+]

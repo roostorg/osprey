@@ -1,0 +1,117 @@
+name: osprey-clickhouse
+
+# ClickHouse-specific development overlay.
+# Usage:
+#   docker compose -f docker-compose.yaml -f docker-compose.clickhouse.yaml --profile clickhouse up -d
+
+services:
+  osprey-kafka:
+    container_name: osprey-clickhouse-kafka
+    ports: !reset []
+
+  minio:
+    container_name: osprey-clickhouse-minio
+    ports: !reset []
+
+  postgres:
+    container_name: osprey-clickhouse-postgres
+    ports: !reset []
+
+  snowflake-id-worker:
+    container_name: osprey-clickhouse-snowflake-id-worker
+    ports: !reset []
+
+  clickhouse:
+    container_name: osprey-clickhouse-clickhouse
+    ports: !override
+      - "127.0.0.1:9123:8123"
+      - "127.0.0.1:9109:9000"
+
+  osprey-worker:
+    container_name: osprey-clickhouse-worker
+    ports: !override
+      - "127.0.0.1:6001:5000"
+
+  osprey-ui-api:
+    container_name: osprey-clickhouse-ui-api
+    depends_on: !override
+      osprey-worker:
+        condition: service_started
+      clickhouse:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      snowflake-id-worker:
+        condition: service_started
+    environment:
+      - OSPREY_EVENT_QUERY_BACKEND=clickhouse
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=8123
+      - CLICKHOUSE_USERNAME=osprey
+      - CLICKHOUSE_PASSWORD=osprey
+      - CLICKHOUSE_DATABASE=osprey
+      - CLICKHOUSE_EVENT_TABLE=execution_results
+    ports: !override
+      - "127.0.0.1:6004:5004"
+
+  osprey-ui:
+    container_name: osprey-clickhouse-ui
+    ports: !override
+      - "127.0.0.1:6002:5002"
+    environment: !override
+      - NODE_ENV=development
+      - REACT_APP_API_BASE_URL=http://127.0.0.1:6004
+
+  osprey-kafka-test-data-producer:
+    container_name: osprey-clickhouse-kafka-test-data-producer
+
+  druid-zookeeper:
+    container_name: osprey-clickhouse-druid-zookeeper
+    ports: !reset []
+    profiles:
+      - druid
+
+  druid-coordinator:
+    container_name: osprey-clickhouse-druid-coordinator
+    ports: !reset []
+    profiles:
+      - druid
+
+  druid-broker:
+    container_name: osprey-clickhouse-druid-broker
+    ports: !reset []
+    profiles:
+      - druid
+
+  druid-historical:
+    container_name: osprey-clickhouse-druid-historical
+    ports: !reset []
+    profiles:
+      - druid
+
+  druid-middlemanager:
+    container_name: osprey-clickhouse-druid-middlemanager
+    ports: !reset []
+    profiles:
+      - druid
+
+  druid-router:
+    container_name: osprey-clickhouse-druid-router
+    ports: !reset []
+    profiles:
+      - druid
+
+  druid-spec-submitter:
+    profiles:
+      - druid
+
+  bigtable:
+    container_name: osprey-clickhouse-bigtable
+    ports: !reset []
+    profiles: !override
+      - bigtable
+
+  bigtable-initializer:
+    container_name: osprey-clickhouse-bigtable-initializer
+    profiles: !override
+      - bigtable

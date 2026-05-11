@@ -28,6 +28,7 @@ def make_postgres_database_config_fixture() -> object:
     def postgres_database_config() -> Iterator[None]:
         config = CONFIG.instance()
         config.configure_from_env()
+        preserve_database_for_druid = os.environ.get('RUN_DRUID_INTEGRATION_TESTS', '').lower() == 'true'
 
         try:
             url = config['POSTGRES_HOSTS']['osprey_db']
@@ -51,6 +52,9 @@ def make_postgres_database_config_fixture() -> object:
         config.unconfigure_for_tests()
 
         yield
+
+        if preserve_database_for_druid:
+            return
 
         try:
             drop_database(url)

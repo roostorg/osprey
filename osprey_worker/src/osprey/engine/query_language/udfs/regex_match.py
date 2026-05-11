@@ -3,6 +3,7 @@ from typing import Dict
 
 from osprey.engine.ast import grammar
 from osprey.engine.ast_validator.validation_context import ValidationContext
+from osprey.engine.query_language.filter_ir import FeatureRef, FilterExpression, RegexFilter
 from osprey.engine.query_language.udfs.registry import register
 from osprey.engine.udf.arguments import ArgumentsBase, ConstExpr
 from osprey.engine.udf.base import QueryUdfBase
@@ -41,3 +42,6 @@ class RegexMatch(QueryUdfBase[Arguments, bool]):
 
     def to_druid_query(self) -> Dict[str, object]:
         return {'type': 'regex', 'dimension': self.item, 'pattern': self.regex}
+
+    def to_filter_ir(self) -> FilterExpression:
+        return RegexFilter(feature=FeatureRef(self.item), pattern=self.regex)

@@ -6,6 +6,7 @@ build-backend = "uv_build"
 common = [
     "blinker==1.9.0",
     "click==7.1.2",
+    "clickhouse-connect>=0.8.0",
     "datadog==0.51.0",
     "ddtrace==2.21.11",
     "deepmerge==0.3.0",

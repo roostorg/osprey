@@ -3,6 +3,7 @@ from typing import Dict
 from osprey.engine import shared_constants
 from osprey.engine.ast_validator.validation_context import ValidationContext
 from osprey.engine.language_types.labels import LabelStatus
+from osprey.engine.query_language.filter_ir import FeatureRef, FilterExpression, LikeFilter
 from osprey.engine.query_language.udfs.registry import register
 from osprey.engine.udf.arguments import ArgumentsBase, ConstExpr
 from osprey.engine.udf.base import QueryUdfBase
@@ -18,6 +19,15 @@ class DidMutateLabel(QueryUdfBase[Arguments, bool]):
         super().__init__(validation_context, arguments)
         self.label_name = arguments.label_name.value
         self.entity_type = arguments.entity_type.value
+
+    def _dimension_value(self, label_status: LabelStatus) -> str:
+        return shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_VALUE(self.entity_type, self.label_name, label_status)
+
+    def _to_filter_ir(self, label_status: LabelStatus) -> FilterExpression:
+        return LikeFilter(
+            feature=FeatureRef(shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_NAME),
+            pattern=f'%{self._dimension_value(label_status)}%',
+        )
 
 
 @register
@@ -37,12 +47,11 @@ class DidAddLabel(DidMutateLabel):
         return {
             'type': 'like',
             'dimension': shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_NAME,
-            'pattern': '%'
-            + shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_VALUE(
-                self.entity_type, self.label_name, LabelStatus.ADDED
-            )
-            + '%',
+            'pattern': '%' + self._dimension_value(LabelStatus.ADDED) + '%',
         }
+
+    def to_filter_ir(self) -> FilterExpression:
+        return self._to_filter_ir(LabelStatus.ADDED)
 
 
 @register
@@ -62,9 +71,8 @@ class DidRemoveLabel(DidMutateLabel):
         return {
             'type': 'like',
             'dimension': shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_NAME,
-            'pattern': '%'
-            + shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_VALUE(
-                self.entity_type, self.label_name, LabelStatus.REMOVED
-            )
-            + '%',
+            'pattern': '%' + self._dimension_value(LabelStatus.REMOVED) + '%',
         }
+
+    def to_filter_ir(self) -> FilterExpression:
+        return self._to_filter_ir(LabelStatus.REMOVED)

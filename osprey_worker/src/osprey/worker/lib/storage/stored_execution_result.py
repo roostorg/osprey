@@ -571,17 +571,23 @@ class ExecutionResultStorageService:
 
 def bootstrap_execution_result_storage_service() -> ExecutionResultStorageService:
     """Create an ExecutionResultStorageService with the configured storage backend."""
-    from osprey.worker._stdlibplugin.execution_result_store_chooser import get_rules_execution_result_storage_backend
+    from osprey.worker._stdlibplugin.execution_result_store_chooser import (
+        get_configured_execution_result_storage_backend_type,
+        get_rules_execution_result_storage_backend,
+    )
     from osprey.worker.lib.singletons import CONFIG
 
     config = CONFIG.instance()
 
-    storage_backend_type = ExecutionResultStorageBackendType(
-        config.get_str('OSPREY_EXECUTION_RESULT_STORAGE_BACKEND', 'none').lower()
-    )
+    storage_backend_type = get_configured_execution_result_storage_backend_type(config)
+    if storage_backend_type is None:
+        raise AssertionError('OSPREY_EXECUTION_RESULT_STORAGE_BACKEND is not configured')
+
     storage_backend = get_rules_execution_result_storage_backend(backend_type=storage_backend_type)
 
     if storage_backend is None:
+        if storage_backend_type == ExecutionResultStorageBackendType.NONE:
+            raise AssertionError('Execution result storage backend is disabled')
         raise AssertionError('No storage backend registered')
 
     return ExecutionResultStorageService(storage_backend)

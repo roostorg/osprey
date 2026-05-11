@@ -20,6 +20,7 @@ from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
+    from osprey.worker.ui_api.osprey.lib.event_query_backend import EventQueryBackend
 
 hookimpl_osprey: pluggy.HookimplMarker = pluggy.HookimplMarker(OSPREY_ADAPTOR)
 
@@ -163,5 +164,16 @@ def bootstrap_execution_result_store(config: Config):
     try:
         store = plugin_manager.hook.register_execution_result_store(config=config)
         return store
+    except Exception:
+        return None
+
+
+def bootstrap_event_query_backend(config: Config) -> 'EventQueryBackend | None':
+    """Get the event query backend from plugins."""
+    load_all_osprey_plugins()
+
+    try:
+        backend = plugin_manager.hook.register_event_query_backend(config=config)
+        return backend
     except Exception:
         return None

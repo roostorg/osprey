@@ -42,12 +42,13 @@ def init_from_config(database: str) -> None:
         connstr = config['POSTGRES_HOSTS'][database].replace('postgresql://', 'postgresql+psycopg2://')
         Session = _get_or_init_session(database)
         old_engine = Session.kw.get('bind')
-        if old_engine:
-            if old_engine.url == make_url(connstr):
-                return
-            old_engine.dispose()
-        new_engine = sqlalchemy.create_engine(connstr, pool_pre_ping=True, pool_size=30)
-        Session.configure(bind=new_engine)
+        if old_engine and old_engine.url == make_url(connstr):
+            new_engine = old_engine
+        else:
+            if old_engine:
+                old_engine.dispose()
+            new_engine = sqlalchemy.create_engine(connstr, pool_pre_ping=True, pool_size=30)
+            Session.configure(bind=new_engine)
 
         # Import all models to ensure they're registered with metadata
         from . import (  # noqa: F401

@@ -1,6 +1,7 @@
 from typing import Optional
 
 from osprey.worker.adaptor.plugin_manager import bootstrap_execution_result_store
+from osprey.worker.lib.config import Config
 from osprey.worker.lib.singletons import CONFIG
 from osprey.worker.lib.storage import ExecutionResultStorageBackendType
 from osprey.worker.lib.storage.stored_execution_result import (
@@ -10,6 +11,16 @@ from osprey.worker.lib.storage.stored_execution_result import (
     StoredExecutionResultMinIO,
     StoredExecutionResultPostgres,
 )
+
+
+def get_configured_execution_result_storage_backend_type(
+    config: Config,
+) -> Optional[ExecutionResultStorageBackendType]:
+    configured_backend = config.get_optional_str('OSPREY_EXECUTION_RESULT_STORAGE_BACKEND')
+    if configured_backend is None:
+        return None
+
+    return ExecutionResultStorageBackendType(configured_backend.lower())
 
 
 def get_rules_execution_result_storage_backend(
@@ -40,6 +51,7 @@ def get_rules_execution_result_storage_backend(
         store = bootstrap_execution_result_store(config=config)
         if store is None:
             raise AssertionError('No execution result store registered')
+        return store
     elif backend_type == ExecutionResultStorageBackendType.NONE:
         return None
 

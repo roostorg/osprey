@@ -1,0 +1,114 @@
+name: osprey-clickhouse-test
+
+# ClickHouse-specific test overlay.
+# Usage:
+#   docker compose \
+#     -f docker-compose.yaml \
+#     -f docker-compose.test.yaml \
+#     -f docker-compose.test.clickhouse.yaml \
+#     -p osprey-clickhouse-test \
+#     --profile test \
+#     --profile clickhouse \
+#     run --rm --remove-orphans test_runner run-tests <pytest args>
+
+services:
+  osprey-kafka:
+    container_name: osprey-clickhouse-test-kafka
+    ports: !reset []
+
+  osprey-worker:
+    container_name: osprey-clickhouse-test-worker
+
+  osprey-ui-api:
+    container_name: osprey-clickhouse-test-ui-api
+
+  osprey-ui:
+    container_name: osprey-clickhouse-test-ui
+
+  osprey-kafka-test-data-producer:
+    container_name: osprey-clickhouse-test-kafka-test-data-producer
+
+  postgres:
+    container_name: osprey-clickhouse-test-postgres
+
+  minio:
+    container_name: osprey-clickhouse-test-minio
+    ports: !reset []
+
+  etcd:
+    container_name: osprey-clickhouse-test-etcd
+    ports: !reset []
+
+  snowflake-id-worker:
+    container_name: osprey-clickhouse-test-snowflake-id-worker
+    ports: !reset []
+
+  bigtable:
+    container_name: osprey-clickhouse-test-bigtable
+    ports: !reset []
+
+  bigtable-initializer:
+    container_name: osprey-clickhouse-test-bigtable-initializer
+
+  clickhouse:
+    container_name: osprey-clickhouse-test-clickhouse
+    ports: !reset []
+    volumes: !override
+      - ./clickhouse/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --user osprey --password=osprey --query 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  druid-zookeeper:
+    container_name: osprey-clickhouse-test-druid-zookeeper
+    ports: !reset []
+
+  druid-coordinator:
+    container_name: osprey-clickhouse-test-druid-coordinator
+    ports: !reset []
+
+  druid-broker:
+    container_name: osprey-clickhouse-test-druid-broker
+    ports: !reset []
+
+  druid-historical:
+    container_name: osprey-clickhouse-test-druid-historical
+    ports: !reset []
+
+  druid-middlemanager:
+    container_name: osprey-clickhouse-test-druid-middlemanager
+    ports: !reset []
+
+  druid-router:
+    container_name: osprey-clickhouse-test-druid-router
+    ports: !reset []
+
+  test_runner:
+    container_name: osprey-clickhouse-test-runner
+    depends_on: !override
+      osprey-kafka:
+        condition: service_healthy
+      osprey-kafka-topic-creator:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+      minio-bucket-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      snowflake-id-worker:
+        condition: service_started
+      clickhouse:
+        condition: service_healthy
+    environment:
+      - OSPREY_EVENT_QUERY_BACKEND=clickhouse
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=8123
+      - CLICKHOUSE_USERNAME=osprey
+      - CLICKHOUSE_PASSWORD=osprey
+      - CLICKHOUSE_DATABASE=osprey
+      - CLICKHOUSE_EVENT_TABLE=execution_results
+      - RUN_CLICKHOUSE_INTEGRATION_TESTS=true
+      - RUN_DRUID_INTEGRATION_TESTS=false

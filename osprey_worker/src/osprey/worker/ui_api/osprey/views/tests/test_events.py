@@ -9,6 +9,7 @@ from flask import Flask, Response, url_for
 from flask.testing import FlaskClient
 from osprey.worker.ui_api.osprey.lib.druid import (
     BaseDruidQuery,
+    GroupByApproximateCountDruidQuery,
     PaginatedScanDruidQuery,
     TimeseriesDruidQuery,
     TopNDruidQuery,
@@ -141,3 +142,29 @@ def test_events_scan_request(
         {'type': 'selector', 'dimension': 'ActionName', 'value': 'some_allowance_name'},
     ]
     assert res.status_code == 200
+
+
+@pytest.mark.parametrize(
+    ('model', 'url'),
+    [
+        (TopNDruidQuery(dimension='fake', limit=10, precision=0, **_base_druid_query.dict()), 'events.topn_query'),
+        (
+            GroupByApproximateCountDruidQuery(dimension='fake', **_base_druid_query.dict()),
+            'events.groupby_count',
+        ),
+    ],
+)
+@pytest.mark.use_rules_sources(config_b)
+def test_event_routes_return_bad_request_for_query_execution_value_errors(
+    app: Flask,
+    client: 'FlaskClient[Response]',
+    model: BaseDruidQuery,
+    url: str,
+    mocker: Any,
+) -> None:
+    mocker.patch.object(type(model), 'execute', side_effect=ValueError('bad query'))
+
+    res = client.post(url_for(url), content_type='application/json', data=model.json())
+
+    assert res.status_code == 400
+    assert res.get_data(as_text=True) == 'bad query'

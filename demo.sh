@@ -258,8 +258,8 @@ echo ""
 
 # Wait for infrastructure containers (use Docker health checks)
 wait_for_container "osprey-kafka" 90 || exit 1
-wait_for_container "postgres" 90 || exit 1
-wait_for_container "minio" 90 || exit 1
+wait_for_container "osprey-postgres" 90 || exit 1
+wait_for_container "osprey-minio" 90 || exit 1
 
 # Wait for Druid broker (use HTTP check - no Docker health check configured)
 wait_for_http_service "Druid Broker" "http://localhost:8082/status" 180 || exit 1
