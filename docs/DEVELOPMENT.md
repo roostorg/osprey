@@ -176,3 +176,15 @@ The UI defaults to querying the last 24 hours. If the selected time range is too
 - Narrow the time range to 1–4 hours centered on when you generated test data
 - Click the edit icon next to the displayed time range to switch to a custom date/time picker
 - Note that Druid's Kafka consumer uses `auto.offset.reset: latest` — it only picks up events produced after `docker compose up` first ran, so events from before that point will not appear regardless of the time range
+
+### Kafka topic disk growth
+
+Topics are created with a 48-hour / 8 GB-per-partition retention limit. If you deployed before this was set, apply the config to your existing topics:
+
+```bash
+for topic in osprey.actions_input osprey.execution_results; do
+  kafka-configs --bootstrap-server localhost:9092 \
+    --entity-type topics --entity-name $topic --alter \
+    --add-config retention.ms=172800000,retention.bytes=8589934592,segment.bytes=1073741824
+done
+```
