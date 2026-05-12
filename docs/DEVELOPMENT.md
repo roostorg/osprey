@@ -143,3 +143,36 @@ docker compose --profile test_data up osprey-kafka-test-data-producer -d
 ```
 
 Produces user login events with timestamps, user IDs, and IP addresses to `osprey.actions_input` topic.
+
+## Troubleshooting
+
+### Druid schema not updating
+
+If Druid is not ingesting data or is stuck on a stale schema after changing rule output structure, reset the Kafka supervisor and resubmit the ingestion spec:
+
+```bash
+curl -X POST http://localhost:8888/druid/indexer/v1/supervisor/osprey.execution_results/terminate
+docker compose restart druid-spec-submitter
+```
+
+To wipe all Druid and MinIO state and start fresh (Postgres data is preserved):
+
+```bash
+docker compose down
+docker volume rm osprey_middle_var osprey_historical_var osprey_broker_var osprey_coordinator_var osprey_router_var osprey_druid_shared osprey_minio_data
+docker compose up -d
+```
+
+To wipe everything including Postgres:
+
+```bash
+docker compose down -v && docker compose up -d
+```
+
+### Test data not appearing in the UI
+
+The UI defaults to querying the last 24 hours. If the selected time range is too large (weeks or months), Druid scans across many segments and results can be slow or appear empty.
+
+- Narrow the time range to 1–4 hours centered on when you generated test data
+- Click the edit icon next to the displayed time range to switch to a custom date/time picker
+- Note that Druid's Kafka consumer uses `auto.offset.reset: latest` — it only picks up events produced after `docker compose up` first ran, so events from before that point will not appear regardless of the time range
