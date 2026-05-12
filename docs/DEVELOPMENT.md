@@ -143,3 +143,17 @@ docker compose --profile test_data up osprey-kafka-test-data-producer -d
 ```
 
 Produces user login events with timestamps, user IDs, and IP addresses to `osprey.actions_input` topic.
+
+## Troubleshooting
+
+### Kafka topic disk growth
+
+Topics are created with a 48-hour / 8 GB-per-partition retention limit. If you deployed before this was set, apply the config to your existing topics:
+
+```bash
+for topic in osprey.actions_input osprey.execution_results; do
+  kafka-configs --bootstrap-server localhost:9092 \
+    --entity-type topics --entity-name $topic --alter \
+    --add-config retention.ms=172800000,retention.bytes=8589934592,segment.bytes=1073741824
+done
+```
