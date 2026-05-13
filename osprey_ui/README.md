@@ -3,7 +3,7 @@
 ### Prerequisites
 
 - Node.js (version 16+ recommended)
-- npm package manager
+- pnpm (via Corepack — auto-resolved from the `packageManager` field in `package.json`; no separate install needed once Node.js 18+ is on the host)
 - Docker (for backend services)
 
 ## Purpose
@@ -36,13 +36,13 @@ This starts all required backend services including Kafka, PostgreSQL, Druid, an
 
 ```bash
 cd osprey_ui
-npm install
+pnpm install --frozen-lockfile
 ```
 
 3. **Start Development Server**
 
 ```bash
-npm start
+pnpm start
 ```
 
 The UI will be available at **http://localhost:5002** unless otherwise specified, and will automatically connect to the backend services running in Docker containers.

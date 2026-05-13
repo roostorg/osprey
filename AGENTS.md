@@ -40,8 +40,8 @@ docker compose up -d
 # with coordinator:
 ./start.sh --with-coordinator
 
-# UI dev server
-cd osprey_ui && npm ci && npm start
+# UI dev server (Corepack auto-resolves pnpm from osprey_ui/package.json's packageManager field)
+cd osprey_ui && corepack enable && pnpm install --frozen-lockfile && pnpm start
 
 # Regenerate protobuf bindings after editing proto/osprey/rpc/**/*.proto
 ./gen-protos.sh
@@ -77,7 +77,7 @@ uv run pre-commit run --all-files
 UI checks (in `osprey_ui/`):
 
 ```bash
-npm run format:check
+pnpm run format:check
 ```
 
 Rust checks (in `osprey_coordinator/`; requires `protoc`). CI only gates on `fmt` and `build`; `clippy` and `test` are advisory (`continue-on-error: true`):
@@ -116,7 +116,7 @@ System libs:
 
   `install-deps` only auto-supports recent Ubuntu / Debian. Fedora, Arch, Alpine, and NixOS need manual lib installation — Playwright's troubleshooting docs cover their package names.
 
-Before calling `browser_navigate("http://localhost:5002")`, **the operator** starts the dev server (`cd osprey_ui && npm start`, listens on `:5002`).
+Before calling `browser_navigate("http://localhost:5002")`, **the operator** starts the dev server (`cd osprey_ui && pnpm start`, listens on `:5002`).
 
 If the MCP approval prompt doesn't fire on a fresh `claude` launch, **the operator** runs `claude mcp reset-project-choices` and re-launches.
 
@@ -133,8 +133,8 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 
 # code-quality.yml → ui-quality (CI `working-directory: osprey_ui`)
 ( cd osprey_ui
-  npm ci
-  npm run format:check )
+  pnpm install --frozen-lockfile
+  pnpm run format:check )
 
 # code-quality.yml → rust-quality (CI `working-directory: osprey_coordinator`)
 # Note: in CI the `cargo clippy` and `cargo test` steps are marked `continue-on-error: true`,
@@ -169,7 +169,7 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 ## Code style
 
 - Python: version in `.python-version`. Lint + format with `ruff`, type-check with `mypy` (versions and config in `pyproject.toml` under `[tool.ruff]` and `[tool.mypy]`).
-- TypeScript / React in `osprey_ui/` (versions in `osprey_ui/package.json`). Formatter is Prettier (`npm run format:check`); config in `osprey_ui/.prettierrc`. Node version in `.github/workflows/code-quality.yml`.
+- TypeScript / React in `osprey_ui/` (versions in `osprey_ui/package.json`). Formatter is Prettier (`pnpm run format:check`); config in `osprey_ui/.prettierrc`. Node version in `.github/workflows/code-quality.yml`. pnpm version pinned via `packageManager` field in `osprey_ui/package.json`; resolved everywhere via Corepack.
 - Rust stable in `osprey_coordinator/` (edition and toolchain in `osprey_coordinator/Cargo.toml`). Formatter `cargo fmt`; linter `cargo clippy -- -D warnings`.
 - Protobuf generated files (`*_pb2*.py`, `*_pb2*.pyi`) are excluded from ruff and mypy — do not edit.
 
@@ -183,7 +183,7 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 ## Dependencies
 
 - Python deps are pinned in `pyproject.toml` and locked in `uv.lock`. Add with `uv add <pkg>` (runtime) or `uv add --dev <pkg>` (dev); commit the updated `uv.lock`.
-- Node deps live in `osprey_ui/package.json`; add with `npm install --save <pkg>` and commit the updated `osprey_ui/package-lock.json`.
+- Node deps live in `osprey_ui/package.json`; add with `pnpm add <pkg>` and commit the updated `osprey_ui/pnpm-lock.yaml`. Strict-parity transitive pins live in `osprey_ui/package.json`'s `pnpm.overrides` block — edit those intentionally rather than letting them silently drift.
 - Rust deps live in `osprey_coordinator/Cargo.toml`. Note: `Cargo.lock` is currently in `.gitignore` — do not commit it without first un-ignoring it.
 - Every new or upgraded package including transitive dependencies requires human approval. Confirm the license is compatible with `LICENSE.md` and that there are no known CVEs.
 - `fawltydeps` enforces that every declared Python dep is used; add intentional exceptions to `[tool.fawltydeps].ignore_unused` in `pyproject.toml` with a comment.
@@ -202,5 +202,5 @@ Stop and get explicit human approval before:
 
 - Changing license headers, copyright notices, or any legal text (including `LICENSE.md`).
 - Modifying release, signing, or deploy workflows: `.github/workflows/publish-coordinator-image.yml`, `.github/workflows/release-osprey-rpc.yml`, `.github/workflows/mdbook.yml`, production Dockerfiles (`osprey_coordinator/Dockerfile`, `osprey_worker/Dockerfile`, `osprey_ui/Dockerfile`), `docker-compose.yaml`, `start.sh`, or `entrypoint.sh`.
-- Adding, removing, or upgrading any library or package (including transitive dependencies in `uv.lock` or `osprey_ui/package-lock.json`) — confirm licenses are compatible.
+- Adding, removing, or upgrading any library or package (including transitive dependencies in `uv.lock` or `osprey_ui/pnpm-lock.yaml`) — confirm licenses are compatible.
 - Editing generated code under `osprey_rpc/src/osprey/rpc/` by hand instead of regenerating via `./gen-protos.sh`.
