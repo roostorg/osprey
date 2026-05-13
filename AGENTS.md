@@ -183,7 +183,7 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 ## Dependencies
 
 - Python deps are pinned in `pyproject.toml` and locked in `uv.lock`. Add with `uv add <pkg>` (runtime) or `uv add --dev <pkg>` (dev); commit the updated `uv.lock`.
-- Node deps live in `osprey_ui/package.json`; add with `pnpm add <pkg>` and commit the updated `osprey_ui/pnpm-lock.yaml`. Strict-parity transitive pins live in `osprey_ui/package.json`'s `pnpm.overrides` block — edit those intentionally rather than letting them silently drift.
+- Node deps live in `osprey_ui/package.json`; add with `pnpm add <pkg>` and commit the updated `osprey_ui/pnpm-lock.yaml`. The lockfile is the parity contract — `pnpm add` will re-resolve transitives, so review the `pnpm-lock.yaml` diff for unintended version bumps before committing.
 - Rust deps live in `osprey_coordinator/Cargo.toml`. Note: `Cargo.lock` is currently in `.gitignore` — do not commit it without first un-ignoring it.
 - Every new or upgraded package including transitive dependencies requires human approval. Confirm the license is compatible with `LICENSE.md` and that there are no known CVEs.
 - `fawltydeps` enforces that every declared Python dep is used; add intentional exceptions to `[tool.fawltydeps].ignore_unused` in `pyproject.toml` with a comment.
