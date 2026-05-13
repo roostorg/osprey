@@ -78,16 +78,8 @@ services:
         condition: service_healthy
     command: >
       bash -c "
-        kafka-topics --bootstrap-server osprey-kafka:29092 --create --if-not-exists \
-          --topic osprey.actions_input --partitions 3 --replication-factor 1 \
-          --config retention.ms=172800000 \
-          --config retention.bytes=8589934592 \
-          --config segment.bytes=1073741824 &&
-        kafka-topics --bootstrap-server osprey-kafka:29092 --create --if-not-exists \
-          --topic osprey.execution_results --partitions 3 --replication-factor 1 \
-          --config retention.ms=172800000 \
-          --config retention.bytes=8589934592 \
-          --config segment.bytes=1073741824 &&
+        kafka-topics --bootstrap-server osprey-kafka:29092 --create --if-not-exists --topic osprey.actions_input --partitions 3 --replication-factor 1 --config retention.ms=172800000 --config retention.bytes=8589934592 --config segment.bytes=1073741824 &&
+        kafka-topics --bootstrap-server osprey-kafka:29092 --create --if-not-exists --topic osprey.execution_results --partitions 3 --replication-factor 1 --config retention.ms=172800000 --config retention.bytes=8589934592 --config segment.bytes=1073741824 &&
         kafka-topics --bootstrap-server osprey-kafka:29092 --list
       "
 
