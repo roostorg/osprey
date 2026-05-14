@@ -28,6 +28,9 @@ class KafkaOutputSink(BaseOutputSink):
         bootstrap_servers: list[str],
         output_topic: str,
         client_id: str | None,
+        auto_create_topic: bool = True,
+        num_partitions: int = 1,
+        replication_factor: int = 1,
     ) -> None:
         if len(bootstrap_servers) == 0:
             raise EmptyBootstrapServersException()
@@ -39,6 +42,8 @@ class KafkaOutputSink(BaseOutputSink):
 
         self._bootstrap_servers = bootstrap_servers
         self._output_topic = output_topic
+        self._num_partitions = num_partitions
+        self._replication_factor = replication_factor
 
         # NOTE(haileyok): this is...not necessary probably
         self.topic_ensured = False
@@ -71,7 +76,9 @@ class KafkaOutputSink(BaseOutputSink):
 
         self._producer = Producer(config)
         self._threaded_producer = ThreadedKafkaProducer(self._producer)
-        self.ensure_topic()
+
+        if auto_create_topic:
+            self.ensure_topic()
 
         super().__init__()
 
@@ -91,8 +98,7 @@ class KafkaOutputSink(BaseOutputSink):
 
         self.logger.info(f'Creating topic {self._output_topic}')
         try:
-            # TODO: num_partitions and replication_factor should not be hard coded...
-            topic = NewTopic(self._output_topic, num_partitions=3, replication_factor=3)
+            topic = NewTopic(self._output_topic, num_partitions=self._num_partitions, replication_factor=self._replication_factor)
             fs = admin_client.create_topics([topic])
             fs[self._output_topic].result()
             self.topic_ensured = True
