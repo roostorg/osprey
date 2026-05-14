@@ -80,11 +80,13 @@ def tail_kafka_output_sink() -> None:
     output_topic = config.get_str('OSPREY_KAFKA_OUTPUT_SINK_TOPIC', 'osprey.execution_results')
     bootstrap_servers = config.get_str_list('OSPREY_KAFKA_BOOTSTRAP_SERVERS', ['localhost'])
 
-    consumer = Consumer({
-        'bootstrap.servers': ','.join(bootstrap_servers),
-        'group.id': 'osprey-tail-output',
-        'auto.offset.reset': 'latest',
-    })
+    consumer = Consumer(
+        {
+            'bootstrap.servers': ','.join(bootstrap_servers),
+            'group.id': 'osprey-tail-output',
+            'auto.offset.reset': 'latest',
+        }
+    )
     consumer.subscribe([output_topic])
     try:
         while True:
@@ -115,12 +117,14 @@ def tail_kafka_input_sink() -> None:
     bootstrap_servers = config.get_str_list('OSPREY_KAFKA_BOOTSTRAP_SERVERS', ['localhost'])
     input_topic = config.get_str('OSPREY_KAFKA_INPUT_STREAM_TOPIC', 'osprey.actions_input')
 
-    consumer = Consumer({
-        'bootstrap.servers': ','.join(bootstrap_servers),
-        'client.id': client_id,
-        'group.id': 'osprey-tail-input',
-        'auto.offset.reset': 'latest',
-    })
+    consumer = Consumer(
+        {
+            'bootstrap.servers': ','.join(bootstrap_servers),
+            'client.id': client_id,
+            'group.id': 'osprey-tail-input',
+            'auto.offset.reset': 'latest',
+        }
+    )
     consumer.subscribe([input_topic])
     try:
         while True:

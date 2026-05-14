@@ -98,7 +98,9 @@ class KafkaOutputSink(BaseOutputSink):
 
         self.logger.info(f'Creating topic {self._output_topic}')
         try:
-            topic = NewTopic(self._output_topic, num_partitions=self._num_partitions, replication_factor=self._replication_factor)
+            topic = NewTopic(
+                self._output_topic, num_partitions=self._num_partitions, replication_factor=self._replication_factor
+            )
             fs = admin_client.create_topics([topic])
             fs[self._output_topic].result()
             self.topic_ensured = True
