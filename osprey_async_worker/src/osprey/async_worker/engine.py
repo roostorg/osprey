@@ -227,6 +227,21 @@ class AsyncOspreyEngine:
     def get_rule_to_info_mapping(self) -> Dict[str, str]:
         return self._execution_graph.validated_sources.get_validator_result(RuleNameToDescriptionMapping)
 
+    def get_feature_name_to_entity_type_mapping(self) -> Dict[str, str]:
+        """Returns a mapping from 'feature name' -> 'entity type' for each feature that holds an entity."""
+        return self._execution_graph.validated_sources.get_validator_result(FeatureNameToEntityTypeMapping)
+
+    def get_post_execution_feature_name_to_value_type_mapping(self) -> Dict[str, type]:
+        """Returns a mapping from 'feature name' -> 'value type' for each feature."""
+        post_execution_name_to_type_and_span = ValidateStaticTypes.to_post_execution_types(
+            self._execution_graph.validated_sources.get_validator_result(ValidateStaticTypes)
+        )
+        return {
+            name: type_and_span.type
+            for name, type_and_span in post_execution_name_to_type_and_span.items()
+            if type_and_span.should_extract
+        }
+
     def shutdown(self) -> None:
         """Shutdown the compilation thread pool."""
         self._thread_pool.shutdown(wait=True)
