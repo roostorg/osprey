@@ -23,8 +23,8 @@ from typing import Optional, Set, TextIO, cast
 
 import click
 import gevent
-from confluent_kafka import Consumer
 import sentry_sdk
+from confluent_kafka import Consumer
 from google.api_core.exceptions import AlreadyExists
 from google.cloud import pubsub_v1
 from osprey.worker.lib import instruments

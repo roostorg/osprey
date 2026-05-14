@@ -2,9 +2,8 @@ import platform
 import random
 from datetime import datetime, timedelta
 
-from google.cloud import pubsub_v1
 from confluent_kafka import Consumer
-from osprey.worker.sinks.utils.kafka import ThreadedKafkaConsumer
+from google.cloud import pubsub_v1
 from osprey.engine.executor.execution_context import Action
 from osprey.worker.adaptor.plugin_manager import bootstrap_input_stream
 from osprey.worker.lib.singletons import CONFIG
@@ -16,6 +15,7 @@ from osprey.worker.sinks.sink.input_stream import (
 )
 from osprey.worker.sinks.sink.osprey_coordinator_input_stream import OspreyCoordinatorInputStream
 from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext, NoopAckingContext
+from osprey.worker.sinks.utils.kafka import ThreadedKafkaConsumer
 
 
 def get_rules_sink_input_stream(
