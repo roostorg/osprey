@@ -1,4 +1,3 @@
-import typing
 from collections import defaultdict
 
 from osprey.engine.ast import ast_utils, grammar, printer
@@ -7,7 +6,7 @@ from ._prelude import ArgumentsBase, ConstExpr, ExecutionContext, Source, UDFBas
 
 
 class Arguments(ArgumentsBase):
-    rules: ConstExpr[typing.List[str]]
+    rules: ConstExpr[list[str]]
     """A list of rule files to Include.
 
     Each string in this list must be a relative path to a *.sml file, and the list must be sorted lexicographically.
@@ -24,10 +23,10 @@ class Import(UDFBase[Arguments, None]):
         super().__init__(validation_context, arguments)
         rules = arguments.rules
         assert isinstance(rules.literal, grammar.List)
-        self.sources_and_spans: typing.List[typing.Tuple[Source, grammar.Span]] = []
+        self.sources_and_spans: list[tuple[Source, grammar.Span]] = []
 
-        import_source_names: typing.List[str] = []
-        import_spans_by_name: typing.DefaultDict[str, typing.List[grammar.Span]] = defaultdict(list)
+        import_source_names: list[str] = []
+        import_spans_by_name: defaultdict[str, list[grammar.Span]] = defaultdict(list)
 
         for node in rules.literal.items:
             assert isinstance(node, grammar.String)
