@@ -29,7 +29,7 @@
 }
 
 .regexButton {
-  --color: black;
+  --color: var(--icon-primary);
   margin: 0;
   padding: 0 6px;
   background: none;

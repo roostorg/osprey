@@ -1,12 +1,12 @@
-import type { unitOfTime } from 'moment';
+import type { ManipulateType } from 'dayjs';
 import { FeatureLocation } from './ConfigTypes';
 
 interface IntervalOption {
   label: string;
-  durationConstructor: [number, unitOfTime.DurationConstructor];
+  durationConstructor: [number, ManipulateType];
 }
 
-function intervalOption(duration: number, timeUnit: unitOfTime.DurationConstructor): IntervalOption {
+function intervalOption(duration: number, timeUnit: ManipulateType): IntervalOption {
   const timeUnitTitleCased = `${timeUnit[0].toUpperCase()}${timeUnit.substring(1)}`;
   const label = duration > 1 ? `Last ${duration} ${timeUnitTitleCased}s` : `Last ${timeUnitTitleCased}`;
 

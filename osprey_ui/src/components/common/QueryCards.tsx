@@ -1,5 +1,5 @@
 import * as React from 'react';
-import moment from 'moment-timezone';
+import dayjs from 'dayjs';
 
 import { QueryRecord } from '../../types/QueryTypes';
 import Expand, { ExpandButton } from '../../uikit/Expand';
@@ -20,7 +20,7 @@ interface QueryCardActionDataProps {
 export const QueryCardActionData = ({ user, action, timestamp }: QueryCardActionDataProps) => {
   return (
     <Text size={TextSizes.SMALL} color={TextColors.LIGHT_SECONDARY}>
-      <b>{user}</b> {action} {moment.unix(timestamp).format(DATE_FORMAT)}
+      <b>{user}</b> {action} {dayjs.unix(timestamp).format(DATE_FORMAT)}
     </Text>
   );
 };
