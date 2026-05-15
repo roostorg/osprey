@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any
 
 from osprey.engine.executor.execution_context import ExpectedUdfException
@@ -7,7 +9,7 @@ from .categories import UdfCategories
 
 
 class Arguments(ArgumentsBase):
-    list: list[Any] = []
+    list: list[Any]
     index: int = 0
 
 

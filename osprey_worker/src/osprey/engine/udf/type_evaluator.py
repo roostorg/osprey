@@ -160,6 +160,7 @@ def _get_type_candidates(type_t: type) -> Sequence[type]:
                     f' arg {to_display_str(arg)} is not a simple type'
                 )
 
+            arg = get_normalized_origin(arg) or arg
             type_t_candidates.append(_coerce_none_type(arg))
         return type_t_candidates
 
