@@ -1,4 +1,4 @@
-import moment from 'moment';
+import dayjs from 'dayjs';
 
 import { history } from '../stores/QueryStore';
 import { QueryRecord, ScanQueryOrder } from '../types/QueryTypes';
@@ -15,8 +15,8 @@ export function openNewQueryWindow(queryFilter: string) {
 export function getSearchParamsForQueryRecord(query: QueryRecord, useInterval: boolean = false): string {
   const interval = getIntervalFromDateRange(query.date_range);
 
-  let start = moment.utc(query.date_range.start).format();
-  let end = moment.utc(query.date_range.end).format();
+  let start = dayjs.utc(query.date_range.start).format();
+  let end = dayjs.utc(query.date_range.end).format();
 
   if (useInterval && interval != null) {
     const dateRange = getQueryDateRange(interval);

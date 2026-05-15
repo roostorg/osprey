@@ -4,8 +4,7 @@ html {
 
 html,
 body {
-  background-color: var(--background-secondary) !important;
-  height: auto !important;
+  background-color: var(--background-base-lower) !important;
   min-height: 100%;
 }
 
@@ -22,6 +21,16 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
-#root {
+#root,
+.ant-app {
   height: 100%;
+}
+
+.dark-theme .ant-spin-text {
+  color: var(--text-dark-primary);
+  text-shadow: none !important;
+}
+
+.dark-theme .ant-spin-dot-item {
+  background-color: var(--text-dark-primary);
 }

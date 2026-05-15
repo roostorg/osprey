@@ -86,7 +86,7 @@ const CSVDownloadModal = ({ disabled, dimension }: CSVDownloadModalProps) => {
       <Modal
         title={<Text size={TextSizes.H5}>Download CSV</Text>}
         width={400}
-        visible={isModalOpen}
+        open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={
           <div className={styles.footer}>

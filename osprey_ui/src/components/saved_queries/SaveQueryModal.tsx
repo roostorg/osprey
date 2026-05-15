@@ -28,7 +28,7 @@ const SaveQueryModal = ({ queryId, onCancel }: SaveQueryModalProps) => {
       title={<Text size={TextSizes.H5}>Save Query</Text>}
       onCancel={onCancel}
       footer={<ModalFooter onOK={handleSaveQuery} onCancel={onCancel} />}
-      visible
+      open
     >
       <Form form={form} onFinish={handleSaveQuery} layout="vertical">
         <Form.Item label="Name" name="name" rules={[{ required: true, message: 'Please name this query' }]}>

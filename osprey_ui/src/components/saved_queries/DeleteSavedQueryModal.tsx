@@ -31,7 +31,7 @@ const DeleteSavedQueryModal = ({ savedQuery, onCancel }: DeleteSavedQueryModalPr
     <Modal
       title={<Text size={TextSizes.H5}>Deleting: {savedQuery.name}</Text>}
       footer={<ModalFooter onOK={handleDeleteSavedQuery} onCancel={onCancel} isSubmitting={isSubmitting} />}
-      visible
+      open
     >
       <Text tag="span" weight={TextWeights.BOLD}>
         Hey! Listen!
