@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Type
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Type
 
 import pluggy
 from osprey.engine.ast_validator.base_validator import BaseValidator

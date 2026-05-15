@@ -1,6 +1,5 @@
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import tink
 from tink import aead
@@ -9,7 +8,7 @@ from tink.integration import gcpkms
 
 @dataclass
 class EncryptionBase:
-    kek_uri: Optional[str] = None
+    kek_uri: str | None = None
     gcp_credential_path: str = ''
     is_setup: bool = False
 

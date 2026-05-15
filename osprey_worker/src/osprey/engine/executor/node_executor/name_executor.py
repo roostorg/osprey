@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any
 
 from osprey.engine.ast.grammar import ASTNode, Load, Name
 
@@ -22,5 +22,5 @@ class NameExecutor(BaseNodeExecutor[Name, Any]):
     def execute(self, execution_context: 'ExecutionContext') -> Any:
         return execution_context.resolved(self._node)
 
-    def get_dependent_nodes(self) -> List[ASTNode]:
+    def get_dependent_nodes(self) -> list[ASTNode]:
         return [self._node]

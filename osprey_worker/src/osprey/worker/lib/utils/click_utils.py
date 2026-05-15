@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, Generic, Optional, Type, TypeVar, Union
+from typing import Generic, Type, TypeVar
 
 import click
 from click import Context, Parameter
@@ -22,7 +22,7 @@ class EnumChoice(click.Choice, Generic[T]):
     ```
     """
 
-    choice_map: Dict[str, T]
+    choice_map: dict[str, T]
     enum: Type[T]
 
     def __init__(self, enum: Type[T]):
@@ -30,7 +30,7 @@ class EnumChoice(click.Choice, Generic[T]):
         self.enum = enum
         super().__init__(choices=list(self.choice_map.keys()))
 
-    def convert(self, value: Union[str, T], param: Optional[Parameter], ctx: Optional[Context]) -> Optional[T]:
+    def convert(self, value: str | T, param: Parameter | None, ctx: Context | None) -> T | None:
         # This is to support when click is given a default that is a variant. If we have a value that is our variant,
         # we can just return it without trying to coerce.
         if isinstance(value, self.enum):

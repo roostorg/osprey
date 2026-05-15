@@ -1,4 +1,5 @@
-from typing import ClassVar, Iterator, Optional, Set, Type
+from collections.abc import Iterator
+from typing import ClassVar, Type
 
 from .base_validator import BaseValidator
 
@@ -6,7 +7,7 @@ from .base_validator import BaseValidator
 class ValidatorRegistry:
     """Holds all the registered validators."""
 
-    _instance: ClassVar[Optional['ValidatorRegistry']] = None
+    _instance: ClassVar['ValidatorRegistry' | None] = None
 
     @classmethod
     def get_instance(cls) -> 'ValidatorRegistry':
@@ -33,7 +34,7 @@ class ValidatorRegistry:
         return instance_clone
 
     def __init__(self) -> None:
-        self._validators: Set[Type[BaseValidator]] = set()
+        self._validators: set[Type[BaseValidator]] = set()
 
     def get_validators(self) -> Iterator[Type[BaseValidator]]:
         """Return the registered validators."""
@@ -49,7 +50,7 @@ class ValidatorRegistry:
         return validator_class in self._validators
 
     @classmethod
-    def from_validator_classes(cls, validator_classes: Set[Type[BaseValidator]]) -> 'ValidatorRegistry':
+    def from_validator_classes(cls, validator_classes: set[Type[BaseValidator]]) -> 'ValidatorRegistry':
         """Convenience method to construct a validator registry from a list of validator classes."""
         validator_registry = cls()
         for validator_class in validator_classes:

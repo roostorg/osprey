@@ -1,5 +1,4 @@
 import dataclasses
-from typing import Optional
 
 from osprey.engine.utils.types import add_slots
 
@@ -13,7 +12,7 @@ class AccessAuditLog:
     """
 
     id: int  # snowflake
-    requester_email: Optional[str]
+    requester_email: str | None
     request_method: str
     request_path: str
     request_headers: str

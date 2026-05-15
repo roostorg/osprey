@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import logging
 from datetime import datetime, timezone
 from enum import StrEnum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import ARRAY, BigInteger, Column, DateTime, Enum, Integer, Text
 
@@ -43,7 +43,7 @@ class BulkActionJob(Model):
     original_filename: str = Column(Text, nullable=False)
     total_rows: int = Column(Integer, nullable=False)
     processed_rows: int = Column(Integer, nullable=False)
-    error: Optional[str] = Column(Text)
+    error: str | None = Column(Text)
     action_workflow_name: str = Column(Text, nullable=False)
     entity_type: str = Column(Text, nullable=False)
     created_at: datetime = Column(DateTime(timezone=True), nullable=False)
@@ -102,22 +102,22 @@ class BulkActionJob(Model):
         return job
 
     @classmethod
-    def get_one(cls, job_id: int) -> Optional['BulkActionJob']:
+    def get_one(cls, job_id: int) -> 'BulkActionJob' | None:
         with scoped_session() as session:
             return session.query(cls).filter(cls.id == job_id).first()
 
     @classmethod
-    def get_all(cls) -> List['BulkActionJob']:
+    def get_all(cls) -> list['BulkActionJob']:
         with scoped_session() as session:
             return session.query(cls).all()
 
     @classmethod
-    def get_all_jobs_by_status(cls, status: BulkActionJobStatus) -> List['BulkActionJob']:
+    def get_all_jobs_by_status(cls, status: BulkActionJobStatus) -> list['BulkActionJob']:
         with scoped_session() as session:
             return session.query(cls).filter(cls.status == status).all()
 
     @classmethod
-    def get_next_file_process_job(cls) -> Optional['BulkActionJob']:
+    def get_next_file_process_job(cls) -> 'BulkActionJob' | None:
         with scoped_session() as session:
             return (
                 session.query(cls).filter(cls.status == BulkActionJobStatus.UPLOADED).order_by(cls.created_at).first()
@@ -142,11 +142,11 @@ class BulkActionJob(Model):
 
             session.merge(self)
 
-    def get_all_tasks(self) -> List['BulkActionTask']:
+    def get_all_tasks(self) -> list['BulkActionTask']:
         with scoped_session() as session:
             return session.query(BulkActionTask).filter(BulkActionTask.job_id == self.id).all()
 
-    def serialize(self) -> Dict[str, Any]:
+    def serialize(self) -> dict[str, Any]:
         return {
             'id': str(self.id),
             'status': self.status,
@@ -179,24 +179,24 @@ class BulkActionTask(Model):
     chunk_number: int = Column(Integer, nullable=False)
     row_offset: int = Column(Integer, nullable=False)
     row_count: int = Column(Integer, nullable=False)
-    error: Optional[str] = Column(Text)
+    error: str | None = Column(Text)
     attempts: int = Column(Integer, nullable=False)
     failed_row_offsets = Column(ARRAY(Integer), nullable=False)
     created_at: datetime = Column(DateTime(timezone=True), nullable=False)
-    completed_at: Optional[datetime] = Column(DateTime(timezone=True))
+    completed_at: datetime | None = Column(DateTime(timezone=True))
 
     @classmethod
-    def get_one(cls, task_id: int) -> Optional['BulkActionTask']:
+    def get_one(cls, task_id: int) -> 'BulkActionTask' | None:
         with scoped_session() as session:
             return session.query(cls).filter(cls.id == task_id).first()
 
     @classmethod
-    def get_all_by_job_id_for_status(cls, job_id: int, status: BulkActionTaskStatus) -> List['BulkActionTask']:
+    def get_all_by_job_id_for_status(cls, job_id: int, status: BulkActionTaskStatus) -> list['BulkActionTask']:
         with scoped_session() as session:
             return session.query(cls).filter(cls.job_id == job_id, cls.status == status).all()
 
     @classmethod
-    def get_next_pending_task(cls, job_id: int) -> Optional['BulkActionTask']:
+    def get_next_pending_task(cls, job_id: int) -> 'BulkActionTask' | None:
         with scoped_session() as session:
             return (
                 session.query(cls)

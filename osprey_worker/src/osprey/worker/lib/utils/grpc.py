@@ -1,21 +1,19 @@
-from typing import Optional, Set
-
 import grpc
 from osprey.worker.lib.pigeon.client import RetryPolicy
 
-DEFAULT_RETRYABLE_GRPC_STATUSES: Set[grpc.StatusCode] = {
+DEFAULT_RETRYABLE_GRPC_STATUSES: set[grpc.StatusCode] = {
     grpc.StatusCode.UNAVAILABLE,
     grpc.StatusCode.INTERNAL,
     grpc.StatusCode.UNKNOWN,
     grpc.StatusCode.DEADLINE_EXCEEDED,  # timeout
 }
 
-DATA_SERVICES_RETRY_POLICY: Optional[RetryPolicy] = RetryPolicy(
+DATA_SERVICES_RETRY_POLICY: RetryPolicy | None = RetryPolicy(
     retryable_grpc_status_codes=DEFAULT_RETRYABLE_GRPC_STATUSES,
     max_secondaries_to_retry=2,
 )
 
-SAFETY_RECORD_RETRY_POLICY: Optional[RetryPolicy] = RetryPolicy(
+SAFETY_RECORD_RETRY_POLICY: RetryPolicy | None = RetryPolicy(
     retryable_grpc_status_codes=DEFAULT_RETRYABLE_GRPC_STATUSES,
     max_secondaries_to_retry=1,
 )

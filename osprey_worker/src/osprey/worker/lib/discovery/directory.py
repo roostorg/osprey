@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Iterable, List, Optional, Tuple, Union
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from osprey.worker.lib.discovery.service import Service
 from osprey.worker.lib.discovery.service_watcher import ServiceWatcher
@@ -11,11 +12,11 @@ from osprey.worker.lib.etcd.ring import EtcdHashRing
 if TYPE_CHECKING:
     from .service_watcher import SelectorFunctionType
 
-    _InstancesKeyType = Tuple[Tuple[Any, ...], Tuple[Tuple[str, Any], ...]]
+    _InstancesKeyType = tuple[tuple[Any, ...], tuple[tuple[str, Any], ...]]
 
 
 class Directory:
-    _instances: ClassVar[Dict[_InstancesKeyType, 'Directory']] = {}
+    _instances: ClassVar[dict[_InstancesKeyType, 'Directory']] = {}
 
     @classmethod
     def instance(cls, *args, **kwargs) -> Directory:
@@ -25,12 +26,12 @@ class Directory:
             cls._instances[key] = cls(*args, **kwargs)
         return cls._instances[key]
 
-    def __init__(self, base_key: str = '/discovery', etcd_client: Optional[EtcdClient] = None, *args, **kwargs):
+    def __init__(self, base_key: str = '/discovery', etcd_client: EtcdClient | None = None, *args, **kwargs):
         # (...) -> None
         self.base_key = base_key
         self.etcd_client = etcd_client or EtcdClient(*args, **kwargs)
 
-        self._watchers: Dict[str, ServiceWatcher] = {}
+        self._watchers: dict[str, ServiceWatcher] = {}
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__}: {self.base_key}>'
@@ -52,11 +53,11 @@ class Directory:
             rv.add(os.path.basename(node.key))
         return rv
 
-    def select(self, name: str, selector: Union[SelectorFunctionType, str, int, None] = None) -> Service:
+    def select(self, name: str, selector: SelectorFunctionType | str | int | None = None) -> Service:
         """Selects an instance of a service based on a selector."""
         return self.get_watcher(name).select(selector)
 
-    def select_all(self, name: str, selector: Optional[SelectorFunctionType] = None) -> List[Service]:
+    def select_all(self, name: str, selector: SelectorFunctionType | None = None) -> list[Service]:
         """Selects all instances of a service based on a selector."""
         return self.get_watcher(name).select_all(selector)
 
@@ -75,7 +76,7 @@ class Directory:
         """Returns a path for a given service."""
         return self._key_for(service.name, service.id)
 
-    def _key_for(self, service_name: str, service_id: Optional[str] = None) -> str:
+    def _key_for(self, service_name: str, service_id: str | None = None) -> str:
         """Returns a path for a service."""
         key = f'{self.base_key}/{service_name}/instances'
         if service_id is not None:

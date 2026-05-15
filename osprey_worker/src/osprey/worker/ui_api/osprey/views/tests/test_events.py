@@ -1,7 +1,8 @@
 import json
+from collections.abc import Mapping
 from datetime import datetime
 from operator import itemgetter
-from typing import Any, Dict, Mapping
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -54,7 +55,7 @@ config_b = {
 
 
 @pytest.fixture()
-def model_url() -> Dict[str, Any]:
+def model_url() -> dict[str, Any]:
     return {'model': PaginatedScanDruidQuery(**_base_druid_query.dict()), 'url': 'events.scan_query'}
 
 
@@ -113,7 +114,7 @@ def test_events_auth_reject_get(
 
 @pytest.mark.use_rules_sources(config_a)
 def test_events_scan_request_missing_ability(
-    app: Flask, client: 'FlaskClient[Response]', model_url: Dict[str, Any]
+    app: Flask, client: 'FlaskClient[Response]', model_url: dict[str, Any]
 ) -> None:
     res = client.post(url_for(model_url['url']), content_type='application/json', data=model_url['model'].json())
     assert res.status_code == 401
@@ -125,7 +126,7 @@ def test_events_scan_request_missing_ability(
 def test_events_scan_request(
     app: Flask,
     client: 'FlaskClient[Response]',
-    model_url: Dict[str, Any],
+    model_url: dict[str, Any],
     mock_druid_client: Any,
     fake_druid: Any,
 ) -> None:
