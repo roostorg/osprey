@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import fnmatch
 from collections.abc import Iterator, Sequence
 from functools import reduce

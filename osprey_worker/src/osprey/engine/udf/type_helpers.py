@@ -84,7 +84,7 @@ def to_display_str(t: type | None, include_quotes: bool = True) -> str:
             args_without_none = [arg for arg in args if arg is not type(None)]  # noqa: E721
             if is_union_type(inner_t) and len(args) == 2 and type(None) in args and len(args_without_none) == 1:
                 (optional_arg,) = args_without_none
-                return f'Optional[{_to_display_str(optional_arg)}]'
+                return f'{_to_display_str(optional_arg)} | None'
 
             args_str = ', '.join(_to_display_str(arg) for arg in args)
             return f'{origin_name}[{args_str}]'
@@ -198,7 +198,12 @@ AnyType: type = Any  # type: ignore # Mypy thinks Any is an object.
 
 
 def _get_args_excluding_nonetype(t: type) -> list[type]:
-    return [arg for arg in get_args(t) if arg is not type(None)]  # noqa: E721
+    args = [arg for arg in get_args(t) if arg is not type(None)]  # noqa: E721
+
+    if len(args) == 0:
+        args = [t]
+
+    return args
 
 
 def get_typevar_substitution(
