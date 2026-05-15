@@ -17,6 +17,7 @@ import Logo from '../../assets/Logo';
 import useApplicationConfigStore from '../../stores/ApplicationConfigStore';
 
 import { Routes } from '../../Constants';
+import ThemeToggle from '../../uikit/ThemeToggle';
 import styles from './NavBar.module.css';
 
 const SIDEBAR_STORAGE_KEY = 'osprey-sidebar-expanded';
@@ -154,7 +155,9 @@ const NavBar = ({ children }: { children: React.ReactNode }) => {
       <div className={styles.mainColumn}>
         <header className={styles.topBar}>
           <div className={styles.topBarLeft} />
-          <div className={styles.topBarRight} />
+          <div className={styles.topBarRight}>
+            <ThemeToggle />
+          </div>
         </header>
         <main className={styles.contentWrapper}>{children}</main>
       </div>

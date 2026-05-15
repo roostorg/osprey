@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { App as AntdApp, ConfigProvider, Spin } from 'antd';
+import { App as AntdApp, ConfigProvider, Spin, theme } from 'antd';
 import { Router, Switch, Route } from 'react-router-dom';
 
 import { getApplicationConfig } from './actions/ConfigActions';
@@ -15,6 +15,7 @@ import SavedQueries from './components/saved_queries/SavedQueries';
 import SavedQueryBar from './components/saved_queries/SavedQueryBar';
 import usePromiseResult from './hooks/usePromiseResult';
 import useApplicationConfigStore from './stores/ApplicationConfigStore';
+import useThemeStore from './stores/ThemeStore';
 import { history } from './stores/QueryStore';
 import { renderFromPromiseResult } from './utils/PromiseResultUtils';
 
@@ -26,71 +27,97 @@ import { BulkActionPage } from './components/bulk_actions/BulkActionPage';
 
 const AppRouter: React.FC = () => {
   const updateApplicationConfig = useApplicationConfigStore((state) => state.updateApplicationConfig);
+  const themeMode = useThemeStore((state) => {
+    return state.mode;
+  });
 
   const applicationConfigResult = usePromiseResult(async () => {
     const appConfig = await getApplicationConfig();
     updateApplicationConfig(appConfig);
   });
 
-  const theme = React.useMemo(() => {
+  const isDark = themeMode === 'dark';
+  // Mirror of CSS tokens in Colors.module.css. Antd's algorithm needs concrete
+  // color strings at render time to compute its derivatives, so we can't pass
+  // var(--*) directly. Keep these literals in sync with their tokens:
+  //   colorPrimary           ↔ --brand-primary
+  //   Menu.itemSelectedColor ↔ --text-dark-primary
+  const themeConfig = React.useMemo(() => {
     return {
-      token: {
-        colorPrimary:
-          getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#1227ce',
+      token: { colorPrimary: isDark ? '#4858e0' : '#1227ce' },
+      algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+      components: {
+        Menu: {
+          collapsedWidth: 56,
+          ...(isDark ? { itemSelectedColor: '#ebebeb' } : {}),
+        },
       },
-      components: { Menu: { collapsedWidth: 56 } },
     };
-  }, []);
+  }, [isDark]);
 
-  return renderFromPromiseResult(applicationConfigResult, () => (
-    <ConfigProvider theme={theme}>
-      <AntdApp>
-        <Router history={history}>
-          <Switch>
-            <Route path="/events/:eventId">
-              <EventPage />
-            </Route>
-            <Route>
-              <NavBar>
-                <Route exact path={[Routes.SAVED_QUERY, Routes.SAVED_QUERY_LATEST]}>
-                  <SavedQueryBar />
-                </Route>
-                <Route exact path={Routes.ENTITY}>
-                  <EntityViewBar />
-                </Route>
-                <Switch>
-                  <Route path={Routes.QUERY_HISTORY}>
-                    <QueryHistory />
+  React.useLayoutEffect(() => {
+    // Cold-start theme is set by the inline script in public/index.html so the
+    // first paint matches the stored preference. This effect keeps the class in
+    // sync when the user toggles themes.
+    const root = document.documentElement;
+    if (isDark) {
+      root.classList.add('dark-theme');
+    } else {
+      root.classList.remove('dark-theme');
+    }
+  }, [isDark]);
+
+  return (
+    <ConfigProvider theme={themeConfig}>
+      {renderFromPromiseResult(applicationConfigResult, () => (
+        <AntdApp>
+          <Router history={history}>
+            <Switch>
+              <Route path="/events/:eventId">
+                <EventPage />
+              </Route>
+              <Route>
+                <NavBar>
+                  <Route exact path={[Routes.SAVED_QUERY, Routes.SAVED_QUERY_LATEST]}>
+                    <SavedQueryBar />
                   </Route>
-                  <Route path={Routes.SAVED_QUERIES}>
-                    <SavedQueries />
+                  <Route exact path={Routes.ENTITY}>
+                    <EntityViewBar />
                   </Route>
-                  <Route path={Routes.DOCS_UDFS}>
-                    <UdfDocsView />
-                  </Route>
-                  <Route path={Routes.BULK_JOB_HISTORY}>
-                    <BulkJobHistoryView />
-                  </Route>
-                  <Route path={Routes.RULES_VISUALIZER}>
-                    <RulesVisualizerView />
-                  </Route>
-                  <Route exact path={[Routes.ENTITY, Routes.HOME, Routes.SAVED_QUERY]}>
-                    <QueryView />
-                  </Route>
-                  <Route exact path={Routes.SAVED_QUERY_LATEST}>
-                    <div className={styles.spinner}>
-                      <Spin size="large" />
-                    </div>
-                  </Route>
-                  <Route exact path={Routes.BULK_ACTION} component={BulkActionPage} />
-                </Switch>
-              </NavBar>
-            </Route>
-          </Switch>
-        </Router>
-      </AntdApp>
+                  <Switch>
+                    <Route path={Routes.QUERY_HISTORY}>
+                      <QueryHistory />
+                    </Route>
+                    <Route path={Routes.SAVED_QUERIES}>
+                      <SavedQueries />
+                    </Route>
+                    <Route path={Routes.DOCS_UDFS}>
+                      <UdfDocsView />
+                    </Route>
+                    <Route path={Routes.BULK_JOB_HISTORY}>
+                      <BulkJobHistoryView />
+                    </Route>
+                    <Route path={Routes.RULES_VISUALIZER}>
+                      <RulesVisualizerView />
+                    </Route>
+                    <Route exact path={[Routes.ENTITY, Routes.HOME, Routes.SAVED_QUERY]}>
+                      <QueryView />
+                    </Route>
+                    <Route exact path={Routes.SAVED_QUERY_LATEST}>
+                      <div className={styles.spinner}>
+                        <Spin size="large" />
+                      </div>
+                    </Route>
+                    <Route exact path={Routes.BULK_ACTION} component={BulkActionPage} />
+                  </Switch>
+                </NavBar>
+              </Route>
+            </Switch>
+          </Router>
+        </AntdApp>
+      ))}
     </ConfigProvider>
-  ));
+  );
 };
 
 export default AppRouter;
