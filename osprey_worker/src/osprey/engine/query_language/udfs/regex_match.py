@@ -36,7 +36,7 @@ class RegexMatch(QueryUdfBase[Arguments, bool]):
         else:
             self.item = ''
             validation_context.add_error(
-                message='expected variable', span=item_node.span, hint='argument `item` must be a variable'
+                message='expected variable', span=item_node.span, hint='argument `target` must be a variable'
             )
 
     def to_druid_query(self) -> Dict[str, object]:
