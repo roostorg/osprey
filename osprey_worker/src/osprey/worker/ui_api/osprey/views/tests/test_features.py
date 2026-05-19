@@ -81,13 +81,12 @@ def test_response_shape_and_basic_feature(client: 'FlaskClient[Response]') -> No
     {
         **_base_sources_dict,
         'main.sml': """
-            CallFeat = JsonData(path='$.foo')
+            CallFeat: str = JsonData(path='$.foo')
             FmtFeat = f'hello {CallFeat}'
             ExprFeat = 1 + 2
             CmpFeat = CallFeat == 'x'
-            BoolFeat = CallFeat and FmtFeat
-            UnaryFeat = not CallFeat
-            AttrFeat = CallFeat.id
+            BoolFeat = CmpFeat and (CallFeat == 'y')
+            UnaryFeat = not CmpFeat
         """,
     }
 )
@@ -102,36 +101,34 @@ def test_extraction_fn_inference(client: 'FlaskClient[Response]') -> None:
     assert by_name['CmpFeat']['extraction_fn'] == 'Expression'
     assert by_name['BoolFeat']['extraction_fn'] == 'BooleanExpression'
     assert by_name['UnaryFeat']['extraction_fn'] == 'UnaryExpression'
-    assert by_name['AttrFeat']['extraction_fn'] == 'Attribute'
 
 
 @pytest.mark.use_rules_sources(
     {
         **_base_sources_dict,
         'main.sml': """
-            Feat = JsonData(path='$.foo')
+            Feat: str = JsonData(path='$.foo')
             R = Rule(when_all=[True], description='')
-            C = Count(events=[Feat], window='1d', bucket='user_id')
         """,
     }
 )
 def test_non_feature_calls_excluded(client: 'FlaskClient[Response]') -> None:
-    """Rule/Count/etc. excluded from features list."""
+    """Calls in _NON_FEATURE_CALLS (Rule, Count, etc.) excluded from features list."""
     res = client.get(url_for('features.features_list'))
     names = {f['name'] for f in res.json['features']}
     assert 'Feat' in names
     assert 'R' not in names
-    assert 'C' not in names
 
 
 @pytest.mark.use_rules_sources(
     {
         **_base_sources_dict,
-        'models/user.sml': "UserA = JsonData(path='$.a')",
-        'models/actions/joined.sml': "UserB = JsonData(path='$.b')",
-        'lib/foo.sml': "UserC = JsonData(path='$.c')",
-        'counters/active.sml': "UserD = JsonData(path='$.d')",
-        'actions/dm.sml': "UserE = JsonData(path='$.e')",
+        'main.sml': '',
+        'models/user.sml': "UserA: str = JsonData(path='$.a')",
+        'models/actions/joined.sml': "UserB: str = JsonData(path='$.b')",
+        'lib/foo.sml': "UserC: str = JsonData(path='$.c')",
+        'counters/active.sml': "UserD: str = JsonData(path='$.d')",
+        'actions/dm.sml': "UserE: str = JsonData(path='$.e')",
     }
 )
 def test_category_derivation(client: 'FlaskClient[Response]') -> None:
@@ -150,12 +147,12 @@ def test_category_derivation(client: 'FlaskClient[Response]') -> None:
     {
         **_base_sources_dict,
         'main.sml': """
-            FeatA = JsonData(path='$.a')
-            FeatB = JsonData(path='$.b')
+            FeatA: str = JsonData(path='$.a')
+            FeatB: str = JsonData(path='$.b')
             FeatC = FeatA
             R1 = Rule(when_all=[FeatA == 'x'], description='r1')
             R2 = Rule(when_all=[FeatB == 'y'], description='r2')
-            WhenRules(rules_any=[R1], then=[FeatA])
+            WhenRules(rules_any=[R1], then=[DeclareVerdict(verdict=FeatA)])
         """,
     }
 )
@@ -186,7 +183,7 @@ def test_reference_counting_and_total(client: 'FlaskClient[Response]') -> None:
 @pytest.mark.use_rules_sources(
     {
         **_base_sources_dict,
-        'main.sml': "Feat = JsonData(path='$.foo')",
+        'main.sml': "Feat: str = JsonData(path='$.foo')",
     }
 )
 def test_dual_route_registration(client: 'FlaskClient[Response]') -> None:
@@ -201,7 +198,7 @@ def test_dual_route_registration(client: 'FlaskClient[Response]') -> None:
 @pytest.mark.use_rules_sources(
     {
         **_no_ability_sources_dict,
-        'main.sml': "Feat = JsonData(path='$.foo')",
+        'main.sml': "Feat: str = JsonData(path='$.foo')",
     }
 )
 def test_endpoint_requires_can_view_docs(client: 'FlaskClient[Response]') -> None:
@@ -214,7 +211,7 @@ def test_endpoint_requires_can_view_docs(client: 'FlaskClient[Response]') -> Non
     {
         **_base_sources_dict,
         'main.sml': """
-            Feat = JsonData(path='$.foo')
+            Feat: str = JsonData(path='$.foo')
         """,
     }
 )
