@@ -4,6 +4,7 @@ export const Routes = {
   SAVED_QUERIES: '/saved-queries',
   DOCS_UDFS: '/docs/udfs',
   ENTITY: '/entity/:entityType/:entityId',
+  FEATURES: '/features',
   SAVED_QUERY: '/saved-query/:savedQueryId',
   SAVED_QUERY_LATEST: '/saved-query/:savedQueryId/latest',
   BULK_JOB_HISTORY: '/bulk-job-history',
