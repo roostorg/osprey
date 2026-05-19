@@ -410,6 +410,7 @@ class ArgumentsBase:
                 if previous_variable is not None and previous_variable not in seen_specs and previous_variable in items:
                     doc: Optional[str]
                     if isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Str):
+                        assert isinstance(statement.value.s, str)
                         doc = inspect.cleandoc(statement.value.s)
                     else:
                         doc = None
