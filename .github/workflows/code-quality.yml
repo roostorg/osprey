@@ -55,19 +55,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@08c4be7e2e672a47d11bd04269e27e5f3e8529cb  # v6.0.0
+        with:
+          package_json_file: osprey_ui/package.json
+
       - name: Set up Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
         with:
           node-version: "18"
-          cache: "npm"
-          cache-dependency-path: osprey_ui/package-lock.json
+          cache: "pnpm"
+          cache-dependency-path: osprey_ui/pnpm-lock.yaml
 
       - name: Install UI dependencies
-        run: npm ci --ignore-scripts
+        run: pnpm install --frozen-lockfile
         working-directory: osprey_ui
 
       - name: Run prettier check
-        run: npm run format:check
+        run: pnpm run format:check
         working-directory: osprey_ui
 
   rust-quality:
