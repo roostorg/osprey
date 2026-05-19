@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from enum import Enum
 from math import floor
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type, cast
 
 import mmh3  # type: ignore
 from osprey.engine.ast import grammar
@@ -243,7 +243,7 @@ class ExperimentWhen(UDFBase[ExperimentWhenArguments, List[bool]]):
 
         experiment_buckets = self._get_buckets_for_experiment(experiment_call)
 
-        expected_buckets = {str(_.value) for _ in experiment_buckets.items}
+        expected_buckets = {str(cast(Any, _).value) for _ in experiment_buckets.items}
         provided_buckets = set(arguments.get_extra_arguments_ast())
 
         # check for missing buckets
