@@ -22,41 +22,6 @@ logger = logging.getLogger(__name__)
 blueprint = Blueprint('rules', __name__)
 
 
-def _build_whenrules_ref_count(sources: Any) -> tuple[Dict[str, int], int]:
-    """Sub-pass 1: count how many WhenRules blocks reference each rule name.
-
-    Returns (whenrules_ref_count, when_rules_total). Walks every source
-    looking for WhenRules(...) calls (bare-statement or assigned),
-    increments the count for each rule named in rules_any, and counts
-    every WhenRules block (regardless of whether rules_any is present).
-    """
-    whenrules_ref_count: Dict[str, int] = {}
-    when_rules_total = 0
-
-    for source in sources:
-        for statement in source.ast_root.statements:
-            call_node: Optional[Call] = None
-            if isinstance(statement, Call) and get_func_identifier(statement) == 'WhenRules':
-                call_node = statement
-            elif (
-                isinstance(statement, Assign)
-                and isinstance(statement.value, Call)
-                and get_func_identifier(statement.value) == 'WhenRules'
-            ):
-                call_node = statement.value
-            if call_node is None:
-                continue
-            when_rules_total += 1
-            rules_any_arg = call_node.find_argument('rules_any')
-            if rules_any_arg is None or not isinstance(rules_any_arg.value, AstList):
-                continue
-            for item in rules_any_arg.value.items:
-                if isinstance(item, Name):
-                    whenrules_ref_count[item.identifier] = whenrules_ref_count.get(item.identifier, 0) + 1
-
-    return whenrules_ref_count, when_rules_total
-
-
 def _description_to_string(value: Any) -> str:
     """Render a Rule's description argument back to a string.
 
@@ -72,24 +37,42 @@ def _description_to_string(value: Any) -> str:
 
 
 def _extract_rules_from_engine() -> tuple[List[Dict[str, Any]], int]:
-    """Walk the engine and return (rules_list, when_rules_total).
+    """Walk the engine once, collecting Rule defs and WhenRules → Rule reference counts.
 
-    Two sub-passes:
-      1. _build_whenrules_ref_count — builds whenrules_ref_count map +
-         when_rules_total. Done first because a WhenRules can textually
-         precede the Rule it references.
-      2. Collect every Rule(...) Assign in source order, rendering
-         when_all conditions, the description, referenced feature names,
-         and the referenced_by_whenrules count from sub-pass 1.
+    WhenRules can appear in a source iterated before the Rule they reference
+    (e.g., main.sml's WhenRules referencing a Rule in an imported file), so
+    we accumulate counts into a name-keyed map during the walk and backfill
+    each Rule's referenced_by_whenrules at the end.
     """
     engine = ENGINE.instance()
     sources = engine.execution_graph.validated_sources.sources
 
-    whenrules_ref_count, when_rules_total = _build_whenrules_ref_count(sources)
-
+    whenrules_ref_count: Dict[str, int] = {}
+    when_rules_total = 0
     rules: List[Dict[str, Any]] = []
+
     for source in sources:
         for statement in source.ast_root.statements:
+            # WhenRules(...) — bare statement or assigned
+            call_node: Optional[Call] = None
+            if isinstance(statement, Call) and get_func_identifier(statement) == 'WhenRules':
+                call_node = statement
+            elif (
+                isinstance(statement, Assign)
+                and isinstance(statement.value, Call)
+                and get_func_identifier(statement.value) == 'WhenRules'
+            ):
+                call_node = statement.value
+            if call_node is not None:
+                when_rules_total += 1
+                rules_any_arg = call_node.find_argument('rules_any')
+                if rules_any_arg is not None and isinstance(rules_any_arg.value, AstList):
+                    for item in rules_any_arg.value.items:
+                        if isinstance(item, Name):
+                            whenrules_ref_count[item.identifier] = whenrules_ref_count.get(item.identifier, 0) + 1
+                continue
+
+            # Rule(...) — must be an Assign
             if not (
                 isinstance(statement, Assign)
                 and isinstance(statement.value, Call)
@@ -127,9 +110,12 @@ def _extract_rules_from_engine() -> tuple[List[Dict[str, Any]], int]:
                     'description': description,
                     'when_all': when_all,
                     'referenced_features': referenced_features,
-                    'referenced_by_whenrules': whenrules_ref_count.get(rule_name, 0),
+                    'referenced_by_whenrules': 0,  # backfilled below
                 }
             )
+
+    for rule in rules:
+        rule['referenced_by_whenrules'] = whenrules_ref_count.get(rule['name'], 0)
 
     return rules, when_rules_total
 

@@ -48,9 +48,7 @@ const INITIAL_FILTERS: FiltersState = {
   pageSize: 50,
 };
 
-// Each filter change resets page to 1; only setPage preserves it. The reducer
-// folds that invariant in so we don't need a useEffect that watches every
-// filter dep just to reset page.
+// Every filter action resets page to 1; only setPage preserves it.
 function filtersReducer(state: FiltersState, action: FiltersAction): FiltersState {
   switch (action.type) {
     case 'setSearch': {
@@ -310,11 +308,7 @@ const RuleDetail: React.FC<{ rule: RuleInfo }> = ({ rule }) => {
         )}
       </Descriptions.Item>
       <Descriptions.Item label="WhenRules">
-        {rule.referenced_by_whenrules === 0 ? (
-          <Text type="secondary">0 — unused</Text>
-        ) : (
-          `${rule.referenced_by_whenrules} block${rule.referenced_by_whenrules === 1 ? '' : 's'}`
-        )}
+        {`${rule.referenced_by_whenrules} block${rule.referenced_by_whenrules === 1 ? '' : 's'}`}
       </Descriptions.Item>
     </Descriptions>
   );
