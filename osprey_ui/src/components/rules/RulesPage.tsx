@@ -81,11 +81,11 @@ export const RulesPage: React.FC = () => {
 
 const RulesPageContent: React.FC<{ data: RulesListResponse }> = ({ data }) => {
   const [filters, dispatch] = React.useReducer(filtersReducer, INITIAL_FILTERS);
-
-  const rules = data.rules;
+  const { rules, total, when_rules_total, unused_total } = data;
+  const { search, unusedOnly, sortKey, page, pageSize } = filters;
 
   const filtered = React.useMemo(() => {
-    const query = filters.search.trim().toLowerCase();
+    const query = search.trim().toLowerCase();
     const list = rules.filter((r) => {
       if (
         query &&
@@ -95,17 +95,17 @@ const RulesPageContent: React.FC<{ data: RulesListResponse }> = ({ data }) => {
       ) {
         return false;
       }
-      if (filters.unusedOnly && r.referenced_by_whenrules !== 0) {
+      if (unusedOnly && r.referenced_by_whenrules !== 0) {
         return false;
       }
       return true;
     });
-    if (filters.sortKey === SortKey.Name) {
+    if (sortKey === SortKey.Name) {
       return [...list].sort((a, b) => {
         return a.name.localeCompare(b.name);
       });
     }
-    if (filters.sortKey === SortKey.MostReferenced) {
+    if (sortKey === SortKey.MostReferenced) {
       return [...list].sort((a, b) => {
         return b.referenced_by_whenrules - a.referenced_by_whenrules || a.name.localeCompare(b.name);
       });
@@ -113,11 +113,11 @@ const RulesPageContent: React.FC<{ data: RulesListResponse }> = ({ data }) => {
     return [...list].sort((a, b) => {
       return a.referenced_by_whenrules - b.referenced_by_whenrules || a.name.localeCompare(b.name);
     });
-  }, [rules, filters.search, filters.unusedOnly, filters.sortKey]);
+  }, [rules, search, unusedOnly, sortKey]);
 
   const paginated = React.useMemo(() => {
-    return filtered.slice((filters.page - 1) * filters.pageSize, filters.page * filters.pageSize);
-  }, [filtered, filters.page, filters.pageSize]);
+    return filtered.slice((page - 1) * pageSize, page * pageSize);
+  }, [filtered, page, pageSize]);
 
   const collapseItems = React.useMemo(() => {
     return paginated.map((r) => {
@@ -142,26 +142,26 @@ const RulesPageContent: React.FC<{ data: RulesListResponse }> = ({ data }) => {
 
         <div className={styles.statsRow}>
           <Card size="small">
-            <Statistic title="Rules" value={data.total} />
+            <Statistic title="Rules" value={total} />
           </Card>
           <Tooltip title="Total WhenRules blocks across all sources.">
             <Card size="small">
-              <Statistic title="WhenRules" value={data.when_rules_total} />
+              <Statistic title="WhenRules" value={when_rules_total} />
             </Card>
           </Tooltip>
           <Tooltip
             title={
-              filters.unusedOnly
+              unusedOnly
                 ? 'Filtering to unused only — click to clear.'
                 : 'Rules with no references from WhenRules blocks — cleanup candidates. Click to filter.'
             }
           >
             <Card
               size="small"
-              className={`${styles.statCardClickable} ${filters.unusedOnly ? styles.statCardActive : ''}`}
+              className={`${styles.statCardClickable} ${unusedOnly ? styles.statCardActive : ''}`}
               role="button"
               tabIndex={0}
-              aria-pressed={filters.unusedOnly}
+              aria-pressed={unusedOnly}
               onClick={() => {
                 dispatch({ type: 'toggleUnusedOnly' });
               }}
@@ -172,7 +172,7 @@ const RulesPageContent: React.FC<{ data: RulesListResponse }> = ({ data }) => {
                 }
               }}
             >
-              <Statistic title="Unused rules" value={data.unused_total} />
+              <Statistic title="Unused rules" value={unused_total} />
             </Card>
           </Tooltip>
         </div>
@@ -182,7 +182,7 @@ const RulesPageContent: React.FC<{ data: RulesListResponse }> = ({ data }) => {
             size="small"
             prefix={<SearchOutlined />}
             placeholder="Search rules..."
-            value={filters.search}
+            value={search}
             onChange={(e) => {
               dispatch({ type: 'setSearch', value: e.target.value });
             }}
@@ -191,7 +191,7 @@ const RulesPageContent: React.FC<{ data: RulesListResponse }> = ({ data }) => {
           />
           <Select<SortKey>
             size="small"
-            value={filters.sortKey}
+            value={sortKey}
             onChange={(value) => {
               dispatch({ type: 'setSortKey', value });
             }}
@@ -205,7 +205,7 @@ const RulesPageContent: React.FC<{ data: RulesListResponse }> = ({ data }) => {
           <Space size={6}>
             <Switch
               size="small"
-              checked={filters.unusedOnly}
+              checked={unusedOnly}
               onChange={(value) => {
                 dispatch({ type: 'setUnusedOnly', value });
               }}
@@ -223,8 +223,8 @@ const RulesPageContent: React.FC<{ data: RulesListResponse }> = ({ data }) => {
           <>
             <Collapse items={collapseItems} bordered={false} />
             <Pagination
-              current={filters.page}
-              pageSize={filters.pageSize}
+              current={page}
+              pageSize={pageSize}
               total={filtered.length}
               onChange={(page, pageSize) => {
                 dispatch({ type: 'setPage', page, pageSize });
