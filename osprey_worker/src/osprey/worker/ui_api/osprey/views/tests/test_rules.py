@@ -107,15 +107,21 @@ def test_referenced_features_from_when_all_and_format_description(client: 'Flask
 @pytest.mark.use_rules_sources(
     {
         **_base_sources_dict,
-        # WhenRules block textually PRECEDES the Rule it references.
+        # main.sml is iterated FIRST (dict insertion order), and its WhenRules
+        # references a Rule defined in an imported source that's iterated
+        # SECOND. The two-sub-pass walk must still credit the reference.
         'main.sml': """
+            Import(rules=['extra_rules.sml'])
+
             UserId: str = JsonData(path='$.user_id')
-            PostText: str = JsonData(path='$.post_text')
 
             WhenRules(
                 rules_any=[ContainsHello],
                 then=[DeclareVerdict(verdict=UserId)],
             )
+        """,
+        'extra_rules.sml': """
+            PostText: str = JsonData(path='$.post_text')
 
             ContainsHello = Rule(
                 when_all=[PostText == 'hello'],
@@ -124,8 +130,14 @@ def test_referenced_features_from_when_all_and_format_description(client: 'Flask
         """,
     }
 )
-def test_whenrules_before_rule_back_reference(client: 'FlaskClient[Response]') -> None:
-    """A Rule defined textually after a WhenRules referencing it still gets referenced_by_whenrules >= 1."""
+def test_whenrules_in_main_references_rule_in_imported_source(client: 'FlaskClient[Response]') -> None:
+    """A WhenRules in main.sml referencing a Rule in an imported source still credits the reference.
+
+    Sources iterate in dict-insertion order, so main.sml (containing the WhenRules) is walked
+    before extra_rules.sml (containing the Rule). A single-pass walk would miss the reference
+    because the Rule hasn't been seen yet when the WhenRules is processed. The two-sub-pass
+    walk (pass 1 counts refs, pass 2 collects rules and attaches counts) handles this.
+    """
     res = client.get(url_for('rules.rules_list'))
     assert res.status_code == 200
 
