@@ -22,7 +22,7 @@ from osprey.engine.ast.grammar import (
 from osprey.worker.lib.singletons import ENGINE
 from osprey.worker.ui_api.osprey.lib.abilities import CanViewDocs, require_ability
 
-from ._features_ast_utils import ast_to_string, get_func_identifier
+from ._engine_ast_utils import ast_to_string, collect_name_references, get_func_identifier
 
 logger = logging.getLogger(__name__)
 
@@ -77,51 +77,6 @@ def _derive_category(file_path: str) -> str:
     if parts[0] == 'models' and len(parts) > 2:
         return f'{parts[0]}/{parts[1]}'
     return parts[0]
-
-
-def _collect_name_references(node: Any, out: Set[str]) -> None:
-    """Recursively collect all Name.identifier values referenced by an expression node.
-
-    Skip the function-identifier position of Call nodes (we don't treat e.g.
-    `JsonData` in `JsonData(...)` as a feature reference). Walk FormatString.names,
-    BinaryOperation/BinaryComparison left/right, BooleanOperation values,
-    UnaryOperation operand, AstList items, and Attribute chains.
-    """
-    if node is None:
-        return
-    if isinstance(node, Name):
-        out.add(node.identifier)
-        return
-    if isinstance(node, Call):
-        for arg in node.arguments:
-            _collect_name_references(arg.value, out)
-        return
-    if isinstance(node, FormatString):
-        for n in node.names:
-            out.add(n.identifier)
-        return
-    if isinstance(node, BinaryComparison):
-        _collect_name_references(node.left, out)
-        _collect_name_references(node.right, out)
-        return
-    if isinstance(node, BinaryOperation):
-        _collect_name_references(node.left, out)
-        _collect_name_references(node.right, out)
-        return
-    if isinstance(node, UnaryOperation):
-        _collect_name_references(node.operand, out)
-        return
-    if isinstance(node, BooleanOperation):
-        for v in node.values:
-            _collect_name_references(v, out)
-        return
-    if isinstance(node, AstList):
-        for item in node.items:
-            _collect_name_references(item, out)
-        return
-    if isinstance(node, Attribute):
-        _collect_name_references(node.name, out)
-        return
 
 
 def _find_assign_for_feature(sources: Any, feature_name: str, source_path: str, source_line: int) -> Optional[Assign]:
@@ -219,7 +174,7 @@ def _extract_features_from_engine() -> List[Dict[str, Any]]:
                 refs: Set[str] = set()
                 when_all_arg = statement.value.find_argument('when_all')
                 if when_all_arg:
-                    _collect_name_references(when_all_arg.value, refs)
+                    collect_name_references(when_all_arg.value, refs)
                 for feat in refs & feature_names:
                     rule_refs.setdefault(feat, set()).add(rule_name)
                 continue
@@ -239,7 +194,7 @@ def _extract_features_from_engine() -> List[Dict[str, Any]]:
                 for arg in call_node.arguments:
                     if arg.name == 'rules_any':
                         continue
-                    _collect_name_references(arg.value, refs)
+                    collect_name_references(arg.value, refs)
                 for feat in refs & feature_names:
                     whenrules_refs[feat] = whenrules_refs.get(feat, 0) + 1
                 continue
@@ -250,7 +205,7 @@ def _extract_features_from_engine() -> List[Dict[str, Any]]:
                 if defining_name not in feature_names:
                     continue
                 refs = set()
-                _collect_name_references(statement.value, refs)
+                collect_name_references(statement.value, refs)
                 for feat in refs & feature_names:
                     if feat == defining_name:
                         continue
