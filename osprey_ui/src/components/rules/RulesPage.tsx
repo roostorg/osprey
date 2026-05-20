@@ -274,7 +274,7 @@ const RuleDetail: React.FC<{ rule: RuleInfo }> = ({ rule }) => {
       size="small"
       column={1}
       colon={false}
-      styles={{ label: { width: 140, fontWeight: 600 } }}
+      styles={{ label: { width: 180, fontWeight: 600, paddingRight: 16 } }}
     >
       <Descriptions.Item label="Source file">
         <code>{rule.source_file}</code>
