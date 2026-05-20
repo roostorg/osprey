@@ -89,7 +89,12 @@ const RulesPageContent: React.FC<{ data: RulesListResponse }> = ({ data }) => {
   const filtered = React.useMemo(() => {
     const query = filters.search.trim().toLowerCase();
     const list = rules.filter((r) => {
-      if (query && !r.name.toLowerCase().includes(query) && !r.source_file.toLowerCase().includes(query) && !r.description.toLowerCase().includes(query)) {
+      if (
+        query &&
+        !r.name.toLowerCase().includes(query) &&
+        !r.source_file.toLowerCase().includes(query) &&
+        !r.description.toLowerCase().includes(query)
+      ) {
         return false;
       }
       if (filters.unusedOnly && r.referenced_by_whenrules !== 0) {
@@ -110,12 +115,7 @@ const RulesPageContent: React.FC<{ data: RulesListResponse }> = ({ data }) => {
     return [...list].sort((a, b) => {
       return a.referenced_by_whenrules - b.referenced_by_whenrules || a.name.localeCompare(b.name);
     });
-  }, [
-    rules,
-    filters.search,
-    filters.unusedOnly,
-    filters.sortKey,
-  ]);
+  }, [rules, filters.search, filters.unusedOnly, filters.sortKey]);
 
   const paginated = React.useMemo(() => {
     return filtered.slice((filters.page - 1) * filters.pageSize, filters.page * filters.pageSize);
@@ -138,7 +138,8 @@ const RulesPageContent: React.FC<{ data: RulesListResponse }> = ({ data }) => {
           Rules Registry
         </Title>
         <Paragraph type="secondary">
-          Named rule definitions across the engine — conditions, descriptions, the features each rule references, and how many WhenRules blocks include it.
+          Named rule definitions across the engine — conditions, descriptions, the features each rule references, and
+          how many WhenRules blocks include it.
         </Paragraph>
 
         <div className={styles.statsRow}>
@@ -309,9 +310,11 @@ const RuleDetail: React.FC<{ rule: RuleInfo }> = ({ rule }) => {
         )}
       </Descriptions.Item>
       <Descriptions.Item label="WhenRules">
-        {rule.referenced_by_whenrules === 0
-          ? <Text type="secondary">0 — unused</Text>
-          : `${rule.referenced_by_whenrules} block${rule.referenced_by_whenrules === 1 ? '' : 's'}`}
+        {rule.referenced_by_whenrules === 0 ? (
+          <Text type="secondary">0 — unused</Text>
+        ) : (
+          `${rule.referenced_by_whenrules} block${rule.referenced_by_whenrules === 1 ? '' : 's'}`
+        )}
       </Descriptions.Item>
     </Descriptions>
   );
