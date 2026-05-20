@@ -13,11 +13,7 @@ from osprey.engine.ast.grammar import (
     BooleanOperation,
     Call,
     FormatString,
-    Name,
     UnaryOperation,
-)
-from osprey.engine.ast.grammar import (
-    List as AstList,
 )
 from osprey.worker.lib.singletons import ENGINE
 from osprey.worker.ui_api.osprey.lib.abilities import CanViewDocs, require_ability
