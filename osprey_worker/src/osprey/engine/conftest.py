@@ -2,22 +2,15 @@ import itertools
 import json
 import pathlib
 import sys
-from contextlib import contextmanager
+from collections.abc import Callable, Generator, Iterator
+from contextlib import AbstractContextManager, contextmanager
 from datetime import datetime
 from textwrap import dedent
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    ContextManager,
-    Dict,
-    Generator,
-    Iterator,
-    Optional,
-    Set,
     Type,
     TypeVar,
-    Union,
 )
 
 import gevent.pool
@@ -54,7 +47,7 @@ def config_setup() -> Generator[Any, None, None]:
     CONFIG.instance().unconfigure_for_tests()
 
 
-SourcesDict = Union[Sources, str, Dict[str, str]]
+SourcesDict = Sources | str | dict[str, str]
 CheckOutputFunction = Callable[[str], bool]
 
 _WINDOWS_FRIENDLY_SUBSTITUTIONS = {
@@ -183,7 +176,7 @@ class RunValidationFunction(Protocol):
         self,
         sources_dict: SourcesDict,
         warning_as_error: bool = ...,
-        validator_registry: Optional[ValidatorRegistry] = ...,
+        validator_registry: ValidatorRegistry | None = ...,
     ) -> ValidatedSources: ...
 
 
@@ -202,7 +195,7 @@ def run_validation(request: 'FixtureRequest', udf_registry: UDFRegistry) -> RunV
     entry-point. Automatically de-dents texts, so you can use triple-quoted strings that are nicely formatted.
     """
 
-    validators: Set[Type[BaseValidator]] = set(
+    validators: set[Type[BaseValidator]] = set(
         assert_issubclass(validator, BaseValidator)
         for validator in itertools.chain.from_iterable(
             assert_isinstance(n.args[0], list) for n in request.node.iter_markers('use_validators')
@@ -218,7 +211,7 @@ def run_validation(request: 'FixtureRequest', udf_registry: UDFRegistry) -> RunV
     def run_validation(
         sources_dict: SourcesDict,
         warning_as_error: bool = False,
-        validator_registry: Optional[ValidatorRegistry] = None,
+        validator_registry: ValidatorRegistry | None = None,
     ) -> ValidatedSources:
         context = ValidationContext(
             sources=into_sources(sources_dict),
@@ -253,13 +246,13 @@ class ExecuteWithResultFunction(Protocol):
     def __call__(
         self,
         sources_dict: SourcesDict,
-        data: Optional[Dict[str, object]] = ...,
-        secret_data: Optional[Dict[str, str]] = ...,
+        data: dict[str, object] | None = ...,
+        secret_data: dict[str, str] | None = ...,
         action_name: str = ...,
         action_id: int = ...,
-        udf_helpers: Optional[UDFHelpers] = None,
-        async_pool: Optional[gevent.pool.Pool] = ...,
-        action_time: Optional[datetime] = ...,
+        udf_helpers: UDFHelpers | None = None,
+        async_pool: gevent.pool.Pool | None = ...,
+        action_time: datetime | None = ...,
     ) -> ExecutionResult: ...
 
 
@@ -267,15 +260,15 @@ class ExecuteFunction(Protocol):
     def __call__(
         self,
         sources_dict: SourcesDict,
-        data: Optional[Dict[str, object]] = ...,
-        secret_data: Optional[Dict[str, str]] = ...,
+        data: dict[str, object] | None = ...,
+        secret_data: dict[str, str] | None = ...,
         action_name: str = ...,
         action_id: int = ...,
-        udf_helpers: Optional[UDFHelpers] = None,
-        async_pool: Optional[gevent.pool.Pool] = ...,
-        action_time: Optional[datetime] = ...,
+        udf_helpers: UDFHelpers | None = None,
+        async_pool: gevent.pool.Pool | None = ...,
+        action_time: datetime | None = ...,
         allow_errors: bool = ...,
-    ) -> Dict[str, object]: ...
+    ) -> dict[str, object]: ...
 
 
 @pytest.fixture()
@@ -284,13 +277,13 @@ def execute_with_result(udf_registry: UDFRegistry) -> ExecuteWithResultFunction:
 
     def execute_with_result_(
         sources_dict: SourcesDict,
-        data: Optional[Dict[str, object]] = None,
-        secret_data: Optional[Dict[str, str]] = None,
+        data: dict[str, object] | None = None,
+        secret_data: dict[str, str] | None = None,
         action_name: str = 'test',
         action_id: int = 1,
-        udf_helpers: Optional[UDFHelpers] = None,
-        async_pool: Optional[gevent.pool.Pool] = None,
-        action_time: Optional[datetime] = None,
+        udf_helpers: UDFHelpers | None = None,
+        async_pool: gevent.pool.Pool | None = None,
+        action_time: datetime | None = None,
     ) -> ExecutionResult:
         sources = into_sources(sources_dict)
 
@@ -334,15 +327,15 @@ def execute(execute_with_result: ExecuteWithResultFunction) -> ExecuteFunction:
 
     def execute_(
         sources_dict: SourcesDict,
-        data: Optional[Dict[str, object]] = None,
-        secret_data: Optional[Dict[str, str]] = None,
+        data: dict[str, object] | None = None,
+        secret_data: dict[str, str] | None = None,
         action_name: str = 'test',
         action_id: int = 1,
-        udf_helpers: Optional[UDFHelpers] = None,
-        async_pool: Optional[gevent.pool.Pool] = None,
-        action_time: Optional[datetime] = None,
+        udf_helpers: UDFHelpers | None = None,
+        async_pool: gevent.pool.Pool | None = None,
+        action_time: datetime | None = None,
         allow_errors: bool = False,
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         result = execute_with_result(
             sources_dict=sources_dict,
             data=data,
@@ -389,7 +382,7 @@ def udf_registry(request: 'FixtureRequest') -> UDFRegistry:
     return udf_registry
 
 
-CheckFailureFunction = Callable[[], ContextManager[None]]
+CheckFailureFunction = Callable[[], AbstractContextManager[None]]
 
 
 @pytest.fixture()

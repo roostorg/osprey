@@ -1,4 +1,5 @@
-from typing import Any, Callable, List
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 from osprey.engine.ast_validator.validators.imports_must_not_have_cycles import ImportsMustNotHaveCycles
@@ -14,7 +15,7 @@ from osprey.engine.stdlib.udfs.json_data import JsonData
 from osprey.engine.stdlib.udfs.resolve_optional import ResolveOptional
 from osprey.engine.udf.registry import UDFRegistry
 
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_udf_registry(UDFRegistry.with_udfs(JsonData, ResolveOptional)),
     pytest.mark.use_validators(
         [

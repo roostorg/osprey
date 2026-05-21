@@ -3,7 +3,7 @@ from collections import UserDict
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from enum import Enum, IntEnum
-from typing import Any, Dict, Self
+from typing import Any, Self
 
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.utils.request_utils import SessionWithRetries
@@ -373,7 +373,7 @@ class LabelState:
 class EntityLabels:
     """this class represents a given entity's current labels & label states"""
 
-    labels: Dict[str, LabelState] = field(default_factory=dict)
+    labels: dict[str, LabelState] = field(default_factory=dict)
     """a mapping of label names to their current states'"""
 
     def serialize(self) -> dict[str, Any]:

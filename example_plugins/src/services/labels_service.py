@@ -1,5 +1,6 @@
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, Generator
+from typing import Any
 
 from osprey.engine.language_types.entities import EntityT
 from osprey.worker.lib.osprey_shared.labels import EntityLabels

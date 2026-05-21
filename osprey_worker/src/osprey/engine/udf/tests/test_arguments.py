@@ -1,5 +1,3 @@
-from typing import Optional, Union
-
 from osprey.engine.udf.arguments import ArgumentsBase, ConstExpr
 
 StrConstExpr = ConstExpr[str]  # This being inside the below function is causing mypy to crash
@@ -19,8 +17,8 @@ def test_arguments_items() -> None:
 
 def test_arguments_can_be_none() -> None:
     class Arguments(ArgumentsBase):
-        optional: Optional[str]
-        union: Union[str, int, None]
+        optional: str | None
+        union: str | int | None
         none: None
         obj: object
         string: str

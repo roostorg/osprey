@@ -1,8 +1,9 @@
 import json
 import random
 import time
+from collections.abc import Iterator
 from queue import SimpleQueue as Queue
-from typing import Any, Dict, Iterator, Optional, Tuple
+from typing import Any
 
 import grpc
 import pytz
@@ -43,7 +44,7 @@ class GrpcConnectionDiscoveryPool:
         self._service_name = service_name
         directory = Directory.instance(secure=False)
 
-        self._grpc_channels: Dict[Service, Tuple[grpc.Channel, Service]] = {
+        self._grpc_channels: dict[Service, tuple[grpc.Channel, Service]] = {
             service: (GrpcConnectionDiscoveryPool._create_insecure_channel(service), service)
             for service in directory.select_all(self._service_name)
         }
@@ -67,7 +68,7 @@ class GrpcConnectionDiscoveryPool:
             if self._grpc_channels.get(service):
                 del self._grpc_channels[service]
 
-    def get_connection(self) -> Tuple[grpc.Channel, Service]:
+    def get_connection(self) -> tuple[grpc.Channel, Service]:
         """
         Gets a GRPC connection to a service.
 
@@ -107,7 +108,7 @@ class OspreyCoordinatorBiDirectionalStream(BaseInputStream[OspreyCoordinatorActi
         # but leaving the old connection open.
         self._incoming_stream = osprey_coordinator_stub.OspreyBidirectionalStream(streaming_iterator, timeout=None)
         self._tags = [f'coordinator_connection_address:{service.connection_address}']
-        self._connect_time: Optional[float] = None
+        self._connect_time: float | None = None
 
     def _send(self, request: Request) -> None:
         self._outgoing_request_queue.put(request)
@@ -118,7 +119,7 @@ class OspreyCoordinatorBiDirectionalStream(BaseInputStream[OspreyCoordinatorActi
         # so we just enqueue it here as a quick hack
         self._outgoing_request_queue.put(OspreyCoordinatorBiDirectionalStream._STOP_STREAMING_SIGNAL)  # type: ignore
 
-    def send_graceful_disconnect(self, ack_id: int, ack: bool = True, verdicts: Optional[Verdicts] = None) -> None:
+    def send_graceful_disconnect(self, ack_id: int, ack: bool = True, verdicts: Verdicts | None = None) -> None:
         ack_or_nack = (
             AckOrNack(ack_id=ack_id, ack=Ack(verdicts=verdicts if verdicts else None))
             if ack
@@ -129,7 +130,7 @@ class OspreyCoordinatorBiDirectionalStream(BaseInputStream[OspreyCoordinatorActi
         self._outgoing_request_queue.put(Request(disconnect=Disconnect(ack_or_nack=ack_or_nack)))
         self._enqueue_stop_stream_signal()
 
-    def send_ack_or_nack(self, ack_id: int, ack: bool = True, verdicts: Optional[Verdicts] = None) -> None:
+    def send_ack_or_nack(self, ack_id: int, ack: bool = True, verdicts: Verdicts | None = None) -> None:
         ack_or_nack = (
             AckOrNack(ack_id=ack_id, ack=Ack(verdicts=verdicts if verdicts else None))
             if ack
@@ -190,7 +191,7 @@ class OspreyCoordinatorInputStream(BaseInputStream[BaseAckingContext[OspreyEngin
     def __init__(
         self,
         client_id: str,
-        input_stream_ready_signaler: Optional[InputStreamReadySignaler] = None,
+        input_stream_ready_signaler: InputStreamReadySignaler | None = None,
         coordinator_service_name: str = 'osprey_coordinator',
     ) -> None:
         super().__init__()
@@ -200,7 +201,7 @@ class OspreyCoordinatorInputStream(BaseInputStream[BaseAckingContext[OspreyEngin
         self._channel_pool = GrpcConnectionDiscoveryPool(coordinator_service_name)
         self._client_id = client_id
         self._input_stream_ready_signaler = input_stream_ready_signaler
-        self._current_execution_result: Optional[ExecutionResult] = None
+        self._current_execution_result: ExecutionResult | None = None
 
     def stop(self) -> None:
         if self._soft_shutdown_signal_received:
@@ -213,11 +214,11 @@ class OspreyCoordinatorInputStream(BaseInputStream[BaseAckingContext[OspreyEngin
 
     def _create_osprey_engine_action(
         self, osprey_coordinator_action: OspreyCoordinatorAction
-    ) -> Optional[OspreyEngineAction]:
+    ) -> OspreyEngineAction | None:
         try:
             tags = [f'action_name:{osprey_coordinator_action.action_name}']
 
-            secret_data: Dict[str, Any] = {}
+            secret_data: dict[str, Any] = {}
             which_of_action_data = osprey_coordinator_action.WhichOneof('action_data')
             if which_of_action_data == 'json_action_data':
                 info_log_osprey_action(

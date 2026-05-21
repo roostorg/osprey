@@ -1,5 +1,5 @@
 from http.client import BAD_REQUEST
-from typing import Any, Optional
+from typing import Any
 
 from flask import Blueprint, Response, abort, jsonify, request
 from osprey.engine.ast_validator.validation_context import ValidationFailed
@@ -28,7 +28,7 @@ def create_query_record() -> Any:
 
 @blueprint.route('/queries', methods=['GET'])
 def get_queries() -> Any:
-    before: Optional[int] = request.args.get('before')
+    before: int | None = request.args.get('before')
     user_email = request.args.get('user_email')
 
     if user_email:

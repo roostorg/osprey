@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import json
 import logging
 import random
-from typing import Text, Union
+from typing import Text
 
 import gevent
 import six
@@ -371,14 +371,14 @@ class EtcdHashRingTopology(object):
         return [ensure_bytes_are_strings(x) for x in [key] + overrides]
 
 
-def ensure_strings_are_bytes(value: Union[int, str]) -> Union[bytes, int]:
+def ensure_strings_are_bytes(value: int | str) -> bytes | int:
     if isinstance(value, str):
         return value.encode()
 
     return value
 
 
-def ensure_bytes_are_strings(value: Union[bytes, int]) -> Union[int, Text]:
+def ensure_bytes_are_strings(value: bytes | int) -> int | Text:
     if isinstance(value, bytes):
         return value.decode()
 

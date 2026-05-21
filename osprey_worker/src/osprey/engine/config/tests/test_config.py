@@ -1,6 +1,5 @@
 import json
 import textwrap
-from typing import Dict
 from unittest.mock import MagicMock
 
 import pytest
@@ -43,7 +42,7 @@ def handler(registry: ConfigRegistry) -> ConfigSubkeyHandler:
     return ConfigSubkeyHandler(registry, make_validated_sources_with_config({}))
 
 
-def make_validated_sources_with_config(raw_config: Dict[str, object]) -> ValidatedSources:
+def make_validated_sources_with_config(raw_config: dict[str, object]) -> ValidatedSources:
     main = Source(path=SOURCE_ENTRY_POINT_PATH, contents='', actual_path=None)
     sources = Sources(
         sources={SOURCE_ENTRY_POINT_PATH: main},

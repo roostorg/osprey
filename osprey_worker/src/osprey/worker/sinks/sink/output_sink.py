@@ -1,7 +1,8 @@
 import abc
 from collections import defaultdict
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
-from typing import Any, Callable, DefaultDict, Dict, Mapping, Optional, Sequence
+from typing import Any
 
 import gevent
 import sentry_sdk
@@ -89,7 +90,7 @@ class MultiOutputSink(BaseOutputSink):
         return push_with_retry
 
     def push(self, result: ExecutionResult) -> None:
-        errors: Dict[BaseOutputSink, BaseException] = {}
+        errors: dict[BaseOutputSink, BaseException] = {}
 
         for sink in self._sinks:
             if sink.will_do_work(result):
@@ -121,7 +122,7 @@ class MultiOutputSink(BaseOutputSink):
 class StdoutOutputSink(BaseOutputSink):
     """An output sink that prints to standard out!"""
 
-    def __init__(self, log_sampler: Optional[DynamicLogSampler] = None):
+    def __init__(self, log_sampler: DynamicLogSampler | None = None):
         self.logger = get_logger('StdoutOutputSink', log_sampler)
 
     def will_do_work(self, result: ExecutionResult) -> bool:
@@ -134,9 +135,7 @@ class StdoutOutputSink(BaseOutputSink):
         pass
 
 
-def _create_entity_mutation(
-    label_effect: LabelEffect, rule: RuleT, expires_at: Optional[datetime]
-) -> EntityLabelMutation:
+def _create_entity_mutation(label_effect: LabelEffect, rule: RuleT, expires_at: datetime | None) -> EntityLabelMutation:
     return EntityLabelMutation(
         label_name=label_effect.name,
         reason_name=rule.name,
@@ -148,7 +147,7 @@ def _create_entity_mutation(
 
 
 def _get_label_effects_from_result(result: ExecutionResult) -> Mapping[EntityT[Any], list[EntityLabelMutation]]:
-    effects: DefaultDict[EntityT[Any], list[EntityLabelMutation]] = defaultdict(list)
+    effects: defaultdict[EntityT[Any], list[EntityLabelMutation]] = defaultdict(list)
 
     for label_effect in result.effects.get(LabelEffect, []):
         # assert for typing

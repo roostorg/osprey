@@ -1,4 +1,5 @@
-from typing import Any, Callable, List
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
@@ -7,7 +8,7 @@ from osprey.engine.stdlib.udfs.extract_cookie import ExtractCookie
 from osprey.engine.stdlib.udfs.json_data import JsonData
 from osprey.engine.udf.registry import UDFRegistry
 
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_validators([ValidateCallKwargs]),
     pytest.mark.use_udf_registry(UDFRegistry.with_udfs(JsonData, ExtractCookie)),
 ]
