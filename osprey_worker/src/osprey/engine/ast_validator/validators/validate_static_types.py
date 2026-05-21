@@ -344,6 +344,7 @@ class ValidateStaticTypes(SourceValidator, HasInput[Dict[str, _TypeAndSpan]], Ha
                 else:
                     next_resolved_typevar_type = get_typevar_substitution(generic_arg, arg_value_type)
                 if resolved_typevar_type is not None and next_resolved_typevar_type != resolved_typevar_type:
+                    assert previous_generic_kwarg is not None
                     # Error for incompatible generic types
                     self.context.add_error(
                         'conflicting generic types',
