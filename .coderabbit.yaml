@@ -1,0 +1,137 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# Review rules live in `.github/copilot-instructions.md` and `AGENTS.md`
+# CodeRabbit picks both up automatically. This file only carries settings that
+# differ from CodeRabbit's defaults.
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: true
+
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+    ignore_usernames:
+      - 'dependabot[bot]'
+      - 'dependabot-preview[bot]'
+    labels:
+      - '!dependabot'
+
+  path_filters:
+    # Generated protobuf bindings — regenerate via ./gen-protos.sh, never
+    # hand-edit (AGENTS.md > Architecture).
+    - '!osprey_rpc/src/osprey/rpc/**/*_pb2*.py'
+    - '!osprey_rpc/src/osprey/rpc/**/*_pb2*.pyi'
+    - '!osprey_coordinator/src/proto/**'
+    # Build artifacts and caches.
+    - '!**/node_modules/**'
+    - '!**/dist/**'
+    - '!**/build/**'
+    - '!**/target/**'
+    - '!**/__pycache__/**'
+    - '!**/.venv/**'
+    - '!**/*.snap'
+
+  # Cross-cutting rules live in .github/copilot-instructions.md.
+  path_instructions:
+    - path: 'osprey_worker/src/osprey/worker/ui_api/**/*.py'
+      instructions: |
+        Flask HTTP API on port 5004. Verify each view enforces authentication
+        and that any caller-supplied IDs are authorization-checked, not just
+        existence-checked (IDOR). Flag string-built SQL or shell commands —
+        SQLAlchemy bound parameters and `subprocess` arg arrays (no
+        `shell=True`) are required. Validate request bodies and query params
+        (Pydantic preferred). Error responses must not leak Python stack
+        traces or internal exception messages.
+
+    - path: 'osprey_worker/src/osprey/worker/sinks/**/*.py'
+      instructions: |
+        Output sinks emit verdicts/effects to external systems (Kafka, HTTP,
+        etc.). Flag sink writes that don't bound retries or backoff, that log
+        full request/response bodies or raw Kafka payloads (PII risk), or
+        that swallow exceptions without a metric, log, or rethrow.
+
+    - path: 'osprey_worker/src/osprey/worker/adaptor/**/*.py'
+      instructions: |
+        Pluggy plugin manager and hookspecs (`register_udfs`,
+        `register_output_sinks`, `register_labels_service_or_provider`). New
+        or renamed hookspecs change the plugin contract — surface signature
+        changes that would break `example_plugins/` or downstream consumers.
+        Generic-name UDFs collide silently; flag duplicates.
+
+    - path: 'osprey_ui/src/**/*.{ts,tsx}'
+      instructions: |
+        - XSS: flag `dangerouslySetInnerHTML`, `innerHTML`, `document.write`,
+          `javascript:` URLs, and unsanitized `href`/`src` from user input.
+          Prefer `textContent`; sanitize with DOMPurify when raw HTML is
+          unavoidable.
+        - Token storage: auth tokens belong in HttpOnly, Secure, SameSite
+          cookies — flag `localStorage` or `sessionStorage` use for tokens.
+        - Open redirects: redirecting to a user-supplied URL without an
+          allowlist is risky.
+
+    - path: 'osprey_coordinator/src/**/*.rs'
+      instructions: |
+        - `unwrap()` / `expect()` / `panic!` on user-driven or RPC paths
+          turn a bad input into a process crash; prefer `?` or explicit
+          error mapping.
+        - `unsafe` blocks deserve a justifying comment and the tightest
+          possible scope.
+        - Holding a `std::sync::Mutex` guard across `.await` deadlocks the
+          tokio runtime; long-lived `tokio::sync` guards can starve other
+          tasks. Flag them.
+        - Spawned tasks should be cancellation-safe — surface anything that
+          will leak on shutdown.
+
+    - path: 'proto/osprey/rpc/**/*.proto'
+      instructions: |
+        gRPC contract consumed by both Python workers and the Rust
+        coordinator. Removing or renaming fields, changing field numbers, or
+        changing tag types is a breaking change — flag it and ask for a
+        migration plan. Bindings must be regenerated with `./gen-protos.sh`
+        in the same PR.
+
+    - path: 'example_plugins/**/*.py'
+      instructions: |
+        Reference plugins. Per AGENTS.md > Architecture no production code
+        belongs here — flag if production-only logic is being added.
+
+    - path: 'example_rules/**'
+      instructions: |
+        Sample SML rules and YAML config. Reference, not production — flag
+        if production rule logic is being added here instead of in the
+        consumer's own rules directory.
+
+    - path: '**/{pyproject.toml,uv.lock,Cargo.toml,Cargo.lock,package.json,package-lock.json}'
+      instructions: |
+        Dependency additions, removals, or upgrades (including transitive
+        bumps) require human approval for license (Apache 2.0, per
+        `LICENSE.md`) and CVE review per AGENTS.md > "Human-approval-required
+        actions". Surface every change so reviewers don't miss it. New
+        Python deps must also be exercised by `fawltydeps` or added to
+        `[tool.fawltydeps].ignore_unused` with a comment.
+
+    - path: '{docker-compose.yaml,start.sh,entrypoint.sh,**/Dockerfile,.github/workflows/publish-coordinator-image.yml,.github/workflows/release-osprey-rpc.yml,.github/workflows/mdbook.yml}'
+      instructions: |
+        AGENTS.md > "Human-approval-required actions" lists these as
+        restricted: release/deploy workflows, production Dockerfiles,
+        signing/tagging, and infra entrypoints. Flag any change here as
+        needing explicit human approval. Default Docker bindings are
+        `127.0.0.1` — flag any bind-address change.
+
+  # These overlap with checks already enforced in CI, or add style noise.
+  tools:
+    ruff:
+      enabled: false
+    prettier:
+      enabled: false
+    markdownlint:
+      enabled: false 
+    languagetool:
+      enabled: false
