@@ -206,7 +206,7 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
     setGranularity(getDefaultGranularityForTimeSpan(start, end));
   }, [start, end]);
 
-  function handleChartSelection(event: Highcharts.ChartSelectionContextObject): false {
+  function handleChartSelection(event: Highcharts.SelectEventObject): false {
     const newRange = event.xAxis?.[0];
     if (newRange == null) return false;
 
@@ -230,7 +230,7 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
       type: CHART_TYPE,
       height: 300,
       // allows selection of a subset of date
-      zoomType: 'x',
+      zooming: { type: 'x' },
       events: {
         // event handler for the selection
         selection: handleChartSelection,
@@ -276,8 +276,6 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
       // our time data is UTC, but we'll convert it to whatever timezone dayjs
       // thinks the user is in
       timezone: dayjs.tz.guess(),
-      // don't render time as UTC
-      useUTC: false,
     },
     legend: {
       enabled: false,
