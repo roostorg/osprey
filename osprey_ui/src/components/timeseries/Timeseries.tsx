@@ -7,6 +7,7 @@ import shallow from 'zustand/shallow';
 
 import { getTimeseriesQueryResults } from '../../actions/EventActions';
 import useQueryStore from '../../stores/QueryStore';
+import useThemeStore from '../../stores/ThemeStore';
 import { TimeseriesResult } from '../../types/QueryTypes';
 import Text, { TextSizes } from '../../uikit/Text';
 import TimeseriesIcon from '../../uikit/icons/TimeseriesIcon';
@@ -171,6 +172,16 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
   const [timeseriesData, setTimeseriesData] = React.useState<TimeseriesResult[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [granularity, setGranularity] = React.useState(getDefaultGranularityForTimeSpan(start, end));
+  const themeMode = useThemeStore((state) => { return state.mode; });
+
+  const themeColors = React.useMemo(() => {
+    const cssVar = (name: string) => { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); };
+    return {
+      text: cssVar('--text-light-primary'),
+      gridLine: cssVar('--divider'),
+      tooltipBg: cssVar('--background-tertiary'),
+    };
+  }, [themeMode]);
 
   React.useEffect(() => {
     setIsLoading(true);
@@ -229,6 +240,7 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
     chart: {
       type: CHART_TYPE,
       height: 300,
+      backgroundColor: 'transparent',
       // allows selection of a subset of date
       zooming: { type: 'x' },
       events: {
@@ -249,9 +261,13 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
       labels: {
         format: `{value:${getDateFormatForGranularity(granularity)}}`,
         rotation: -45,
+        style: { color: themeColors.text },
       },
       // shows x-axis grid
       gridLineWidth: 1,
+      gridLineColor: themeColors.gridLine,
+      lineColor: themeColors.gridLine,
+      tickColor: themeColors.gridLine,
       title: {
         text: undefined,
       },
@@ -263,7 +279,9 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
       tickPixelInterval: 10,
       labels: {
         format: '{value:,.0f}',
+        style: { color: themeColors.text },
       },
+      gridLineColor: themeColors.gridLine,
       title: {
         text: undefined,
       },
@@ -271,6 +289,8 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
     tooltip: {
       // date format for tooltip's x value (in our case, datetime)
       xDateFormat: getDateFormatForGranularity('other'),
+      backgroundColor: themeColors.tooltipBg,
+      style: { color: themeColors.text },
     },
     time: {
       // our time data is UTC, but we'll convert it to whatever timezone dayjs
