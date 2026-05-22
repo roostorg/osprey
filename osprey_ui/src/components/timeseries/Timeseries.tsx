@@ -172,10 +172,14 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
   const [timeseriesData, setTimeseriesData] = React.useState<TimeseriesResult[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [granularity, setGranularity] = React.useState(getDefaultGranularityForTimeSpan(start, end));
-  const themeMode = useThemeStore((state) => { return state.mode; });
+  const themeMode = useThemeStore((state) => {
+    return state.mode;
+  });
 
   const themeColors = React.useMemo(() => {
-    const cssVar = (name: string) => { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); };
+    const cssVar = (name: string) => {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    };
     return {
       text: cssVar('--text-light-primary'),
       gridLine: cssVar('--divider'),
