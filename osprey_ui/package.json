@@ -17,7 +17,7 @@
     "dayjs": "^1.11.0",
     "file-saver": "2.0.1",
     "glob-to-regexp": "0.4.1",
-    "highcharts": "8.1.0",
+    "highcharts": "12.6.0",
     "highcharts-react-official": "3.0.0",
     "highlight.js": "10.6.0",
     "history": "4.7.2",
