@@ -14,38 +14,8 @@
       "count": 1
     }
   },
-  "src/components/charts/Chart.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/components/common/Feature.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "src/components/common/QueryFilter.tsx": {
     "react/display-name": {
-      "count": 1
-    }
-  },
-  "src/components/event_stream/EventStream.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/components/query_history/QueryHistoryList.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/components/query_view/QueryInput.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 2
-    }
-  },
-  "src/components/query_view/QueryView.tsx": {
-    "react-hooks/set-state-in-effect": {
       "count": 1
     }
   },
@@ -54,23 +24,8 @@
       "count": 1
     }
   },
-  "src/components/timeseries/Timeseries.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 2
-    }
-  },
   "src/components/top_n/FeatureNameSelect.tsx": {
     "react/display-name": {
-      "count": 1
-    }
-  },
-  "src/hooks/usePromiseResult.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/uikit/Collapse.tsx": {
-    "react-hooks/refs": {
       "count": 1
     }
   }

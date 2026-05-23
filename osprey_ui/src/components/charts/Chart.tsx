@@ -12,6 +12,7 @@ const Chart = ({ index }: { index: number }) => {
   const [chart, updateChart] = useQueryStore((state) => [state.charts[index], state.updateChart]);
   const [text, setText] = React.useState(chart.query);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronizing input state with parent chart changes
   React.useEffect(() => setText(chart.query), [chart]);
 
   return (
