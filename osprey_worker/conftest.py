@@ -1,8 +1,10 @@
-"""Root pytest configuration for osprey project.
+"""Root pytest configuration for osprey_worker package.
 
-This conftest.py is discovered early by pytest when invoked from the
-worktree root, ensuring that custom pytest options and markers are
-registered before argument parsing occurs.
+This conftest.py is discovered by pytest during plugin loading,
+ensuring that custom pytest options and markers are registered before
+argument parsing occurs. Placing this at the osprey_worker level ensures
+it's loaded regardless of whether pytest is invoked from the worktree root
+or from within osprey_worker/ subpaths.
 """
 from typing import TYPE_CHECKING
 

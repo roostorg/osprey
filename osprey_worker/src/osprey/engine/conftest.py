@@ -38,8 +38,6 @@ from osprey.worker.lib.singletons import CONFIG
 from typing_extensions import Protocol
 
 if TYPE_CHECKING:
-    from _pytest.config import Config
-    from _pytest.config.argparsing import Parser
     from _pytest.fixtures import FixtureRequest
 
 
