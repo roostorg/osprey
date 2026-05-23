@@ -60,6 +60,7 @@ const QueryHistoryListContent = ({
 
   React.useEffect(() => {
     // Reset accumulated queries when initial queries change (parent data reload)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync with parent data load
     setAccumulatedQueries(initialQueries);
   }, [initialQueries]);
 
