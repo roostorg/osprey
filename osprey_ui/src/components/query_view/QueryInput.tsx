@@ -68,14 +68,19 @@ const QueryInput = ({
     setSelectedInterval(value);
   };
 
+  const options = React.useMemo(
+    () =>
+      [...knownFeatureNames, ...knownActionNames].map((option: string) => ({
+        value: option,
+        label: <OptionLabelWithInfo option={option} optionInfoMapping={ruleInfoMapping} />,
+      })),
+    [knownFeatureNames, knownActionNames, ruleInfoMapping]
+  );
+
   React.useEffect(() => {
-    const options = [...knownFeatureNames, ...knownActionNames].map((option: string) => ({
-      value: option,
-      label: <OptionLabelWithInfo option={option} optionInfoMapping={ruleInfoMapping} />,
-    }));
     setSearchOptions(options);
     setFilteredOptions(options);
-  }, [knownFeatureNames, knownActionNames]);
+  }, [options]);
 
   React.useEffect(() => {
     setQueryFilter(executedQuery.queryFilter);
