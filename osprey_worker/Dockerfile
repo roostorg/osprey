@@ -28,7 +28,6 @@ ENV MALLOC_CONF="narenas:4"
 # Set up python environment
 ADD uv.lock /osprey/uv.lock
 ADD pyproject.toml /osprey/pyproject.toml
-ADD conftest.py /osprey/conftest.py
 ADD README.md /osprey/README.md
 ADD LICENSE.md /osprey/LICENSE.md
 

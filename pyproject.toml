@@ -228,6 +228,9 @@ ignore_unused = [
     "nostril",
 ]
 
+[tool.pytest.ini_options]
+testpaths = ["osprey_worker"]
+
 [tool.mypy]
 plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
 python_version = "3.11"

@@ -403,5 +403,3 @@ def check_failure(check_output: CheckOutputFunction) -> CheckFailureFunction:
         assert check_output(e.value.rendered())
 
     return check_failure
-
-

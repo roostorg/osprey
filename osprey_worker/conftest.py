@@ -6,6 +6,7 @@ argument parsing occurs. Placing this at the osprey_worker level ensures
 it's loaded regardless of whether pytest is invoked from the worktree root
 or from within osprey_worker/ subpaths.
 """
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -17,16 +18,11 @@ def pytest_addoption(parser: 'Parser') -> None:
     """Register custom pytest options.
 
     This hook must be discovered early by pytest during plugin loading
-    (before argument parsing). Only register if not already present to avoid
-    conflicts when multiple conftest.py files are loaded.
+    (before argument parsing).
     """
-    try:
-        parser.addoption(
-            '--write-outputs', action='store_true', help='write checked validator outputs instead of checking them'
-        )
-    except ValueError:
-        # Option already registered by another conftest.py file
-        pass
+    parser.addoption(
+        '--write-outputs', action='store_true', help='write checked validator outputs instead of checking them'
+    )
 
 
 def pytest_configure(config: 'Config') -> None:
