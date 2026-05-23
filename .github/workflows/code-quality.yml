@@ -78,6 +78,10 @@ jobs:
         run: corepack pnpm run format:check
         working-directory: osprey_ui
 
+      - name: Run eslint check
+        run: corepack pnpm run lint
+        working-directory: osprey_ui
+
       - name: Typecheck
         run: corepack pnpm run typecheck
         working-directory: osprey_ui
