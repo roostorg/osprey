@@ -4,7 +4,6 @@ import TimeseriesIcon from '../../uikit/icons/TimeseriesIcon';
 import OspreyButton from '../../uikit/OspreyButton';
 import useQueryStore from '../../stores/QueryStore';
 import { Chart } from '../../types/QueryTypes';
-import { Empty } from 'antd';
 import styles from './Charts.module.css';
 import ChartComponent from './Chart';
 
@@ -17,8 +16,8 @@ const Charts: React.FC = () => {
         {charts
           .map((chart, index) => ({ chart, index }))
           .reverse()
-          .filter(({ chart, index }) => !chart.deleted)
-          .map(({ chart, index }) => {
+          .filter(({ chart }) => !chart.deleted)
+          .map(({ chart: _chart, index }) => {
             return <ChartComponent key={index} index={index} />;
           })}
       </div>

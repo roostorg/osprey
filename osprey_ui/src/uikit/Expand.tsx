@@ -108,7 +108,7 @@ const Expand = ({ children, className, rowHeight, fadeColor = Colors.BACKGROUND_
 
   const renderChildNode = () => {
     if (children == null) return null;
-    return React.cloneElement(children as React.ReactElement<any>, { ref: childNodeRef });
+    return React.cloneElement(children as React.ReactElement<Record<string, unknown>>, { ref: childNodeRef });
   };
 
   const renderGradientOverlay = () => {

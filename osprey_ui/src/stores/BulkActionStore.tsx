@@ -22,7 +22,7 @@ interface BulkActionStore {
 
 const useBulkActionStore = create<BulkActionStore>((set, get) => ({
   startBulkAction: async (request: StartBulkActionJobRequest): Promise<StartBulkActionResponse> => {
-    const { file, ...startRequest } = request;
+    const { file: _file, ...startRequest } = request;
 
     const result = await startBulkAction(startRequest);
 

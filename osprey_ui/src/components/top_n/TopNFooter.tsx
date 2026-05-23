@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 import { SelectOutlined, StopOutlined } from '@ant-design/icons';
 
 import useApplicationConfigStore from '../../stores/ApplicationConfigStore';

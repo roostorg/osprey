@@ -77,10 +77,6 @@ const SavedQueryCard = ({
     </div>
   );
 
-  const highlightedQueryContent = highlightMatchedText(
-    splitStringIncludingMatches(savedQuery.query.query_filter, searchQuery.query, searchQuery.regex)
-  );
-
   const actionData = (
     <div className={styles.savedQueryActionData}>
       <QueryCardActionData user={savedQuery.saved_by} timestamp={savedQuery.saved_at} action="saved at" />

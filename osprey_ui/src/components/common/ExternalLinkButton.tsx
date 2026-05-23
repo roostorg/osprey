@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 import { SelectOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import classNames from 'classnames';

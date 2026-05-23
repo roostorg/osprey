@@ -47,9 +47,9 @@ export async function getQueriesHistory(userEmail?: string, before?: string): Pr
     return [];
   }
 
-  let data = response.data;
+  const data = response.data;
 
-  return data.map((d: any) => {
+  return data.map((d: QueryRecord) => {
     if (Array.isArray(d.top_n)) {
       d.top_n = d.top_n.map(TopNTable.fromQueryParam);
     }

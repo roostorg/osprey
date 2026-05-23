@@ -73,12 +73,13 @@ export function renderFromPromiseResult<T>(
       return options.renderResolving?.() ?? <Resolving />;
     case PromiseResultStatus.Resolved:
       return renderResolved(promiseResult.value);
-    case PromiseResultStatus.Rejected:
+    case PromiseResultStatus.Rejected: {
       const { error, retry } = promiseResult;
       return (
         options.renderRejected?.(error, retry) ?? (
           <Rejected error={error} retry={retry} showStackTrace={options.showStackTrace ?? true} />
         )
       );
+    }
   }
 }

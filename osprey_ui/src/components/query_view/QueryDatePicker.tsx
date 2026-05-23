@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 import { EditOutlined } from '@ant-design/icons';
 import { DatePicker } from 'antd';
 import type { RangePickerProps } from 'antd/es/date-picker';
@@ -22,7 +22,7 @@ interface QueryDatePickerProps {
 type RangePickerValue = [Dayjs, Dayjs];
 
 const QueryDatePicker = ({ onIntervalChange, onDateRangeChange, interval, dateRange }: QueryDatePickerProps) => {
-  const handleRangePickerChange: RangePickerProps['onChange'] = (dates, _dateStrings) => {
+  const handleRangePickerChange: RangePickerProps['onChange'] = (dates) => {
     if (dates == null) return;
 
     const start = dates[0];

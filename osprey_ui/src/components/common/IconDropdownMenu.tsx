@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 
 import DropdownMenu, { MenuOption } from '../../uikit/DropdownMenu';
 import OspreyButton, { ButtonColors } from '../../uikit/OspreyButton';

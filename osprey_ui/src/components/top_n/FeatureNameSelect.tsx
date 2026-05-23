@@ -57,4 +57,6 @@ const FeatureNameSelect = React.memo(
   }
 );
 
+FeatureNameSelect.displayName = 'FeatureNameSelect';
+
 export default FeatureNameSelect;
