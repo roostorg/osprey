@@ -37,6 +37,7 @@
     "zustand": "3.5.2"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.0",
     "@types/classnames": "2.2.9",
     "@types/cytoscape": "^3.19.4",
     "@types/cytoscape-dagre": "^2.3.0",
@@ -54,14 +55,16 @@
     "@types/react-router-dom": "5.3.3",
     "@types/react-virtualized": "9.21.8",
     "@types/uuid": "9.0.5",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "eslint": "8.57.0",
-    "eslint-plugin-react-hooks": "4.2.0",
+    "eslint": "^10.4.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.6.0",
     "prettier": "3.6.2",
     "rc-picker": "2.7.6",
     "sass": "^1.92.0",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "typescript-eslint": "^8.59.4"
   },
   "scripts": {
     "start": "DISABLE_ESLINT_PLUGIN=true NODE_OPTIONS='--openssl-legacy-provider' react-scripts start",
