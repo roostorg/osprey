@@ -53,3 +53,10 @@ repos:
         types_or: [javascript, jsx, ts, tsx, json, css, scss, markdown]
         language: system
         pass_filenames: true
+      - id: eslint-osprey-ui
+        name: eslint (osprey_ui)
+        entry: |
+          bash -c 'cd osprey_ui && set -- "${@/#osprey_ui\//}" && exec npx eslint --suppressions-location ./eslint-suppressions.json --pass-on-unpruned-suppressions "$@"' --
+        files: ^osprey_ui/src/.*\.(jsx?|tsx?)$
+        language: system
+        pass_filenames: true
