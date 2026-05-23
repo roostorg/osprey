@@ -29,9 +29,9 @@ const EventStreamCard = ({ eventDetails, selectedFeatures, featureLocations, isL
   const decodedEntityId = entityId != null ? decodeURIComponent(entityId) : null;
   const decodedEntityType = entityType != null ? decodeURIComponent(entityType) : null;
   const featureNameToEntityTypeMapping = useApplicationConfigStore((state) => state.featureNameToEntityTypeMapping);
+  const eventUrl = `${document.location.origin}/events/${eventDetails.id}`;
 
   const handleShowWindow = () => {
-    const eventUrl = `${document.location.origin}/events/${eventDetails.id}`;
     window.open(eventUrl, '_blank', 'width=800,height=800');
   };
 
@@ -80,8 +80,6 @@ const EventStreamCard = ({ eventDetails, selectedFeatures, featureLocations, isL
     );
   };
 
-  const eventUrl = `${document.location.origin}/events/${eventDetails.id}`;
-
   const cardTitle = (
     <div className={styles.cardTitle}>
       <Feature
@@ -110,9 +108,7 @@ const EventStreamCard = ({ eventDetails, selectedFeatures, featureLocations, isL
     <div className={styles.card}>
       <div className={styles.cardHeader}>
         {cardTitle}
-        <OspreyButton onClick={handleShowWindow}>
-          See Details
-        </OspreyButton>
+        <OspreyButton onClick={handleShowWindow}>See Details</OspreyButton>
       </div>
       <div>{renderContent()}</div>
     </div>
