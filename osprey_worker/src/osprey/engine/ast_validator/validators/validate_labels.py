@@ -28,7 +28,8 @@ class ValidateLabels(SourceValidator):
 
     def validate_source(self, source: 'grammar.Source') -> None:
         for call_node in filter_nodes(source.ast_root, grammar.Call):
-            _, arguments = self._udf_node_mapping[id(call_node)]
+            span_key = (call_node.span.source.path, call_node.span.start_line, call_node.span.start_pos)
+            _, arguments = self._udf_node_mapping[span_key]
             if isinstance(arguments, LabelArguments):
                 self._validate_label(call_node, arguments)
 

@@ -96,7 +96,8 @@ class ImportsMustNotHaveCycles(BaseValidator, HasResult[ImportGraphResult]):
         from osprey.engine.stdlib.udfs.import_ import Import
 
         for call_node in filter_nodes(source.ast_root, Call):
-            udf, _ = self._udf_node_mapping[id(call_node)]
+            span_key = (call_node.span.source.path, call_node.span.start_line, call_node.span.start_pos)
+            udf, _ = self._udf_node_mapping[span_key]
             if not isinstance(udf, Import):
                 continue
 

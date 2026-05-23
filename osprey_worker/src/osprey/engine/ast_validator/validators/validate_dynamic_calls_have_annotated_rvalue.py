@@ -106,5 +106,6 @@ class ValidateDynamicCallsHaveAnnotatedRValue(SourceValidator):
                     ),
                 )
 
-        udf, _ = self._udf_node_mapping[id(call_node)]
+        span_key = (call_node.span.source.path, call_node.span.start_line, call_node.span.start_pos)
+        udf, _ = self._udf_node_mapping[span_key]
         udf.set_rvalue_type_checker(rvalue_type_checker)

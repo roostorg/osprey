@@ -301,7 +301,8 @@ class ValidateStaticTypes(SourceValidator, HasInput[Dict[str, _TypeAndSpan]], Ha
         return List[child_type]  # type: ignore # Doesn't like runtime types like this
 
     def _validate_call(self, call: grammar.Call) -> type:
-        udf, arguments = self._udf_node_mapping[id(call)]
+        span_key = (call.span.source.path, call.span.start_line, call.span.start_pos)
+        udf, arguments = self._udf_node_mapping[span_key]
 
         # Special case to handle import. Need to do this so we populate name types.
         if isinstance(udf, Import):

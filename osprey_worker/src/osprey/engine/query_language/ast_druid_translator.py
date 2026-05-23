@@ -99,7 +99,8 @@ class DruidQueryTransformer:
             raise DruidQueryTransformException(node, 'Unknown Unary Operator')
 
     def transform_Call(self, node: grammar.Call) -> Dict[str, Any]:
-        udf, _ = self._udf_node_mapping[id(node)]
+        span_key = (node.span.source.path, node.span.start_line, node.span.start_pos)
+        udf, _ = self._udf_node_mapping[span_key]
 
         if not isinstance(udf, QueryUdfBase):
             raise DruidQueryTransformException(node, 'Unknown function call type')
