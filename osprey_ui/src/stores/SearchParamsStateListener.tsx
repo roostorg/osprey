@@ -3,7 +3,7 @@ import { isEqual } from 'lodash';
 
 import { extractQueryStateFromSearchParams, setSearchParamsForEntityView } from '../utils/QueryStoreUtils';
 import { baseQueryEquals, topNEquals } from '../utils/QueryUtils';
-import useQueryStore, { history, QueryStore } from './QueryStore';
+import useQueryStore, { history } from './QueryStore';
 
 import { Routes } from '../Constants';
 
@@ -31,19 +31,15 @@ history.listen((location: Location) => {
     return;
   }
 
-  const stateUpdate: Partial<QueryStore> = {};
-
   if (!baseQueryEquals(executedQuery, newState.executedQuery)) {
-    stateUpdate.executedQuery = newState.executedQuery;
+    useQueryStore.setState({ executedQuery: newState.executedQuery });
   }
 
   if (newState.sortOrder !== sortOrder) {
-    stateUpdate.sortOrder = newState.sortOrder;
+    useQueryStore.setState({ sortOrder: newState.sortOrder });
   }
 
   if (!topNEquals(newState.topNTables, topNTables)) {
-    stateUpdate.topNTables = newState.topNTables;
+    useQueryStore.setState({ topNTables: newState.topNTables });
   }
-
-  useQueryStore.setState(stateUpdate);
 });
