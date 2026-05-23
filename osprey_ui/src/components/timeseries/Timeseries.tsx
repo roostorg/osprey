@@ -176,6 +176,7 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
   const [granularity, setGranularity] = React.useState(defaultGranularity);
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset data and loading on query change
     setIsLoading(true);
 
     let shouldApply = true;
@@ -206,6 +207,7 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
 
   React.useEffect(() => {
     // update granularity when we change the query range
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync granularity with calculated default
     setGranularity(defaultGranularity);
   }, [defaultGranularity]);
 
