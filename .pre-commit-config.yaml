@@ -55,8 +55,7 @@ repos:
         pass_filenames: true
       - id: eslint-osprey-ui
         name: eslint (osprey_ui)
-        entry: |
-          bash -c 'cd osprey_ui && set -- "${@/#osprey_ui\//}" && exec npx eslint --suppressions-location ./eslint-suppressions.json --pass-on-unpruned-suppressions "$@"' --
+        entry: npx --prefix osprey_ui eslint
         files: ^osprey_ui/src/.*\.(jsx?|tsx?)$
         language: system
         pass_filenames: true
