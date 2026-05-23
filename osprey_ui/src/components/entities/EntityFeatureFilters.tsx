@@ -24,7 +24,7 @@ const DROPDOWN_MENU_WIDTH_WITH_MARGIN = 70;
 
 const Divider = () => <div className={styles.divider} />;
 
-function sortFeatureFiltersByEventVolume([_nameA, countA]: [string, number], [_nameB, countB]: [string, number]) {
+function sortFeatureFiltersByEventVolume([, countA]: [string, number], [, countB]: [string, number]) {
   return countB - countA;
 }
 
@@ -102,7 +102,7 @@ const EntityFeatureFilters = () => {
 
   const renderFeatureFilters = () => {
     const sortedFeatureNamesToCounts = Object.entries(eventCountByFeature)
-      .filter(([_, count]) => count > 0)
+      .filter(([, count]) => count > 0)
       .sort(sortFeatureFiltersByEventVolume);
 
     // Filters that are past the hiddenFilterIndex are off screen

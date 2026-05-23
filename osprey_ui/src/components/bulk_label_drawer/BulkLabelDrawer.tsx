@@ -17,7 +17,7 @@ interface BulkLabelDrawerContentProps {
   onEntityUnchecked: (entityUnchecked: boolean) => void;
 }
 
-const BulkLabelDrawerContent = ({ onCancel, onEntityUnchecked }: BulkLabelDrawerContentProps) => {
+const BulkLabelDrawerContent = ({ onCancel, onEntityUnchecked: _onEntityUnchecked }: BulkLabelDrawerContentProps) => {
   const [bulkLabelEntityType, bulkLabelFeatureName] = useLabelStore(
     (state) => [state.bulkLabelEntityType, state.bulkLabelFeatureName],
     shallow

@@ -13,7 +13,6 @@ import TimeseriesIcon from '../../uikit/icons/TimeseriesIcon';
 import Panel from '../common/Panel';
 
 import styles from './Timeseries.module.css';
-import { makeEntityRoute } from '../../utils/RouteUtils';
 
 const CHART_TYPE = 'column';
 // prettier-ignore

@@ -6,7 +6,6 @@ import useApplicationConfigStore, { LabelInfoMapping } from '../stores/Applicati
 import { SortedLabels, Label, LabelConnotation } from '../types/LabelTypes';
 import { FeatureLocation } from '../types/ConfigTypes';
 import EntityNameWithPopover from '../components/entities/EntityNameWithPopover';
-import FeatureName from '../components/common/FeatureName';
 
 export function wrapEntityKeysWithFeatureLocationsMenu(
   featureName: string,

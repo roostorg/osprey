@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { Empty } from 'antd';
 import { useParams } from 'react-router-dom';
 

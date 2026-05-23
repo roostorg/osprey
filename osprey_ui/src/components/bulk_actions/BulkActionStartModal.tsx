@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { App, Modal, Form, Input, Select, Upload, Button } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
-import type { FormInstance } from 'antd/es/form';
 import styles from './BulkActionStartModal.module.css';
 import useBulkActionStore from '../../stores/BulkActionStore';
 
