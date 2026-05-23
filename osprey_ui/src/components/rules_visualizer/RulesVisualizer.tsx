@@ -26,7 +26,7 @@ const nodeStyle: Css.Node = {
 };
 
 const ToolTip = ({ node }: { node: { data: (key: string) => unknown } }) => {
-  return <div>{node.data('file_path')}</div>;
+  return <div>{String(node.data('file_path'))}</div>;
 };
 
 const RulesVisualizerView = () => {

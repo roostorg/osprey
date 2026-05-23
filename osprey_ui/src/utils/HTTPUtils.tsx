@@ -15,7 +15,7 @@ export type HTTPResponse = (AxiosResponse & { ok: true }) | { ok: false; error: 
 const errorHandler = (error: AxiosError<unknown>): HTTPResponse => {
   if (error.response != null) {
     const { errors } = useErrorStore.getState();
-    useErrorStore.setState({ errors: new Set([...errors, error.response.data]) });
+    useErrorStore.setState({ errors: new Set([...errors, String(error.response.data)]) });
   }
 
   return { ok: false, error };

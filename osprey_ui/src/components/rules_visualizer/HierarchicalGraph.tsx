@@ -3,7 +3,7 @@ import * as ReactDOM from 'react-dom/client';
 import cytoscape, { Css, NodeSingular } from 'cytoscape';
 import dagre, { DagreLayoutOptions } from 'cytoscape-dagre';
 import popper from 'cytoscape-popper';
-import tippy from 'tippy.js';
+import tippy, { Instance } from 'tippy.js';
 
 import { HierarchicalGraphOptions } from '../../types/RulesVisualizerTypes';
 
@@ -67,10 +67,10 @@ const HierarchicalGraph = ({
     });
     onLoad(cy);
 
-    let tip: unknown;
+    let tip: Instance | undefined;
     if (ToolTip) {
       cy.nodes().bind('mouseover', (event) => {
-        tip = renderToolTipWithTippy(event.target as NodeSingular, ToolTip, containerRef, toolTipRef, tooltipRootRef);
+        tip = renderToolTipWithTippy(event.target as NodeSingular, ToolTip, containerRef, toolTipRef, tooltipRootRef) as Instance | undefined;
       });
       cy.nodes().bind('mouseout', () => {
         if (tip) {
