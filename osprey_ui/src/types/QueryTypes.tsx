@@ -147,7 +147,7 @@ export interface QueryRecordRequest {
 export interface OspreyEvent {
   timestamp: string;
   id: string;
-  extracted_features: { [key: string]: any };
+  extracted_features: Record<string, unknown>;
 }
 
 export interface ScanResult {
@@ -204,9 +204,9 @@ export interface EventCountsByFeatureForEntityQuery {
 
 export interface StoredExecutionResult {
   id: string;
-  extracted_features: { [key: string]: any };
+  extracted_features: Record<string, unknown>;
   timestamp: string;
-  action_data: { [key: string]: any };
+  action_data: Record<string, unknown>;
   error_traces: Array<{
     rules_source_location: string;
     traceback: string;

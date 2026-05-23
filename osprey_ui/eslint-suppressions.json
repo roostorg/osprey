@@ -4,43 +4,9 @@
       "count": 1
     }
   },
-  "src/actions/ConfigActions.tsx": {
-    "no-prototype-builtins": {
-      "count": 1
-    }
-  },
-  "src/actions/QueryActions.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
-    "prefer-const": {
-      "count": 1
-    }
-  },
-  "src/actions/RulesVisualizerActions.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "src/actions/SavedQueryActions.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    },
-    "prefer-const": {
-      "count": 5
-    }
-  },
-  "src/assets/Logo.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/components/bulk_actions/BulkActionStartModal.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
     "@typescript-eslint/no-unused-vars": {
-      "count": 3
+      "count": 1
     }
   },
   "src/components/bulk_actions/BulkActionTable.tsx": {
@@ -66,11 +32,6 @@
       "count": 1
     }
   },
-  "src/components/bulk_label_drawer/BulkLabelDrawerList.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/components/charts/Chart.tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 1
@@ -81,32 +42,12 @@
       "count": 3
     }
   },
-  "src/components/common/ExternalLinkButton.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/components/common/Feature.tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 1
     }
   },
-  "src/components/common/FilterPill.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/components/common/IconDropdownMenu.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/components/common/LabelForm.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/components/common/ModalFooter.tsx": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     }
@@ -116,62 +57,14 @@
       "count": 1
     }
   },
-  "src/components/common/SourcesLink.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/components/docs/UdfDocsView.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/components/entities/EntityFeatureFilters.tsx": {
-    "@typescript-eslint/no-unsafe-function-type": {
-      "count": 2
-    },
     "@typescript-eslint/no-unused-vars": {
       "count": 3
-    }
-  },
-  "src/components/entities/EntityViewBar.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/components/entities/FeatureFiltersDetailBar.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/components/entities/LabelDrawer.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/components/entities/LabelReason.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
     }
   },
   "src/components/entities/LabelRow.tsx": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2
-    }
-  },
-  "src/components/entities/RichDescription.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/components/entities/RichDescriptorValue.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/components/event_stream/EventDetailsPanel.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
     }
   },
   "src/components/event_stream/EventStream.tsx": {
@@ -189,27 +82,14 @@
       "count": 1
     }
   },
-  "src/components/query_history/QueryRecordCardButtons.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/components/query_view/QueryDatePicker.tsx": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 2
+      "count": 1
     }
   },
   "src/components/query_view/QueryInput.tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 2
-    }
-  },
-  "src/components/query_view/QueryPanel.tsx": {
-    "@typescript-eslint/no-empty-object-type": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
     }
   },
   "src/components/query_view/QuerySearchContext.tsx": {
@@ -222,46 +102,17 @@
       "count": 1
     }
   },
-  "src/components/rules_visualizer/HierarchicalGraph.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    }
-  },
   "src/components/rules_visualizer/RulesVisualizer.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     }
   },
   "src/components/rules_visualizer/RulesVisualizerHeader.tsx": {
-    "@typescript-eslint/no-unsafe-function-type": {
-      "count": 1
-    },
-    "@typescript-eslint/no-wrapper-object-types": {
-      "count": 1
-    },
     "jsx-a11y/no-autofocus": {
       "count": 1
     }
   },
-  "src/components/saved_queries/SaveQueryModal.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/components/saved_queries/SavedQueryCard.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/components/saved_queries/SavedQueryCardButtons.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/components/saved_queries/SavedQueryDrawer.tsx": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     }
@@ -274,33 +125,17 @@
       "count": 2
     }
   },
-  "src/components/top_n/CSVDownloadModal.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
   "src/components/top_n/FeatureNameSelect.tsx": {
     "react/display-name": {
       "count": 1
     }
   },
-  "src/components/top_n/TopNFooter.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/components/top_n/TopNTable.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 7
-    },
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     }
   },
   "src/hooks/usePromiseResult.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
       "count": 1
     }
@@ -315,151 +150,23 @@
       "count": 1
     }
   },
-  "src/stores/SearchParamsStateListener.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "src/types/BulkJobTypes.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "src/types/QueryTypes.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 3
-    }
-  },
   "src/uikit/Collapse.tsx": {
     "react-hooks/refs": {
       "count": 1
     }
   },
   "src/uikit/Expand.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
     "@typescript-eslint/no-unused-vars": {
       "count": 2
-    }
-  },
-  "src/uikit/OspreyButton.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/ArrowIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/BrandDot.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/CloseCircleIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/EventStreamIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/ExitIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/ExpandIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/FilterIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/FrownyFaceIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/HorizontalMenuIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/ManuallyAddedIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/ManuallyRemovedIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/NeutralFaceIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/QueryHistoryIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/QueryIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/SavedQueriesIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/SmileyFaceIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/StarIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/TimeseriesIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/uikit/icons/TopNIcon.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
     }
   },
   "src/utils/EntityUtils.tsx": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    }
-  },
-  "src/utils/HTTPUtils.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "src/utils/LabelUtils.tsx": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/utils/PromiseResultUtils.tsx": {
-    "no-case-declarations": {
       "count": 1
     }
   },

@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 
 import { LabelReason as Reason } from '../../types/LabelTypes';
 import Text, { TextColors, TextSizes, TextWeights } from '../../uikit/Text';

@@ -31,7 +31,7 @@ history.listen((location: Location) => {
     return;
   }
 
-  const stateUpdate: QueryStore = {} as any;
+  const stateUpdate: Partial<QueryStore> = {};
 
   if (!baseQueryEquals(executedQuery, newState.executedQuery)) {
     stateUpdate.executedQuery = newState.executedQuery;

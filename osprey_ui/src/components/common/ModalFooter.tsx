@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 
 import OspreyButton, { ButtonColors, ButtonWeights } from '../../uikit/OspreyButton';
 

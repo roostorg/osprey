@@ -67,7 +67,7 @@ const HierarchicalGraph = ({
     });
     onLoad(cy);
 
-    let tip: any;
+    let tip: unknown;
     if (ToolTip) {
       cy.nodes().bind('mouseover', (event) => {
         tip = renderToolTipWithTippy(event.target as NodeSingular, ToolTip, containerRef, toolTipRef, tooltipRootRef);
@@ -114,13 +114,13 @@ function renderToolTipWithTippy(
     tooltipRootRef.current.render(<ToolTip node={node} />);
   }
   if (containerRef.current && toolTipRef.current) {
-    const tip: any = tippy(containerRef.current, {
+    const tip: unknown = tippy(containerRef.current, {
       getReferenceClientRect: popperRef.getBoundingClientRect,
       content: toolTipRef.current,
       placement: 'bottom',
       arrow: true,
     });
-    tip.show();
+    (tip as { show: () => void }).show();
     return tip;
   }
 }

@@ -31,7 +31,7 @@ export default function usePromiseResult<T>(resolver: Resolver<T>, deps: React.D
           if (isCurrent) {
             setState({ status: PromiseResultStatus.Resolved, value });
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           // eslint-disable-next-line no-console
           console.error('Error while resolving promise', error);
           if (isCurrent) {
@@ -44,7 +44,7 @@ export default function usePromiseResult<T>(resolver: Resolver<T>, deps: React.D
                 setRetryCounter((x) => x + 1);
               }
             };
-            setState({ status: PromiseResultStatus.Rejected, error, retry });
+            setState({ status: PromiseResultStatus.Rejected, error: error as Error, retry });
           }
         }
       };

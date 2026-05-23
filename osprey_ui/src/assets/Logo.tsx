@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 interface LogoProps {
   variant?: 'full' | 'mark';
   width?: number;
