@@ -160,6 +160,12 @@ services:
       - BIGTABLE_EMULATOR_HOST=bigtable:8361
       - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
       - SNOWFLAKE_EPOCH=1420070400000
+      - OSPREY_EXECUTION_RESULT_STORAGE_BACKEND=minio
+      - OSPREY_MINIO_ENDPOINT=minio:9000
+      - OSPREY_MINIO_ACCESS_KEY=minioadmin
+      - OSPREY_MINIO_SECRET_KEY=minioadmin123
+      - OSPREY_MINIO_SECURE=false
+      - OSPREY_MINIO_EXECUTION_RESULTS_BUCKET=execution-output
     volumes:
       - ./osprey_worker:/osprey/osprey_worker
       - ./osprey_rpc:/osprey/osprey_rpc
