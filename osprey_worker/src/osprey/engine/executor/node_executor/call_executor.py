@@ -22,11 +22,14 @@ class CallExecutor(BaseNodeExecutor[Call, Any]):
     _udf: 'UDFBase[Any, Any]'
 
     def __init__(self, node: Call, sources: 'ValidatedSources'):
-        from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
+        from osprey.engine.ast_validator.validators.validate_call_kwargs import (
+            ValidateCallKwargs,
+            udf_mapping_key,
+        )
 
         super().__init__(node=node, sources=sources)
         udf_map = sources.get_validator_result(ValidateCallKwargs)
-        self._udf, self.unresolved_arguments = udf_map[id(node)]
+        self._udf, self.unresolved_arguments = udf_map[udf_mapping_key(node)]
         self.dependent_node_dict = self.unresolved_arguments.get_dependent_node_dict()
 
     def set_tracing_tags(self, span: 'Span') -> None:
