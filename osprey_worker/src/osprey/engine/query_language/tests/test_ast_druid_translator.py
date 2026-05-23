@@ -128,36 +128,44 @@ def test_parses_query_with_regex_match_on_username(
     assert transformed_query['filter'].get('pattern') == '^jake'
 
 
-def test_udf_node_mapping_with_missing_entry(
+def test_udf_node_mapping_uses_stable_keys(
     make_rules_sources: MakeRulesSourcesFunction,
 ) -> None:
     """
-    Regression test for issue #158: KeyError in transform_Call when UDF node mapping is keyed by id(node).
+    Regression test for issue #158: UDF node mapping must use stable keys, not object identity.
 
-    This test verifies that transform_Call can handle Call nodes that aren't in the UDF mapping,
-    which can occur if:
-    1. A Call node passes syntax validation but fails argument validation
-    2. The node is included in the AST but not added to _udf_node_mapping
-    3. transform_Call tries to look it up and gets KeyError
+    The bug was that ValidateCallKwargs keyed the mapping by id(call_node), which is unstable
+    if the AST is reparsed or nodes are reconstructed. This caused KeyError in consumers like
+    DruidQueryTransformer, ValidateStaticTypes, etc. when they tried to look up the UDF.
 
-    The fix should either:
-    - Use a stable key instead of id(node), or
-    - Handle missing keys gracefully in transform_Call
+    The fix changes the key to be (source.path, start_line, start_pos), which is stable across
+    reparsing and object reconstruction.
     """
-    # This test would ideally simulate the case where a Call node exists in the AST
-    # but wasn't added to the mapping. Since our valid queries always have valid UDFs,
-    # we'll just verify the current behavior works.
     rules_sources = make_rules_sources([('UserName', '"some_user"')])
 
-    # Parse the query with a valid UDF
+    # Parse and validate the query
     query = "RegexMatch(item=UserName, regex='^jake')"
     validated_sources = parse_query_to_validated_ast(query, rules_sources)
 
-    # Create transformer and attempt to transform
+    # Get the UDF mapping
+    udf_mapping = validated_sources.get_validator_result(ValidateCallKwargs)
+    assert len(udf_mapping) > 0, "Should have at least one UDF in mapping"
+
+    # Verify that the mapping uses stable (source_path, line, pos) keys (tuples)
+    # not id()-based keys (integers)
+    for key in udf_mapping.keys():
+        assert isinstance(key, tuple), (
+            f"Mapping should use stable (source_path, line, pos) tuple keys, "
+            f"not id() keys. Got {type(key)}: {key}"
+        )
+        assert len(key) == 3, f"Key should be (path, line, pos) tuple with 3 elements, got {len(key)}: {key}"
+        assert isinstance(key[0], str), f"First key element should be path (str), got {type(key[0])}"
+        assert isinstance(key[1], int), f"Second key element should be line (int), got {type(key[1])}"
+        assert isinstance(key[2], int), f"Third key element should be pos (int), got {type(key[2])}"
+
+    # Verify transformation works (consumes the stable keys)
     transformer = DruidQueryTransformer(validated_sources=validated_sources)
     transformed_query = transformer.transform()
-
-    # Verify the transformation succeeded
     assert transformed_query is not None
     assert isinstance(transformed_query, dict)
     assert 'filter' in transformed_query
