@@ -47,4 +47,7 @@ const QueryFilter = React.forwardRef(
     );
   }
 );
+
+QueryFilter.displayName = 'QueryFilter';
+
 export default QueryFilter;

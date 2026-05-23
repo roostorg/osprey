@@ -138,7 +138,7 @@ const BulkLabelDrawer: React.FC = () => {
         onOk={handleConfirmationOk}
         onCancel={handleConfirmationCancel}
       >
-        <p>You have some entities deselected and you'll lose the state if you close!</p>
+        <p>You have some entities deselected and you&apos;ll lose the state if you close!</p>
       </Modal>
     </Drawer>
   );

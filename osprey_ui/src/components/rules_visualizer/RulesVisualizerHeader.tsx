@@ -107,7 +107,6 @@ const RulesVisualizerHeader = ({
             onSelect={handleFeatureSelect}
             filterOption
             defaultOpen
-            autoFocus
           >
             <Input.Search size="large" placeholder="Search by action or label" enterButton allowClear />
           </AutoComplete>
