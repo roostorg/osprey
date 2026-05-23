@@ -9,7 +9,7 @@ export async function createSavedQuery(queryId: string, name: string): Promise<S
     throw Error;
   }
 
-  let data = response.data;
+  const data = response.data;
   if (Array.isArray(data.query.top_n)) {
     data.query.top_n = data.query.top_n.map(TopNTable.fromQueryParam);
   }
@@ -26,9 +26,9 @@ export async function getSavedQueries(userEmail?: string, before?: string): Prom
     return [];
   }
 
-  let data = response.data;
+  const data = response.data;
 
-  return data.map((d: any) => {
+  return data.map((d: SavedQuery) => {
     if (Array.isArray(d.query.top_n)) {
       d.query.top_n = d.query.top_n.map(TopNTable.fromQueryParam);
     }
@@ -43,7 +43,7 @@ export async function getSavedQuery(savedQueryId: string): Promise<SavedQuery> {
     throw Error('Saved query not found');
   }
 
-  let data = response.data;
+  const data = response.data;
   if (Array.isArray(data.query.top_n)) {
     data.query.top_n = data.query.top_n.map(TopNTable.fromQueryParam);
   }
@@ -68,7 +68,7 @@ export async function updateSavedQuery(
     throw Error('Error updating saved query');
   }
 
-  let data = response.data;
+  const data = response.data;
   if (Array.isArray(data.query.top_n)) {
     data.query.top_n = data.query.top_n.map(TopNTable.fromQueryParam);
   }
@@ -83,9 +83,9 @@ export async function getSavedQueryHistory(savedQueryId: string): Promise<QueryR
     return [];
   }
 
-  let data = response.data;
+  const data = response.data;
 
-  return data.map((d: any) => {
+  return data.map((d: QueryRecord) => {
     if (Array.isArray(d.top_n)) {
       d.top_n = d.top_n.map(TopNTable.fromQueryParam);
     }

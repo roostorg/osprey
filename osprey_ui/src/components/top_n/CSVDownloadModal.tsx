@@ -23,7 +23,7 @@ enum RadioOptions {
 
 const MAXIMUM_ROWS = 100000;
 
-function validateLimitInput(_: any, limitStr: string): Promise<void> {
+function validateLimitInput(_: unknown, limitStr: string): Promise<void> {
   const limit = Number(limitStr);
 
   if (isNaN(limit) || limit <= 0) {

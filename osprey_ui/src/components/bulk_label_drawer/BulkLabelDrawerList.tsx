@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 import { Button, List, Checkbox } from 'antd';
 import { CheckboxChangeEvent } from 'antd/lib/checkbox';
 import { AutoSizer, List as VList, ListRowProps } from 'react-virtualized';

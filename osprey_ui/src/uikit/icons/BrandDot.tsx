@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 
 const BrandDot = ({ className }: { className?: string }) => {
   return (

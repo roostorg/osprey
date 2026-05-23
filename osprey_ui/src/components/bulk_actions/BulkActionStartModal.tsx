@@ -4,7 +4,6 @@ import { UploadOutlined } from '@ant-design/icons';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import type { FormInstance } from 'antd/es/form';
 import styles from './BulkActionStartModal.module.css';
-import { max, set } from 'lodash';
 import useBulkActionStore from '../../stores/BulkActionStore';
 
 const { TextArea } = Input;
@@ -62,11 +61,11 @@ const BulkActionStartModal: React.FC<JobUploadModalProps> = ({ open, onCancel, o
     }
   };
 
-  const normFile = (e: any): UploadFile[] => {
+  const normFile = (e: unknown): UploadFile[] => {
     if (Array.isArray(e)) {
       return e;
     }
-    return e?.fileList || [];
+    return (e as { fileList?: UploadFile[] })?.fileList || [];
   };
 
   // Custom validation rules

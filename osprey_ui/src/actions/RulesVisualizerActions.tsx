@@ -1,5 +1,12 @@
 import HTTPUtils, { HTTPResponse } from '../utils/HTTPUtils';
 
+interface GraphJsonResponse {
+  [key: string]: unknown;
+  errorMessage?: string;
+  selectedFeature?: string;
+  selectedFeatureType?: string;
+}
+
 export async function getGraphJson(
   type: string,
   names: string[],
@@ -17,7 +24,7 @@ export async function getGraphJson(
   };
 }
 
-async function getActionsViewGraphJson(action_names: Array<string>): Promise<any> {
+async function getActionsViewGraphJson(action_names: Array<string>): Promise<GraphJsonResponse> {
   const response: HTTPResponse = await HTTPUtils.post(`/rules_visualizer/actions_view/`, { action_names });
   const selection = {
     selectedFeature: action_names[0],
@@ -41,7 +48,7 @@ async function getLabelsViewGraphJson(
   label_names: Array<string>,
   showLabelUpstream: boolean,
   showLabelDownstream: boolean
-): Promise<any> {
+): Promise<GraphJsonResponse> {
   const response: HTTPResponse = await HTTPUtils.post(`/rules_visualizer/labels_view/`, {
     label_names,
     show_upstream: showLabelUpstream,

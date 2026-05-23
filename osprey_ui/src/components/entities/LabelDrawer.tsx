@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 import { Drawer } from 'antd';
 
 import useApplicationConfigStore from '../../stores/ApplicationConfigStore';

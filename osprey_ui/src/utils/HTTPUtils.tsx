@@ -10,9 +10,9 @@ const axiosInstance = axios.create({
   headers: CORS_HEADER,
 });
 
-export type HTTPResponse = (AxiosResponse & { ok: true }) | { ok: false; error: AxiosError<any> };
+export type HTTPResponse = (AxiosResponse & { ok: true }) | { ok: false; error: AxiosError<unknown> };
 
-const errorHandler = (error: AxiosError<any>): HTTPResponse => {
+const errorHandler = (error: AxiosError<unknown>): HTTPResponse => {
   if (error.response != null) {
     const { errors } = useErrorStore.getState();
     useErrorStore.setState({ errors: new Set([...errors, error.response.data]) });

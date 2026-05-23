@@ -25,7 +25,7 @@ const nodeStyle: Css.Node = {
   shape: (node) => typeToShape[node.data('type')],
 };
 
-const ToolTip = ({ node }: { node: any }) => {
+const ToolTip = ({ node }: { node: { data: (key: string) => unknown } }) => {
   return <div>{node.data('file_path')}</div>;
 };
 

@@ -19,18 +19,25 @@ const SortOrders: { [key: string]: SortOrder } = {
   ASCEND: 'ascend',
 };
 
+interface TopNTableRow {
+  count: number | null;
+  difference: number | null;
+  percent_diff: number | null;
+  [dimension: string]: unknown;
+}
+
 function getTableColumns(
   featureName: string,
   handleFeatureNameChange: (newDimension: string) => void,
   isPoPEnabled: boolean
-): Array<ColumnProps<any>> {
+): Array<ColumnProps<TopNTableRow>> {
   const columns = [
     {
       dataIndex: 'count',
       key: 'count',
       className: styles.countColumn,
       sortDirections: [SortOrders.DESCEND, SortOrders.ASCEND],
-      sorter: (a: any, b: any) => a.count - b.count,
+      sorter: (a: TopNTableRow, b: TopNTableRow) => (a.count ?? 0) - (b.count ?? 0),
       defaultSortOrder: SortOrders.DESCEND,
       onHeaderCell: () => ({ className: styles.countHeaderCell }),
       title: () => <div className={styles.countColumnTitle}>Count</div>,
@@ -57,7 +64,7 @@ function getTableColumns(
         // Convert fraction to percent
         return <span style={{ color: val >= 0 ? 'green' : 'red' }}>{val}</span>;
       },
-      sorter: (a: any, b: any) => a.difference - b.difference,
+      sorter: (a: TopNTableRow, b: TopNTableRow) => (a.difference ?? 0) - (b.difference ?? 0),
       defaultSortOrder: SortOrders.DESCEND,
       className: styles.countColumn,
       onHeaderCell: () => ({ className: styles.countHeaderCell }),
@@ -75,7 +82,7 @@ function getTableColumns(
         // Convert fraction to percent
         return <span style={style}>{val.toFixed(1) + '%'}</span>;
       },
-      sorter: (a: any, b: any) => a.percent_diff - b.percent_diff,
+      sorter: (a: TopNTableRow, b: TopNTableRow) => (a.percent_diff ?? 0) - (b.percent_diff ?? 0),
       defaultSortOrder: SortOrders.DESCEND,
       className: styles.countColumn,
       onHeaderCell: () => ({ className: styles.countHeaderCell }),
