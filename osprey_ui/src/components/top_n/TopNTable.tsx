@@ -12,7 +12,7 @@ import useQueryStore from '../../stores/QueryStore';
 import FeatureNameSelect from './FeatureNameSelect';
 import styles from './TopNTable.module.css';
 import TopNFooter from './TopNFooter';
-import { DimensionDifference, DimensionResult, TopNResult } from '../../types/QueryTypes';
+import { DimensionDifference, DimensionResult } from '../../types/QueryTypes';
 
 const SortOrders: { [key: string]: SortOrder } = {
   DESCEND: 'descend',

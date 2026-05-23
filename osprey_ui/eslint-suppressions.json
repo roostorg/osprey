@@ -1,19 +1,4 @@
 {
-  "src/actions/BulkJobActions.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/components/bulk_actions/BulkActionStartModal.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/components/bulk_actions/BulkActionTable.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/components/bulk_job_history/BulkHistoryMultiView.tsx": {
     "react/jsx-key": {
       "count": 1
@@ -25,9 +10,6 @@
     }
   },
   "src/components/bulk_label_drawer/BulkLabelDrawer.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
     "react/no-unescaped-entities": {
       "count": 1
     }
@@ -37,34 +19,14 @@
       "count": 1
     }
   },
-  "src/components/charts/Charts.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
-    }
-  },
   "src/components/common/Feature.tsx": {
     "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/components/common/LabelForm.tsx": {
-    "@typescript-eslint/no-unused-vars": {
       "count": 1
     }
   },
   "src/components/common/QueryFilter.tsx": {
     "react/display-name": {
       "count": 1
-    }
-  },
-  "src/components/entities/EntityFeatureFilters.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
-    }
-  },
-  "src/components/entities/LabelRow.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
     }
   },
   "src/components/event_stream/EventStream.tsx": {
@@ -77,28 +39,13 @@
       "count": 1
     }
   },
-  "src/components/query_view/QueryDatePicker.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/components/query_view/QueryInput.tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 2
     }
   },
-  "src/components/query_view/QuerySearchContext.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/components/query_view/QueryView.tsx": {
     "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/components/rules_visualizer/RulesVisualizer.tsx": {
-    "@typescript-eslint/no-unused-vars": {
       "count": 1
     }
   },
@@ -107,15 +54,7 @@
       "count": 1
     }
   },
-  "src/components/saved_queries/SavedQueryCard.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/components/timeseries/Timeseries.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
       "count": 2
     }
@@ -125,48 +64,13 @@
       "count": 1
     }
   },
-  "src/components/top_n/TopNTable.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/hooks/usePromiseResult.tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 1
     }
   },
-  "src/stores/BulkActionStore.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/stores/QueryStore.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/uikit/Collapse.tsx": {
     "react-hooks/refs": {
-      "count": 1
-    }
-  },
-  "src/uikit/Expand.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    }
-  },
-  "src/utils/EntityUtils.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/utils/LabelUtils.tsx": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/utils/StringUtils.tsx": {
-    "@typescript-eslint/no-unused-vars": {
       "count": 1
     }
   }
