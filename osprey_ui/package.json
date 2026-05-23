@@ -79,8 +79,8 @@
     "preview": "rsbuild preview",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",
-    "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
-    "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix"
+    "lint": "eslint --suppressions-location ./eslint-suppressions.json --pass-on-unpruned-suppressions src",
+    "lint:fix": "eslint --suppressions-location ./eslint-suppressions.json --pass-on-unpruned-suppressions --fix src"
   },
   "browserslist": {
     "production": [
