@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { Empty } from 'antd';
-import NewWindow from 'react-new-window';
 import { useParams } from 'react-router-dom';
 
 import useApplicationConfigStore from '../../stores/ApplicationConfigStore';
@@ -26,18 +25,14 @@ interface EventStreamCardProps {
 }
 
 const EventStreamCard = ({ eventDetails, selectedFeatures, featureLocations, isListView }: EventStreamCardProps) => {
-  const [showWindow, setShowWindow] = React.useState(false);
   const { entityId, entityType } = useParams<EntityViewParams>();
   const decodedEntityId = entityId != null ? decodeURIComponent(entityId) : null;
   const decodedEntityType = entityType != null ? decodeURIComponent(entityType) : null;
   const featureNameToEntityTypeMapping = useApplicationConfigStore((state) => state.featureNameToEntityTypeMapping);
 
   const handleShowWindow = () => {
-    setShowWindow(true);
-  };
-
-  const handleWindowClose = () => {
-    setShowWindow(false);
+    const eventUrl = `${document.location.origin}/events/${eventDetails.id}`;
+    window.open(eventUrl, '_blank', 'width=800,height=800');
   };
 
   const renderDescriptionBlock = (features: readonly string[]) => {
@@ -117,9 +112,6 @@ const EventStreamCard = ({ eventDetails, selectedFeatures, featureLocations, isL
         {cardTitle}
         <OspreyButton onClick={handleShowWindow}>
           See Details
-          {showWindow && (
-            <NewWindow url={eventUrl} onUnload={handleWindowClose} features={{ width: 800, height: 800 }} />
-          )}
         </OspreyButton>
       </div>
       <div>{renderContent()}</div>
