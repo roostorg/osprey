@@ -149,19 +149,18 @@ def test_udf_node_mapping_uses_stable_keys(
 
     # Get the UDF mapping
     udf_mapping = validated_sources.get_validator_result(ValidateCallKwargs)
-    assert len(udf_mapping) > 0, "Should have at least one UDF in mapping"
+    assert len(udf_mapping) > 0, 'Should have at least one UDF in mapping'
 
     # Verify that the mapping uses stable (source_path, line, pos) keys (tuples)
     # not id()-based keys (integers)
     for key in udf_mapping.keys():
         assert isinstance(key, tuple), (
-            f"Mapping should use stable (source_path, line, pos) tuple keys, "
-            f"not id() keys. Got {type(key)}: {key}"
+            f'Mapping should use stable (source_path, line, pos) tuple keys, not id() keys. Got {type(key)}: {key}'
         )
-        assert len(key) == 3, f"Key should be (path, line, pos) tuple with 3 elements, got {len(key)}: {key}"
-        assert isinstance(key[0], str), f"First key element should be path (str), got {type(key[0])}"
-        assert isinstance(key[1], int), f"Second key element should be line (int), got {type(key[1])}"
-        assert isinstance(key[2], int), f"Third key element should be pos (int), got {type(key[2])}"
+        assert len(key) == 3, f'Key should be (path, line, pos) tuple with 3 elements, got {len(key)}: {key}'
+        assert isinstance(key[0], str), f'First key element should be path (str), got {type(key[0])}'
+        assert isinstance(key[1], int), f'Second key element should be line (int), got {type(key[1])}'
+        assert isinstance(key[2], int), f'Third key element should be pos (int), got {type(key[2])}'
 
     # Verify transformation works (consumes the stable keys)
     transformer = DruidQueryTransformer(validated_sources=validated_sources)
