@@ -29,7 +29,7 @@ const EventStreamCard = ({ eventDetails, selectedFeatures, featureLocations, isL
   const decodedEntityId = entityId != null ? decodeURIComponent(entityId) : null;
   const decodedEntityType = entityType != null ? decodeURIComponent(entityType) : null;
   const featureNameToEntityTypeMapping = useApplicationConfigStore((state) => state.featureNameToEntityTypeMapping);
-  const eventUrl = `${document.location.origin}/events/${eventDetails.id}`;
+  const eventUrl = `${document.location.origin}/events/${encodeURIComponent(eventDetails.id)}`;
 
   const handleShowWindow = () => {
     window.open(eventUrl, '_blank', 'width=800,height=800');
