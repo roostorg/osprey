@@ -8,7 +8,7 @@ from osprey.engine.utils.get_closest_string_within_threshold import get_closest_
 
 from ..validation_context import ValidationContext
 from .feature_name_to_entity_type_mapping import FeatureNameToEntityTypeMapping
-from .validate_call_kwargs import UDFNodeMapping, ValidateCallKwargs
+from .validate_call_kwargs import UDFNodeMapping, ValidateCallKwargs, udf_mapping_key
 
 ### meow
 
@@ -28,8 +28,7 @@ class ValidateLabels(SourceValidator):
 
     def validate_source(self, source: 'grammar.Source') -> None:
         for call_node in filter_nodes(source.ast_root, grammar.Call):
-            span_key = (call_node.span.source.path, call_node.span.start_line, call_node.span.start_pos)
-            _, arguments = self._udf_node_mapping[span_key]
+            _, arguments = self._udf_node_mapping[udf_mapping_key(call_node)]
             if isinstance(arguments, LabelArguments):
                 self._validate_label(call_node, arguments)
 

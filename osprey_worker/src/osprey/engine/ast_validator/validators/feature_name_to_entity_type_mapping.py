@@ -5,7 +5,7 @@ from osprey.engine.stdlib.udfs.entity import EntityArgumentsBase
 
 from ..base_validator import HasResult, SourceValidator
 from ..validation_context import ValidationContext
-from .validate_call_kwargs import UDFNodeMapping, ValidateCallKwargs
+from .validate_call_kwargs import UDFNodeMapping, ValidateCallKwargs, udf_mapping_key
 
 
 class FeatureNameToEntityTypeMapping(SourceValidator, HasResult[Dict[str, str]]):
@@ -21,8 +21,7 @@ class FeatureNameToEntityTypeMapping(SourceValidator, HasResult[Dict[str, str]])
                 and not statement.target.is_local
                 and isinstance(statement.value, grammar.Call)
             ):
-                span_key = (statement.value.span.source.path, statement.value.span.start_line, statement.value.span.start_pos)
-                _, args = self._udf_node_mapping[span_key]
+                _, args = self._udf_node_mapping[udf_mapping_key(statement.value)]
                 if isinstance(args, EntityArgumentsBase):
                     self._feature_name_to_entity_type[statement.target.identifier] = args.type.value
 

@@ -4,7 +4,7 @@ from osprey.engine.ast.ast_utils import filter_nodes
 from osprey.engine.ast.grammar import Assign, Call, Name, Source
 from osprey.engine.ast_validator.base_validator import SourceValidator
 from osprey.engine.ast_validator.validation_utils import add_must_assign_to_variable_error
-from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
+from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs, udf_mapping_key
 from osprey.engine.udf.rvalue_type_checker import (
     AnnotationConversionError,
     convert_ast_annotation_to_type_checker,
@@ -106,6 +106,5 @@ class ValidateDynamicCallsHaveAnnotatedRValue(SourceValidator):
                     ),
                 )
 
-        span_key = (call_node.span.source.path, call_node.span.start_line, call_node.span.start_pos)
-        udf, _ = self._udf_node_mapping[span_key]
+        udf, _ = self._udf_node_mapping[udf_mapping_key(call_node)]
         udf.set_rvalue_type_checker(rvalue_type_checker)

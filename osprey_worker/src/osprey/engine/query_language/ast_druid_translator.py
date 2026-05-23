@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 from osprey.engine.ast import grammar
 from osprey.engine.ast_validator.validation_context import ValidatedSources
-from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
+from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs, udf_mapping_key
 from osprey.engine.udf.base import QueryUdfBase
 from osprey.engine.utils.osprey_unary_executor import OspreyUnaryExecutor
 
@@ -99,8 +99,7 @@ class DruidQueryTransformer:
             raise DruidQueryTransformException(node, 'Unknown Unary Operator')
 
     def transform_Call(self, node: grammar.Call) -> Dict[str, Any]:
-        span_key = (node.span.source.path, node.span.start_line, node.span.start_pos)
-        udf, _ = self._udf_node_mapping[span_key]
+        udf, _ = self._udf_node_mapping[udf_mapping_key(node)]
 
         if not isinstance(udf, QueryUdfBase):
             raise DruidQueryTransformException(node, 'Unknown function call type')
