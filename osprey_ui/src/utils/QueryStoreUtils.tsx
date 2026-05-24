@@ -12,7 +12,7 @@ import {
   TopNTable,
   Chart,
 } from '../types/QueryTypes';
-import { getQueryDateRange, isEmptyDateRange } from './QueryUtils';
+import { CUSTOM_RANGE_OPTION, getQueryDateRange, isEmptyDateRange } from './QueryUtils';
 
 import { Routes } from '../Constants';
 
@@ -35,15 +35,33 @@ export function extractQueryStateFromSearchParams(location: Location): QueryStor
 
   const customSummaryFeatures = queryString.getAll('customSummaryFeatures');
 
+  const intervalParam = queryString.get('interval');
+  const interval: DefaultIntervals =
+    intervalParam != null && intervalParam !== '' ? (intervalParam as DefaultIntervals) : 'day';
+
+  const startParam = queryString.get('start') || '';
+  const endParam = queryString.get('end') || '';
+  const hasExplicitDateRange = !isEmptyDateRange(startParam, endParam);
+
+  // For relative intervals ("Last Hour", "Last Day", etc.), always derive
+  // start/end from "now" so the query reflects the user-intended relative
+  // window — not whatever stale timestamps may be on the URL from a
+  // previous session. Custom intervals preserve the explicit timestamps
+  // the user picked from the date-range picker.
+  let start = startParam;
+  let end = endParam;
+  if (interval != null && interval !== CUSTOM_RANGE_OPTION) {
+    const derived = getQueryDateRange(interval);
+    start = derived.start;
+    end = derived.end;
+  }
+
   const queryState = {
     executedQuery: {
       queryFilter: queryString.get('queryFilter') || '',
-      start: queryString.get('start') || '',
-      end: queryString.get('end') || '',
-      interval:
-        queryString.get('interval') != null && queryString.get('interval') !== ''
-          ? (queryString.get('interval') as DefaultIntervals)
-          : 'day',
+      start,
+      end,
+      interval,
     },
     // Parse a `ScanQueryOrder` from the query string, defaulting to `descending` if the order isn't understood or
     // not provided.
@@ -55,10 +73,10 @@ export function extractQueryStateFromSearchParams(location: Location): QueryStor
     customSummaryFeatures: customSummaryFeatures.length === 0 ? null : customSummaryFeatures,
   };
 
-  const { start, end } = queryState.executedQuery;
-
-  // Do not save queries from the entity view yet
-  if (!isEntityView && !isEmptyDateRange(start, end)) {
+  // Only save to query history when the URL provided explicit timestamps —
+  // a derived default range from loading the page without explicit params
+  // is not a query the user ran.
+  if (!isEntityView && hasExplicitDateRange) {
     saveQueryToHistory(queryState);
   }
 
