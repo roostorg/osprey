@@ -5,6 +5,7 @@ import { saveQueryToHistory } from '../actions/QueryActions';
 import {
   BaseQuery,
   DefaultIntervals,
+  IntervalOptions,
   QueryState,
   CustomSummaryFeatures,
   ScanQueryOrder,
@@ -50,7 +51,7 @@ export function extractQueryStateFromSearchParams(location: Location): QueryStor
   // the user picked from the date-range picker.
   let start = startParam;
   let end = endParam;
-  if (interval != null && interval !== CUSTOM_RANGE_OPTION) {
+  if (interval != null && interval !== CUSTOM_RANGE_OPTION && interval in IntervalOptions) {
     const derived = getQueryDateRange(interval);
     start = derived.start;
     end = derived.end;

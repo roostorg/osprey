@@ -109,6 +109,20 @@ describe('extractQueryStateFromSearchParams', () => {
     });
   });
 
+  describe('home route with an unknown interval value', () => {
+    it('falls back to the URL timestamps (or empty) and does not throw on an unrecognized interval', () => {
+      const state = extractQueryStateFromSearchParams(
+        makeLocation('?interval=garbage&start=2025-01-01T00:00:00Z&end=2025-01-02T00:00:00Z')
+      );
+
+      // Unknown interval is preserved as-is from the URL (existing cast
+      // behavior); the start/end fall through to the URL values without
+      // attempting to recompute against a missing IntervalOptions entry.
+      expect(state.executedQuery.start).toBe('2025-01-01T00:00:00Z');
+      expect(state.executedQuery.end).toBe('2025-01-02T00:00:00Z');
+    });
+  });
+
   describe('saveQueryToHistory side effect', () => {
     beforeEach(() => {
       mockedSaveQueryToHistory.mockClear();
