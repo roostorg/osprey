@@ -7,11 +7,9 @@ import { OspreyEvent } from '../../types/QueryTypes';
  *
  * Order of precedence:
  *   1. Any DefaultFeature whose action-name pattern matches the event's
- *      ActionName — the existing deployment-configured behavior.
- *   2. Fall back to a single block containing every key present on the
- *      event (except ActionName, which is already rendered as the card
- *      title). This is the "first-load isn't empty" default for fresh
- *      deployments that have not curated default_summary_features.
+ *      ActionName.
+ *   2. Otherwise, a single block containing every key on the event
+ *      except ActionName (already rendered as the card title).
  */
 export const getSummaryFeaturesForEvent = (
   event: OspreyEvent,
