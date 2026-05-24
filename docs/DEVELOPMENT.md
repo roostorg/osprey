@@ -10,6 +10,16 @@ This guide provides comprehensive instructions for setting up a development envi
 - **[uv](https://docs.astral.sh/uv/)** for Python package management
 - **[npm](https://nodejs.org/en/download)**
 
+### Apple Silicon (ARM64) note
+
+Several images in the demo compose stack are published only for `linux/amd64` — notably `apache/druid` and `ghcr.io/ayubun/snowflake-id-worker` (and the `gcr.io/.../cloud-sdk` image if running with the optional bigtable emulator). On M1/M2/M3 Macs, Docker runs these under Rosetta 2 emulation; expect a one-time warning per service on first boot and slower startup. Functionality is unchanged.
+
+The warning looks like:
+
+```
+The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8)
+```
+
 ## Project Setup
 
 ### 1. Clone the Repository
