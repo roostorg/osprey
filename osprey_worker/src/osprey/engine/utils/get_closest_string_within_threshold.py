@@ -1,12 +1,12 @@
 import functools
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
 import Levenshtein
 
 
 def get_closest_string_within_threshold(
     string: str, candidate_strings: Iterable[str], distance_threshold: int = 3
-) -> Optional[str]:
+) -> str | None:
     """Given a string, return the string that is the closest (in terms of case-insensitive levenshtein edit distance)
     from the given candidate strings."""
     if len(string) <= distance_threshold or not candidate_strings:

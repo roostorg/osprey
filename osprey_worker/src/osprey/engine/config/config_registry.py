@@ -1,5 +1,6 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Optional, Sequence, Set, Type
+from typing import TYPE_CHECKING, Type
 
 from osprey.engine.utils.types import add_slots
 from pydantic import ValidationError as PydanticValidationError
@@ -25,8 +26,8 @@ class ConfigRegistry:
     """Holds all of the subkeys for the sources configuration that we know how to validate and parse."""
 
     def __init__(self) -> None:
-        self._subkey_model_to_name: Dict[Type[BaseModel], str] = {}
-        self._taken_subkey_names: Set[str] = set()
+        self._subkey_model_to_name: dict[Type[BaseModel], str] = {}
+        self._taken_subkey_names: set[str] = set()
 
     def clone(self) -> 'ConfigRegistry':
         clone = ConfigRegistry()
@@ -69,14 +70,14 @@ class ConfigRegistry:
 
             def __init__(self, context: ValidationContext):
                 super().__init__(context)
-                self._parsed_config: Optional[Dict[Type[BaseModel], BaseModel]] = None
+                self._parsed_config: dict[Type[BaseModel], BaseModel] | None = None
 
-            def get_result(self) -> Dict[Type[BaseModel], BaseModel]:
+            def get_result(self) -> dict[Type[BaseModel], BaseModel]:
                 assert self._parsed_config is not None, 'Should not call get_result if we had a validation failure'
                 return self._parsed_config
 
             def run(self) -> None:
-                parsed_config: Dict[Type[BaseModel], BaseModel] = {}
+                parsed_config: dict[Type[BaseModel], BaseModel] = {}
                 registered_subkey_names = set()
                 for model, subkey_name in registry._subkey_model_to_name.items():
                     registered_subkey_names.add(subkey_name)

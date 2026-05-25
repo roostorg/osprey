@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, List, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Type, TypeVar
 
 import pluggy
 from osprey.engine.ast_validator import ValidatorRegistry
@@ -36,7 +36,7 @@ def load_all_osprey_plugins():
 T = TypeVar('T')
 
 
-def flatten(seq: List[List[T]]) -> List[T]:
+def flatten(seq: list[list[T]]) -> list[T]:
     return sum(seq, [])
 
 
@@ -48,7 +48,7 @@ def bootstrap_udfs() -> tuple[UDFRegistry, UDFHelpers]:
     load_all_osprey_plugins()
     udf_helpers = UDFHelpers()
 
-    udfs: List[Type[UDFBase[Any, Any]]] = flatten(plugin_manager.hook.register_udfs())
+    udfs: list[Type[UDFBase[Any, Any]]] = flatten(plugin_manager.hook.register_udfs())
 
     for udf in udfs:
         if issubclass(udf, HasHelper):

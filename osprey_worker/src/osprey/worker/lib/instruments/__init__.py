@@ -3,8 +3,10 @@ from __future__ import absolute_import, annotations, print_function
 import contextlib
 import os
 import re
+from collections.abc import Sequence
+from re import Pattern
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Pattern, Sequence, Type, Union
+from typing import TYPE_CHECKING, Any, Type
 
 from datadog.dogstatsd.base import DogStatsd
 
@@ -19,8 +21,8 @@ if TYPE_CHECKING:
 
 
 def percentile(
-    unsorted_list: Sequence[SupportsRichComparisonT], requested_percentile: Union[int, float]
-) -> Optional[SupportsRichComparisonT]:
+    unsorted_list: Sequence[SupportsRichComparisonT], requested_percentile: int | float
+) -> SupportsRichComparisonT | None:
     """Return the value at a percentile
 
     Given an unsorted list as input, this returns the value at the requested
@@ -33,7 +35,7 @@ def percentile(
     return percentile_sorted(sorted_list, requested_percentile)
 
 
-def percentile_sorted(sorted_list: Sequence[T], requested_percentile: Union[int, float]) -> Optional[T]:
+def percentile_sorted(sorted_list: Sequence[T], requested_percentile: int | float) -> T | None:
     """Return the value at a percentile
 
     Given a sorted list, return the value at the requested percentile. If your
@@ -56,7 +58,7 @@ class _DogStatsd(DogStatsd):
         host: str = 'localhost',
         port: int = 8125,
         max_buffer_size: int = 50,
-        constant_tags: Optional[List[str]] = None,
+        constant_tags: list[str] | None = None,
         use_ms: bool = False,
     ):
         # If not None, this will override host/port
@@ -93,9 +95,9 @@ class _DogStatsd(DogStatsd):
         metric: str,
         metric_type: str,
         value: float,
-        tags: Optional[Union[Dict[str, str], List[str]]],
-        sample_rate: Optional[float],
-        timestamp: Optional[int] = None,
+        tags: dict[str, str] | list[str] | None,
+        sample_rate: float | None,
+        timestamp: int | None = None,
     ) -> None:
         if self.debug:
             return
@@ -111,8 +113,8 @@ class _DogStatsd(DogStatsd):
         self,
         metric: str,
         value: float = 1,
-        tags: Optional[Union[Dict[str, str], List[str]]] = None,
-        sample_rate: Optional[float] = None,
+        tags: dict[str, str] | list[str] | None = None,
+        sample_rate: float | None = None,
     ) -> None:
         """
         Update a gauge value.
@@ -128,8 +130,8 @@ class _DogStatsd(DogStatsd):
         self,
         metric: str,
         value: float = 1,
-        tags: Optional[Union[Dict[str, str], List[str]]] = None,
-        sample_rate: Optional[float] = None,
+        tags: dict[str, str] | list[str] | None = None,
+        sample_rate: float | None = None,
     ) -> None:
         """
         Increment a metric by the given amount.
@@ -144,8 +146,8 @@ class _DogStatsd(DogStatsd):
         self,
         metric: str,
         value: float,
-        tags: Optional[Union[Dict[str, str], List[str]]] = None,
-        sample_rate: Optional[float] = None,
+        tags: dict[str, str] | list[str] | None = None,
+        sample_rate: float | None = None,
     ) -> None:
         """
         Distributions are a metric type that aggregate values sent from multiple hosts
@@ -162,8 +164,8 @@ class _DogStatsd(DogStatsd):
         self,
         metric: str,
         value: float,
-        tags: Optional[Union[Dict[str, str], List[str]]] = None,
-        sample_rate: Optional[float] = None,
+        tags: dict[str, str] | list[str] | None = None,
+        sample_rate: float | None = None,
     ) -> None:
         super().timing(metric, value, self._transform_tags(tags), sample_rate)
 
@@ -171,13 +173,13 @@ class _DogStatsd(DogStatsd):
         self,
         title: str,
         message: str,
-        alert_type: Optional[str] = None,
+        alert_type: str | None = None,
         aggregation_key: Any = None,
         source_type_name: Any = None,
         date_happened: Any = None,
         priority: Any = None,
-        tags: Optional[List[str]] = None,
-        hostname: Optional[str] = None,
+        tags: list[str] | None = None,
+        hostname: str | None = None,
     ) -> None:
         """
         Log an event that can be overlayed over Data Dog's graphs
@@ -195,7 +197,7 @@ class _DogStatsd(DogStatsd):
         )
 
     @staticmethod
-    def _transform_tags(tags: Optional[Union[Dict[str, str], List[str]]] = None) -> Optional[List[str]]:
+    def _transform_tags(tags: dict[str, str] | list[str] | None = None) -> list[str] | None:
         if tags is None:
             return None
         if isinstance(tags, dict):
@@ -212,7 +214,7 @@ class concurrency(contextlib.ContextDecorator):
     NOTE: If this is used on a recursive function, the metrics will likely be garbage
     """
 
-    def __init__(self, metric_name: str, metric_tags: Optional[List[str]] = None):
+    def __init__(self, metric_name: str, metric_tags: list[str] | None = None):
         self.metric_name = metric_name
         self.metric_tags = metric_tags
         self._count = 0
@@ -225,7 +227,7 @@ class concurrency(contextlib.ContextDecorator):
         self._emit_metric()
 
     def __exit__(
-        self, type: Optional[Type[BaseException]], value: Optional[BaseException], traceback: Optional[TracebackType]
+        self, type: Type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
     ) -> None:
         self._count -= 1
         self._emit_metric()

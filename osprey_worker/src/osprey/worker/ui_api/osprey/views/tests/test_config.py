@@ -98,14 +98,14 @@ def test_get_ui_config(client: 'FlaskClient[Response]') -> None:
             Int: ExtractLiteral[int] = 123
             Float: ExtractLiteral[float] = 123.4
             Bool: ExtractLiteral[bool] = True
-            OStr: ExtractLiteral[Optional[str]] = 'hello'
-            OInt: ExtractLiteral[Optional[int]] = 123
-            OFloat: ExtractLiteral[Optional[float]] = 123.4
-            OBool: ExtractLiteral[Optional[bool]] = True
-            LStr: ExtractLiteral[List[str]] = ['hello']
-            LInt: ExtractLiteral[List[int]] = [123]
-            LFloat: ExtractLiteral[List[float]] = [123.4]
-            LBool: ExtractLiteral[List[bool]] = [True]
+            OStr: ExtractLiteral[str | None] = 'hello'
+            OInt: ExtractLiteral[int | None] = 123
+            OFloat: ExtractLiteral[float | None] = 123.4
+            OBool: ExtractLiteral[bool | None] = True
+            LStr: ExtractLiteral[list[str]] = ['hello']
+            LInt: ExtractLiteral[list[int]] = [123]
+            LFloat: ExtractLiteral[list[float]] = [123.4]
+            LBool: ExtractLiteral[list[bool]] = [True]
             R = Rule(when_all=[True], description='')
         """,
     }

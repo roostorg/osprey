@@ -1,4 +1,5 @@
-from typing import Any, Callable, List
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 from osprey.engine.ast_validator.validators.feature_name_to_entity_type_mapping import (
@@ -14,7 +15,7 @@ from osprey.engine.udf.registry import UDFRegistry
 
 # Moved here because WhenRules is not included in the MVP yet
 
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_validators(
         [
             FeatureNameToEntityTypeMapping,
