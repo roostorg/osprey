@@ -1,6 +1,5 @@
 from typing import List, Sequence
 
-from kafka import KafkaProducer
 from osprey.worker._stdlibplugin.execution_result_store_chooser import get_rules_execution_result_storage_backend
 from osprey.worker.adaptor.plugin_manager import hookimpl_osprey
 from osprey.worker.lib.config import Config
@@ -19,10 +18,17 @@ def register_output_sinks(config: Config) -> Sequence[BaseOutputSink]:
         output_topic = config.expect_str('OSPREY_KAFKA_OUTPUT_TOPIC')
         bootstrap_servers = config.expect_str_list('OSPREY_KAFKA_BOOTSTRAP_SERVERS')
         client_id = config.expect_str('OSPREY_KAFKA_OUTPUT_CLIENT_ID')
+        auto_create_topic = config.get_bool('OSPREY_KAFKA_AUTO_CREATE_TOPIC', True)
+        num_partitions = config.get_int('OSPREY_KAFKA_NUM_PARTITIONS', 1)
+        replication_factor = config.get_int('OSPREY_KAFKA_REPLICATION_FACTOR', 1)
         sinks.append(
             KafkaOutputSink(
-                kafka_topic=output_topic,
-                kafka_producer=KafkaProducer(bootstrap_servers=bootstrap_servers, client_id=client_id),
+                bootstrap_servers=bootstrap_servers,
+                output_topic=output_topic,
+                client_id=client_id,
+                auto_create_topic=auto_create_topic,
+                num_partitions=num_partitions,
+                replication_factor=replication_factor,
             )
         )
 
