@@ -1,4 +1,3 @@
-import './utils/ErrorReporting';
 import './utils/DayjsSetup';
 import ReactDOM from 'react-dom/client';
 
