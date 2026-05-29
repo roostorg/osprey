@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { Empty } from 'antd';
-import NewWindow from 'react-new-window';
 import { useParams } from 'react-router-dom';
 
 import useApplicationConfigStore from '../../stores/ApplicationConfigStore';
@@ -26,18 +25,14 @@ interface EventStreamCardProps {
 }
 
 const EventStreamCard = ({ eventDetails, selectedFeatures, featureLocations, isListView }: EventStreamCardProps) => {
-  const [showWindow, setShowWindow] = React.useState(false);
   const { entityId, entityType } = useParams<EntityViewParams>();
   const decodedEntityId = entityId != null ? decodeURIComponent(entityId) : null;
   const decodedEntityType = entityType != null ? decodeURIComponent(entityType) : null;
   const featureNameToEntityTypeMapping = useApplicationConfigStore((state) => state.featureNameToEntityTypeMapping);
+  const eventUrl = `${document.location.origin}/events/${encodeURIComponent(eventDetails.id)}`;
 
   const handleShowWindow = () => {
-    setShowWindow(true);
-  };
-
-  const handleWindowClose = () => {
-    setShowWindow(false);
+    window.open(eventUrl, '_blank', 'width=800,height=800');
   };
 
   const renderDescriptionBlock = (features: readonly string[]) => {
@@ -85,8 +80,6 @@ const EventStreamCard = ({ eventDetails, selectedFeatures, featureLocations, isL
     );
   };
 
-  const eventUrl = `${document.location.origin}/events/${eventDetails.id}`;
-
   const cardTitle = (
     <div className={styles.cardTitle}>
       <Feature
@@ -115,12 +108,7 @@ const EventStreamCard = ({ eventDetails, selectedFeatures, featureLocations, isL
     <div className={styles.card}>
       <div className={styles.cardHeader}>
         {cardTitle}
-        <OspreyButton onClick={handleShowWindow}>
-          See Details
-          {showWindow && (
-            <NewWindow url={eventUrl} onUnload={handleWindowClose} features={{ width: 800, height: 800 }} />
-          )}
-        </OspreyButton>
+        <OspreyButton onClick={handleShowWindow}>See Details</OspreyButton>
       </div>
       <div>{renderContent()}</div>
     </div>
