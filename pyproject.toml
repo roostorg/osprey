@@ -133,12 +133,14 @@ nostril = { url = "https://github.com/casics/nostril/archive/v1.2.0.tar.gz" }
 osprey_rpc = { workspace = true }
 osprey_worker = { workspace = true }
 example_plugins = { workspace = true }
+example_atproto_plugins = { workspace = true }
 
 [tool.uv.workspace]
 members = [
     "osprey_rpc",
     "osprey_worker",
     "example_plugins",
+    "example_atproto_plugins",
 ]
 
 
@@ -171,10 +173,10 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["osprey_worker", "osprey_rpc", "example_plugins"]
+known-first-party = ["osprey_worker", "osprey_rpc", "example_plugins", "example_atproto_plugins"]
 
 [tool.fawltydeps]
-code = ["osprey_worker/src", "osprey_rpc/src", "example_plugins/src"]
+code = ["osprey_worker/src", "osprey_rpc/src", "example_plugins/src", "example_atproto_plugins/src"]
 deps = ["pyproject.toml"]
 ignore_unused = [
     # Type stubs: used by mypy, never imported directly
@@ -239,6 +241,7 @@ mypy_path = [
     "osprey_rpc/src",
     "osprey_worker/src",
     "example_plugins/src",
+    "example_atproto_plugins/src",
 ]
 
 # Strict mode includes the following flags. When these are all True, they can be replaced with strict mode.
