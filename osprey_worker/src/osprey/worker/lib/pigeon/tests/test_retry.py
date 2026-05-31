@@ -43,11 +43,11 @@ class TestService2(TestServiceServicer):
 REQUEST_FIELD_SCALAR = 'routing_value'
 
 SERVICE_NAME = 'pigeon_test_service'
+SERVICE_1_PORT = 50053
+SERVICE_2_PORT = 50054
 
-# Ports are populated by the run_servers fixture once the OS assigns ephemeral
-# ports — see the fixture below.
-SERVICE_1 = Service(SERVICE_NAME, 0, ports={'grpc': 0})
-SERVICE_2 = Service(SERVICE_NAME, 0, ports={'grpc': 0})
+SERVICE_1 = Service(SERVICE_NAME, SERVICE_1_PORT, ports={'grpc': SERVICE_1_PORT})
+SERVICE_2 = Service(SERVICE_NAME, SERVICE_2_PORT, ports={'grpc': SERVICE_2_PORT})
 
 
 def test_find_in_primary(client):
@@ -113,23 +113,17 @@ def test_not_found_in_any(mocker, client):
         assert spy.call_count == 3
 
 
-def run_server(service):
+def run_server(port, service):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     add_TestServiceServicer_to_server(service, server)
-    port = server.add_insecure_port('[::]:0')
+    server.add_insecure_port(f'[::]:{port}')
     server.start()
-    return server, port
+    return server
 
 
 @pytest.fixture(scope='session', autouse=True)
 def run_servers(request):
-    server_1, port_1 = run_server(TestService1())
-    server_2, port_2 = run_server(TestService2())
-    SERVICE_1.port = port_1
-    SERVICE_1.ports['grpc'] = port_1
-    SERVICE_2.port = port_2
-    SERVICE_2.ports['grpc'] = port_2
-    servers = [server_1, server_2]
+    servers = [run_server(SERVICE_1_PORT, TestService1()), run_server(SERVICE_2_PORT, TestService2())]
 
     def shutdown_servers():
         handlers = [server.stop(1) for server in servers]

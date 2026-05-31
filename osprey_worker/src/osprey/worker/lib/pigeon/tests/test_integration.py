@@ -60,12 +60,12 @@ FOUR_ROUTING_VALUES = SERVICE_1_ROUTING_VALUES + SERVICE_2_ROUTING_VALUES
 ALL_ROUTING_VALUES = FOUR_ROUTING_VALUES
 
 
-SERVICE_NAME = 'pigeon_test_service'
+SERVICE_1_PORT = 50051
+SERVICE_2_PORT = 50052
 
-# Ports are populated by the run_servers fixture once the OS assigns ephemeral
-# ports — see the fixture below.
-SERVICE_1 = Service(SERVICE_NAME, 0, ports={'grpc': 0})
-SERVICE_2 = Service(SERVICE_NAME, 0, ports={'grpc': 0})
+SERVICE_NAME = 'pigeon_test_service'
+SERVICE_1 = Service(SERVICE_NAME, SERVICE_1_PORT, ports={'grpc': SERVICE_1_PORT})
+SERVICE_2 = Service(SERVICE_NAME, SERVICE_2_PORT, ports={'grpc': SERVICE_2_PORT})
 
 
 @pytest.mark.parametrize('routing_value', ALL_ROUTING_VALUES)
@@ -269,23 +269,17 @@ def make_clients(
     return client
 
 
-def run_server():
+def run_server(port):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     add_TestServiceServicer_to_server(TestService(), server)
-    port = server.add_insecure_port('[::]:0')
+    server.add_insecure_port(f'[::]:{port}')
     server.start()
-    return server, port
+    return server
 
 
 @pytest.fixture(scope='session', autouse=True)
 def run_servers(request):
-    server_1, port_1 = run_server()
-    server_2, port_2 = run_server()
-    SERVICE_1.port = port_1
-    SERVICE_1.ports['grpc'] = port_1
-    SERVICE_2.port = port_2
-    SERVICE_2.ports['grpc'] = port_2
-    servers = [server_1, server_2]
+    servers = [run_server(SERVICE_1_PORT), run_server(SERVICE_2_PORT)]
 
     def shutdown_servers():
         handlers = [server.stop(1) for server in servers]
