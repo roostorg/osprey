@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🛠 Breaking changes
 
 ### 🎉 New features
+- Add `osprey-stress` CLI: closed-loop stress harness that produces synthetic events at a configurable rate, observes their `ExecutionResult`s on the output topic, and reports drop rate + p50/p95/p99 latency. Exits non-zero on threshold breach so it can gate CI on pipeline health. Complementary to the jetstream input-stream plugin in [#236](https://github.com/roostorg/osprey/pull/236) — the same measurement layer will run in open-loop mode against jetstream traffic once that lands.
+- Add `GetActionId()` stdlib UDF + corresponding `ExecutionContext.get_action_id()` method, symmetric with the existing `GetActionName()`. `example_rules/models/base.sml` now exposes `ActionId = GetActionId()` so the stress harness can round-trip-match events without overloading other entity fields.
 - Add Postgres execution result store ([#171](https://github.com/roostorg/osprey/pull/171) by [@serendipty01](https://github.com/serendipty01))
 - Add `ParseInt` UDF — converts a numeric string to an integer ([#190](https://github.com/roostorg/osprey/pull/190) by [@bealsbe](https://github.com/bealsbe))
 - Add `StringSlice` UDF which extracts a substring by index range ([#189](https://github.com/roostorg/osprey/pull/189) by [@bealsbe](https://github.com/bealsbe))
