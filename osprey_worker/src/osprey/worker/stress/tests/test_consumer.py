@@ -106,15 +106,23 @@ class TestConsumerClosedLoop:
             topic='topic',
             group_id='test',
             action_id_filter=frozenset({1}),
-            max_runtime_seconds=1.0,
+            max_runtime_seconds=2.0,
             stop_when_filter_complete=False,
         )
         consumer = Consumer(config, consumer_factory=lambda *a, **kw: fake)
         consumer.start()
         fake.feed(make_result_payload(1))
-        time.sleep(0.2)
+        # Poll until the first message has actually been recorded — sleeping a
+        # fixed interval can race on slow CI, leaving first_ts=None and turning
+        # the equality check below into a meaningless assertion.
+        deadline = time.monotonic() + 2.0
+        while consumer.consumed.get(1) is None and time.monotonic() < deadline:
+            time.sleep(0.05)
         first_ts = consumer.consumed.get(1)
+        assert first_ts is not None, 'consumer never recorded the first message'
         fake.feed(make_result_payload(1))
+        # Give the consumer a chance to (incorrectly) overwrite if first-write-wins
+        # were broken. 0.5s is plenty since the poll cycle is 200ms.
         time.sleep(0.5)
         consumer.stop()
         consumer.wait(timeout=2)
