@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Generic, Iterator, List, Optional, Sequence, T
 import gevent
 import msgpack
 import sentry_sdk
+from confluent_kafka import Message as KafkaMessage
 from gevent.lock import RLock
 from gevent.queue import Queue as GeventQueue
 from google.api_core import retry
@@ -16,7 +17,6 @@ from google.cloud.pubsub_v1.subscriber.message import Message
 from google.protobuf.message import DecodeError
 from google.protobuf.message import Message as ProtoMessage
 from google.pubsub_v1 import PubsubMessage
-from kafka.consumer.fetcher import ConsumerRecord
 from osprey.engine.executor.execution_context import Action
 from osprey.worker.lib.encryption.envelope import Envelope
 from osprey.worker.lib.instruments import metrics
@@ -29,7 +29,6 @@ from osprey.worker.sinks.utils.acking_contexts import (
     PubSubMessageAckingContext,
     PullPubSubMessageContext,
 )
-from osprey.worker.sinks.utils.kafka import PatchedKafkaConsumer
 from pydantic import BaseModel
 from tenacity import RetryCallState, retry_if_exception_type, stop_never, wait_exponential
 from tenacity import retry as tenacity_retry
@@ -43,6 +42,7 @@ _PydanticModelT = TypeVar('_PydanticModelT', bound=BaseModel, covariant=True)
 
 if TYPE_CHECKING:
     from google.cloud.pubsub_v1.types import PullResponse
+    from osprey.worker.sinks.utils.kafka import ThreadedKafkaConsumer
 
 
 class BaseInputStream(abc.ABC, Generic[_T]):
@@ -413,22 +413,27 @@ class PostgresInputStream(BaseInputStream[_ModelT]):
 class KafkaInputStream(BaseInputStream[BaseAckingContext[Action]]):
     """An input stream that consumes messages from a Kafka topic and yields Action objects wrapped in an AckingContext."""
 
-    def __init__(self, kafka_consumer: PatchedKafkaConsumer):
+    def __init__(self, kafka_consumer: 'ThreadedKafkaConsumer'):
         super().__init__()
-        self._consumer: PatchedKafkaConsumer = kafka_consumer
+        self._consumer = kafka_consumer
 
     def _gen(self) -> Iterator[BaseAckingContext[Action]]:
         while True:
             try:
-                with metrics.timed('kafka_consumer.lock_time'):
-                    with metrics.timed('kafka_consumer.poll_time'):
-                        record: ConsumerRecord = next(self._consumer)
-                data = json.loads(record.value)
+                with metrics.timed('kafka_consumer.poll_time'):
+                    msg: Optional[KafkaMessage] = self._consumer.poll(timeout=1.0)
+
+                if msg is None:
+                    continue
+
+                if msg.error():
+                    logger.error(f'Kafka consumer error: {msg.error()}')
+                    sentry_sdk.capture_exception(Exception(str(msg.error())))
+                    continue
+
+                data = json.loads(msg.value())
                 timestamp = parse_go_timestamp(data['send_time'])
                 action_data = data['data']
-                # this was here for when this was protobuf. If its json by default, we should just assume its all in one
-                # json blob.
-                # action_data = json.loads(action_data_json)
 
                 action = Action(
                     action_id=int(action_data['action_id']),
@@ -436,7 +441,6 @@ class KafkaInputStream(BaseInputStream[BaseAckingContext[Action]]):
                     data=action_data['data'],
                     timestamp=timestamp,
                 )
-                # Wrap in NoopAckingContext for now, or implement a KafkaAckingContext if needed
                 yield NoopAckingContext(action)
             except Exception as e:
                 logger.exception('Error while consuming from Kafka')
