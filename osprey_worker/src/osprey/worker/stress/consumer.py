@@ -117,6 +117,9 @@ class Consumer:
             try:
                 consumer.close(autocommit=False)
             except Exception:
+                # Best-effort close during shutdown: the kafka client may already
+                # be in a half-disconnected state, and a noisy close() error here
+                # would mask the consumed/error state the caller needs to read.
                 pass
 
     def _record(self, raw: bytes) -> bool:
