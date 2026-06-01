@@ -91,6 +91,11 @@ services:
       - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
       - ETCD_PEERS=http://etcd:2379
       - TESTING=true
+      # TEMPORARY: surface the actual reason add_insecure_port returns 0 on grpcio 1.53.x
+      # so we can diagnose the pigeon test failure on #321 without guessing. Remove
+      # once #321 is resolved.
+      - GRPC_VERBOSITY=debug
+      - GRPC_TRACE=tcp,tcp_server
     volumes:
       - ./osprey_worker:/osprey/osprey_worker
       - ./osprey_rpc:/osprey/osprey_rpc
