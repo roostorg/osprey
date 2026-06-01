@@ -3,10 +3,10 @@ import { pluginReact } from '@rsbuild/plugin-react';
 import { pluginSass } from '@rsbuild/plugin-sass';
 import { pluginNodePolyfill } from '@rsbuild/plugin-node-polyfill';
 
-const { publicVars } = loadEnv({ prefixes: ['REACT_APP_'] });
+const { publicVars, rawPublicVars } = loadEnv({ prefixes: ['REACT_APP_'] });
 
 export default defineConfig({
-  plugins: [pluginReact(), pluginSass(), pluginNodePolyfill()],
+  plugins: [pluginReact(), pluginSass()],
   server: {
     host: '0.0.0.0',
     port: 5002,
@@ -15,13 +15,15 @@ export default defineConfig({
     template: './public/index.html',
   },
   output: {
-    polyfill: 'usage',
     distPath: {
       root: 'build',
     },
   },
   source: {
-    define: publicVars,
+    define: {
+      ...publicVars,
+      'process.env': JSON.stringify(rawPublicVars),
+    },
     include: [{ not: /[\\/]core-js[\\/]/ }],
   },
 });
