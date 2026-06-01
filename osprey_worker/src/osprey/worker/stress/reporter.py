@@ -93,6 +93,8 @@ def percentile(sorted_values: list[float], p: float) -> float:
 
 
 def compute_latency_stats(latencies_ms: list[float]) -> LatencyStats:
+    if not latencies_ms:
+        raise ValueError('compute_latency_stats requires a non-empty list of latencies')
     sorted_ms = sorted(latencies_ms)
     return LatencyStats(
         min_ms=sorted_ms[0],
