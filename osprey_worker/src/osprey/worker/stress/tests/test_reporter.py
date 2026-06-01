@@ -47,6 +47,12 @@ class TestComputeLatencyStats:
         # Sorted: 25, 50, 75, 100, 200; p50 = sorted[ceil(2.5)-1] = sorted[2] = 75
         assert stats.p50_ms == 75.0
 
+    def test_raises_on_empty(self) -> None:
+        # Match percentile()'s ValueError instead of letting an IndexError leak;
+        # this function is public and callers deserve a clear error.
+        with pytest.raises(ValueError, match='non-empty'):
+            compute_latency_stats([])
+
 
 class TestComputeReport:
     def test_closed_loop_perfect_delivery(self) -> None:
