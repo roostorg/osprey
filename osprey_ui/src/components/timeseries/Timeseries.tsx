@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Select, Spin } from 'antd';
-import Highcharts, { SeriesOptionsType } from 'highcharts';
-import HighchartsReact from 'highcharts-react-official';
+import Plot from 'react-plotly.js';
+import type { Layout, Config, PlotRelayoutEvent } from 'plotly.js';
 import dayjs from 'dayjs';
 import shallow from 'zustand/shallow';
 
@@ -15,7 +15,6 @@ import Panel from '../common/Panel';
 import styles from './Timeseries.module.css';
 import { makeEntityRoute } from '../../utils/RouteUtils';
 
-const CHART_TYPE = 'column';
 // prettier-ignore
 const Granularities = {
   // name: duration in ms
@@ -40,26 +39,26 @@ const DEFAULT_GRANULARITY = 'hour';
 type Granularity = keyof typeof Granularities;
 
 function getDateFormatForGranularity(granularity: Granularity | 'other'): string {
-  // https://api.highcharts.com/class-reference/Highcharts#.dateFormat
+  // D3 time format strings used by Plotly: https://d3js.org/d3-time-format
   switch (granularity) {
     case 'minute':
-      // 4:23PM
-      return '%l:%M%p';
+      // 04:23PM
+      return '%I:%M%p';
     case 'fifteen_minute':
     case 'thirty_minute':
     case 'hour':
-      // Jun 1 4PM
-      return '%b %e %l%p';
+      // Jun  1 04PM
+      return '%b %e %I%p';
     case 'day':
     case 'week':
-      // Jun 1, 2020
+      // Jun  1, 2020
       return '%b %e, %Y';
     case 'month':
       // Jun 2020
       return '%b %Y';
     default:
-      // Jun 1, 2020 4:23PM
-      return '%b %e, %Y %l:%M%p';
+      // Jun  1, 2020 04:23PM
+      return '%b %e, %Y %I:%M%p';
   }
 }
 
@@ -100,22 +99,25 @@ function getDefaultGranularityForTimeSpan(start: string | null, end: string | nu
   return currentGranularity;
 }
 
-function getChartData(timeseriesData: TimeseriesResult[]): SeriesOptionsType[] {
+function getChartData(timeseriesData: TimeseriesResult[]): Partial<Plotly.PlotData>[] {
   if (timeseriesData.length <= 1) {
     return [];
   }
 
-  const data = timeseriesData.map((point: TimeseriesResult) => [Date.parse(point.timestamp), point.result.count]);
+  const tz = dayjs.tz.guess();
+  // Convert UTC timestamps to local-time strings; Plotly treats naive datetime strings as local time
+  const x = timeseriesData.map((point: TimeseriesResult) =>
+    dayjs.utc(point.timestamp).tz(tz).format('YYYY-MM-DDTHH:mm:ss')
+  );
+  const y = timeseriesData.map((point: TimeseriesResult) => point.result.count);
 
   return [
     {
-      type: CHART_TYPE,
-      data: data,
+      type: 'bar',
+      x,
+      y,
       name: '# Events',
-      color: '#8e5ea2',
-      // By default, Highcarts groups multiple series for the same x together;
-      // because we only have one data series, we don't want to have any padding between the lines.
-      groupPadding: 0,
+      marker: { color: '#8e5ea2' },
     },
   ];
 }
@@ -206,83 +208,52 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
     setGranularity(getDefaultGranularityForTimeSpan(start, end));
   }, [start, end]);
 
-  function handleChartSelection(event: Highcharts.ChartSelectionContextObject): false {
-    const newRange = event.xAxis?.[0];
-    if (newRange == null) return false;
+  function handleRelayout(eventData: Readonly<PlotRelayoutEvent>) {
+    const xMin = (eventData as Record<string, unknown>)['xaxis.range[0]'] as string | undefined;
+    const xMax = (eventData as Record<string, unknown>)['xaxis.range[1]'] as string | undefined;
+    if (!xMin || !xMax) return;
 
-    // Highcharts does not update the values of executedQuery when the component rerenders,
-    // so get it directly from the store when handler is called.
+    // Plotly does not update the values of executedQuery when the component rerenders,
+    // so get it directly from the store when the handler is called.
     const { executedQuery } = useQueryStore.getState();
 
+    // dayjs parses naive local-time strings as local time; .toISOString() gives UTC
     updateExecutedQuery({
       ...executedQuery,
       interval: 'custom',
-      start: new Date(newRange.min).toISOString(),
-      end: new Date(newRange.max).toISOString(),
+      start: dayjs(xMin).toISOString(),
+      end: dayjs(xMax).toISOString(),
     });
-    // return false because we don't want highcharts to apply the zoom, as we'll just re-query the data instead
-    return false;
+    // uirevision (keyed on start/end) resets Plotly's zoom state when the query re-renders
   }
 
   const chartData = getChartData(timeseriesData);
-  const chartOptions: Highcharts.Options = {
-    chart: {
-      type: CHART_TYPE,
-      height: 300,
-      // allows selection of a subset of date
-      zoomType: 'x',
-      events: {
-        // event handler for the selection
-        selection: handleChartSelection,
-      },
+
+  const layout: Partial<Layout> = {
+    height: 300,
+    margin: { t: 0, r: 16, b: 60, l: 50 },
+    xaxis: {
+      type: 'date',
+      tickformat: getDateFormatForGranularity(granularity),
+      tickangle: -45,
+      showgrid: true,
+      title: { text: '' },
     },
-    title: {
-      text: undefined,
+    yaxis: {
+      rangemode: 'tozero',
+      tickformat: ',.0f',
+      title: { text: '' },
     },
-    credits: {
-      enabled: false,
-    },
-    xAxis: {
-      type: 'datetime',
-      // adjusts granularity of each tick
-      tickPixelInterval: 10,
-      labels: {
-        format: `{value:${getDateFormatForGranularity(granularity)}}`,
-        rotation: -45,
-      },
-      // shows x-axis grid
-      gridLineWidth: 1,
-      title: {
-        text: undefined,
-      },
-    },
-    yAxis: {
-      type: 'linear',
-      // always start at 0 events
-      min: 0,
-      tickPixelInterval: 10,
-      labels: {
-        format: '{value:,.0f}',
-      },
-      title: {
-        text: undefined,
-      },
-    },
-    tooltip: {
-      // date format for tooltip's x value (in our case, datetime)
-      xDateFormat: getDateFormatForGranularity('other'),
-    },
-    time: {
-      // our time data is UTC, but we'll convert it to whatever timezone dayjs
-      // thinks the user is in
-      timezone: dayjs.tz.guess(),
-      // don't render time as UTC
-      useUTC: false,
-    },
-    legend: {
-      enabled: false,
-    },
-    series: chartData,
+    showlegend: false,
+    bargap: 0,
+    // Changing uirevision resets Plotly's internal zoom/pan state when the query changes,
+    // so the chart always shows the full new data range after re-fetching.
+    uirevision: `${start}-${end}`,
+  };
+
+  const config: Partial<Config> = {
+    displayModeBar: false,
+    responsive: true,
   };
 
   return (
@@ -295,7 +266,14 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
       <Spin spinning={isLoading}>
         <div className={styles.chartContainer}>
           <EmptyOverlay show={chartData.length === 0}>
-            <HighchartsReact highcharts={Highcharts} options={chartOptions} />
+            <Plot
+              data={chartData}
+              layout={layout}
+              config={config}
+              onRelayout={handleRelayout}
+              style={{ width: '100%' }}
+              useResizeHandler={true}
+            />
           </EmptyOverlay>
         </div>
       </Spin>
