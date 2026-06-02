@@ -12,26 +12,50 @@ class FakeMessage:
 
 
 class FakeKafkaConsumer:
-    """In-memory consumer. Push messages via `feed()`; raises StopIteration
-    on each idle poll cycle (matching kafka-python's `consumer_timeout_ms` shape)."""
+    """In-memory consumer mirroring kafka-python's iteration semantics.
+
+    A real KafkaConsumer's `__next__` blocks for up to `consumer_timeout_ms`
+    waiting for the next message, then raises StopIteration if nothing
+    arrived. The Consumer under test relies on that natural backpressure to
+    avoid spinning. Reproduce the same shape here: when the queue is empty,
+    wait briefly (Event-driven so feed() can wake us early) before raising,
+    so the test never devolves into a busy-loop that can starve the main
+    thread under CI's thread contention.
+    """
+
+    _IDLE_POLL_SECONDS = 0.05
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._lock = threading.Lock()
         self._queue: List[FakeMessage] = []
+        self._has_message = threading.Event()
         self.kwargs = kwargs
         self.close_called = False
 
     def feed(self, raw: bytes) -> None:
         with self._lock:
             self._queue.append(FakeMessage(raw))
+        self._has_message.set()
 
     def __iter__(self) -> Iterator[FakeMessage]:
         return self
 
     def __next__(self) -> FakeMessage:
+        # Drain mode: if there's already a message, return it without sleeping.
         with self._lock:
             if self._queue:
-                return self._queue.pop(0)
+                msg = self._queue.pop(0)
+                if not self._queue:
+                    self._has_message.clear()
+                return msg
+        # Idle poll: wait briefly for a feed(), then re-check.
+        self._has_message.wait(timeout=self._IDLE_POLL_SECONDS)
+        with self._lock:
+            if self._queue:
+                msg = self._queue.pop(0)
+                if not self._queue:
+                    self._has_message.clear()
+                return msg
         raise StopIteration
 
     def close(self, autocommit: bool = True) -> None:
