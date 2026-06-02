@@ -6,7 +6,7 @@
   "dependencies": {
     "@ant-design/icons": "^5.0.0",
     "@juggle/resize-observer": "3.2.0",
-    "@sentry/browser": "5.12.1",
+    "@sentry/browser": "7.119.1",
     "ajv": "^8.20.0",
     "antd": "^5.0.0",
     "axios": "^1.16.1",
