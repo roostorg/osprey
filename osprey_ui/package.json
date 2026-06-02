@@ -6,7 +6,7 @@
   "dependencies": {
     "@ant-design/icons": "^5.0.0",
     "@juggle/resize-observer": "3.2.0",
-    "@sentry/browser": "7.119.1",
+    "@sentry/browser": "10.55.0",
     "ajv": "^8.20.0",
     "antd": "^5.0.0",
     "axios": "^1.16.1",
@@ -17,7 +17,7 @@
     "dayjs": "^1.11.0",
     "file-saver": "2.0.1",
     "glob-to-regexp": "0.4.1",
-    "highcharts": "8.1.0",
+    "highcharts": "12.6.0",
     "highcharts-react-official": "3.0.0",
     "highlight.js": "10.6.0",
     "history": "4.7.2",
