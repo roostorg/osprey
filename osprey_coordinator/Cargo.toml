@@ -34,7 +34,6 @@ hyper = { version = "0.14", features = ["backports", "deprecated"] }
 indexmap = "1.9"
 lazy_static = "1.4.0"
 log = "0.4"
-md5 = "0.7.0"
 metrics_derive = { path = "metrics_derive", package = "osprey_coordinator_metrics_derive" }
 msgpack_simple = "1.0.2"
 num_cpus = "1.0"

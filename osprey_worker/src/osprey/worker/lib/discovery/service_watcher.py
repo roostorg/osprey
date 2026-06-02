@@ -5,10 +5,9 @@ import logging
 import weakref
 from random import choice, randint, uniform
 from time import time
-from typing import TYPE_CHECKING, Callable, Deque, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, Deque, Dict, List, Optional
 
 import gevent
-import six
 from gevent.lock import RLock
 from osprey.worker.lib import etcd
 from osprey.worker.lib.ddtrace_utils import trace
@@ -27,9 +26,7 @@ log = logging.getLogger(__name__)
 UP = 'up'
 DOWN = 'down'
 
-DEFAULT_SECONDARIES = 2
 VISIBLITY_PERIOD_MAX_SEC = 15.0
-DEFAULT_INSTANCES_TO_SKIP = 0
 
 ListenerFn = Callable[[Literal['UP', 'DOWN'], Service], None]
 
@@ -68,7 +65,7 @@ class ServiceWrapper:
 
 
 class ServiceWatcher:
-    def __init__(self, directory: Directory, key: str, ring) -> None:
+    def __init__(self, directory: Directory, key: str) -> None:
         self.directory = weakref.proxy(directory)
         self.key = key
 
@@ -76,7 +73,6 @@ class ServiceWatcher:
 
         self._instances: Dict[str, ServiceWrapper] = {}
         self._rotation: Deque[str] = collections.deque()
-        self._ring = ring
 
         self._listeners: weakref.WeakSet[ListenerFn] = weakref.WeakSet()
         self._watcher_greenlet: Optional[gevent.Greenlet] = None
@@ -88,61 +84,41 @@ class ServiceWatcher:
         self.ensure_watching()
         return len(self._instances)
 
-    @property
-    def ring(self):
-        return self._ring
-
-    def ring_members(
-        self,
-        selector,
-        secondaries=DEFAULT_SECONDARIES,
-    ):
-        return self._ring.select(selector, secondaries)
-
     def select(
         self,
-        selector: Union[SelectorFunctionType, str, int, None] = None,
-        secondaries: int = DEFAULT_SECONDARIES,
-        instances_to_skip: int = DEFAULT_INSTANCES_TO_SKIP,
+        selector: Optional[SelectorFunctionType] = None,
         tolerate_draining: bool = False,
     ) -> Service:
         """Selects an instance of a service based on a selector."""
         self.ensure_watching()
-        if selector is None or callable(selector):
-            self._rotation.rotate()
+        self._rotation.rotate()
 
-            # Look in the rotation for services that match the selector, that are *also* visible.
-            not_yet_visible_services = []
-            for service_id in self._rotation:
-                service_wrapper = self._instances[service_id]
+        # Snapshot the rotation so concurrent mutations from the watcher greenlet
+        # (which can run while `selector(...)` yields) don't raise
+        # `RuntimeError: deque mutated during iteration`.
+        rotation_snapshot = list(self._rotation)
 
-                if not selector or selector(service_wrapper.service):
-                    if service_wrapper.is_visible(tolerate_draining):
-                        return service_wrapper.service
-                    elif not service_wrapper.is_draining():
-                        not_yet_visible_services.append(service_wrapper.service)
+        # Look in the rotation for services that match the selector, that are *also* visible.
+        not_yet_visible_services = []
+        for service_id in rotation_snapshot:
+            # Use `.get()` because the watcher greenlet may have removed the instance
+            # since we snapshotted the rotation (e.g., while `selector(...)` yielded).
+            service_wrapper = self._instances.get(service_id)
+            if service_wrapper is None:
+                continue
 
-            # If no services are yet visible, pick a random not yet visible service and use that instead,
-            # so at least we return *something* to the caller, even if it hasn't warmed up entirely yet.
-            if not_yet_visible_services:
-                return choice(not_yet_visible_services)
+            if not selector or selector(service_wrapper.service):
+                if service_wrapper.is_visible(tolerate_draining):
+                    return service_wrapper.service
+                elif not service_wrapper.is_draining():
+                    not_yet_visible_services.append(service_wrapper.service)
 
-            raise ServiceUnavailable(
-                f'Could not find service for {self.key!r} - {selector!r} ({secondaries!r} secondaries)'
-            )
-        else:
-            members = self._ring.select(selector, secondaries)
-            if not isinstance(members, list):
-                members = [members]
-            for member in members[instances_to_skip:]:
-                # mypy limitations mean we can not re-use the variable name `service` in the else block
-                maybe_service: Optional[ServiceWrapper] = self._instances.get(six.ensure_str(member))
-                if maybe_service and (tolerate_draining or not maybe_service.is_draining()):
-                    return maybe_service.service
+        # If no services are yet visible, pick a random not yet visible service and use that instead,
+        # so at least we return *something* to the caller, even if it hasn't warmed up entirely yet.
+        if not_yet_visible_services:
+            return choice(not_yet_visible_services)
 
-        raise ServiceUnavailable(
-            f'Could not find service for {self.key!r} - {selector!r} ({secondaries!r} secondaries)'
-        )
+        raise ServiceUnavailable(f'Could not find service for {self.key!r} - {selector!r}')
 
     def select_all(
         self,
@@ -153,10 +129,19 @@ class ServiceWatcher:
         """Selects all instances of a service based on a selector."""
         self.ensure_watching()
 
+        # Snapshot the rotation so concurrent mutations from the watcher greenlet
+        # (which can run while `selector(...)` yields) don't raise
+        # `RuntimeError: deque mutated during iteration`.
+        rotation_snapshot = list(self._rotation)
+
         not_yet_visible_services = []
         services = []
-        for service_id in self._rotation:
-            service_wrapper = self._instances[service_id]
+        for service_id in rotation_snapshot:
+            # Use `.get()` because the watcher greenlet may have removed the instance
+            # since we snapshotted the rotation (e.g., while `selector(...)` yielded).
+            service_wrapper = self._instances.get(service_id)
+            if service_wrapper is None:
+                continue
             if not selector or selector(service_wrapper.service):
                 if service_wrapper.is_visible(tolerate_draining) or (
                     include_not_yet_visible and not service_wrapper.is_draining()
@@ -198,7 +183,7 @@ class ServiceWatcher:
     def ensure_watching(self) -> None:
         """
         Ensures that the service watcher has started. After this function returns (assuming no exceptions thrown),
-        the service watcher is guaranteed to have a populated service list/ring (if enabled).
+        the service watcher is guaranteed to have a populated service list.
         """
         if self._watcher_greenlet is not None:
             return
