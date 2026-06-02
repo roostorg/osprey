@@ -22,7 +22,13 @@ if TYPE_CHECKING:
     from ..validation_context import ValidationContext
 
 
-UDFNodeMapping = Dict[int, Tuple[UDFBase[Any, Any], ArgumentsBase]]
+# Keyed by (source_path, start_line, start_pos) — stable across Python object reuse
+UDFNodeMapping = Dict[Tuple[str, int, int], Tuple[UDFBase[Any, Any], ArgumentsBase]]
+
+
+def udf_mapping_key(node: Call) -> Tuple[str, int, int]:
+    """Get stable (source_path, line, pos) key for a Call node."""
+    return (node.span.source.path, node.span.start_line, node.span.start_pos)
 
 
 class ValidateCallKwargs(SourceValidator, HasResult[UDFNodeMapping]):
@@ -180,7 +186,7 @@ class ValidateCallKwargs(SourceValidator, HasResult[UDFNodeMapping]):
             # If it's a dynamic UDF, we'll add the RValueTypeChecker in ValidateDynamicCallsHaveAnnotatedRValue
             # Store the udf in the node mapping - this will be read in `CallExecutor` within the executor,
             # to then pluck the udf + arguments that we parsed here to be executed upon.
-            self._udf_node_mapping[id(call_node)] = (udf, arguments)
+            self._udf_node_mapping[udf_mapping_key(call_node)] = (udf, arguments)
 
         # Catch the ConstExprArgumentException - if any other exception is thrown, it's considered a
         # compilation error!

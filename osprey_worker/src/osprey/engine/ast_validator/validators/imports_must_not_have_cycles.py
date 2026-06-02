@@ -6,7 +6,7 @@ from osprey.engine.ast.grammar import Call, Source, Span
 from osprey.engine.utils.graph import CyclicDependencyError, Graph
 
 from ..base_validator import BaseValidator, HasResult
-from .validate_call_kwargs import UDFNodeMapping, ValidateCallKwargs
+from .validate_call_kwargs import UDFNodeMapping, ValidateCallKwargs, udf_mapping_key
 
 if TYPE_CHECKING:
     from ..validation_context import ValidationContext
@@ -96,7 +96,7 @@ class ImportsMustNotHaveCycles(BaseValidator, HasResult[ImportGraphResult]):
         from osprey.engine.stdlib.udfs.import_ import Import
 
         for call_node in filter_nodes(source.ast_root, Call):
-            udf, _ = self._udf_node_mapping[id(call_node)]
+            udf, _ = self._udf_node_mapping[udf_mapping_key(call_node)]
             if not isinstance(udf, Import):
                 continue
 
