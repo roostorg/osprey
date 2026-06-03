@@ -62,11 +62,27 @@ class ValidationContext:
         self._validation_results = {}
         self._errors = []
         self._warnings = []
-        self._validator_registry = validator_registry or ValidatorRegistry.get_instance()
         self._udf_registry = udf_registry
         self._validator_stack = []
         self._validator_inputs = {}
         self._warning_as_error = warning_as_error
+
+        if validator_registry:
+            self._validator_registry = self._consolidate_registry(validator_registry)
+        else:
+            self._validator_registry = ValidatorRegistry.get_instance()
+
+    def _consolidate_registry(self, validator_registry: ValidatorRegistry) -> ValidatorRegistry:
+        validators = {
+            validator
+            for validator in ValidatorRegistry.get_instance().get_validators()
+            if not validator.exclude_from_query_validation
+        }
+        registry_validators = set()
+        for validator in validator_registry.get_validators():
+            registry_validators.add(validator)
+
+        return ValidatorRegistry.from_validator_classes(validators.union(registry_validators))
 
     def set_validator_input(self, validator_class: Type[HasInput[T]], value: T) -> 'ValidationContext':
         self._validator_inputs[validator_class] = value

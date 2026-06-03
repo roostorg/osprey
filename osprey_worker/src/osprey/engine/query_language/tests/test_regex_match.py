@@ -17,18 +17,18 @@ pytestmark: List[Callable[[Any], Any]] = [
 
 
 def test_regex_match_accepts_valid_call(run_validation: RunValidationFunction) -> None:
-    run_validation("RegexMatch(item=A, regex='^foo$')")
+    run_validation("RegexMatch(target=A, pattern='^foo$')")
 
 
 def test_regex_match_fails_with_invalid_regex(
     run_validation: RunValidationFunction, check_failure: CheckFailureFunction
 ) -> None:
     with check_failure():
-        run_validation("RegexMatch(item=A, regex='[')")
+        run_validation("RegexMatch(target=A, pattern='[')")
 
 
 def test_regex_match_fails_with_invalid_item_node(
     run_validation: RunValidationFunction, check_failure: CheckFailureFunction
 ) -> None:
     with check_failure():
-        run_validation("RegexMatch(item='Jake', regex='^foo$')")
+        run_validation("RegexMatch(target='Jake', pattern='^foo$')")
