@@ -1,5 +1,5 @@
 error: expected variable
---> main.sml:1:16
+--> main.sml:1:18
      |
-   1 | RegexMatch(item='Jake', regex='^foo$')
-     |                 ^ argument `item` must be a variable
+   1 | RegexMatch(target='Jake', pattern='^foo$')
+     |                   ^ argument `target` must be a variable
