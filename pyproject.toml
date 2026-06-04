@@ -46,6 +46,9 @@ common = [
     "jslog4kube==1.0.6",
     "jsonpath-rw",
     "kafka-python==1.4.7",
+    # Flask 1.1.4 / Jinja2 2.11 import `markupsafe.soft_unicode`, which was removed in
+    # markupsafe 2.1.0. Pin to <2.1 until the Flask 1.x stack is upgraded.
+    "markupsafe<2.1",
     "minio>=7.2.16",
     "mmh3==3.0.0",
     "msgpack==1.0.8",
@@ -215,6 +218,9 @@ ignore_unused = [
     "jslog4kube",
     # Optional runtime dep of sentry-sdk for FlaskIntegration
     "blinker",
+    # Transitive of Flask 1.x / Jinja2 2.11; pinned <2.1 here so soft_unicode
+    # is still exported. Not imported by our source directly.
+    "markupsafe",
     # gRPC server extensions: registered at startup, not imported directly
     "grpcio-health-checking",
     "grpcio-reflection",
