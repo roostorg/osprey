@@ -128,7 +128,10 @@ class BaseLLMProvider(ABC):
         Args:
             messages: The conversation so far, oldest first.
             system: Optional system prompt. Providers may also accept a leading
-                ``system`` message; prefer this argument for clarity.
+                ``system`` message; prefer this argument for clarity. To attach a
+                cache breakpoint to the system prompt, pass it instead as a
+                ``role='system'`` message with ``cache_control`` set (this plain
+                string cannot carry one).
             tools: Optional tool definitions the model is allowed to call.
             model: Provider model identifier. ``None`` uses the provider default.
             max_tokens: Maximum tokens to generate. ``None`` uses the provider default.

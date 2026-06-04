@@ -5,9 +5,11 @@ including tool calling: it translates the vendor-neutral ``LLMMessage`` /
 ``ToolDefinition`` types into Anthropic's request format, and maps the response
 (including ``tool_use`` blocks) back into ``LLMResponse`` / ``ToolCall``.
 
-The ``anthropic`` SDK is an optional dependency (``example_plugins[llm]``). It is
-imported lazily so the base example package, and Osprey's CI, do not require the
-SDK, an API key, or network access unless this provider is actually used.
+The ``anthropic`` SDK is imported lazily so the base example package, and Osprey's
+CI, do not require the SDK, an API key, or network access unless this provider is
+actually used. It is intentionally not a declared dependency (it conflicts with the
+pinned ``typing-extensions``; see ``example_plugins/pyproject.toml``), so install it
+manually to run the provider: ``uv pip install anthropic``.
 
 Configuration (via Osprey ``Config`` or environment):
 
