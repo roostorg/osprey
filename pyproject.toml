@@ -46,6 +46,9 @@ common = [
     "jslog4kube==1.0.6",
     "jsonpath-rw",
     "kafka-python==1.4.7",
+    # Flask 1.1.4 / Jinja2 2.11 import `markupsafe.soft_unicode`, which was removed in
+    # markupsafe 2.1.0. Pin to <2.1 until the Flask 1.x stack is upgraded.
+    "markupsafe<2.1",
     "minio>=7.2.16",
     "mmh3==3.0.0",
     "msgpack==1.0.8",
