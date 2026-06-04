@@ -26,7 +26,5 @@ def register_labels_service_or_provider(config: Config) -> LabelsServiceBase:
     return PostgresLabelsService()
 
 
-# NOTE: the `register_llm_provider` hook is intentionally NOT implemented here.
-# An LLM provider is optional, and we don't want one registered by default. See
-# `llm.anthropic_provider.AnthropicLLMProvider` for a reference implementation; a
-# deployment that wants it can add its own `register_llm_provider` hookimpl.
+# An LLM provider can be registered here with a `register_llm_provider` hookimpl;
+# see `llm.anthropic_provider.AnthropicLLMProvider` for a reference implementation.
