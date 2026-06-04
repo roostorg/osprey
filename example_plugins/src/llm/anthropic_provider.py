@@ -21,11 +21,12 @@ Configuration (via Osprey ``Config`` or environment):
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from osprey.worker.lib.config import Config
 from osprey.worker.lib.llm.base import (
     BaseLLMProvider,
+    CacheControl,
     LLMMessage,
     LLMResponse,
     LLMUsage,
@@ -80,14 +81,17 @@ class AnthropicLLMProvider(BaseLLMProvider):
         **params: Any,
     ) -> LLMResponse:
         request: Dict[str, Any] = {
-            'model': model or self._default_model,
-            'max_tokens': max_tokens or self._default_max_tokens,
+            # Use `is not None` rather than `or` so an explicit max_tokens=0 or
+            # model='' is passed through (and rejected by the API) instead of
+            # silently falling back to the default.
+            'model': model if model is not None else self._default_model,
+            'max_tokens': max_tokens if max_tokens is not None else self._default_max_tokens,
             'messages': self._to_anthropic_messages(messages),
         }
 
-        system_text = self._collect_system_text(system, messages)
-        if system_text is not None:
-            request['system'] = system_text
+        system_value = self._build_system(system, messages)
+        if system_value is not None:
+            request['system'] = system_value
 
         if tools:
             request['tools'] = [self._to_anthropic_tool(tool) for tool in tools]
@@ -103,19 +107,46 @@ class AnthropicLLMProvider(BaseLLMProvider):
 
     # --- request translation ------------------------------------------------
 
-    @staticmethod
-    def _collect_system_text(system: Optional[str], messages: Sequence[LLMMessage]) -> Optional[str]:
-        parts: List[str] = []
-        if system:
-            parts.append(system)
+    @classmethod
+    def _build_system(
+        cls, system: Optional[str], messages: Sequence[LLMMessage]
+    ) -> Union[str, List[Dict[str, Any]], None]:
         # Anthropic carries the system prompt as a top-level field, not a message,
-        # so fold any role='system' messages into it.
+        # so the `system` argument and any role='system' messages are folded here.
+        # Each part keeps its own optional cache_control breakpoint.
+        parts: List[Tuple[str, Optional[CacheControl]]] = []
+        if system:
+            parts.append((system, None))
         for message in messages:
             if message.role == 'system' and message.content:
-                parts.append(message.content)
+                parts.append((message.content, message.cache_control))
+
         if not parts:
             return None
-        return '\n\n'.join(parts)
+
+        # When nothing needs a cache breakpoint, the simple string form suffices.
+        if all(cache_control is None for _, cache_control in parts):
+            return '\n\n'.join(text for text, _ in parts)
+
+        # Otherwise emit the structured block form so per-part cache_control is
+        # preserved (a string `system` cannot carry cache breakpoints).
+        blocks: List[Dict[str, Any]] = []
+        for text, cache_control in parts:
+            block: Dict[str, Any] = {'type': 'text', 'text': text}
+            if cache_control is not None:
+                block['cache_control'] = cls._cache_control_dict(cache_control)
+            blocks.append(block)
+        return blocks
+
+    @staticmethod
+    def _cache_control_dict(cache_control: CacheControl) -> Dict[str, Any]:
+        result: Dict[str, Any] = {'type': 'ephemeral'}
+        if cache_control.ttl is not None:
+            # A non-default ttl (e.g. '1h') requires the Anthropic extended-cache-ttl
+            # beta header on the client, or the API rejects the request; the default
+            # 5m ephemeral cache needs no header.
+            result['ttl'] = cache_control.ttl
+        return result
 
     @staticmethod
     def _to_anthropic_tool(tool: ToolDefinition) -> Dict[str, Any]:
@@ -138,10 +169,7 @@ class AnthropicLLMProvider(BaseLLMProvider):
                 continue
 
             if message.cache_control is not None:
-                cache_control: Dict[str, Any] = {'type': 'ephemeral'}
-                if message.cache_control.ttl is not None:
-                    cache_control['ttl'] = message.cache_control.ttl
-                blocks[-1]['cache_control'] = cache_control
+                blocks[-1]['cache_control'] = cls._cache_control_dict(message.cache_control)
 
             # Tool results are surfaced to Anthropic as a user-role message.
             role = 'user' if message.role == 'tool' else message.role
@@ -189,11 +217,14 @@ class AnthropicLLMProvider(BaseLLMProvider):
             if block_type == 'text':
                 text_parts.append(getattr(block, 'text', '') or '')
             elif block_type == 'tool_use':
+                raw_input = getattr(block, 'input', None)
                 tool_calls.append(
                     ToolCall(
                         id=getattr(block, 'id', ''),
                         name=getattr(block, 'name', ''),
-                        arguments=dict(getattr(block, 'input', {}) or {}),
+                        # Degrade gracefully (like the other fields) if the SDK ever
+                        # hands back a non-dict input rather than crashing.
+                        arguments=dict(raw_input) if isinstance(raw_input, dict) else {},
                     )
                 )
 

@@ -161,8 +161,10 @@ def bootstrap_llm_provider(config: Config) -> BaseLLMProvider | None:
     """Get the LLM API provider from plugins, if one is registered.
 
     The hook uses ``firstresult=True``, so at most one provider is returned.
-    Returns ``None`` when no plugin registers ``register_llm_provider``, making it
-    always safe for callers to check before use.
+    Returns ``None`` when no plugin registers ``register_llm_provider``, so callers
+    should null-check before use. Note that a returned provider is *registered* but
+    not necessarily *ready*: a provider may defer validating its backing SDK or
+    credentials until the first ``chat()`` call.
     """
     load_all_osprey_plugins()
 

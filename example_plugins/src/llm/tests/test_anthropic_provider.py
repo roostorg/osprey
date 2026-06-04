@@ -4,8 +4,10 @@ These use a fake Anthropic client (no network, no SDK, no API key) to verify the
 vendor-neutral <-> Anthropic translation, including a full tool-call cycle.
 """
 
+import sys
 from typing import Any, Dict, List
 
+import pytest
 from osprey.worker.lib.config import Config
 from osprey.worker.lib.llm.base import (
     CacheControl,
@@ -99,9 +101,41 @@ def test_system_prompt_and_role_system_messages_folded() -> None:
     )
 
     request = client.messages.calls[0]
+    # With no cache_control anywhere, system stays the simple string form.
     assert request['system'] == 'from arg\n\nfrom message'
     # system messages are not surfaced as conversation messages
     assert request['messages'] == [{'role': 'user', 'content': [{'type': 'text', 'text': 'hi'}]}]
+
+
+def test_system_cache_control_emits_block_form() -> None:
+    client = _FakeClient([_text_response('ok')])
+    provider = AnthropicLLMProvider(Config({}), client=client)
+
+    provider.chat(
+        messages=[
+            LLMMessage(role='system', content='cached rules', cache_control=CacheControl(ttl='1h')),
+            LLMMessage(role='user', content='hi'),
+        ],
+        system='plain preamble',
+    )
+
+    request = client.messages.calls[0]
+    # A system part carrying cache_control forces the structured block form so the
+    # breakpoint is preserved rather than silently dropped.
+    assert request['system'] == [
+        {'type': 'text', 'text': 'plain preamble'},
+        {'type': 'text', 'text': 'cached rules', 'cache_control': {'type': 'ephemeral', 'ttl': '1h'}},
+    ]
+
+
+def test_explicit_zero_max_tokens_is_passed_through() -> None:
+    client = _FakeClient([_text_response('ok')])
+    provider = AnthropicLLMProvider(Config({}), client=client)
+
+    provider.chat(messages=[LLMMessage(role='user', content='hi')], max_tokens=0)
+
+    # An explicit 0 must not be swallowed by the default fallback.
+    assert client.messages.calls[0]['max_tokens'] == 0
 
 
 def test_per_call_overrides_and_passthrough_params() -> None:
@@ -228,13 +262,26 @@ def test_full_tool_call_cycle() -> None:
     }
 
 
-def test_missing_sdk_raises_clear_error() -> None:
-    # No client injected and the `anthropic` package is not installed in the workspace,
-    # so building the client should fail with a helpful message.
+def test_non_dict_tool_input_degrades_to_empty_args() -> None:
+    response = _Response(
+        content=[_Block(type='tool_use', id='call_1', name='lookup_user', input='not-a-dict')],
+        stop_reason='tool_use',
+        usage=_Usage(input_tokens=1, output_tokens=1, cache_read_input_tokens=0, cache_creation_input_tokens=0),
+    )
+    client = _FakeClient([response])
+    provider = AnthropicLLMProvider(Config({}), client=client)
+
+    result = provider.chat(messages=[LLMMessage(role='user', content='go')])
+
+    # A malformed (non-dict) tool input degrades to empty args instead of crashing.
+    assert result.tool_calls == [ToolCall(id='call_1', name='lookup_user', arguments={})]
+
+
+def test_missing_sdk_raises_clear_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Force `import anthropic` to fail deterministically regardless of whether the
+    # SDK is installed (example_plugins is in CI testpaths now), so this never
+    # depends on the environment or makes a real network call.
+    monkeypatch.setitem(sys.modules, 'anthropic', None)
     provider = AnthropicLLMProvider(Config({}))
-    try:
+    with pytest.raises(RuntimeError, match='anthropic'):
         provider.chat(messages=[LLMMessage(role='user', content='hi')])
-    except RuntimeError as exc:
-        assert 'anthropic' in str(exc)
-    else:
-        raise AssertionError('expected a RuntimeError when the anthropic SDK is missing')
