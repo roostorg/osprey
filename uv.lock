@@ -2079,15 +2079,6 @@ wheels = [
 ]
 
 [[package]]
-name = "python-levenshtein"
-version = "0.12.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "setuptools" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/2a/dc/97f2b63ef0fa1fd78dcb7195aca577804f6b2b51e712516cc0e902a9a201/python-Levenshtein-0.12.2.tar.gz", hash = "sha256:dc2395fbd148a1ab31090dd113c366695934b9e85fe5a4b2a032745efd0346f6", size = 50502, upload-time = "2021-02-01T13:03:13.521Z" }
-
-[[package]]
 name = "pytz"
 version = "2022.1"
 source = { registry = "https://pypi.org/simple" }
