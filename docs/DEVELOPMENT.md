@@ -168,6 +168,39 @@ A direct Anthropic implementation is provided as a reference in
 `OSPREY_LLM_ANTHROPIC_API_KEY` config key) to use it. The example plugins do **not**
 register it by default — add your own `register_llm_provider` hookimpl to enable it.
 
+#### Declaring tools and running a tool loop
+
+`osprey.worker.lib.llm` includes an optional, vendor-neutral tool-calling layer.
+Declare tools with the `@tool` decorator on a `ToolRegistry` (it compiles
+`ToolParameter`s into the `ToolDefinition` JSON Schema the provider consumes), then
+let `run_tool_loop` drive the call/dispatch/feed-back exchange until the model
+returns a final answer. Handlers are plain synchronous callables.
+
+```python
+from osprey.worker.lib.llm import ToolParameter, ToolRegistry, run_tool_loop, LLMMessage
+
+registry = ToolRegistry()
+
+@registry.tool(
+    name='lookup_user',
+    description='Look up a user by id.',
+    parameters=[ToolParameter(name='id', type='integer', description='User id')],
+)
+def lookup_user(id: int) -> dict:
+    return {'id': id, 'name': '...'}
+
+response = run_tool_loop(
+    provider,                       # any BaseLLMProvider
+    messages=[LLMMessage(role='user', content='Who is user 7?')],
+    registry=registry,
+)
+```
+
+`registry.dispatch(tool_call)` runs a single tool and captures errors as a
+`ToolResult` with `is_error=True` (fed back to the model rather than aborting).
+`run_tool_loop` raises `ToolLoopLimitExceeded` if the model keeps requesting tools
+past `max_iterations`.
+
 ## Rules
 
 Rules are written in SML, some examples are provided in `example_rules/` with YAML config, the rules are mounted to the worker processes when the containers start via environment variables. ex:
