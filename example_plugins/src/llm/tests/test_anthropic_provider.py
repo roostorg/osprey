@@ -4,10 +4,8 @@ These use a fake Anthropic client (no network, no SDK, no API key) to verify the
 vendor-neutral <-> Anthropic translation, including a full tool-call cycle.
 """
 
-import sys
 from typing import Any, Dict, List
 
-import pytest
 from osprey.worker.lib.config import Config
 from osprey.worker.lib.llm.base import (
     CacheControl,
@@ -78,7 +76,7 @@ def test_defaults_used_when_not_overridden() -> None:
 
 def test_config_overrides_model_and_max_tokens() -> None:
     client = _FakeClient([_text_response('hello')])
-    config = Config({'LLM_ANTHROPIC_MODEL': 'claude-test', 'LLM_ANTHROPIC_MAX_TOKENS': 256})
+    config = Config({'OSPREY_LLM_ANTHROPIC_MODEL': 'claude-test', 'OSPREY_LLM_ANTHROPIC_MAX_TOKENS': 256})
     provider = AnthropicLLMProvider(config, client=client)
 
     provider.chat(messages=[LLMMessage(role='user', content='hi')])
@@ -275,13 +273,3 @@ def test_non_dict_tool_input_degrades_to_empty_args() -> None:
 
     # A malformed (non-dict) tool input degrades to empty args instead of crashing.
     assert result.tool_calls == [ToolCall(id='call_1', name='lookup_user', arguments={})]
-
-
-def test_missing_sdk_raises_clear_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Force `import anthropic` to fail deterministically regardless of whether the
-    # SDK is installed (example_plugins is in CI testpaths now), so this never
-    # depends on the environment or makes a real network call.
-    monkeypatch.setitem(sys.modules, 'anthropic', None)
-    provider = AnthropicLLMProvider(Config({}))
-    with pytest.raises(RuntimeError, match='anthropic'):
-        provider.chat(messages=[LLMMessage(role='user', content='hi')])

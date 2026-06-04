@@ -58,11 +58,11 @@ def register_execution_result_store(config: Config) -> ExecutionResultStore:
 
 @hookspec(firstresult=True)
 def register_llm_provider(config: Config) -> BaseLLMProvider:
-    """Register an LLM API provider used by AI-assisted features (e.g. natural-language
-    query building).
+    """Register an LLM API provider used by AI-assisted features such as
+    natural-language query building.
 
-    Only the first registered provider is used (``firstresult=True``), mirroring the
-    other single-provider hooks. Return a concrete :class:`BaseLLMProvider`.
+    Only the first registered provider is used (``firstresult=True``). Return a
+    concrete :class:`BaseLLMProvider`.
     """
     raise NotImplementedError('register_llm_provider must be implemented by the plugin')
 

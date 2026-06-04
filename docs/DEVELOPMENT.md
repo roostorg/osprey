@@ -143,7 +143,7 @@ Implement any subset of these in your plugin's `register_plugins.py`:
 ### LLM provider hook
 
 `register_llm_provider` lets a plugin supply the LLM API client used by AI-assisted
-features (e.g. natural-language query building). The interface lives in
+features such as natural-language query building. The interface lives in
 `osprey.worker.lib.llm` and is vendor-neutral and **tool-calling aware**: you pass
 `ToolDefinition`s in, the model may return `ToolCall`s, and you feed `ToolResult`s
 back on the next `chat()` call.
@@ -163,13 +163,10 @@ returns `None` when no plugin registers one — so callers should null-check.
 
 A direct Anthropic implementation is provided as a reference in
 `example_plugins/src/llm/anthropic_provider.py`, including the request/response and
-`tool_use` translation. It imports the `anthropic` SDK lazily; the SDK is **not**
-declared as a workspace dependency (it conflicts with the pinned
-`typing-extensions`), so install it manually to actually run the provider:
-
-```bash
-uv pip install anthropic
-```
+`tool_use` translation. The `anthropic` SDK is a dependency of `example_plugins`
+(installed by `uv sync`); set `ANTHROPIC_API_KEY` (or the
+`OSPREY_LLM_ANTHROPIC_API_KEY` config key) to use it. The example plugins do **not**
+register it by default — add your own `register_llm_provider` hookimpl to enable it.
 
 ## Rules
 

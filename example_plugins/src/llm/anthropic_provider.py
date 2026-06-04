@@ -5,19 +5,16 @@ including tool calling: it translates the vendor-neutral ``LLMMessage`` /
 ``ToolDefinition`` types into Anthropic's request format, and maps the response
 (including ``tool_use`` blocks) back into ``LLMResponse`` / ``ToolCall``.
 
-The ``anthropic`` SDK is imported lazily so the base example package, and Osprey's
-CI, do not require the SDK, an API key, or network access unless this provider is
-actually used. It is intentionally not a declared dependency (it conflicts with the
-pinned ``typing-extensions``; see ``example_plugins/pyproject.toml``), so install it
-manually to run the provider: ``uv pip install anthropic``.
+The ``anthropic`` SDK is a dependency of ``example_plugins``. The client is built
+lazily on first use, so instantiating the provider does not require an API key.
 
 Configuration (via Osprey ``Config`` or environment):
 
-- API key: ``LLM_ANTHROPIC_API_KEY`` config key, else the ``ANTHROPIC_API_KEY``
+- API key: ``OSPREY_LLM_ANTHROPIC_API_KEY`` config key, else the ``ANTHROPIC_API_KEY``
   environment variable (read by the SDK itself if neither is set explicitly).
-- Default model: ``LLM_ANTHROPIC_MODEL`` config key
-  (default: ``claude-3-5-sonnet-latest``).
-- Default max tokens: ``LLM_ANTHROPIC_MAX_TOKENS`` config key (default: ``1024``).
+- Default model: ``OSPREY_LLM_ANTHROPIC_MODEL`` config key
+  (default: ``claude-sonnet-4-6``).
+- Default max tokens: ``OSPREY_LLM_ANTHROPIC_MAX_TOKENS`` config key (default: ``1024``).
 """
 
 from __future__ import annotations
@@ -37,36 +34,35 @@ from osprey.worker.lib.llm.base import (
 )
 
 if TYPE_CHECKING:
-    from anthropic import Anthropic
+    import anthropic
 
-DEFAULT_MODEL = 'claude-3-5-sonnet-latest'
+DEFAULT_MODEL = 'claude-sonnet-4-6'
 DEFAULT_MAX_TOKENS = 1024
 
 
 class AnthropicLLMProvider(BaseLLMProvider):
     """A :class:`BaseLLMProvider` that calls the Anthropic Messages API directly."""
 
-    def __init__(self, config: Config, client: Optional['Anthropic'] = None) -> None:
+    def __init__(self, config: Config, client: Optional[anthropic.Anthropic] = None) -> None:
         self._config = config
-        self._default_model = config.get_str('LLM_ANTHROPIC_MODEL', DEFAULT_MODEL)
-        self._default_max_tokens = config.get_int('LLM_ANTHROPIC_MAX_TOKENS', DEFAULT_MAX_TOKENS)
+        self._default_model = config.get_str('OSPREY_LLM_ANTHROPIC_MODEL', DEFAULT_MODEL)
+        self._default_max_tokens = config.get_int('OSPREY_LLM_ANTHROPIC_MAX_TOKENS', DEFAULT_MAX_TOKENS)
         # Allow injecting a client (used in tests); otherwise build lazily on first use.
         self._client = client
 
-    def _get_client(self) -> 'Anthropic':
+    def _get_client(self) -> anthropic.Anthropic:
         if self._client is not None:
             return self._client
 
         try:
             import anthropic
-        except ImportError as exc:  # pragma: no cover - exercised only without the optional dep
+        except ImportError as exc:  # pragma: no cover - anthropic is a declared dependency
             raise RuntimeError(
                 "The 'anthropic' package is required to use AnthropicLLMProvider. "
-                'It is not a declared workspace dependency (it conflicts with the pinned '
-                'typing-extensions), so install it manually, e.g. `uv pip install anthropic`.'
+                'It is a dependency of example_plugins, so run `uv sync` to install it.'
             ) from exc
 
-        api_key = self._config.get_optional_str('LLM_ANTHROPIC_API_KEY') or os.environ.get('ANTHROPIC_API_KEY')
+        api_key = self._config.get_optional_str('OSPREY_LLM_ANTHROPIC_API_KEY') or os.environ.get('ANTHROPIC_API_KEY')
         # If api_key is None the SDK still reads ANTHROPIC_API_KEY from the environment itself.
         self._client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
         return self._client

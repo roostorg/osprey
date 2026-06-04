@@ -1,10 +1,8 @@
 from typing import Any, Sequence, Type
 
-from llm.anthropic_provider import AnthropicLLMProvider
 from osprey.engine.udf.base import UDFBase
 from osprey.worker.adaptor.plugin_manager import hookimpl_osprey
 from osprey.worker.lib.config import Config
-from osprey.worker.lib.llm.base import BaseLLMProvider
 from osprey.worker.lib.storage.labels import LabelsServiceBase
 from osprey.worker.sinks.sink.output_sink import BaseOutputSink, StdoutOutputSink
 from services.labels_service import PostgresLabelsService
@@ -28,12 +26,7 @@ def register_labels_service_or_provider(config: Config) -> LabelsServiceBase:
     return PostgresLabelsService()
 
 
-@hookimpl_osprey
-def register_llm_provider(config: Config) -> BaseLLMProvider:
-    """Register a direct Anthropic API LLM provider.
-
-    Requires the ``anthropic`` SDK (installed manually, see
-    :mod:`llm.anthropic_provider`) and an API key, but only when the provider is
-    actually invoked.
-    """
-    return AnthropicLLMProvider(config)
+# NOTE: the `register_llm_provider` hook is intentionally NOT implemented here.
+# An LLM provider is optional, and we don't want one registered by default. See
+# `llm.anthropic_provider.AnthropicLLMProvider` for a reference implementation; a
+# deployment that wants it can add its own `register_llm_provider` hookimpl.

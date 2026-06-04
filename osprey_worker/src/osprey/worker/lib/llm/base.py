@@ -143,4 +143,4 @@ class BaseLLMProvider(ABC):
             ``tool_calls`` is populated and the caller is expected to run the
             tools and call ``chat`` again with the results appended.
         """
-        ...
+        raise NotImplementedError('Subclasses must implement chat().')
