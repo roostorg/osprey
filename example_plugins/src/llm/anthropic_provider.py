@@ -140,9 +140,9 @@ class AnthropicLLMProvider(BaseLLMProvider):
     def _cache_control_dict(cache_control: CacheControl) -> Dict[str, Any]:
         result: Dict[str, Any] = {'type': 'ephemeral'}
         if cache_control.ttl is not None:
-            # A non-default ttl (e.g. '1h') requires the Anthropic extended-cache-ttl
-            # beta header on the client, or the API rejects the request; the default
-            # 5m ephemeral cache needs no header.
+            # Opt into a non-default cache duration (e.g. '1h'); the default 5m
+            # ephemeral cache needs no ttl field. The 1h TTL is generally available
+            # on the Claude API — set via the ttl field, no beta header required.
             result['ttl'] = cache_control.ttl
         return result
 

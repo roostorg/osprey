@@ -40,6 +40,8 @@ class ToolParameter:
     description: str
     required: bool = True
     enum: Optional[Sequence[Any]] = None
+    # ``None`` is the "no default" sentinel; a JSON Schema ``default`` is only
+    # emitted for non-``None`` values.
     default: Any = None
 
 
@@ -150,9 +152,13 @@ class ToolRegistry:
     def dispatch(self, tool_call: ToolCall) -> ToolResult:
         """Execute the handler for a model-requested :class:`ToolCall`.
 
-        Errors (unknown tool, bad arguments, handler exceptions) are returned as a
-        :class:`ToolResult` with ``is_error=True`` so the caller can feed them back
-        to the model rather than aborting the conversation.
+        Errors (unknown tool, bad arguments, handler exceptions, or a result that
+        can't be serialised) are returned as a :class:`ToolResult` with
+        ``is_error=True`` so the caller can feed them back to the model rather than
+        aborting the conversation.
+
+        Note: the error text is sent to the model, so handlers should not embed
+        secrets (credentials, connection strings, internal ids) in exceptions.
         """
         tool = self._tools.get(tool_call.name)
         if tool is None:
@@ -163,7 +169,10 @@ class ToolRegistry:
             )
 
         try:
+            # Serialise inside the try so a non-serialisable result (e.g. a circular
+            # reference) becomes an error result rather than propagating to the caller.
             result = tool.handler(**tool_call.arguments)
+            content = _result_to_content(result)
         except Exception as exc:  # noqa: BLE001 - surfaced to the model, not swallowed
             return ToolResult(
                 tool_call_id=tool_call.id,
@@ -171,4 +180,4 @@ class ToolRegistry:
                 is_error=True,
             )
 
-        return ToolResult(tool_call_id=tool_call.id, content=_result_to_content(result))
+        return ToolResult(tool_call_id=tool_call.id, content=content)

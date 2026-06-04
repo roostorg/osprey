@@ -60,10 +60,16 @@ def run_tool_loop(
     conversation: List[LLMMessage] = list(messages)
     tools = registry.definitions()
 
-    for _ in range(max_iterations):
+    for iteration in range(max_iterations):
         response = provider.chat(messages=conversation, system=system, tools=tools, **chat_params)
         if not response.tool_calls:
             return response
+
+        # The model still wants tools but this was our last allowed call. Don't run
+        # the tools (they may have side effects) when their results could never be
+        # sent back to the model — just give up.
+        if iteration == max_iterations - 1:
+            break
 
         # Echo the assistant's tool-use turn, then feed back the results so the next
         # call sees the full exchange (providers require tool results to follow the

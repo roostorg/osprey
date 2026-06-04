@@ -126,6 +126,20 @@ def test_dispatch_unknown_tool_is_error() -> None:
     assert 'nope' in result.content
 
 
+def test_dispatch_unserializable_result_is_error() -> None:
+    registry = ToolRegistry()
+
+    @registry.tool(name='cyclic', description='returns a circular reference', parameters=[])
+    def cyclic() -> dict:
+        d: dict = {}
+        d['self'] = d
+        return d
+
+    # A non-serialisable return is captured as an error rather than propagating.
+    result = registry.dispatch(ToolCall(id='c1', name='cyclic', arguments={}))
+    assert result.is_error is True
+
+
 def test_duplicate_registration_raises() -> None:
     registry = ToolRegistry()
 

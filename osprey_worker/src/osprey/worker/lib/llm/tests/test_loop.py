@@ -137,6 +137,41 @@ def test_loop_raises_when_limit_exceeded() -> None:
     assert len(provider.calls) == 3
 
 
+def test_loop_does_not_dispatch_tools_on_the_final_iteration() -> None:
+    # A registry whose tool records each invocation, so we can prove side effects
+    # don't run on the limit-tripping call.
+    dispatched: List[int] = []
+    registry = ToolRegistry()
+
+    @registry.tool(
+        name='lookup_user',
+        description='Look up a user by id.',
+        parameters=[ToolParameter(name='id', type='integer', description='user id')],
+    )
+    def lookup_user(id: int) -> dict:
+        dispatched.append(id)
+        return {'id': id}
+
+    looping = LLMResponse(tool_calls=[ToolCall(id='c', name='lookup_user', arguments={'id': 1})], text='')
+    provider = _ScriptedProvider([looping, looping])
+
+    try:
+        run_tool_loop(
+            provider,
+            messages=[LLMMessage(role='user', content='go')],
+            registry=registry,
+            max_iterations=2,
+        )
+    except ToolLoopLimitExceeded:
+        pass
+    else:
+        raise AssertionError('expected ToolLoopLimitExceeded')
+
+    # Two chat calls were made, but the tool ran only on the first (non-final) one.
+    assert len(provider.calls) == 2
+    assert dispatched == [1]
+
+
 def test_loop_rejects_invalid_max_iterations() -> None:
     provider = _ScriptedProvider([LLMResponse(text='x')])
     try:
