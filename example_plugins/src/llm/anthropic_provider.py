@@ -59,7 +59,8 @@ class AnthropicLLMProvider(BaseLLMProvider):
         except ImportError as exc:  # pragma: no cover - exercised only without the optional dep
             raise RuntimeError(
                 "The 'anthropic' package is required to use AnthropicLLMProvider. "
-                "Install it with the optional extra, e.g. `uv pip install 'example_plugins[llm]'`."
+                'It is not a declared workspace dependency (it conflicts with the pinned '
+                'typing-extensions), so install it manually, e.g. `uv pip install anthropic`.'
             ) from exc
 
         api_key = self._config.get_optional_str('LLM_ANTHROPIC_API_KEY') or os.environ.get('ANTHROPIC_API_KEY')
