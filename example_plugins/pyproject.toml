@@ -7,6 +7,15 @@ dependencies = [
     "pluggy==1.5.0"
 ]
 
+# NOTE: The example Anthropic LLM provider (llm/anthropic_provider.py) needs the
+# `anthropic` SDK, but it is intentionally NOT declared here. The workspace pins
+# `typing-extensions==4.6.3`, while every modern `anthropic` requires a newer
+# typing-extensions, so declaring it (even as an optional extra) makes the uv
+# workspace lock unsatisfiable. The provider imports `anthropic` lazily and raises
+# a clear error if it is missing; install it manually to use the provider, e.g.:
+#   uv pip install anthropic
+# (You may also need to relax the typing-extensions pin in the root workspace.)
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 

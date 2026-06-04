@@ -125,6 +125,52 @@ def register_ast_validators() -> None:
     # Register AST validators
 ```
 
+### Available hooks
+
+Implement any subset of these in your plugin's `register_plugins.py`:
+
+| Hook | Returns | Notes |
+| --- | --- | --- |
+| `register_udfs` | `Sequence[Type[UDFBase]]` | Custom user-defined functions. |
+| `register_output_sinks` | `Sequence[BaseOutputSink]` | Where execution results go. |
+| `register_ast_validators` | `Sequence[Type[BaseValidator]]` | Extra SML validators. |
+| `register_action_proto_deserializer` | `ActionProtoDeserializer \| None` | Custom action proto → JSON. |
+| `register_input_stream` | `BaseInputStream` | Single-provider (`firstresult`). |
+| `register_execution_result_store` | `ExecutionResultStore` | Single-provider (`firstresult`). |
+| `register_labels_service_or_provider` | `LabelsServiceBase \| LabelsProvider` | Single-provider (`firstresult`). |
+| `register_llm_provider` | `BaseLLMProvider` | Single-provider (`firstresult`). LLM API access for AI-assisted features. |
+
+### LLM provider hook
+
+`register_llm_provider` lets a plugin supply the LLM API client used by AI-assisted
+features (e.g. natural-language query building). The interface lives in
+`osprey.worker.lib.llm` and is vendor-neutral and **tool-calling aware**: you pass
+`ToolDefinition`s in, the model may return `ToolCall`s, and you feed `ToolResult`s
+back on the next `chat()` call.
+
+```python
+from osprey.worker.lib.config import Config
+from osprey.worker.lib.llm.base import BaseLLMProvider
+
+@hookimpl_osprey
+def register_llm_provider(config: Config) -> BaseLLMProvider:
+    return MyLLMProvider(config)
+```
+
+Only one provider may be registered (`firstresult=True`). Retrieve it with
+`bootstrap_llm_provider(config)` from `osprey.worker.adaptor.plugin_manager`, which
+returns `None` when no plugin registers one — so callers should null-check.
+
+A direct Anthropic implementation is provided as a reference in
+`example_plugins/src/llm/anthropic_provider.py`, including the request/response and
+`tool_use` translation. It imports the `anthropic` SDK lazily; the SDK is **not**
+declared as a workspace dependency (it conflicts with the pinned
+`typing-extensions`), so install it manually to actually run the provider:
+
+```bash
+uv pip install anthropic
+```
+
 ## Rules
 
 Rules are written in SML, some examples are provided in `example_rules/` with YAML config, the rules are mounted to the worker processes when the containers start via environment variables. ex:

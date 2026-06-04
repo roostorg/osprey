@@ -229,7 +229,7 @@ ignore_unused = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["osprey_worker"]
+testpaths = ["osprey_worker", "example_plugins"]
 
 [tool.mypy]
 plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
@@ -282,7 +282,9 @@ module = "pydantic.main"
 implicit_reexport = true
 
 [[tool.mypy.overrides]]
-module = ["jsonpath_rw", "minio.*"]
+# `anthropic` is an optional, lazily-imported SDK used only by the example LLM
+# provider; it is not installed in the workspace (see example_plugins/pyproject.toml).
+module = ["jsonpath_rw", "minio.*", "anthropic.*"]
 ignore_missing_imports = true
 
 # third party packages we don't care about

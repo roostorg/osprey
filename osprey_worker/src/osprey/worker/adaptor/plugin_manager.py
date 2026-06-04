@@ -20,6 +20,7 @@ from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
+    from osprey.worker.lib.llm.base import BaseLLMProvider
 
 hookimpl_osprey: pluggy.HookimplMarker = pluggy.HookimplMarker(OSPREY_ADAPTOR)
 
@@ -152,6 +153,22 @@ def bootstrap_input_stream(config: Config) -> BaseInputStream[BaseAckingContext[
     stream = plugin_manager.hook.register_input_stream(config=config)
     if stream:
         return stream
+    else:
+        return None
+
+
+def bootstrap_llm_provider(config: Config) -> BaseLLMProvider | None:
+    """Get the LLM API provider from plugins, if one is registered.
+
+    The hook uses ``firstresult=True``, so at most one provider is returned.
+    Returns ``None`` when no plugin registers ``register_llm_provider``, making it
+    always safe for callers to check before use.
+    """
+    load_all_osprey_plugins()
+
+    provider = plugin_manager.hook.register_llm_provider(config=config)
+    if provider:
+        return provider
     else:
         return None
 
