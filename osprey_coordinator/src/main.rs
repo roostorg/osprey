@@ -8,7 +8,6 @@ mod etcd_config;
 mod etcd_watcherd;
 mod future_utils;
 mod gcloud;
-mod hashring;
 mod metrics;
 mod osprey_bidirectional_stream;
 mod pigeon;
