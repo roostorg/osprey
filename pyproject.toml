@@ -218,6 +218,9 @@ ignore_unused = [
     "jslog4kube",
     # Optional runtime dep of sentry-sdk for FlaskIntegration
     "blinker",
+    # Transitive of Flask 1.x / Jinja2 2.11; pinned <2.1 here so soft_unicode
+    # is still exported. Not imported by our source directly.
+    "markupsafe",
     # gRPC server extensions: registered at startup, not imported directly
     "grpcio-health-checking",
     "grpcio-reflection",
