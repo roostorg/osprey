@@ -60,6 +60,8 @@ class ConstExpr(Generic[T]):
         assert type_class is list
         list_ty = typing_inspect.get_args(cls)[0]
         item_ty = typing_inspect.get_args(list_ty)[0]
+        if not item_ty:
+            item_ty = type(item_ty)
         assert item_ty in (str, float, int, bool, type(None))
         # Mypy isn't smart enough to downcast with the above assert.
         return cast(Type[str | float | int | bool | None], item_ty)
