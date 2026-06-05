@@ -256,7 +256,7 @@ class Name(Expression, IsExtractable):
 
     identifier: str
     context: Context
-    _source_annotation: None | _Sentinel | 'Annotation' | 'AnnotationWithVariants' = field(
+    _source_annotation: _Sentinel | 'Annotation' | 'AnnotationWithVariants' | None = field(
         default=_SOURCE_ANNOTATION_UNSET,
         repr=False,
         compare=False,
@@ -275,7 +275,7 @@ class Name(Expression, IsExtractable):
         else:
             return self.identifier
 
-    def set_source_annotation(self, annotation: None | 'Annotation' | 'AnnotationWithVariants') -> None:
+    def set_source_annotation(self, annotation: 'Annotation' | 'AnnotationWithVariants' | None) -> None:
         self._source_annotation = annotation
 
     @property
@@ -349,12 +349,12 @@ class Assign(Statement, IsConstant, IsExtractable):
 
     target: Name
     value: Expression
-    annotation: None | 'Annotation' | 'AnnotationWithVariants' = None
+    annotation: 'Annotation' | 'AnnotationWithVariants' | None = None
 
     @cached_property
     def should_extract(self) -> bool:
         """
-        Should the target node should be extracted?
+        Should the target node be extracted?
 
         A false value for should_extract only applies to the current feature. An fstring using a feature with
         `should_extract == False` would be extractable.
@@ -410,7 +410,7 @@ class Call(Expression, Statement):
     func: Name | 'Attribute'
     arguments: Sequence['Keyword']
 
-    def find_argument(self, name: str) -> None | 'Keyword':
+    def find_argument(self, name: str) -> 'Keyword' | None:
         for argument in self.arguments:
             if argument.name == name:
                 return argument
@@ -836,11 +836,12 @@ class AnnotationWithVariants(Expression):
 
     For example,
 
-    X: Union[X, Y] = 1
-       ^     ^  ^
-       |     |  |
-       |    these are the variants,
-       '- this is the annotation.
+    X: X | Y = 1
+       ^ ^ ^
+       | | |
+       | | |
+       '- this is the annotation, but they're treated as variants,
+          this is to maintain existing behaviour.
     """
 
     identifier: str

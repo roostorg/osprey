@@ -2,7 +2,6 @@
 
 import ast
 from typing import Any, Type, TypeVar
-from typing import List as ListT
 
 from .ast_utils import iter_field_values
 from .errors import OspreySyntaxError
@@ -151,7 +150,7 @@ class OspreyAstNodeTransformer:
                 Literal,
                 FormatString,
                 value,
-                hint=f'`{annotation.identifier}` assignment expects an rvalue of type `Union[Literal, FormatString]`',
+                hint=f'`{annotation.identifier}` assignment expects an rvalue of type `Literal | FormatString`',
             )
         return Assign(span=self.span_for(node), target=target, value=value, annotation=annotation)
 
@@ -287,7 +286,7 @@ class OspreyAstNodeTransformer:
         return List(span=self.span_for(node), items=items)
 
     def transform_JoinedStr(self, node: ast.JoinedStr) -> FormatString:
-        format_string_parts: ListT[str] = []
+        format_string_parts: list[str] = []
         names = []
         # Tracks the unescaped length of the parts seen so far, so error carets stay positioned
         # the same way even though literal braces are doubled in `format_string_parts` below.
@@ -512,7 +511,7 @@ def pyast_ann_assign_annotation_to_annotation(
         return Annotation(identifier='None', span=transformer.span_for(annotation))
 
     if isinstance(annotation, ast.Subscript):
-        variants: ListT[Annotation | AnnotationWithVariants] = []
+        variants: list[Annotation | AnnotationWithVariants] = []
         value = transformer.expect_pyast_ty(ast.Name, annotation.value, hint=annotation_hint)
         slice = annotation.slice
 
@@ -527,6 +526,24 @@ def pyast_ann_assign_annotation_to_annotation(
             variants.append(variant)
 
         return AnnotationWithVariants(identifier=value.id, variants=variants, span=transformer.span_for(annotation))
+
+    if isinstance(annotation, ast.BinOp):
+        variants: list[Annotation | AnnotationWithVariants] = []  # type: ignore[no-redef]
+        identifier: str = ''
+
+        # This is for an Optional, as annotation.left wouldn't be
+        # a BinOp, but most likely a name.
+        if not isinstance(annotation.left, ast.BinOp):
+            identifier = 'Optional'
+        else:
+            identifier = 'Union'
+
+        left_variant = pyast_ann_assign_annotation_to_annotation(transformer, annotation.left)
+        right_variant = pyast_ann_assign_annotation_to_annotation(transformer, annotation.right)
+        variants.append(left_variant)
+        variants.append(right_variant)
+
+        return AnnotationWithVariants(identifier=identifier, variants=variants, span=transformer.span_for(annotation))
 
     raise transformer.make_syntax_error(
         error=f'unexpected node: `{annotation.__class__.__name__}`',
