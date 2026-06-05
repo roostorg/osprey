@@ -198,9 +198,16 @@ class OptionalTypeChecker(UnionTypeChecker):
 
     @classmethod
     def parse(cls, node: AnnotationWithVariants, type_constructor: TypeConstructorT) -> 'OptionalTypeChecker':
-        if len(node.variants) != 1:
+        if len(node.variants) < 1 or len(node.variants) > 2:
             raise AnnotationConversionError(
-                message='`Optional` must have exactly one argument',
+                message='`Optional` must have one argument or less than two arguments',
+                span=node.span,
+                hint=f'got {len(node.variants)} arguments',
+            )
+
+        if len(node.variants) > 1 and node.variants[-1].identifier != 'None':
+            raise AnnotationConversionError(
+                message="`Optional` can't have arguments of different types",
                 span=node.span,
                 hint=f'got {len(node.variants)} arguments',
             )

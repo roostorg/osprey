@@ -206,6 +206,25 @@ def _get_args_excluding_nonetype(t: type) -> list[type]:
     return args
 
 
+def _check_optional(generic_type: type, resolved_type: type) -> bool:
+    generic_args = get_args(generic_type)
+    resolved_args = get_args(resolved_type)
+    if len(generic_args) == len(resolved_args):
+        if (
+            get_normalized_origin(generic_type) != get_normalized_origin(resolved_type)
+            and generic_args[-1] is not resolved_args[-1]
+        ):
+            return True
+    else:
+        if (
+            get_normalized_origin(generic_type) != get_normalized_origin(resolved_type)
+            and not resolved_type
+            and generic_args[-1] is not None
+        ):
+            return True
+    return False
+
+
 def get_typevar_substitution(
     generic_type: type,
     resolved_type: type,
@@ -241,7 +260,7 @@ def get_typevar_substitution(
             f'generic type {generic_type} must have exactly one typevar nested at most one level deep'
         )
 
-    if get_normalized_origin(generic_type) != get_normalized_origin(resolved_type):
+    if _check_optional(generic_type, resolved_type):
         raise UnsupportedTypeError(
             f'generic type {generic_type} and concrete type {resolved_type} have different origins'
         )
