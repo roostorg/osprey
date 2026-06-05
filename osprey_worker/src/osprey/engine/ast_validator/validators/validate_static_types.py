@@ -710,7 +710,7 @@ class ValidateStaticTypes(SourceValidator, HasInput[dict[str, _TypeAndSpan]], Ha
             accepted_types_str = ', '.join(to_display_str(arg) for arg in accepted_types)
             self._check_compatible_type(
                 type_t=name_type,
-                accepted_by_t=cast(type, accepted_types),
+                accepted_by_t=cast(type, Union[accepted_types]),
                 message='unsupported type for f-string substitution',
                 node=name,
                 hint=f'has type {name_type_str}, expected one of {accepted_types_str}',
