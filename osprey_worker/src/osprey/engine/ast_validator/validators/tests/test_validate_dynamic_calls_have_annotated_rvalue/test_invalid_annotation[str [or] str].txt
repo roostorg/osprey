@@ -1,0 +1,5 @@
+error: `Optional` can't have arguments of different types or duplicate types
+--> main.sml:1:5
+     |
+   1 | Foo: str | str = JsonData(path='$.foo')
+     |      ^ got str and str arguments
