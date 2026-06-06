@@ -14,7 +14,7 @@ from random import randint, uniform
 from time import time
 from typing import Any, Callable, ClassVar, Deque, Dict, List, Optional, Tuple, Union
 
-from hash_ring import HashRing, HashRingNode
+from osprey.async_worker.lib.discovery.hash_ring import HashRing, HashRingNode
 from osprey.worker.lib import etcd
 from osprey.worker.lib.discovery.exceptions import ServiceUnavailable
 from osprey.worker.lib.discovery.service import Service
