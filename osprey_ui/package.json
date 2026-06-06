@@ -29,7 +29,6 @@
     "react-infinite-scroller": "1.2.4",
     "react-router": "5.2.0",
     "react-router-dom": "5.2.0",
-    "react-scripts": "5.0.1",
     "react-virtualized": "9.22.6",
     "tippy.js": "^6.3.7",
     "uuid": "9.0.1",
@@ -60,6 +59,7 @@
     "prettier": "3.6.2",
     "rc-picker": "2.7.6",
     "sass": "^1.92.0",
+    "react-scripts": "5.0.1",
     "typescript": "5.9.2"
   },
   "scripts": {
