@@ -1,0 +1,36 @@
+name: License Check (Python)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'osprey_rpc/pyproject.toml'
+      - 'osprey_worker/pyproject.toml'
+      - 'example_plugins/pyproject.toml'
+      - '.github/allowed-licenses.txt'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version-file: .python-version
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
+      - name: Format license list
+        run: echo "ALLOWED_LICENSES=$(tr '\n' ';' < .github/allowed-licenses.txt | sed 's/;$//')" >> "$GITHUB_ENV"
+
+      - name: Install production dependencies
+        run: uv sync --only-group common
+
+      - name: Install pip-licenses
+        run: uv pip install pip-licenses==5.0.0
+
+      - name: Check licenses
+        run: uv run pip-licenses --allow-only "$ALLOWED_LICENSES"
