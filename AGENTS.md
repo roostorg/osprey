@@ -33,7 +33,7 @@ uv sync --dev
 # Install git hooks
 uv run pre-commit install --install-hooks
 
-# Start full stack (Kafka, Postgres, Druid, MinIO, Bigtable emulator, worker, UI, UI API)
+# Start full stack (Kafka, Postgres, Druid, MinIO, worker, UI, UI API)
 docker compose up -d
 # or
 ./start.sh
