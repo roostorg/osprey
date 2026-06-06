@@ -1,0 +1,5 @@
+error: expected simple type in `Optional`
+--> main.sml:1:5
+     |
+   1 | Foo: wut | None = JsonData(path='$.foo')
+     |      ^ got unknown non-generic type `wut`
