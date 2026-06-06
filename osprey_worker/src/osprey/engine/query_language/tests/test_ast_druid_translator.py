@@ -13,6 +13,9 @@ from osprey.engine.conftest import CheckJsonOutputFunction, RunValidationFunctio
 from osprey.engine.query_language import parse_query_to_validated_ast
 from osprey.engine.query_language.ast_druid_translator import DruidQueryTransformer
 from osprey.engine.query_language.tests.conftest import MakeRulesSourcesFunction
+from osprey.engine.query_language.udfs.count_over import CountOver
+from osprey.engine.stdlib.udfs.time_delta import TimeDelta
+from osprey.engine.udf.registry import UDFRegistry
 
 # The validators that the rules source validation should use, *not* the query source validation.
 pytestmark = [
@@ -27,6 +30,7 @@ pytestmark = [
             VariablesMustBeDefined,
         ]
     ),
+    pytest.mark.use_udf_registry(UDFRegistry.with_udfs(CountOver, TimeDelta)),
 ]
 
 
@@ -129,3 +133,5 @@ def test_parses_query_with_unary_operator(
     transformed_query = DruidQueryTransformer(validated_sources=validated_sources).transform()
 
     assert check_json_output(transformed_query)
+
+

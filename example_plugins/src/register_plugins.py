@@ -24,3 +24,7 @@ def register_output_sinks(config: Config) -> Sequence[BaseOutputSink]:
 def register_labels_service_or_provider(config: Config) -> LabelsServiceBase:
     """Register a PostgreSQL-backed labels service."""
     return PostgresLabelsService()
+
+
+# An LLM provider can be registered here with a `register_llm_provider` hookimpl;
+# see `llm.anthropic_provider.AnthropicLLMProvider` for a reference implementation.

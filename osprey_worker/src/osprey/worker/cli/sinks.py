@@ -61,6 +61,7 @@ CONFIG_SENTRY_OTHER_SINKS_DSN = 'SENTRY_OTHER_SINKS_DSN'
 def init_config() -> Config:
     config = CONFIG.instance()
     config.configure_from_env()
+    instruments.set_worker_type_tag('gevent')
     return config
 
 

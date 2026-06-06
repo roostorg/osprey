@@ -1,0 +1,5 @@
+error: `CountOver` must be top-level
+--> main.sml:1:13
+     |
+   1 | Query = not (CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m') >= 10)
+     |              ^ `CountOver(...) <op> N` must be the outermost filter expression, or one conjunct of a top-level `AND` (no `NOT`, `OR`, or function-argument nesting)

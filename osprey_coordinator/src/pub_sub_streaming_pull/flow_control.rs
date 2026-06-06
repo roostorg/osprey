@@ -1,7 +1,15 @@
-/// The minimum and default value for [`FlowControl::min_duration_per_please_extension`]
+/// The minimum allowed value for [`FlowControl::min_duration_per_lease_extension`].
+/// Below this the streaming-pull `stream_ack_deadline_seconds` becomes too aggressive
+/// and redelivery cascades trip on brief dispatch-queue stalls.
 const MIN_LEASE_EXTENSION_DURATION_SECS: u32 = 10;
 
-/// The maximum and default value for [`FlowControl::max_duration_per_please_extension`]
+/// The default value for [`FlowControl::min_duration_per_lease_extension`].
+/// This sets both the streaming pull's initial ack deadline and the modack interval —
+/// keeping it well above the floor avoids the redelivery loop that the previous 10s
+/// default exposed during high-load periods.
+const DEFAULT_MIN_LEASE_EXTENSION_DURATION_SECS: u32 = 30;
+
+/// The maximum and default value for [`FlowControl::max_duration_per_lease_extension`]
 const MAX_LEASE_EXTENSION_DURATION_SECS: u32 = 600;
 
 /// Flow control is used to control the buffering of messages for a given [`crate::StreamingPullManager`].
@@ -26,7 +34,7 @@ impl FlowControl {
             max_bytes: 100 * 1024 * 1024,
             max_messages: 1000,
             max_processing_messages: 1000,
-            min_duration_per_lease_extension: MIN_LEASE_EXTENSION_DURATION_SECS,
+            min_duration_per_lease_extension: DEFAULT_MIN_LEASE_EXTENSION_DURATION_SECS,
             max_duration_per_lease_extension: MAX_LEASE_EXTENSION_DURATION_SECS,
         }
     }

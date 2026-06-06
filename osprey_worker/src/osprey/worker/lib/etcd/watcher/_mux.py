@@ -82,7 +82,7 @@ class RecursiveWatchMux(object):
             unvisited_keys.discard(sync_one.key)
             existing = self._directory.get(sync_one.key, self._DOES_NOT_EXIST)
             if sync_one.value != existing:
-                self._directory[sync_one.key] = sync_one.key
+                self._directory[sync_one.key] = sync_one.value
                 yield IncrementalSyncUpsert(key=sync_one.key, value=sync_one.value)
 
         for key in sorted(unvisited_keys):

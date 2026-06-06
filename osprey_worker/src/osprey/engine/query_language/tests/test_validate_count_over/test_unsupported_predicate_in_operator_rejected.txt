@@ -1,0 +1,5 @@
+error: `CountOver` predicate uses an unsupported operator
+--> main.sml:1:28
+     |
+   1 | Query = CountOver(predicate=Country in ['US'], window='10m') >= 10
+     |                             ^ predicates support only `==`, `!=`, `and`, `or`, `not`, column names, and literal values (found `BinaryComparison` — use simpler predicates or split into multiple queries)

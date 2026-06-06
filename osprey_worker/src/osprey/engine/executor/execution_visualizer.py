@@ -2,7 +2,7 @@ import copy
 import enum
 import pathlib
 import tempfile
-from typing import Any, Dict, Optional, Set, Type, Union
+from typing import Any, Dict, Optional, Protocol, Set, Type, Union
 
 from graphviz import Digraph
 from osprey.engine.ast.grammar import (
@@ -19,12 +19,26 @@ from osprey.engine.ast.grammar import (
     Number,
     String,
 )
+from osprey.engine.config.config_subkey_handler import ModelT
 from osprey.engine.executor.graph_data import GraphData, LabelType, Node, NodeType
 from osprey.engine.stdlib.configs.labels_config import LabelsConfig
 from osprey.worker.lib.singletons import ENGINE
 
 from .dependency_chain import DependencyChain
 from .execution_graph import ExecutionGraph
+
+
+class EngineLike(Protocol):
+    """Subset of the osprey engine surface that ``render_graph`` consumes.
+
+    Implemented structurally by both the sync ``OspreyEngine`` and the async
+    ``AsyncOspreyEngine``; declaring it here lets non-sync callers pass their
+    own engine without dragging in the sync singleton.
+    """
+
+    def get_known_action_names(self) -> Set[str]: ...
+    def get_config_subkey(self, model_class: Type[ModelT]) -> ModelT: ...
+
 
 debug: bool = False
 
@@ -213,18 +227,24 @@ def render_graph(
     label_names: Optional[Set[str]] = None,  # Label names to show
     show_label_upstream: bool = False,  # Upstream for label view
     show_label_downstream: bool = True,  # Downstream for label view
+    engine: Optional[EngineLike] = None,  # Engine instance to resolve action/label names from; falls back to the sync ENGINE singleton
 ) -> 'RenderedDigraph':
     """
     Generate a rules vizualization graph based on the provided parameters.
-    This method makes a call to the OspreyEngine Singleton to grab all valid label and action names.
+
+    Callers running outside the sync osprey worker (e.g. the async ui_api) must pass ``engine``
+    explicitly so this function does not trigger the sync ``ENGINE`` singleton bootstrap. Any
+    object exposing ``get_known_action_names()`` and ``get_config_subkey(LabelsConfig)`` works.
     """
     if action_names is None:
         action_names = set()
     if label_names is None:
         label_names = set()
 
-    all_action_names = ENGINE.instance().get_known_action_names()
-    all_label_names = {key for key in ENGINE.instance().get_config_subkey(LabelsConfig).labels}
+    if engine is None:
+        engine = ENGINE.instance()
+    all_action_names = engine.get_known_action_names()
+    all_label_names = {key for key in engine.get_config_subkey(LabelsConfig).labels}
 
     return _render_graph(
         all_action_names,

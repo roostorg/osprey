@@ -1,0 +1,5 @@
+error: `CountOver` window string has invalid format
+--> main.sml:1:61
+     |
+   1 | Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='abc') >= 10
+     |                                                              ^ use format like '10m', '1h', '30s', or '7d' (digits followed by s/m/h/d)

@@ -1,0 +1,5 @@
+error: `CountOver` threshold must be an integer literal
+--> main.sml:2:71
+     |
+   2 | Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m') >= SomeVar
+     |                                                                        ^ the right-hand side of `CountOver(...) <op> N` must be a concrete integer literal

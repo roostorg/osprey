@@ -16,6 +16,7 @@ from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation
 from osprey.worker.lib.osprey_shared.logging import DynamicLogSampler, get_logger
 from osprey.worker.lib.storage.labels import LabelsProvider
+from osprey.worker.sinks.sink.monitored_rules_metrics import emit_monitored_rules_metrics
 from tenacity import RetryCallState, retry, stop_after_attempt, wait_exponential
 
 logger = get_logger()
@@ -186,18 +187,29 @@ def _get_label_effects_from_result(result: ExecutionResult) -> Mapping[EntityT[A
 class LabelOutputSink(BaseOutputSink):
     """An output sink that will send event effects to the label service."""
 
-    def __init__(self, labels_provider: LabelsProvider) -> None:
+    def __init__(self, labels_provider: LabelsProvider, monitored_labels: set[str] | None = None) -> None:
         self._labels_provider = labels_provider
+        self._monitored_labels: set[str] = monitored_labels or set()
+
+    def set_monitored_labels(self, monitored_labels: set[str]) -> None:
+        """Set monitored labels for metrics emission. Can be called post-engine compilation."""
+        self._monitored_labels = monitored_labels
 
     def will_do_work(self, result: ExecutionResult) -> bool:
         return len(_get_label_effects_from_result(result)) > 0
 
     def push(self, result: ExecutionResult) -> None:
         for entity, mutations in _get_label_effects_from_result(result).items():
-            _ = self._labels_provider.apply_entity_label_mutations(
+            mutation_result = self._labels_provider.apply_entity_label_mutations(
                 entity,
                 mutations,
             )
+            if self._monitored_labels and (mutation_result.labels_added or mutation_result.labels_removed):
+                emit_monitored_rules_metrics(
+                    mutations=[(m.label_name, m.reason_name, str(m.status)) for m in mutations],
+                    monitored_labels=self._monitored_labels,
+                    action_name=result.action.action_name,
+                )
 
     def stop(self) -> None:
         self._labels_provider.stop()

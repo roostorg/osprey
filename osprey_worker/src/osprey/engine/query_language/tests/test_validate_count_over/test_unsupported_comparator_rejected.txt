@@ -1,0 +1,5 @@
+error: unsupported `CountOver` comparator
+--> main.sml:1:8
+     |
+   1 | Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m') in [10, 20]
+     |         ^ use one of: `>=`, `>`, `==`, `!=`, `<=`, `<`

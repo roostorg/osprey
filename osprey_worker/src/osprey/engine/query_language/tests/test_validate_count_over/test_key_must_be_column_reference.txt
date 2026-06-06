@@ -1,0 +1,5 @@
+error: `CountOver` key must be a column reference
+--> main.sml:1:72
+     |
+   1 | Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m', key="invalid_string_literal") >= 10
+     |                                                                         ^ the `key` argument must be a single column name (e.g. `key=UserId`)

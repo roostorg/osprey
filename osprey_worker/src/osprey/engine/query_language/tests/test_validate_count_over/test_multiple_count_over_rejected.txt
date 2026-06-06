@@ -1,0 +1,5 @@
+error: only one `CountOver` per query is allowed
+--> main.sml:1:77
+     |
+   1 | Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m') >= 10 or CountOver(predicate=Endpoint == '/foo', window='1m') >= 5
+     |                                                                              ^ a query may contain at most one `CountOver(...)` call

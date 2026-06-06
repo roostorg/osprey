@@ -125,6 +125,25 @@ def register_ast_validators() -> None:
     # Register AST validators
 ```
 
+### Available hooks
+
+Implement any subset of these in your plugin's `register_plugins.py`:
+
+| Hook | Returns | Notes |
+| --- | --- | --- |
+| `register_udfs` | `Sequence[Type[UDFBase]]` | Custom user-defined functions. |
+| `register_output_sinks` | `Sequence[BaseOutputSink]` | Where execution results go. |
+| `register_ast_validators` | `Sequence[Type[BaseValidator]]` | Extra SML validators. |
+| `register_action_proto_deserializer` | `ActionProtoDeserializer \| None` | Custom action proto → JSON. |
+| `register_input_stream` | `BaseInputStream` | Single-provider (`firstresult`). |
+| `register_execution_result_store` | `ExecutionResultStore` | Single-provider (`firstresult`). |
+| `register_labels_service_or_provider` | `LabelsServiceBase \| LabelsProvider` | Single-provider (`firstresult`). |
+| `register_llm_provider` | `BaseLLMProvider` | Single-provider (`firstresult`). LLM API access for AI-assisted features. |
+
+The `register_llm_provider` hook and the vendor-neutral tool-calling helpers
+(`@tool`, `ToolRegistry`, `run_tool_loop`) have their own page:
+[LLM provider & tool calling](llm.md).
+
 ## Rules
 
 Rules are written in SML, some examples are provided in `example_rules/` with YAML config, the rules are mounted to the worker processes when the containers start via environment variables. ex:

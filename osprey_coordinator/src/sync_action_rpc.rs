@@ -8,6 +8,7 @@ use crate::{
     proto::{self, osprey_coordinator_sync_action},
 };
 use anyhow::{anyhow, Context, Result};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::time::Instant;
 
@@ -19,6 +20,7 @@ pub(crate) struct SyncActionServer {
     snowflake_client: Arc<SnowflakeClient>,
     priority_queue_sender: PriorityQueueSender,
     metrics: Arc<OspreyCoordinatorMetrics>,
+    is_shutting_down: Arc<AtomicBool>,
 }
 
 impl SyncActionServer {
@@ -26,11 +28,13 @@ impl SyncActionServer {
         snowflake_client: Arc<SnowflakeClient>,
         priority_queue_sender: PriorityQueueSender,
         metrics: Arc<OspreyCoordinatorMetrics>,
+        is_shutting_down: Arc<AtomicBool>,
     ) -> SyncActionServer {
         SyncActionServer {
             snowflake_client,
             priority_queue_sender,
             metrics,
+            is_shutting_down,
         }
     }
 }
@@ -81,6 +85,18 @@ impl SyncActionServer {
         action_request: &ProcessActionRequest,
     ) -> Result<tonic::Response<osprey_coordinator_sync_action::ProcessActionResponse>, tonic::Status>
     {
+        // Fast-reject new RPCs once this pod is draining. Returns `Unavailable`
+        // before the request is enqueued or a snowflake is allocated. The
+        // gRPC client retries `Unavailable`, routing the retry to a healthier
+        // coordinator pod. Without this,
+        // requests landing during the shutdown window queue up, await workers
+        // whose bidi streams are about to tear down, and end up hitting the
+        // client-side deadline as `DEADLINE_EXCEEDED`.
+        if self.is_shutting_down.load(Ordering::Acquire) {
+            self.metrics.sync_classification_failure_shutting_down.incr();
+            return Err(tonic::Status::unavailable("coordinator draining"));
+        }
+
         let unvalidated_action_id = action_request.action_id;
 
         let osprey_coordinator_action = match create_osprey_coordinator_action(

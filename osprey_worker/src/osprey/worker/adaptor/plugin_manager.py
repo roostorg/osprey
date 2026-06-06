@@ -20,6 +20,7 @@ from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
+    from osprey.worker.lib.llm.base import BaseLLMProvider
 
 hookimpl_osprey: pluggy.HookimplMarker = pluggy.HookimplMarker(OSPREY_ADAPTOR)
 
@@ -88,6 +89,13 @@ def bootstrap_output_sinks(config: Config) -> BaseOutputSink:
     return MultiOutputSink(sinks)
 
 
+def bootstrap_validation_exporter(config: Config) -> 'BaseValidationResultExporter':
+    from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter, NullValidationResultExporter
+    load_all_osprey_plugins()
+    exporter = plugin_manager.hook.register_validation_exporter(config=config)
+    return exporter if isinstance(exporter, BaseValidationResultExporter) else NullValidationResultExporter()
+
+
 def bootstrap_labels_provider(config: Config) -> LabelsProvider:
     """
     NOTE: If you are looking to get a labels provider to use within Osprey,
@@ -152,6 +160,24 @@ def bootstrap_input_stream(config: Config) -> BaseInputStream[BaseAckingContext[
     stream = plugin_manager.hook.register_input_stream(config=config)
     if stream:
         return stream
+    else:
+        return None
+
+
+def bootstrap_llm_provider(config: Config) -> BaseLLMProvider | None:
+    """Get the LLM API provider from plugins, if one is registered.
+
+    The hook uses ``firstresult=True``, so at most one provider is returned.
+    Returns ``None`` when no plugin registers ``register_llm_provider``, so callers
+    should null-check before use. Note that a returned provider is *registered* but
+    not necessarily *ready*: a provider may defer validating its backing SDK or
+    credentials until the first ``chat()`` call.
+    """
+    load_all_osprey_plugins()
+
+    provider = plugin_manager.hook.register_llm_provider(config=config)
+    if provider:
+        return provider
     else:
         return None
 

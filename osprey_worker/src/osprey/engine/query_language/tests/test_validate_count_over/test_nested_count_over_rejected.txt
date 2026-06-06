@@ -1,0 +1,5 @@
+error: `CountOver` may not be nested
+--> main.sml:1:28
+     |
+   1 | Query = CountOver(predicate=CountOver(predicate=Foo == 'x', window='1m') == 1, window='10m') >= 5
+     |                             ^ the `predicate` argument of `CountOver(...)` cannot itself contain `CountOver`

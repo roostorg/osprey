@@ -9,5 +9,6 @@
             "type": "search"
         },
         "type": "not"
-    }
+    },
+    "type": "native"
 }

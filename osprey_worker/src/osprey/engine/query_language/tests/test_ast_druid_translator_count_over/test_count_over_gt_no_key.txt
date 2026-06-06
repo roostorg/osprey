@@ -1,0 +1,4 @@
+{
+    "sql": "SELECT * FROM (SELECT *, LAG(__time, 10) OVER (ORDER BY __time) AS pt1 FROM \"datasource\" WHERE Endpoint = '/foo') AS __inner WHERE pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= 600",
+    "type": "sql"
+}

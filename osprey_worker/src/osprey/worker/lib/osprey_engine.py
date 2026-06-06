@@ -136,6 +136,10 @@ class OspreyEngine:
         else:
             # Only do this if no exception occurred above
             self._config_subkey_handler.dispatch_config(self._execution_graph.validated_sources)
+            # Confirm to the provider which sources are now live so it dedups no-op
+            # re-deliveries against what we applied; the except branch above leaves
+            # it unmarked, so a failed compile retries on the next re-delivery.
+            self._sources_provider.mark_sources_applied(self._execution_graph.validated_sources.sources.hash())
 
         # noinspection PyBroadException
         # try to send validation results, should not block osprey_engine if this fails
@@ -305,23 +309,27 @@ def bootstrap_engine_with_helpers(
     sources_provider: Optional[BaseSourcesProvider] = None,
 ) -> Tuple[OspreyEngine, UDFHelpers]:
     # Avoid circular imports
-    from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators, bootstrap_udfs
+    from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators, bootstrap_udfs, bootstrap_validation_exporter
 
     udf_registry, udf_helpers = bootstrap_udfs()
     bootstrap_ast_validators()
 
+    config = CONFIG.instance()
+
     if not sources_provider:
         # Use static rules path if configured, otherwise use etcd
-        config = CONFIG.instance()
         rules_path_str = config.get_optional_str('OSPREY_RULES_PATH')
         rules_path = Path(rules_path_str) if rules_path_str else None
         sources_provider = get_sources_provider(rules_path=rules_path)
+
+    validation_exporter = bootstrap_validation_exporter(config)
 
     return (
         OspreyEngine(
             sources_provider=sources_provider,
             udf_registry=udf_registry,
             should_yield_during_compilation=should_yield_during_compilation(),
+            validation_exporter=validation_exporter,
         ),
         udf_helpers,
     )

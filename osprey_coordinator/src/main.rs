@@ -24,6 +24,7 @@ mod tonic_mock;
 use anyhow::Result;
 use clap::Parser;
 use proto::osprey_coordinator_sync_action::osprey_coordinator_sync_action_service_server::OspreyCoordinatorSyncActionServiceServer;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -61,6 +62,12 @@ struct CliOptions {
         env = "SNOWFLAKE_API_ENDPOINT"
     )]
     snowflake_api_endpoint: String,
+    #[arg(
+        long,
+        default_value = "osprey_coordinator",
+        env = "OSPREY_COORDINATOR_SERVICE_NAME"
+    )]
+    service_name: String,
 }
 
 #[tokio::main]
@@ -87,11 +94,14 @@ async fn main() -> Result<()> {
             metrics.clone(),
         ));
 
+    let is_shutting_down = Arc::new(AtomicBool::new(false));
+
     let osprey_coordinator_sync_action_service =
         OspreyCoordinatorSyncActionServiceServer::new(sync_action_rpc::SyncActionServer::new(
             snowflake_client.clone(),
             priority_queue_sender.clone(),
             metrics.clone(),
+            is_shutting_down.clone(),
         ));
 
     let consumer_type = std::env::var("OSPREY_COORDINATOR_CONSUMER_TYPE").ok();
@@ -134,15 +144,23 @@ async fn main() -> Result<()> {
         }
     };
 
+    let bidi_service_name = opts.service_name.clone();
+    let sync_action_service_name = format!("{}_sync_action", opts.service_name);
+    tracing::info!(
+        bidi_service_name = %bidi_service_name,
+        sync_action_service_name = %sync_action_service_name,
+        "registering coordinator services in etcd"
+    );
+
     let grpc_bidi_stream_service_fut = pigeon::serve(
         osprey_coordinator_grpc_bidi_stream_service,
-        "osprey_coordinator",
+        &bidi_service_name,
         opts.bidi_stream_port,
         Duration::from_secs(30),
     );
     let sync_action_service_fut = pigeon::serve(
         osprey_coordinator_sync_action_service,
-        "osprey_coordinator_sync_action",
+        &sync_action_service_name,
         opts.sync_action_port,
         Duration::from_secs(60),
     );
@@ -154,6 +172,7 @@ async fn main() -> Result<()> {
     shutdown_handler::spawn_shutdown_handler(
         priority_queue_sender.clone(),
         priority_queue_receiver.clone(),
+        is_shutting_down.clone(),
     );
 
     tracing::info!("starting consumer/bidi stream/sync classification rpc");

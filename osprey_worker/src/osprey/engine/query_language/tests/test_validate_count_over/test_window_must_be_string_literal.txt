@@ -1,0 +1,17 @@
+3 errors occurred while validating:
+[1/3] error: `CountOver` window must be a string literal
+--> main.sml:1:61
+     |
+   1 | Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window=SomeVar) >= 10
+     |                                                              ^ use `window="10m"`, `window="1h"`, `window="30s"`, or `window="7d"`
+[2/3] error: invalid argument type: `Name`
+--> main.sml:1:61
+     |
+   1 | Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window=SomeVar) >= 10
+     |                                                              ^ expected type `String`
+[3/3] error: name `SomeVar` could not be resolved to a `Literal
+--> main.sml:1:61
+     |
+   1 | Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window=SomeVar) >= 10
+     |                                                              ^ currently literal resolutions are only one layer deep so you can't do a = b = c = 1
+                                                                    | perhaps variable `SomeVar` is undefined?
