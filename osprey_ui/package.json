@@ -32,7 +32,6 @@
     "react-scripts": "5.0.1",
     "react-virtualized": "9.22.6",
     "tippy.js": "^6.3.7",
-    "uuid": "9.0.1",
     "zustand": "3.5.2"
   },
   "devDependencies": {
@@ -52,7 +51,6 @@
     "@types/react-router": "5.1.19",
     "@types/react-router-dom": "5.3.3",
     "@types/react-virtualized": "9.21.8",
-    "@types/uuid": "9.0.5",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "8.57.0",
