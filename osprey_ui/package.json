@@ -46,6 +46,7 @@
     "@types/invariant": "2.2.34",
     "@types/jest": "24.0.23",
     "@types/lodash": "4.14.159",
+    "@types/node": "^22.19.20",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/react-infinite-scroller": "1.2.1",
@@ -71,6 +72,7 @@
   "scripts": {
     "start": "rsbuild",
     "build": "rsbuild build",
+    "typecheck": "tsc --noEmit",
     "test": "rstest --passWithNoTests",
     "preview": "rsbuild preview",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",
