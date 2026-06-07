@@ -8,7 +8,7 @@ This guide provides comprehensive instructions for setting up a development envi
 - **[Python](https://www.python.org/) 3.11 or higher** (check with `python --version`)
 - **[Git](https://git-scm.com/)** for version control
 - **[uv](https://docs.astral.sh/uv/)** for Python package management
-- **[npm](https://nodejs.org/en/download)**
+- **[Node.js](https://nodejs.org/en/download/) 18+** for the UI (Corepack ships with Node and auto-resolves pnpm from `osprey_ui/package.json`'s `packageManager` field — no separate pnpm install needed)
 
 ## Project Setup
 
