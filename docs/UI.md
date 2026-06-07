@@ -2,6 +2,14 @@
 
 ## Getting Started
 
+Enable Corepack once per machine so `pnpm` is on your PATH (resolves the version pinned in `package.json`):
+
+```bash
+corepack enable
+```
+
+Then, from `osprey_ui`:
+
 ```bash
 cd osprey_ui
 pnpm install --frozen-lockfile

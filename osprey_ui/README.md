@@ -2,7 +2,7 @@
 
 ### Prerequisites
 
-- Node.js (version 16+ recommended)
+- Node.js (version 18+ required)
 - pnpm (via Corepack — auto-resolved from the `packageManager` field in `package.json`; no separate install needed once Node.js 18+ is on the host)
 - Docker (for backend services)
 
