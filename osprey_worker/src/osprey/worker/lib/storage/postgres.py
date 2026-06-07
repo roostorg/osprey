@@ -19,7 +19,7 @@ metadata = MetaData()
 Model = declarative_base(name='Model', metadata=metadata)
 
 if TYPE_CHECKING:
-    SessionMaker = sessionmaker[Session]
+    SessionMaker = sessionmaker[Session]  # type: ignore[type-var]
 else:
     SessionMaker = sessionmaker
 
@@ -29,7 +29,7 @@ session_registries: Dict[str, ThreadLocalRegistry] = {}
 
 def _get_or_init_session(database: str) -> SessionMaker:
     if not sessions.get(database):
-        sessions[database] = SessionMaker()
+        sessions[database] = SessionMaker()  # type: ignore[type-var]
     if not session_registries.get(database):
         session_registries[database] = ThreadLocalRegistry(createfunc=sessions[database])
     return sessions[database]

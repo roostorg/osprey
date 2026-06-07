@@ -11,7 +11,6 @@ from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_engine import OspreyEngine
 from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation
 from osprey.worker.lib.osprey_shared.logging import get_logger
-from osprey.worker.lib.pigeon.exceptions import RPCException
 from osprey.worker.lib.publisher import BasePublisher
 from osprey.worker.lib.singletons import LABELS_PROVIDER
 from osprey.worker.lib.storage.bulk_label_task import BASE_DELAY_SECONDS, MAX_ATTEMPTS, BulkLabelTask
@@ -350,7 +349,7 @@ class BulkLabelSink(BaseSink):
         @retry(
             wait=wait_exponential(multiplier=1, min=1, max=10),
             stop=stop_after_attempt(MAX_LABEL_SERVICE_RETRIES),
-            retry=retry_if_exception_type((RPCException, ServiceUnavailable)),
+            retry=retry_if_exception_type(ServiceUnavailable),
             reraise=True,
             before_sleep=_log_before_sleep,
         )

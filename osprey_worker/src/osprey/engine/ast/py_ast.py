@@ -165,6 +165,7 @@ class OspreyAstNodeTransformer:
         if node.value is None:
             return None_(span=self.span_for(node))
 
+        assert isinstance(node.value, bool)
         return Boolean(span=self.span_for(node), value=node.value)
 
     # typeshed is missing ast.Constant as it is new in python 3.8
@@ -185,6 +186,7 @@ class OspreyAstNodeTransformer:
             raise self.make_syntax_error(f'unexpected constant `{node.value!r}`', span=span)
 
     def transform_Str(self, node: ast.Str) -> String:
+        assert isinstance(node.s, str)
         return String(span=self.span_for(node), value=node.s)
 
     def transform_Num(self, node: ast.Num) -> Number:
@@ -285,11 +287,12 @@ class OspreyAstNodeTransformer:
         return List(span=self.span_for(node), items=items)
 
     def transform_JoinedStr(self, node: ast.JoinedStr) -> FormatString:
-        format_string_parts = []
+        format_string_parts: ListT[str] = []
         names = []
 
         for value in node.values:
             if isinstance(value, ast.Str):
+                assert isinstance(value.s, str)
                 format_string_parts.append(value.s)
                 continue
 

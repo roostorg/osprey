@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Iterable, List, Optional, Tuple
 
 from osprey.worker.lib.discovery.service import Service
 from osprey.worker.lib.discovery.service_watcher import ServiceWatcher
 from osprey.worker.lib.etcd import EtcdClient
-from osprey.worker.lib.etcd.ring import EtcdHashRing
 
 if TYPE_CHECKING:
     from .service_watcher import SelectorFunctionType
@@ -52,7 +51,7 @@ class Directory:
             rv.add(os.path.basename(node.key))
         return rv
 
-    def select(self, name: str, selector: Union[SelectorFunctionType, str, int, None] = None) -> Service:
+    def select(self, name: str, selector: Optional[SelectorFunctionType] = None) -> Service:
         """Selects an instance of a service based on a selector."""
         return self.get_watcher(name).select(selector)
 
@@ -60,15 +59,14 @@ class Directory:
         """Selects all instances of a service based on a selector."""
         return self.get_watcher(name).select_all(selector)
 
-    def get_watcher(self, service_name: str, with_ring: bool = True) -> ServiceWatcher:
+    def get_watcher(self, service_name: str) -> ServiceWatcher:
         """Creates a provider for a specific service."""
         # this code is intentionally optimized for cache hit speed
         # do not refactor to `if service_name in self._watchers`
         try:
             return self._watchers[service_name]
         except KeyError:
-            ring = EtcdHashRing(self.etcd_client, f'{self.base_key}/{service_name}/ring') if with_ring else None
-            watcher = self._watchers[service_name] = ServiceWatcher(self, self._key_for(service_name), ring)
+            watcher = self._watchers[service_name] = ServiceWatcher(self, self._key_for(service_name))
             return watcher
 
     def key_for(self, service: Service) -> str:

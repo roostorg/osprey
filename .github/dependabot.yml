@@ -4,6 +4,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    labels:
+      - "dependencies"
+      - "dependabot"
     ignore:
       - dependency-name: "grpcio"
 
@@ -11,6 +14,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    labels:
+      - "dependencies"
+      - "dependabot"
     groups:
       github-actions:
         patterns:
