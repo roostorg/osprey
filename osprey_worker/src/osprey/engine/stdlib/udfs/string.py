@@ -410,7 +410,7 @@ class StringExtractDomains(UDFBase[StringArguments, List[str]]):
         # split the message into individual tokens as based on a modified URL regex from messages_common.
         # should capture space based links and markdown based links without duplication.
         potential_urls: Iterator[Optional[ParseResult]] = (
-            _safe_urlparse(token) for token in re.findall('(https?:\/\/[^\/\s][^\s\)>]+)', arguments.s)
+            _safe_urlparse(token) for token in re.findall(r'(https?:\/\/[^\/\s][^\s\)>]+)', arguments.s)
         )
 
         # filter out any tokens that do not have a scheme or a domain (or failed to parse)
@@ -444,7 +444,7 @@ class StringExtractURLs(UDFBase[StringArguments, List[str]]):
         # split the message into individual tokens as based on a modified URL regex from messages_common.
         # should capture space based links and markdown based links without duplication.
         potential_urls: Iterator[Optional[ParseResult]] = (
-            _safe_urlparse(token) for token in re.findall('(https?:\/\/[^\/\s][^\s\)>]+)', arguments.s)
+            _safe_urlparse(token) for token in re.findall(r'(https?:\/\/[^\/\s][^\s\)>]+)', arguments.s)
         )
 
         # filter out any tokens that do not have a scheme or a domain (or failed to parse)

@@ -1,7 +1,7 @@
 import functools
 from typing import Iterable, Optional
 
-import Levenshtein
+from rapidfuzz.distance import Levenshtein
 
 
 def get_closest_string_within_threshold(
