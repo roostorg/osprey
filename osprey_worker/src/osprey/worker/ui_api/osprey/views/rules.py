@@ -33,7 +33,7 @@ def _description_to_string(value: Any) -> str:
         return value.value
     if isinstance(value, FormatString):
         return value.format_string
-    return ast_to_string(value)
+    raise TypeError(f'BUG: Rule description was {value!r}, should have been caught by validator.')
 
 
 def _extract_rules_from_engine() -> tuple[List[Dict[str, Any]], int]:
