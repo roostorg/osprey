@@ -61,6 +61,6 @@
   border: 1px solid var(--divider);
   border-radius: 4px;
   white-space: pre-wrap;
-  word-break: break-word;
+  overflow-wrap: break-word;
   margin: 0;
 }

@@ -142,7 +142,7 @@ def test_whenrules_in_main_references_rule_in_imported_source(client: 'FlaskClie
     assert res.status_code == 200
 
     rule = next(r for r in res.json['rules'] if r['name'] == 'ContainsHello')
-    assert rule['referenced_by_whenrules'] >= 1
+    assert rule['referenced_by_whenrules'] == 1
     assert res.json['when_rules_total'] == 1
     assert res.json['unused_total'] == 0  # The one rule is referenced
 
