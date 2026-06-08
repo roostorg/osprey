@@ -8,6 +8,8 @@ Osprey docker entrypoint.
 Commands:
   osprey-worker
     Runs the worker
+  osprey-async-worker
+    [EXPERIMENTAL] Runs the asyncio-native worker (Phase 0; async image only)
   osprey-ui-api
     Runs the Osprey UI API
   run-tests
@@ -33,6 +35,13 @@ cli-osprey-ui-api() {
 
 cli-osprey-worker() {
     exec uv run python3.11 osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink
+}
+
+cli-osprey-async-worker() {
+    # EXPERIMENTAL: asyncio-native worker (Phase 0 — static/JSONL input, stdout sink;
+    # no Kafka/coordinator input wired upstream yet). Only functional in the
+    # osprey_async_worker/Dockerfile image, which installs osprey_async_worker.
+    exec uv run osprey-async-cli run --rules-path "${OSPREY_RULES_PATH:-/osprey/example_rules}" "$@"
 }
 
 cli-run-tests() {

@@ -1,4 +1,13 @@
 # syntax=docker/dockerfile:1
+#
+# EXPERIMENTAL — asyncio-native Osprey worker (opt-in, NOT production-ready).
+#
+# The asyncio worker is a Phase-0 prototype. Its CLI (`osprey-async-cli run`)
+# reads actions from a static/JSONL source and writes to a stdout sink — there
+# is no Kafka or coordinator input wired upstream yet. Build/run this image only
+# to try the asyncio engine. The stable gevent worker lives in
+# osprey_worker/Dockerfile and is unaffected by this image.
+#
 FROM python:3.11-slim
 ARG TARGETPLATFORM
 
@@ -31,38 +40,33 @@ ADD pyproject.toml /osprey/pyproject.toml
 ADD README.md /osprey/README.md
 ADD LICENSE.md /osprey/LICENSE.md
 
-# Create workspace structure with pyproject.toml files for uv sync to work.
-# osprey_async_worker is a uv workspace member, so its pyproject must be present
-# for `uv sync --locked` to validate the lockfile. This (stable, gevent) image
-# does NOT install it — see --no-install-package below. The experimental asyncio
-# worker ships in its own image: osprey_async_worker/Dockerfile.
+# Create workspace structure with pyproject.toml files for uv sync to work
 ADD osprey_rpc/pyproject.toml /osprey/osprey_rpc/pyproject.toml
 ADD osprey_worker/pyproject.toml /osprey/osprey_worker/pyproject.toml
 ADD osprey_async_worker/pyproject.toml /osprey/osprey_async_worker/pyproject.toml
 ADD example_plugins/pyproject.toml /osprey/example_plugins/pyproject.toml
 
 # Create minimal package structure required by uv
-RUN mkdir -p /osprey/osprey_worker /osprey/osprey_rpc /osprey/example_plugins/src && \
-    touch /osprey/osprey_worker/__init__.py /osprey/osprey_rpc/__init__.py /osprey/example_plugins/src/__init__.py
+RUN mkdir -p /osprey/osprey_worker /osprey/osprey_async_worker /osprey/osprey_rpc /osprey/example_plugins/src && \
+    touch /osprey/osprey_worker/__init__.py /osprey/osprey_async_worker/__init__.py /osprey/osprey_rpc/__init__.py /osprey/example_plugins/src/__init__.py
 
-# Install dependencies first (this layer will be cached when only source code changes).
-# Exclude osprey_async_worker: the asyncio worker is experimental and lives in its own
-# image, so the gevent worker stays free of it (osprey.async_worker is not importable
-# here, so execution_context's optional async import cleanly falls back to None).
+# Install the full workspace, including osprey_async_worker (this is the one image
+# that does). This layer is cached when only source code changes.
 RUN pip install --upgrade pip uv && \
-    uv sync --locked --no-install-package osprey-async-worker --python=$(which python3.11) && \
+    uv sync --locked --python=$(which python3.11) && \
     pip cache purge && uv cache clean
 
 # https://tld.readthedocs.io/en/latest/#update-the-list-of-tld-names
 RUN . .venv/bin/activate && update-tld-names
 
-# Add source code after dependencies are installed (osprey_async_worker is
-# intentionally omitted — it is not installed in this image).
+# Add source code after dependencies are installed
 ADD example_rules /osprey/example_rules
 ADD osprey_worker /osprey/osprey_worker
+ADD osprey_async_worker /osprey/osprey_async_worker
 ADD osprey_rpc /osprey/osprey_rpc
 ADD example_plugins /osprey/example_plugins
 
 COPY entrypoint.sh /osprey/entrypoint.sh
 
 ENTRYPOINT ["/osprey/entrypoint.sh"]
+CMD ["osprey-async-worker"]
