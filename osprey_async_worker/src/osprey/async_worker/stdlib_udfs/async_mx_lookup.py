@@ -46,7 +46,9 @@ class MXLookup(AsyncUDFBase[Arguments, str]):  # type: ignore[misc]
             mx_records = [r for r in mx_result.answer if hasattr(r.data, 'priority')]
             if not mx_records:
                 raise ExpectedUdfException()
-            best_mx = sorted(mx_records, key=lambda r: r.data.priority)[0].data.exchange
+            # hasattr filter above guarantees these are MX records; pycares' record
+            # union doesn't narrow on hasattr, so suppress union-attr here.
+            best_mx = sorted(mx_records, key=lambda r: r.data.priority)[0].data.exchange  # type: ignore[union-attr]
             a_result = await resolver.query_dns(best_mx, 'A')
         except (aiodns.error.DNSError, pycares.AresError):
             raise ExpectedUdfException()
@@ -54,4 +56,5 @@ class MXLookup(AsyncUDFBase[Arguments, str]):  # type: ignore[misc]
         a_records = [r for r in a_result.answer if hasattr(r.data, 'addr')]
         if not a_records:
             raise ExpectedUdfException()
-        return min(r.data.addr for r in a_records)
+        # hasattr filter guarantees A records; pycares union doesn't narrow on hasattr.
+        return min(r.data.addr for r in a_records)  # type: ignore[union-attr]

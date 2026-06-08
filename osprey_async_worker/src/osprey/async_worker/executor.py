@@ -10,13 +10,14 @@ primitives will NOT work here — they must be ported to AsyncUDFBase.
 
 import asyncio
 import os
-
-import sentry_sdk
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
+import sentry_sdk
 from ddtrace import tracer
 from ddtrace.span import Span as TracerSpan
+from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase, AsyncUDFBase
+from osprey.async_worker.lib.pigeon.exceptions import RPCException
 from osprey.engine.ast.grammar import ASTNode
 from osprey.engine.executor.custom_extracted_features import (
     ActionIdExtractedFeature,
@@ -41,10 +42,7 @@ from osprey.engine.stdlib.udfs.json_utils import MissingJsonPath
 from osprey.engine.udf.base import BatchableUDFBase
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
-from osprey.async_worker.lib.pigeon.exceptions import RPCException
 from result import Err, Ok
-
-from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase, AsyncUDFBase
 
 logger = get_logger(__name__)
 
@@ -292,7 +290,8 @@ async def _execute_async_batch(
                         exc_name = exc_name + f'.{result.value.code().name.lower()}'
                     metrics.increment(
                         'udf_execution',
-                        tags=metric_tags + [f'udf:{udf.__class__.__name__}', f'exc_name:{exc_name}', 'result:unexpected_failure'],
+                        tags=metric_tags
+                        + [f'udf:{udf.__class__.__name__}', f'exc_name:{exc_name}', 'result:unexpected_failure'],
                     )
                 type_checked_results.append(Err(None))
                 continue
@@ -432,9 +431,12 @@ async def execute(
             context.set_resolved_value(chain, task.result())
 
         # Process finished batches
-        for task in finished_batches:
-            chains = in_progress_batches.pop(task)
-            results = task.result()
+        # Distinct loop variable from the singlet `task` above: the two dicts hold
+        # tasks with different result types (Task[NodeResult] vs Task[Sequence[NodeResult]]),
+        # and reusing one name would unify them to the singlet type.
+        for batch_task in finished_batches:
+            chains = in_progress_batches.pop(batch_task)
+            results = batch_task.result()
             for i, chain in enumerate(chains):
                 context.set_resolved_value(chain, results[i])
 
@@ -448,11 +450,10 @@ async def execute(
 
             for async_chain in remaining_ready_async:
                 # Native async UDF → await on event loop
-                if (isinstance(async_chain.executor, CallExecutor)
-                        and isinstance(async_chain.executor._udf, (AsyncUDFBase, AsyncBatchableUDFBase))):
-                    task = asyncio.create_task(
-                        _execute_async_udf(semaphore, async_chain, context, error_infos)
-                    )
+                if isinstance(async_chain.executor, CallExecutor) and isinstance(
+                    async_chain.executor._udf, (AsyncUDFBase, AsyncBatchableUDFBase)
+                ):
+                    task = asyncio.create_task(_execute_async_udf(semaphore, async_chain, context, error_infos))
                 else:
                     # Legacy sync UDF with execute_async=True → thread pool fallback
                     task = asyncio.create_task(

@@ -3,8 +3,8 @@ from typing import List, Optional, cast
 
 from osprey.engine.ast import grammar
 from osprey.engine.ast_validator.validation_utils import add_must_assign_to_variable_error
-from osprey.engine.executor.node_executor.call_executor import CallExecutor
 from osprey.engine.executor.execution_context import WhenRulesAuditEntry
+from osprey.engine.executor.node_executor.call_executor import CallExecutor
 from osprey.engine.language_types.effects import EffectBase
 from osprey.engine.language_types.rules import RuleT
 from osprey.engine.udf.type_helpers import validate_kwarg_node_type

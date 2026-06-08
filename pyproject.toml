@@ -209,6 +209,7 @@ ignore_unused = [
     "mypy-extensions",
     "mypy-protobuf",
     "pre-commit",
+    "pytest-asyncio",
     "pytest-flask",
     "pytest-order",
     "requests-mock",

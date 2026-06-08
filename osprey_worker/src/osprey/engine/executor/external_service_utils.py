@@ -1,16 +1,17 @@
 from datetime import datetime
-from typing import Dict, Generic, Optional, Sequence, Tuple, TypeVar, cast
+from typing import Dict, Generic, Optional, Sequence, Tuple, cast
 
 from gevent.event import AsyncResult
-from osprey.engine.executor.external_service_utils_base import (
+
+# Re-export base classes for backward compatibility
+from osprey.engine.executor.external_service_utils_base import (  # noqa: F811
     ExternalService,
+    KeyT,
     PlainExternalServiceAccessor,
+    ValueT,
     _CacheEntry,
 )
 from result import Err, Ok, Result
-
-# Re-export base classes for backward compatibility
-from osprey.engine.executor.external_service_utils_base import ExternalService, KeyT, ValueT  # noqa: F811
 
 __all__ = [
     'ExternalService',
@@ -111,5 +112,3 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
             else Err(cast(Exception, self._cache[key][0].exception))
             for key in keys
         ]
-
-

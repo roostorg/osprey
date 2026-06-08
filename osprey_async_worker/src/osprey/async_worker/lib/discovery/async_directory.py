@@ -55,9 +55,7 @@ class _AsyncHashRing:
         self._initialized = True
         try:
             loop = asyncio.get_running_loop()
-            watcher = await loop.run_in_executor(
-                None, self._etcd_client.get_watcher, self._key, False
-            )
+            watcher = await loop.run_in_executor(None, self._etcd_client.get_watcher, self._key, False)
             event = await loop.run_in_executor(None, watcher.begin_watching)
             self._handle_event(event)
             self._watch_task = asyncio.create_task(self._watch_loop(watcher))
@@ -82,7 +80,7 @@ class _AsyncHashRing:
             for node in nodes:
                 if node not in result:
                     result.append(node)
-            return result[:secondaries + 1]
+            return result[: secondaries + 1]
         return nodes
 
     def _handle_event(self, event: Any) -> None:
@@ -110,7 +108,7 @@ class _AsyncHashRing:
         self._members = {m.name: m for m in members}
         self._overrides = overrides
 
-    def _read_members(self, raw: list) -> List[HashRingNode]:
+    def _read_members(self, raw: List[Any]) -> List[HashRingNode]:
         members = []
         for item in raw:
             if isinstance(item, str):
@@ -123,7 +121,7 @@ class _AsyncHashRing:
         return members
 
     @staticmethod
-    def _read_overrides(raw: list) -> Dict[Any, Any]:
+    def _read_overrides(raw: List[Any]) -> Dict[Any, Any]:
         result = {}
         for items in raw:
             if len(items) >= 2:
@@ -214,14 +212,14 @@ class AsyncServiceWatcher:
         self._initialized = True
         try:
             loop = asyncio.get_running_loop()
-            watcher = await loop.run_in_executor(
-                None, self._etcd_client.get_watcher, self._key, True
-            )
+            watcher = await loop.run_in_executor(None, self._etcd_client.get_watcher, self._key, True)
             event = await loop.run_in_executor(None, watcher.begin_watching)
             self._handle_full_sync(event, delay_visibility=False)
             logger.info(
                 'async watcher %s: %d instances loaded: %s',
-                self._service_name, len(self._instances), list(self._instances.keys()),
+                self._service_name,
+                len(self._instances),
+                list(self._instances.keys()),
             )
             await self._ring.ensure_initialized()
             # Events are applied on the loop thread, keeping instance mutation
@@ -251,6 +249,7 @@ class AsyncServiceWatcher:
                         not_yet_visible.append(wrapper.service)
             if not_yet_visible:
                 from random import choice
+
                 return choice(not_yet_visible)
             raise ServiceUnavailable(f'No service for {self._service_name}')
         else:
@@ -259,9 +258,11 @@ class AsyncServiceWatcher:
                 members = [members]
             for member in members[instances_to_skip:]:
                 member_str = member.decode() if isinstance(member, bytes) else str(member)
-                wrapper = self._instances.get(member_str)
-                if wrapper and (tolerate_draining or not wrapper.service.draining):
-                    return wrapper.service
+                # Distinct name from the `wrapper` above (which is non-optional from
+                # __getitem__); .get() returns Optional and the guard below narrows it.
+                maybe_wrapper = self._instances.get(member_str)
+                if maybe_wrapper and (tolerate_draining or not maybe_wrapper.service.draining):
+                    return maybe_wrapper.service
             raise ServiceUnavailable(
                 f'No service for {self._service_name} key={selector} '
                 f'ring_members={[m.decode() if isinstance(m, bytes) else m for m in members]} '
@@ -387,9 +388,7 @@ class AsyncDirectory:
 
     def get_watcher(self, service_name: str) -> AsyncServiceWatcher:
         if service_name not in self._watchers:
-            self._watchers[service_name] = AsyncServiceWatcher(
-                self._etcd_client, self._base_key, service_name
-            )
+            self._watchers[service_name] = AsyncServiceWatcher(self._etcd_client, self._base_key, service_name)
         return self._watchers[service_name]
 
     def select_all(self, service_name: str) -> List[Service]:

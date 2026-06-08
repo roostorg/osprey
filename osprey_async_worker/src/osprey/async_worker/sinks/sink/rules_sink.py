@@ -9,6 +9,10 @@ from typing import Optional
 import sentry_sdk
 from ddtrace import tracer
 from ddtrace.span import Span as TracerSpan
+from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
+from osprey.async_worker.engine import AsyncOspreyEngine
+from osprey.async_worker.executor import execute as async_execute
+from osprey.async_worker.sinks.sink.input_stream import AsyncBaseInputStream
 from osprey.engine.executor.execution_context import Action, ExecutionResult
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.worker.lib.instruments import metrics

@@ -35,9 +35,7 @@ pytestmark: List[Callable[[Any], Any]] = [
         ([''], 'abc', 1),
     ),
 )
-def test_counts_matching_patterns(
-    execute: ExecuteFunction, patterns: List[str], target: str, expected: int
-) -> None:
+def test_counts_matching_patterns(execute: ExecuteFunction, patterns: List[str], target: str, expected: int) -> None:
     result = execute(
         f"""
     Count = CountRegexMatches(patterns={patterns!r}, target="{target}")
@@ -74,8 +72,6 @@ def test_can_be_case_insensitive(
     assert result == {'Count': expected}
 
 
-def test_rejects_invalid_regex(
-    run_validation: RunValidationFunction, check_failure: CheckFailureFunction
-) -> None:
+def test_rejects_invalid_regex(run_validation: RunValidationFunction, check_failure: CheckFailureFunction) -> None:
     with check_failure():
         run_validation('Foo = CountRegexMatches(patterns=["valid", "("], target="")')

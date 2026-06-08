@@ -144,9 +144,9 @@ def test_real_engine_recovers_from_transient_apply_failure_on_redelivery():
 
     # 1) Valid S1 arrives; the apply fails and the engine keeps S0.
     provider._notify_watcher(dict(S1))
-    assert (
-        engine.execution_graph.validated_sources.sources.hash() == s0_hash
-    ), 'engine should still serve S0 after a failed apply'
+    assert engine.execution_graph.validated_sources.sources.hash() == s0_hash, (
+        'engine should still serve S0 after a failed apply'
+    )
     # The OLD dedup (against _current_sources) WOULD now wedge — it advanced to S1
     # so every re-delivery is suppressed...
     assert provider._current_sources.hash() == s1_hash
@@ -156,7 +156,7 @@ def test_real_engine_recovers_from_transient_apply_failure_on_redelivery():
     # 2) etcd re-delivers S1 (FullSyncOne). The engine recompiles and recovers —
     #    its live execution graph is now S1, with no restart.
     provider._notify_watcher(dict(S1))
-    assert (
-        engine.execution_graph.validated_sources.sources.hash() == s1_hash
-    ), 'engine must serve S1 after re-delivery (self-healed)'
+    assert engine.execution_graph.validated_sources.sources.hash() == s1_hash, (
+        'engine must serve S1 after re-delivery (self-healed)'
+    )
     assert provider._applied_sources_hash == s1_hash

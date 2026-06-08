@@ -31,9 +31,7 @@ def postgres_database_config() -> Iterator[None]:
 
 
 def test_golden_path_with_key(run_validation: RunValidationFunction) -> None:
-    run_validation(
-        "Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m', key=UserId) >= 10"
-    )
+    run_validation("Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m', key=UserId) >= 10")
 
 
 def test_golden_path_without_key(run_validation: RunValidationFunction) -> None:
@@ -53,18 +51,14 @@ def test_golden_path_without_key(run_validation: RunValidationFunction) -> None:
 )
 def test_all_six_operators_positive(run_validation: RunValidationFunction, operator: str, threshold: int) -> None:
     """Positive test: all six operators should pass validation."""
-    run_validation(
-        f"Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m') {operator} {threshold}"
-    )
+    run_validation(f"Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m') {operator} {threshold}")
 
 
 def test_top_level_under_not_rejected(
     run_validation: RunValidationFunction, check_failure: CheckFailureFunction
 ) -> None:
     with check_failure():
-        run_validation(
-            "Query = not (CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m') >= 10)"
-        )
+        run_validation("Query = not (CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m') >= 10)")
 
 
 def test_multiple_count_over_rejected(
@@ -82,9 +76,7 @@ def test_multiple_count_over_rejected(
 def test_nested_count_over_rejected(run_validation: RunValidationFunction, check_failure: CheckFailureFunction) -> None:
     with check_failure():
         run_validation(
-            'Query = CountOver('
-            "predicate=CountOver(predicate=Foo == 'x', window='1m') == 1, "
-            "window='10m') >= 5"
+            "Query = CountOver(predicate=CountOver(predicate=Foo == 'x', window='1m') == 1, window='10m') >= 5"
         )
 
 
@@ -92,10 +84,7 @@ def test_rhs_must_be_integer_literal(
     run_validation: RunValidationFunction, check_failure: CheckFailureFunction
 ) -> None:
     with check_failure():
-        run_validation(
-            'SomeVar = 5\n'
-            "Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m') >= SomeVar"
-        )
+        run_validation("SomeVar = 5\nQuery = CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m') >= SomeVar")
 
 
 def test_trivial_threshold_rejected(run_validation: RunValidationFunction, check_failure: CheckFailureFunction) -> None:
@@ -108,10 +97,7 @@ def test_key_must_be_column_reference(
 ) -> None:
     with check_failure():
         run_validation(
-            'Query = CountOver('
-            "predicate=UserLoginIp == '1.1.1.1', "
-            "window='10m', "
-            'key="invalid_string_literal") >= 10'
+            "Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m', key=\"invalid_string_literal\") >= 10"
         )
 
 
@@ -126,9 +112,7 @@ def test_unsupported_comparator_rejected(
     run_validation: RunValidationFunction, check_failure: CheckFailureFunction
 ) -> None:
     with check_failure():
-        run_validation(
-            "Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m') in [10, 20]"
-        )
+        run_validation("Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m') in [10, 20]")
 
 
 def test_rule_context_rejected(run_validation: RunValidationFunction, check_failure: CheckFailureFunction) -> None:
@@ -147,18 +131,14 @@ def test_window_must_be_string_literal(
     run_validation: RunValidationFunction, check_failure: CheckFailureFunction
 ) -> None:
     with check_failure():
-        run_validation(
-            "Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window=SomeVar) >= 10"
-        )
+        run_validation("Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window=SomeVar) >= 10")
 
 
 def test_window_invalid_format_rejected(
     run_validation: RunValidationFunction, check_failure: CheckFailureFunction
 ) -> None:
     with check_failure():
-        run_validation(
-            "Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='abc') >= 10"
-        )
+        run_validation("Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='abc') >= 10")
 
 
 def test_unsupported_predicate_in_operator_rejected(
@@ -174,23 +154,17 @@ def test_unsupported_predicate_function_call_rejected(
 ) -> None:
     """Predicates using function calls (not supported by SQL emitter) should be rejected."""
     with check_failure():
-        run_validation(
-            "Query = CountOver(predicate=SomeUdf(UserLoginIp) == 'result', window='10m') >= 10"
-        )
+        run_validation("Query = CountOver(predicate=SomeUdf(UserLoginIp) == 'result', window='10m') >= 10")
 
 
 def test_supported_predicate_with_and(run_validation: RunValidationFunction) -> None:
     """Predicates with AND should be accepted."""
-    run_validation(
-        "Query = CountOver(predicate=UserLoginIp == '1.1.1.1' and Endpoint == '/foo', window='10m') >= 10"
-    )
+    run_validation("Query = CountOver(predicate=UserLoginIp == '1.1.1.1' and Endpoint == '/foo', window='10m') >= 10")
 
 
 def test_supported_predicate_with_or(run_validation: RunValidationFunction) -> None:
     """Predicates with OR should be accepted."""
-    run_validation(
-        "Query = CountOver(predicate=UserLoginIp == '1.1.1.1' or Endpoint == '/foo', window='10m') >= 10"
-    )
+    run_validation("Query = CountOver(predicate=UserLoginIp == '1.1.1.1' or Endpoint == '/foo', window='10m') >= 10")
 
 
 def test_supported_predicate_with_not(run_validation: RunValidationFunction) -> None:

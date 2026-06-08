@@ -6,22 +6,20 @@ using the async executor instead of the gevent one.
 
 from datetime import datetime
 from textwrap import dedent
-from typing import Any, Dict, Optional, Sequence, Type, Union
+from typing import Dict, Optional, Union
 
 import pytest
+from osprey.async_worker.executor import execute as async_execute
 from osprey.engine.ast.sources import SOURCE_ENTRY_POINT_PATH, Sources
 from osprey.engine.ast_validator import validate_sources
-from osprey.engine.ast_validator.validation_context import ValidatedSources, ValidationFailed
+from osprey.engine.ast_validator.validation_context import ValidationFailed
 from osprey.engine.ast_validator.validator_registry import ValidatorRegistry
 from osprey.engine.executor.execution_context import Action, ExecutionResult
 from osprey.engine.executor.execution_graph import compile_execution_graph
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.stdlib import get_config_registry
-from osprey.engine.udf.base import UDFBase
 from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.lib.singletons import CONFIG
-
-from osprey.async_worker.executor import execute as async_execute
 
 SourcesDict = Union[Sources, str, Dict[str, str]]
 
@@ -90,9 +88,7 @@ def async_execute_with_result(stdlib_udf_registry: UDFRegistry):
             action_name=action_name,
             timestamp=action_time or datetime.utcnow(),
         )
-        return await async_execute(
-            execution_graph, udf_helpers or UDFHelpers(), action, max_concurrent=max_concurrent
-        )
+        return await async_execute(execution_graph, udf_helpers or UDFHelpers(), action, max_concurrent=max_concurrent)
 
     return _execute
 
@@ -125,8 +121,16 @@ def async_execute_fn(async_execute_with_result):
 
         features = result.extracted_features
         # Remove internal features like the gevent conftest does
-        for key in ['__timestamp', '__action_id', '__error_count', '__sample_rate',
-                     '__entity_label_mutations', '__classifications', '__signals', '__verdicts']:
+        for key in [
+            '__timestamp',
+            '__action_id',
+            '__error_count',
+            '__sample_rate',
+            '__entity_label_mutations',
+            '__classifications',
+            '__signals',
+            '__verdicts',
+        ]:
             features.pop(key, None)
         return features
 
