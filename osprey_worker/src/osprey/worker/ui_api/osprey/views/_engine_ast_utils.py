@@ -1,6 +1,6 @@
-"""Shared AST traversal helpers used by features.py."""
+"""Shared engine-AST traversal helpers used by views (features.py, rules.py, ...)."""
 
-from typing import Any, Optional
+from typing import Any, Optional, Set
 
 from osprey.engine.ast.grammar import (
     Attribute,
@@ -66,3 +66,48 @@ def ast_to_string(node: Any) -> str:
     if hasattr(node, 'value'):
         return str(node.value)
     return str(node)
+
+
+def collect_name_references(node: Any, out: Set[str]) -> None:
+    """Recursively collect all Name.identifier values referenced by an expression node.
+
+    Skip the function-identifier position of Call nodes (we don't treat e.g.
+    `JsonData` in `JsonData(...)` as a feature reference). Walk FormatString.names,
+    BinaryOperation/BinaryComparison left/right, BooleanOperation values,
+    UnaryOperation operand, AstList items, and Attribute chains.
+    """
+    if node is None:
+        return
+    if isinstance(node, Name):
+        out.add(node.identifier)
+        return
+    if isinstance(node, Call):
+        for arg in node.arguments:
+            collect_name_references(arg.value, out)
+        return
+    if isinstance(node, FormatString):
+        for n in node.names:
+            out.add(n.identifier)
+        return
+    if isinstance(node, BinaryComparison):
+        collect_name_references(node.left, out)
+        collect_name_references(node.right, out)
+        return
+    if isinstance(node, BinaryOperation):
+        collect_name_references(node.left, out)
+        collect_name_references(node.right, out)
+        return
+    if isinstance(node, UnaryOperation):
+        collect_name_references(node.operand, out)
+        return
+    if isinstance(node, BooleanOperation):
+        for v in node.values:
+            collect_name_references(v, out)
+        return
+    if isinstance(node, AstList):
+        for item in node.items:
+            collect_name_references(item, out)
+        return
+    if isinstance(node, Attribute):
+        collect_name_references(node.name, out)
+        return
