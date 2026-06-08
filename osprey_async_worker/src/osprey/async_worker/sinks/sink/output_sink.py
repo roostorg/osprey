@@ -4,10 +4,9 @@ import asyncio
 import logging
 from typing import Sequence
 
+from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
 from osprey.engine.executor.execution_context import ExecutionResult
 from osprey.worker.lib.instruments import metrics
-
-from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +38,11 @@ class AsyncMultiOutputSink(AsyncBaseOutputSink):
                 start = asyncio.get_running_loop().time()
                 async with asyncio.timeout(sink.timeout):
                     await sink.push(result)
-                metrics.timing('handled_message_output', (asyncio.get_running_loop().time() - start) * 1000, tags=[f'sink:{sink_name}'])
+                metrics.timing(
+                    'handled_message_output',
+                    (asyncio.get_running_loop().time() - start) * 1000,
+                    tags=[f'sink:{sink_name}'],
+                )
                 break
             except TimeoutError:
                 logger.warning(f'Timeout pushing to {sink_name} (attempt {attempt}/{attempts})')
@@ -48,9 +51,7 @@ class AsyncMultiOutputSink(AsyncBaseOutputSink):
                     metrics.increment('output_sink.timeout_exhausted', tags=[f'sink:{sink_name}'])
             except Exception as exc:
                 logger.exception(f'Error pushing to {sink_name}: {exc}')
-                metrics.increment(
-                    'output_sink.error', tags=[f'sink:{sink_name}', f'error:{exc.__class__.__name__}']
-                )
+                metrics.increment('output_sink.error', tags=[f'sink:{sink_name}', f'error:{exc.__class__.__name__}'])
                 if attempt == attempts:
                     break
                 await asyncio.sleep(0.5 * attempt)

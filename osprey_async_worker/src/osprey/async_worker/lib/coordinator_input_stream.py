@@ -2,12 +2,13 @@ import asyncio
 import json
 import random
 import time
-from typing import Any, AsyncIterator, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Dict, Optional, Tuple, Union
 
 import grpc
 import grpc.aio
 import pytz
 import sentry_sdk
+from osprey.async_worker.lib.discovery.async_directory import AsyncServiceWatcher
 from osprey.async_worker.lib.etcd.sources_provider import AsyncInputStreamReadySignaler
 from osprey.async_worker.sinks.sink.input_stream import AsyncBaseInputStream
 from osprey.engine.executor.execution_context import Action as OspreyEngineAction
@@ -30,6 +31,12 @@ from osprey.worker.lib.discovery.service import Service
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger, info_log_osprey_action
 from osprey.worker.sinks.utils.acking_contexts_base import BaseAckingContext, VerdictsAckingContext
+
+if TYPE_CHECKING:
+    # Type-only: the sync ServiceWatcher module imports gevent, which the async
+    # worker must not import at runtime. The sync watcher is only constructed in
+    # the gevent-discovery __init__ path (which lazily imports Directory).
+    from osprey.worker.lib.discovery.service_watcher import ServiceWatcher
 
 logger = get_logger()
 
@@ -57,6 +64,13 @@ class AsyncVerdictsAckingContext(VerdictsAckingContext[OspreyEngineAction]):
 
 class GrpcConnectionDiscoveryPool:
     """Maintains a pool of async gRPC channels discovered via etcd service discovery."""
+
+    # The watcher is a gevent ServiceWatcher (__init__), an AsyncServiceWatcher
+    # (from_async_discovery), or None (from_static — no discovery). The async-only
+    # methods (ensure_initialized) are only reached when _needs_async_init is True,
+    # which is only set by from_async_discovery (AsyncServiceWatcher).
+    _service_watcher: Union['ServiceWatcher', AsyncServiceWatcher, None]
+    _handle_service_change_fn: Optional[Callable[[str, Service], None]]
 
     def __init__(self, service_name: str) -> None:
         # Lazy import: Directory uses gevent-based service discovery. The async worker
@@ -120,6 +134,9 @@ class GrpcConnectionDiscoveryPool:
     async def _initialize_from_etcd(self) -> None:
         """Load coordinator instances from etcd on first async call."""
         self._needs_async_init = False
+        # Only the async-discovery constructor sets _needs_async_init, and it always
+        # installs an AsyncServiceWatcher. Narrow for the async-only methods below.
+        assert isinstance(self._service_watcher, AsyncServiceWatcher)
         try:
             await self._service_watcher.ensure_initialized()
             for service in self._service_watcher.select_all():

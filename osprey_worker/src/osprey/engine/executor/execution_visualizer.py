@@ -227,7 +227,9 @@ def render_graph(
     label_names: Optional[Set[str]] = None,  # Label names to show
     show_label_upstream: bool = False,  # Upstream for label view
     show_label_downstream: bool = True,  # Downstream for label view
-    engine: Optional[EngineLike] = None,  # Engine instance to resolve action/label names from; falls back to the sync ENGINE singleton
+    engine: Optional[
+        EngineLike
+    ] = None,  # Engine instance to resolve action/label names from; falls back to the sync ENGINE singleton
 ) -> 'RenderedDigraph':
     """
     Generate a rules vizualization graph based on the provided parameters.

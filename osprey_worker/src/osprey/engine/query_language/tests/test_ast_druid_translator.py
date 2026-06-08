@@ -133,5 +133,3 @@ def test_parses_query_with_unary_operator(
     transformed_query = DruidQueryTransformer(validated_sources=validated_sources).transform()
 
     assert check_json_output(transformed_query)
-
-

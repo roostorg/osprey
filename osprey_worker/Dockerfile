@@ -34,11 +34,12 @@ ADD LICENSE.md /osprey/LICENSE.md
 # Create workspace structure with pyproject.toml files for uv sync to work
 ADD osprey_rpc/pyproject.toml /osprey/osprey_rpc/pyproject.toml
 ADD osprey_worker/pyproject.toml /osprey/osprey_worker/pyproject.toml
+ADD osprey_async_worker/pyproject.toml /osprey/osprey_async_worker/pyproject.toml
 ADD example_plugins/pyproject.toml /osprey/example_plugins/pyproject.toml
 
 # Create minimal package structure required by uv
-RUN mkdir -p /osprey/osprey_worker /osprey/osprey_rpc /osprey/example_plugins/src && \
-    touch /osprey/osprey_worker/__init__.py /osprey/osprey_rpc/__init__.py /osprey/example_plugins/src/__init__.py
+RUN mkdir -p /osprey/osprey_worker /osprey/osprey_async_worker /osprey/osprey_rpc /osprey/example_plugins/src && \
+    touch /osprey/osprey_worker/__init__.py /osprey/osprey_async_worker/__init__.py /osprey/osprey_rpc/__init__.py /osprey/example_plugins/src/__init__.py
 
 # Install dependencies first (this layer will be cached when only source code changes)
 RUN pip install --upgrade pip uv && \
@@ -51,6 +52,7 @@ RUN . .venv/bin/activate && update-tld-names
 # Add source code after dependencies are installed
 ADD example_rules /osprey/example_rules
 ADD osprey_worker /osprey/osprey_worker
+ADD osprey_async_worker /osprey/osprey_async_worker
 ADD osprey_rpc /osprey/osprey_rpc
 ADD example_plugins /osprey/example_plugins
 

@@ -13,6 +13,7 @@ Placement is deterministic (MD5 over ``<name>:<replica>`` virtual points) so eve
 worker computes the same ring for the same membership. Exact placement is an
 internal detail — only self-consistency across a fleet matters.
 """
+
 from __future__ import annotations
 
 import bisect

@@ -9,7 +9,7 @@ Pure-computation UDFs (no I/O) can remain as regular UDFBase and run inline.
 """
 
 import abc
-from typing import Any, ClassVar, Generic, Sequence, Tuple, TypeVar
+from typing import Any, ClassVar, Sequence, TypeVar
 
 from osprey.engine.executor.execution_context import ExecutionContext, ExecutionResult
 from osprey.engine.udf.base import (
@@ -50,9 +50,7 @@ class AsyncUDFBase(UDFBase[Arguments, RValue]):
         for base in cls.__mro__:
             for generic_base in typing_inspect.get_generic_bases(base):
                 origin = typing_inspect.get_origin(generic_base)
-                if origin in (UDFBase, AsyncUDFBase) or (
-                    hasattr(origin, '__mro__') and UDFBase in origin.__mro__
-                ):
+                if origin in (UDFBase, AsyncUDFBase) or (hasattr(origin, '__mro__') and UDFBase in origin.__mro__):
                     args = typing_inspect.get_args(generic_base)
                     # Only return if args are concrete (not TypeVars)
                     if args and not any(isinstance(a, TypeVar) for a in args):
@@ -63,8 +61,7 @@ class AsyncUDFBase(UDFBase[Arguments, RValue]):
 
     def execute(self, execution_context: ExecutionContext, arguments: Arguments) -> RValue:
         raise RuntimeError(
-            f'{self.__class__.__name__} is a native async UDF. '
-            f'Use async_execute() instead of execute().'
+            f'{self.__class__.__name__} is a native async UDF. Use async_execute() instead of execute().'
         )
 
     @abc.abstractmethod
@@ -84,8 +81,7 @@ class AsyncBatchableUDFBase(BatchableUDFBase[Arguments, RValue, BatchableArgumen
 
     def execute(self, execution_context: ExecutionContext, arguments: Arguments) -> RValue:
         raise RuntimeError(
-            f'{self.__class__.__name__} is a native async UDF. '
-            f'Use async_execute() instead of execute().'
+            f'{self.__class__.__name__} is a native async UDF. Use async_execute() instead of execute().'
         )
 
     def execute_batch(
@@ -95,8 +91,7 @@ class AsyncBatchableUDFBase(BatchableUDFBase[Arguments, RValue, BatchableArgumen
         arguments: Sequence[BatchableArguments],
     ) -> Sequence[Result[RValue, Exception]]:
         raise RuntimeError(
-            f'{self.__class__.__name__} is a native async UDF. '
-            f'Use async_execute_batch() instead of execute_batch().'
+            f'{self.__class__.__name__} is a native async UDF. Use async_execute_batch() instead of execute_batch().'
         )
 
     @abc.abstractmethod

@@ -31,9 +31,7 @@ def test_count_over_without_key(run_validation: RunValidationFunction) -> None:
 
 
 def test_count_over_to_druid_query_raises_not_implemented(run_validation: RunValidationFunction) -> None:
-    validated_sources = run_validation(
-        "CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m', key=UserId)"
-    )
+    validated_sources = run_validation("CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m', key=UserId)")
 
     udf_mapping = validated_sources.get_validator_result(ValidateCallKwargs)
 
@@ -44,12 +42,12 @@ def test_count_over_to_druid_query_raises_not_implemented(run_validation: RunVal
             count_over_call = call_node
             break
 
-    assert count_over_call is not None, "CountOver call node not found in AST"
+    assert count_over_call is not None, 'CountOver call node not found in AST'
 
     count_over_udf, _ = udf_mapping[id(count_over_call)]
     assert isinstance(count_over_udf, CountOver)
 
-    with pytest.raises(NotImplementedError, match="DruidQueryTransformer"):
+    with pytest.raises(NotImplementedError, match='DruidQueryTransformer'):
         count_over_udf.to_druid_query()
 
 
@@ -62,14 +60,20 @@ class TestOperatorMetadataFor:
         metadata = operator_metadata_for(grammar.GreaterThanEquals, 10)
         assert isinstance(metadata, OperatorMetadata)
         assert metadata.lag_offsets == [9]
-        assert metadata.post_filter_template == "pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds}"
+        assert (
+            metadata.post_filter_template
+            == 'pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds}'
+        )
 
     def test_operator_metadata_greater_than(self) -> None:
         """Test > operator: LAG(N), check within window."""
         metadata = operator_metadata_for(grammar.GreaterThan, 10)
         assert isinstance(metadata, OperatorMetadata)
         assert metadata.lag_offsets == [10]
-        assert metadata.post_filter_template == "pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds}"
+        assert (
+            metadata.post_filter_template
+            == 'pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds}'
+        )
 
     def test_operator_metadata_equals(self) -> None:
         """Test == operator: LAG(N-1) and LAG(N), window bracket check."""
@@ -77,8 +81,8 @@ class TestOperatorMetadataFor:
         assert isinstance(metadata, OperatorMetadata)
         assert metadata.lag_offsets == [9, 10]
         expected_filter = (
-            "pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds} AND "
-            "(pt2 IS NULL OR TIMESTAMPDIFF(SECOND, pt2, __time) > {window_seconds})"
+            'pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds} AND '
+            '(pt2 IS NULL OR TIMESTAMPDIFF(SECOND, pt2, __time) > {window_seconds})'
         )
         assert metadata.post_filter_template == expected_filter
 
@@ -88,8 +92,8 @@ class TestOperatorMetadataFor:
         assert isinstance(metadata, OperatorMetadata)
         assert metadata.lag_offsets == [9, 10]
         expected_filter = (
-            "NOT (pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds} AND "
-            "(pt2 IS NULL OR TIMESTAMPDIFF(SECOND, pt2, __time) > {window_seconds}))"
+            'NOT (pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds} AND '
+            '(pt2 IS NULL OR TIMESTAMPDIFF(SECOND, pt2, __time) > {window_seconds}))'
         )
         assert metadata.post_filter_template == expected_filter
 
@@ -98,14 +102,14 @@ class TestOperatorMetadataFor:
         metadata = operator_metadata_for(grammar.LessThanEquals, 10)
         assert isinstance(metadata, OperatorMetadata)
         assert metadata.lag_offsets == [10]
-        assert metadata.post_filter_template == "pt1 IS NULL OR TIMESTAMPDIFF(SECOND, pt1, __time) > {window_seconds}"
+        assert metadata.post_filter_template == 'pt1 IS NULL OR TIMESTAMPDIFF(SECOND, pt1, __time) > {window_seconds}'
 
     def test_operator_metadata_less_than(self) -> None:
         """Test < operator: equivalent to <=(N-1), so LAG(N-1)."""
         metadata = operator_metadata_for(grammar.LessThan, 10)
         assert isinstance(metadata, OperatorMetadata)
         assert metadata.lag_offsets == [9]
-        assert metadata.post_filter_template == "pt1 IS NULL OR TIMESTAMPDIFF(SECOND, pt1, __time) > {window_seconds}"
+        assert metadata.post_filter_template == 'pt1 IS NULL OR TIMESTAMPDIFF(SECOND, pt1, __time) > {window_seconds}'
 
     def test_operator_metadata_various_thresholds(self) -> None:
         """Test that different threshold values produce correct offsets."""
@@ -124,9 +128,10 @@ class TestOperatorMetadataFor:
 
     def test_operator_metadata_unsupported_operator(self) -> None:
         """Test that unsupported operators raise ValueError."""
+
         # Use a dummy class that's not a real comparator
         class DummyComparator:
             pass
 
-        with pytest.raises(ValueError, match="Unsupported comparator type"):
+        with pytest.raises(ValueError, match='Unsupported comparator type'):
             operator_metadata_for(DummyComparator, 10)

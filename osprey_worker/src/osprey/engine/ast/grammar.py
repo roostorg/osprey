@@ -4,9 +4,8 @@ from collections import defaultdict
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from pathlib import Path
-from typing import ClassVar, Dict, Optional, Sequence, TypeVar, Union
-
 from threading import Lock
+from typing import ClassVar, Dict, Optional, Sequence, TypeVar, Union
 
 # TODO: Uncomment logging when we have a logging system
 # from osprey.worker.ui_api.lib.osprey_shared.logging import get_logger

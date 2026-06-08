@@ -10,25 +10,29 @@ import logging
 import signal
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import TYPE_CHECKING, AsyncIterator, Optional, Tuple, Union, cast
 
 import click
+from osprey.async_worker.engine import AsyncOspreyEngine
+from osprey.async_worker.sinks.sink.input_stream import AsyncBaseInputStream, AsyncStaticInputStream
+from osprey.async_worker.sinks.sink.output_sink import AsyncStdoutOutputSink
+from osprey.async_worker.sinks.sink.rules_sink import AsyncRulesSink
+from osprey.engine.ast.sources import Sources
 from osprey.engine.executor.execution_context import Action
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.lib.config import Config
-from osprey.engine.ast.sources import Sources
 from osprey.worker.lib.instruments import set_worker_type_tag
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.singletons import CONFIG
 from osprey.worker.lib.sources_provider_base import StaticSourcesProvider
+from osprey.worker.sinks.utils.acking_contexts_base import BaseAckingContext, NoopAckingContext
 
-from osprey.async_worker.engine import AsyncOspreyEngine
-from osprey.worker.sinks.utils.acking_contexts_base import NoopAckingContext
-
-from osprey.async_worker.sinks.sink.input_stream import AsyncBaseInputStream, AsyncStaticInputStream
-from osprey.async_worker.sinks.sink.output_sink import AsyncStdoutOutputSink
-from osprey.async_worker.sinks.sink.rules_sink import AsyncRulesSink
+if TYPE_CHECKING:
+    # Type-only: the sync OspreyEngine module imports gevent at module top. The
+    # async CLI must not import gevent eagerly, so the --with-plugins branch imports
+    # bootstrap_engine_with_helpers lazily. Reference its return type here for typing only.
+    from osprey.worker.lib.osprey_engine import OspreyEngine
 
 logger = get_logger(__name__)
 
@@ -45,9 +49,9 @@ def bootstrap_stdlib_engine(rules_path: str) -> Tuple[AsyncOspreyEngine, UDFHelp
 
     This avoids loading example_plugins or any third-party plugins that require database connections.
     """
+    from osprey.engine.ast_validator import ValidatorRegistry
     from osprey.worker._stdlibplugin.udf_register import register_udfs as stdlib_register_udfs
     from osprey.worker._stdlibplugin.validator_regsiter import register_ast_validators as stdlib_register_validators
-    from osprey.engine.ast_validator import ValidatorRegistry
 
     udf_helpers = UDFHelpers()
     udfs = stdlib_register_udfs()
@@ -68,13 +72,13 @@ def bootstrap_stdlib_engine(rules_path: str) -> Tuple[AsyncOspreyEngine, UDFHelp
     return engine, udf_helpers
 
 
-class AsyncFileInputStream(AsyncBaseInputStream):
+class AsyncFileInputStream(AsyncBaseInputStream[BaseAckingContext[Action]]):
     """Read actions from a JSON file. Each line is a JSON action object."""
 
     def __init__(self, path: str):
         self._path = path
 
-    async def _gen(self):
+    async def _gen(self) -> AsyncIterator[BaseAckingContext[Action]]:
         with open(self._path) as f:
             for line in f:
                 line = line.strip()
@@ -107,8 +111,14 @@ def run(rules_path: str, input_file: Optional[str], max_concurrent: int, with_pl
     logger.info(f'Rules path: {rules_path}')
     logger.info(f'Max concurrent UDFs: {max_concurrent}')
 
-    config = init_config()
+    # Side-effecting: configures the global CONFIG singleton and worker-type tag.
+    init_config()
 
+    # The --with-plugins branch bootstraps the sync OspreyEngine; the default branch
+    # the AsyncOspreyEngine. Both expose the .execution_graph / .get_config_subkey
+    # surface that AsyncRulesSink reaches into (it runs the standalone async_execute
+    # against engine.execution_graph rather than calling engine.execute()).
+    engine: Union['OspreyEngine', AsyncOspreyEngine]
     if with_plugins:
         from osprey.worker.lib.osprey_engine import bootstrap_engine_with_helpers
 
@@ -118,6 +128,7 @@ def run(rules_path: str, input_file: Optional[str], max_concurrent: int, with_pl
         engine, udf_helpers = bootstrap_stdlib_engine(rules_path)
 
     # Input stream
+    input_stream: AsyncBaseInputStream[BaseAckingContext[Action]]
     if input_file:
         input_stream = AsyncFileInputStream(input_file)
     else:
@@ -127,9 +138,17 @@ def run(rules_path: str, input_file: Optional[str], max_concurrent: int, with_pl
     # Output sink
     output_sink = AsyncStdoutOutputSink()
 
-    # Build and run the async rules sink
+    # Build and run the async rules sink.
+    # NOTE: AsyncRulesSink is annotated to require AsyncOspreyEngine, but the
+    # --with-plugins branch supplies the sync OspreyEngine. The sink only touches
+    # .execution_graph / .get_config_subkey (and runs async_execute against the
+    # graph directly), which both engines provide, so this works at runtime today.
+    # It is nonetheless a real type-level mismatch in the --with-plugins path; the
+    # proper fix (a shared engine Protocol, or an async plugin bootstrap) is out of
+    # scope for this type-only pass. Cast to keep the call type-correct without
+    # changing which bootstrap function runs.
     rules_sink = AsyncRulesSink(
-        engine=engine,
+        engine=cast(AsyncOspreyEngine, engine),
         input_stream=input_stream,
         output_sink=output_sink,
         udf_helpers=udf_helpers,
@@ -183,7 +202,8 @@ def benchmark(rules_path: str, input_file: str, max_concurrent: int, iterations:
     from osprey.async_worker.executor import execute as async_execute
 
     logging.basicConfig(level=logging.WARNING)
-    config = init_config()
+    # Side-effecting: configures the global CONFIG singleton and worker-type tag.
+    init_config()
     engine, udf_helpers = bootstrap_stdlib_engine(rules_path)
 
     # Load actions
@@ -231,7 +251,7 @@ def benchmark(rules_path: str, input_file: str, max_concurrent: int, iterations:
         gevent_throughput = iterations / gevent_elapsed
         gevent_latency_ms = (gevent_elapsed / iterations) * 1000
 
-        click.echo(f'Gevent Executor:')
+        click.echo('Gevent Executor:')
         click.echo(f'  Total time:  {gevent_elapsed:.3f}s')
         click.echo(f'  Throughput:  {gevent_throughput:.1f} actions/sec')
         click.echo(f'  Avg latency: {gevent_latency_ms:.3f}ms')
@@ -257,7 +277,7 @@ def benchmark(rules_path: str, input_file: str, max_concurrent: int, iterations:
     async_throughput = iterations / async_elapsed
     async_latency_ms = (async_elapsed / iterations) * 1000
 
-    click.echo(f'Async Executor:')
+    click.echo('Async Executor:')
     click.echo(f'  Total time:  {async_elapsed:.3f}s')
     click.echo(f'  Throughput:  {async_throughput:.1f} actions/sec')
     click.echo(f'  Avg latency: {async_latency_ms:.3f}ms')
@@ -266,14 +286,14 @@ def benchmark(rules_path: str, input_file: str, max_concurrent: int, iterations:
     # --- Comparison ---
     if gevent_throughput:
         ratio = async_throughput / gevent_throughput
-        click.echo(f'Comparison:')
+        click.echo('Comparison:')
         click.echo(f'  Async/Gevent ratio: {ratio:.2f}x')
         if ratio > 1:
             click.echo(f'  Async is {((ratio - 1) * 100):.1f}% faster')
         elif ratio < 1:
             click.echo(f'  Async is {((1 - ratio) * 100):.1f}% slower')
     else:
-        click.echo(f'  Same performance')
+        click.echo('  Same performance')
 
 
 if __name__ == '__main__':

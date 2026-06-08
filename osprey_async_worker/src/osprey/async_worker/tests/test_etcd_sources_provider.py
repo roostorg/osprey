@@ -4,12 +4,10 @@ import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from osprey.async_worker.lib.etcd.sources_provider import (
     AsyncEtcdSourcesProvider,
     AsyncInputStreamReadySignaler,
 )
-
 
 # --- AsyncInputStreamReadySignaler ---
 

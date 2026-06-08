@@ -79,7 +79,7 @@ async def test_execute_with_rules(async_execute_fn):
         data={'text': 'short'},
     )
     assert result['Length'] == 5
-    assert result['IsLong'] is False or result['IsLong'] == False
+    assert result['IsLong'] is False
 
     result = await async_execute_fn(
         """
@@ -92,7 +92,7 @@ async def test_execute_with_rules(async_execute_fn):
         """,
         data={'text': 'this is a longer text'},
     )
-    assert result['IsLong'] is True or result['IsLong'] == True
+    assert result['IsLong'] is True
 
 
 @pytest.mark.asyncio
@@ -186,5 +186,5 @@ async def test_parity_complex_graph(async_execute_fn):
     assert result['LenB'] == 2
     assert result['ALower'] == 'hello'
     assert result['BUpper'] == 'HI'
-    assert result['RuleA'] == True
-    assert result['RuleB'] == False
+    assert result['RuleA'] is True
+    assert result['RuleB'] is False

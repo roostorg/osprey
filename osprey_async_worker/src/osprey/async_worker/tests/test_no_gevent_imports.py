@@ -17,7 +17,6 @@ import sys
 
 import pytest
 
-
 # Modules that must not pull in gevent through osprey code.
 _ASYNC_WORKER_MODULES = [
     'osprey.async_worker.engine',
@@ -30,10 +29,12 @@ _ASYNC_WORKER_MODULES = [
 
 # Third-party modules that legitimately import gevent (to detect monkey-patching).
 # These are not our code and we can't control them.
-_ALLOWED_GEVENT_IMPORTERS = frozenset({
-    'sentry_sdk',
-    'ddtrace',
-})
+_ALLOWED_GEVENT_IMPORTERS = frozenset(
+    {
+        'sentry_sdk',
+        'ddtrace',
+    }
+)
 
 
 @pytest.mark.parametrize('module', _ASYNC_WORKER_MODULES)

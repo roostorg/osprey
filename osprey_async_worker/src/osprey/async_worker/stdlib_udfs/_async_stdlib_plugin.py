@@ -15,10 +15,9 @@ from __future__ import annotations
 
 from typing import Any, Sequence, Type
 
-from osprey.engine.udf.base import UDFBase
-
 from osprey.async_worker.adaptor.plugin_manager import hookimpl_osprey_async
 from osprey.async_worker.stdlib_udfs.async_mx_lookup import MXLookup
+from osprey.engine.udf.base import UDFBase
 
 
 @hookimpl_osprey_async

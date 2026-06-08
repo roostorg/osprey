@@ -291,7 +291,7 @@ class ValidateCountOver(SourceValidator):
 
         Returns a list of unsupported nodes in traversal order.
         """
-        unsupported = []
+        unsupported: List[grammar.ASTNode] = []
 
         if isinstance(node, grammar.BinaryComparison):
             # Only Equals and NotEquals are supported

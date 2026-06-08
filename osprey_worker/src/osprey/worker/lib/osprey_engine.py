@@ -309,7 +309,11 @@ def bootstrap_engine_with_helpers(
     sources_provider: Optional[BaseSourcesProvider] = None,
 ) -> Tuple[OspreyEngine, UDFHelpers]:
     # Avoid circular imports
-    from osprey.worker.adaptor.plugin_manager import bootstrap_ast_validators, bootstrap_udfs, bootstrap_validation_exporter
+    from osprey.worker.adaptor.plugin_manager import (
+        bootstrap_ast_validators,
+        bootstrap_udfs,
+        bootstrap_validation_exporter,
+    )
 
     udf_registry, udf_helpers = bootstrap_udfs()
     bootstrap_ast_validators()

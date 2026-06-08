@@ -5,9 +5,8 @@ from datetime import timedelta
 from typing import Optional, Sequence
 
 import pytest
-from result import Err, Ok, Result
-
 from osprey.async_worker.lib.external_service import AsyncExternalService, ExternalServiceAccessor
+from result import Ok, Result
 
 
 class FakeService(AsyncExternalService[str, str]):

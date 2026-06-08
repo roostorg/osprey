@@ -6,7 +6,6 @@ from osprey.engine.query_language.udfs.registry import register
 from osprey.engine.udf.arguments import ArgumentsBase, ConstExpr
 from osprey.engine.udf.base import QueryUdfBase
 
-
 # SQL operator strings keyed by AST comparator class. Used by the self-join
 # CountOver lowering, which translates each operator directly into a
 # `HAVING COUNT(*) <op> N` clause — simpler than the LAG approach (no need
@@ -40,6 +39,7 @@ class OperatorMetadata:
         post_filter_template: SQL fragment using placeholders like {window_seconds}.
                              Example: "pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds}"
     """
+
     lag_offsets: List[int]
     post_filter_template: str
 
@@ -64,13 +64,13 @@ def operator_metadata_for(comparator_type: Type[object], threshold: int) -> Oper
         # >= N: LAG(__time, N-1) AS pt1 + check pt1 exists within window
         return OperatorMetadata(
             lag_offsets=[threshold - 1],
-            post_filter_template="pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds}",
+            post_filter_template='pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds}',
         )
     elif comparator_type == grammar.GreaterThan:
         # > N: LAG(__time, N) AS pt1 + check pt1 exists within window
         return OperatorMetadata(
             lag_offsets=[threshold],
-            post_filter_template="pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds}",
+            post_filter_template='pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds}',
         )
     elif comparator_type == grammar.Equals:
         # == N: LAG(__time, N-1) AS pt1, LAG(__time, N) AS pt2
@@ -78,8 +78,8 @@ def operator_metadata_for(comparator_type: Type[object], threshold: int) -> Oper
         return OperatorMetadata(
             lag_offsets=[threshold - 1, threshold],
             post_filter_template=(
-                "pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds} AND "
-                "(pt2 IS NULL OR TIMESTAMPDIFF(SECOND, pt2, __time) > {window_seconds})"
+                'pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds} AND '
+                '(pt2 IS NULL OR TIMESTAMPDIFF(SECOND, pt2, __time) > {window_seconds})'
             ),
         )
     elif comparator_type == grammar.NotEquals:
@@ -87,26 +87,26 @@ def operator_metadata_for(comparator_type: Type[object], threshold: int) -> Oper
         return OperatorMetadata(
             lag_offsets=[threshold - 1, threshold],
             post_filter_template=(
-                "NOT (pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds} AND "
-                "(pt2 IS NULL OR TIMESTAMPDIFF(SECOND, pt2, __time) > {window_seconds}))"
+                'NOT (pt1 IS NOT NULL AND TIMESTAMPDIFF(SECOND, pt1, __time) <= {window_seconds} AND '
+                '(pt2 IS NULL OR TIMESTAMPDIFF(SECOND, pt2, __time) > {window_seconds}))'
             ),
         )
     elif comparator_type == grammar.LessThanEquals:
         # <= N: LAG(__time, N) AS pt1 + check pt1 absent or outside window
         return OperatorMetadata(
             lag_offsets=[threshold],
-            post_filter_template="pt1 IS NULL OR TIMESTAMPDIFF(SECOND, pt1, __time) > {window_seconds}",
+            post_filter_template='pt1 IS NULL OR TIMESTAMPDIFF(SECOND, pt1, __time) > {window_seconds}',
         )
     elif comparator_type == grammar.LessThan:
         # < N: equivalent to <= N-1, so LAG(__time, N-1) AS pt1
         return OperatorMetadata(
             lag_offsets=[threshold - 1],
-            post_filter_template="pt1 IS NULL OR TIMESTAMPDIFF(SECOND, pt1, __time) > {window_seconds}",
+            post_filter_template='pt1 IS NULL OR TIMESTAMPDIFF(SECOND, pt1, __time) > {window_seconds}',
         )
     else:
         raise ValueError(
-            f"Unsupported comparator type: {comparator_type}. "
-            "Expected one of: GreaterThanEquals, GreaterThan, Equals, NotEquals, LessThanEquals, LessThan"
+            f'Unsupported comparator type: {comparator_type}. '
+            'Expected one of: GreaterThanEquals, GreaterThan, Equals, NotEquals, LessThanEquals, LessThan'
         )
 
 
@@ -126,6 +126,6 @@ class CountOver(QueryUdfBase[Arguments, int]):
         # The UDF itself only provides structural metadata via operator_metadata_for().
         # This method remains abstract-like for interface compliance; real work happens in the translator.
         raise NotImplementedError(
-            "CountOver lowering happens in DruidQueryTransformer.transform(); "
-            "call operator_metadata_for() to get structural metadata instead."
+            'CountOver lowering happens in DruidQueryTransformer.transform(); '
+            'call operator_metadata_for() to get structural metadata instead.'
         )

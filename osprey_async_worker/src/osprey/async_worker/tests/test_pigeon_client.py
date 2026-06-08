@@ -1,14 +1,7 @@
 """Tests for the async pigeon client."""
 
-import asyncio
-from contextvars import copy_context
-from unittest.mock import AsyncMock, MagicMock, patch
-
 import grpc
-import pytest
-
 from osprey.async_worker.lib.pigeon.skip_rate_limit import skip_rate_limit_context
-
 
 # --- skip_rate_limit contextvars ---
 

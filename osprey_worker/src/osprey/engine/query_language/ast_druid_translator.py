@@ -5,14 +5,13 @@ from typing import Any, Dict, List, Optional, Tuple
 from osprey.engine.ast import grammar
 from osprey.engine.ast_validator.validation_context import ValidatedSources
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
-from osprey.engine.udf.base import QueryUdfBase
-from osprey.engine.utils.osprey_unary_executor import OspreyUnaryExecutor
 from osprey.engine.query_language.udfs.count_over import (
     SELF_JOIN_COMPARATOR_OPS,
     CountOver,
     operator_metadata_for,
 )
-
+from osprey.engine.udf.base import QueryUdfBase
+from osprey.engine.utils.osprey_unary_executor import OspreyUnaryExecutor
 
 # Output modes for `DruidQueryTransformer.transform()` when lowering CountOver
 # into SQL. Each mode emits a different outer shape suitable for a particular
@@ -98,9 +97,7 @@ class DruidQueryTransformer:
         topn_limit: Optional[int] = None,
     ):
         if output_mode not in _COUNT_OVER_OUTPUT_MODES:
-            raise ValueError(
-                f'output_mode must be one of {_COUNT_OVER_OUTPUT_MODES}; got {output_mode!r}'
-            )
+            raise ValueError(f'output_mode must be one of {_COUNT_OVER_OUTPUT_MODES}; got {output_mode!r}')
         if output_mode != COUNT_OVER_OUTPUT_INNER and time_bounds is None:
             raise ValueError(f'output_mode={output_mode!r} requires time_bounds')
         if output_mode == COUNT_OVER_OUTPUT_TIMESERIES and not granularity_period:
@@ -165,15 +162,12 @@ class DruidQueryTransformer:
         start, end = self._time_bounds
         start_lit = _format_druid_timestamp_literal(start)
         end_lit = _format_druid_timestamp_literal(end)
-        time_where = (
-            f"__time >= TIMESTAMP '{start_lit}' "
-            f"AND __time < TIMESTAMP '{end_lit}'"
-        )
+        time_where = f"__time >= TIMESTAMP '{start_lit}' AND __time < TIMESTAMP '{end_lit}'"
 
         if self._output_mode == COUNT_OVER_OUTPUT_SCAN:
             # SCAN: just project everything and apply the time bound. Calcite
             # requires `AS __t` on the outer FROM subquery.
-            return f"SELECT * FROM ({inner_sql}) AS __t WHERE {time_where}"
+            return f'SELECT * FROM ({inner_sql}) AS __t WHERE {time_where}'
 
         if self._output_mode == COUNT_OVER_OUTPUT_TIMESERIES:
             # TIMESERIES: bucket by TIME_FLOOR and count. The native timeseries
@@ -182,10 +176,10 @@ class DruidQueryTransformer:
             assert self._granularity_period is not None  # validated in __init__
             return (
                 f"SELECT TIME_FLOOR(__time, '{self._granularity_period}') AS bucket, "
-                f"COUNT(*) AS cnt "
-                f"FROM ({inner_sql}) AS __t "
-                f"WHERE {time_where} "
-                f"GROUP BY 1 ORDER BY 1"
+                f'COUNT(*) AS cnt '
+                f'FROM ({inner_sql}) AS __t '
+                f'WHERE {time_where} '
+                f'GROUP BY 1 ORDER BY 1'
             )
 
         # TOP_N: group the burst events by the requested dimension, ordered by
@@ -195,7 +189,7 @@ class DruidQueryTransformer:
         assert self._topn_dimension is not None and self._topn_limit is not None
         return (
             f'SELECT {self._topn_dimension} AS __dim, COUNT(*) AS cnt '
-            f"FROM ({inner_sql}) AS __t "
+            f'FROM ({inner_sql}) AS __t '
             f'WHERE {time_where} '
             f'GROUP BY {self._topn_dimension} '
             f'ORDER BY cnt DESC '
@@ -216,7 +210,9 @@ class DruidQueryTransformer:
         # Check if it's an AND that might contain a CountOver comparison
         if isinstance(node, grammar.BooleanOperation) and isinstance(node.operand, grammar.And):
             # Find which value is the CountOver comparison, if any
-            count_over_comp: Optional[Tuple[grammar.ASTNode, int, Optional[str], type, int, List[grammar.ASTNode]]] = None
+            count_over_comp: Optional[Tuple[grammar.ASTNode, int, Optional[str], type, int, List[grammar.ASTNode]]] = (
+                None
+            )
             other_values: List[grammar.ASTNode] = []
             for value in node.values:
                 if isinstance(value, grammar.BinaryComparison):
@@ -229,7 +225,14 @@ class DruidQueryTransformer:
                     other_values.append(value)
             if count_over_comp:
                 # Return the full tuple with other_values
-                return (count_over_comp[0], count_over_comp[1], count_over_comp[2], count_over_comp[3], count_over_comp[4], other_values)
+                return (
+                    count_over_comp[0],
+                    count_over_comp[1],
+                    count_over_comp[2],
+                    count_over_comp[3],
+                    count_over_comp[4],
+                    other_values,
+                )
 
         return None
 
@@ -362,15 +365,15 @@ class DruidQueryTransformer:
 
         # Build the OVER clause (with or without PARTITION BY)
         if key:
-            over_clause = f"OVER (PARTITION BY {key} ORDER BY __time)"
+            over_clause = f'OVER (PARTITION BY {key} ORDER BY __time)'
         else:
-            over_clause = "OVER (ORDER BY __time)"
+            over_clause = 'OVER (ORDER BY __time)'
 
         # Build LAG column selections
         lag_columns = []
         for i, offset in enumerate(metadata.lag_offsets):
-            pt_name = f"pt{i + 1}"
-            lag_columns.append(f"LAG(__time, {offset}) {over_clause} AS {pt_name}")
+            pt_name = f'pt{i + 1}'
+            lag_columns.append(f'LAG(__time, {offset}) {over_clause} AS {pt_name}')
 
         lag_select = ', '.join(lag_columns)
 
@@ -381,14 +384,14 @@ class DruidQueryTransformer:
         # double-quoted in case it contains `.` (Druid datasources commonly
         # do, e.g. `events`).
         quoted_datasource = f'"{self._datasource_name}"'
-        inner_select = f"SELECT *, {lag_select} FROM {quoted_datasource} WHERE {where_clause}"
+        inner_select = f'SELECT *, {lag_select} FROM {quoted_datasource} WHERE {where_clause}'
 
         # Build the post-filter SQL
         post_filter = metadata.post_filter_template.format(window_seconds=window_seconds)
 
         # Combine into outer SELECT. Druid's Calcite parser requires every
         # FROM-clause subquery to be aliased — `AS __inner` satisfies that.
-        sql = f"SELECT * FROM ({inner_select}) AS __inner WHERE {post_filter}"
+        sql = f'SELECT * FROM ({inner_select}) AS __inner WHERE {post_filter}'
 
         return sql
 
@@ -427,9 +430,7 @@ class DruidQueryTransformer:
         """
         op = SELF_JOIN_COMPARATOR_OPS.get(comparator_type)
         if op is None:
-            raise ValueError(
-                f'self_join engine: unsupported comparator {comparator_type.__name__}'
-            )
+            raise ValueError(f'self_join engine: unsupported comparator {comparator_type.__name__}')
 
         # WHERE clause applied to BOTH sides of the join — t1 and t2 must
         # satisfy the same predicate (only matching events count toward the
@@ -452,8 +453,7 @@ class DruidQueryTransformer:
             join_on = 't1.__k = t2.__k'
 
         time_window_where = (
-            f't2.__time <= t1.__time '
-            f'AND t2.__time >= TIMESTAMPADD(SECOND, -{window_seconds}, t1.__time)'
+            f't2.__time <= t1.__time AND t2.__time >= TIMESTAMPADD(SECOND, -{window_seconds}, t1.__time)'
         )
 
         if self._output_mode == COUNT_OVER_OUTPUT_TIMESERIES:
@@ -466,15 +466,15 @@ class DruidQueryTransformer:
             # time bound to restrict the histogram window.
             return (
                 f"SELECT TIME_FLOOR(__time, '{self._granularity_period}') AS bucket, "
-                f"COUNT(*) AS cnt FROM ("
-                f"SELECT t1.__time AS __time "
-                f"FROM {t1_subq} INNER JOIN {t2_subq} ON {join_on} "
-                f"WHERE {time_window_where} "
-                f"GROUP BY t1.__time HAVING COUNT(*) {op} {threshold}"
-                f") AS __t "
+                f'COUNT(*) AS cnt FROM ('
+                f'SELECT t1.__time AS __time '
+                f'FROM {t1_subq} INNER JOIN {t2_subq} ON {join_on} '
+                f'WHERE {time_window_where} '
+                f'GROUP BY t1.__time HAVING COUNT(*) {op} {threshold}'
+                f') AS __t '
                 f"WHERE __time >= TIMESTAMP '{start_lit}' "
                 f"AND __time < TIMESTAMP '{end_lit}' "
-                f"GROUP BY 1 ORDER BY 1"
+                f'GROUP BY 1 ORDER BY 1'
             )
 
         if self._output_mode == COUNT_OVER_OUTPUT_TOP_N:
@@ -517,7 +517,7 @@ class DruidQueryTransformer:
         start_lit = _format_druid_timestamp_literal(start)
         end_lit = _format_druid_timestamp_literal(end)
         return (
-            f"SELECT * FROM ({scan_core}) AS __t "
+            f'SELECT * FROM ({scan_core}) AS __t '
             f"WHERE __time >= TIMESTAMP '{start_lit}' "
             f"AND __time < TIMESTAMP '{end_lit}'"
         )
@@ -536,17 +536,17 @@ class DruidQueryTransformer:
             elif isinstance(node.operand, grammar.Or):
                 operand_str = ' OR '
             else:
-                raise NotImplementedError(f"Unsupported boolean operand: {type(node.operand)}")
+                raise NotImplementedError(f'Unsupported boolean operand: {type(node.operand)}')
             parts = [self._predicate_to_sql(v) for v in node.values]
-            return f"({operand_str.join(parts)})"
+            return f'({operand_str.join(parts)})'
         elif isinstance(node, grammar.UnaryOperation):
             if isinstance(node.operator, grammar.Not):
                 inner = self._predicate_to_sql(node.operand)
-                return f"NOT ({inner})"
+                return f'NOT ({inner})'
             else:
-                raise NotImplementedError(f"Unsupported unary operator: {type(node.operator)}")
+                raise NotImplementedError(f'Unsupported unary operator: {type(node.operator)}')
         else:
-            raise NotImplementedError(f"Unsupported predicate node type: {type(node).__name__}")
+            raise NotImplementedError(f'Unsupported predicate node type: {type(node).__name__}')
 
     def _binary_comparison_to_sql(self, comp: grammar.BinaryComparison) -> str:
         """Convert a BinaryComparison to SQL (e.g., 'column == value')."""
@@ -563,7 +563,7 @@ class DruidQueryTransformer:
             col_name = comp.right.identifier
             value = self._get_ast_node_value(comp.left)
         else:
-            raise NotImplementedError(f"Unsupported binary comparison: both or neither sides are columns")
+            raise NotImplementedError('Unsupported binary comparison: both or neither sides are columns')
 
         # Format the value
         value_sql = self._format_sql_value(value)
@@ -582,9 +582,9 @@ class DruidQueryTransformer:
         elif isinstance(comp.comparator, grammar.LessThanEquals):
             op = '<='
         else:
-            raise NotImplementedError(f"Unsupported comparator: {type(comp.comparator)}")
+            raise NotImplementedError(f'Unsupported comparator: {type(comp.comparator)}')
 
-        return f"{col_name} {op} {value_sql}"
+        return f'{col_name} {op} {value_sql}'
 
     def _get_ast_node_value(self, node: grammar.ASTNode) -> Any:
         """Extract a Python value from an AST node (mirrors the existing get_ast_node_value)."""
@@ -597,14 +597,14 @@ class DruidQueryTransformer:
         elif isinstance(node, (grammar.String, grammar.Number, grammar.Boolean)):
             return node.value
         else:
-            raise NotImplementedError(f"Node has no known value: {type(node)}")
+            raise NotImplementedError(f'Node has no known value: {type(node)}')
 
     def _format_sql_value(self, value: Any) -> str:
         """Format a Python value for use in SQL string."""
         if value is None:
-            return "NULL"
+            return 'NULL'
         elif isinstance(value, bool):
-            return "true" if value else "false"
+            return 'true' if value else 'false'
         elif isinstance(value, (int, float)):
             return str(value)
         elif isinstance(value, str):
@@ -612,7 +612,7 @@ class DruidQueryTransformer:
             escaped = value.replace("'", "''")
             return f"'{escaped}'"
         else:
-            raise NotImplementedError(f"Cannot format value type: {type(value)}")
+            raise NotImplementedError(f'Cannot format value type: {type(value)}')
 
     def _transform(self, node: grammar.ASTNode) -> Dict[str, Any]:
         method = 'transform_' + node.__class__.__name__

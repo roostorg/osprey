@@ -1,11 +1,9 @@
 """Tests for AsyncOspreyEngine recompile behavior on etcd updates."""
 
-import asyncio
 import threading
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from osprey.async_worker.engine import AsyncOspreyEngine
 
 
@@ -20,8 +18,10 @@ def _make_engine_with_stub_compile(initial_graph, recompile_graph):
 
     udf_registry = MagicMock()
 
-    with patch.object(AsyncOspreyEngine, '_compile_execution_graph_sync', return_value=initial_graph), \
-         patch('osprey.async_worker.engine.ConfigSubkeyHandler'):
+    with (
+        patch.object(AsyncOspreyEngine, '_compile_execution_graph_sync', return_value=initial_graph),
+        patch('osprey.async_worker.engine.ConfigSubkeyHandler'),
+    ):
         engine = AsyncOspreyEngine(
             sources_provider=sources_provider,
             udf_registry=udf_registry,
@@ -72,12 +72,15 @@ async def test_handle_updated_sources_does_not_force_gc():
     naturally — same as the gevent engine.
     """
     import gc as gc_module
+
     initial = MagicMock(name='initial_graph')
     new = MagicMock(name='new_graph')
     engine = _make_engine_with_stub_compile(initial, new)
 
-    with patch.object(engine, '_compile_execution_graph_sync', return_value=new), \
-         patch.object(gc_module, 'collect') as mock_collect:
+    with (
+        patch.object(engine, '_compile_execution_graph_sync', return_value=new),
+        patch.object(gc_module, 'collect') as mock_collect,
+    ):
         await engine._handle_updated_sources()
 
     assert mock_collect.call_count == 0
@@ -95,9 +98,7 @@ async def test_handle_updated_sources_keeps_old_graph_on_compile_failure():
     with patch.object(engine, '_compile_execution_graph_sync', side_effect=RuntimeError('boom')):
         await engine._handle_updated_sources()
 
-    assert engine._execution_graph is pre_swap_graph, (
-        'failed compile should not have replaced the existing graph'
-    )
+    assert engine._execution_graph is pre_swap_graph, 'failed compile should not have replaced the existing graph'
 
 
 @pytest.mark.asyncio
@@ -120,8 +121,6 @@ async def test_handle_updated_sources_nulls_parents_on_old_graph():
     """After swap, parent pointers on every AST node in the OLD graph must be
     nulled so refcount reclaims the old graph without waiting for gen-2 GC.
     The NEW graph's parents must be left intact."""
-    initial = MagicMock(name='initial_graph')
-    new = MagicMock(name='new_graph')
 
     # Old graph: two mock sources, each with a fake ast_root whose iter_nodes
     # walk yields three nodes carrying a `parent` attribute.
@@ -152,8 +151,10 @@ async def test_handle_updated_sources_nulls_parents_on_old_graph():
 
     engine = _make_engine_with_stub_compile(old_graph, new_graph)
 
-    with patch.object(engine, '_compile_execution_graph_sync', return_value=new_graph), \
-         patch('osprey.async_worker.engine.iter_nodes', side_effect=fake_iter_nodes):
+    with (
+        patch.object(engine, '_compile_execution_graph_sync', return_value=new_graph),
+        patch('osprey.async_worker.engine.iter_nodes', side_effect=fake_iter_nodes),
+    ):
         await engine._handle_updated_sources()
 
     # OLD graph nodes: every parent nulled.
@@ -175,8 +176,10 @@ async def test_handle_updated_sources_swallows_cycle_break_errors():
     new = MagicMock(name='new_graph')
     engine = _make_engine_with_stub_compile(initial, new)
 
-    with patch.object(engine, '_compile_execution_graph_sync', return_value=new), \
-         patch('osprey.async_worker.engine.iter_nodes', side_effect=RuntimeError('walker boom')):
+    with (
+        patch.object(engine, '_compile_execution_graph_sync', return_value=new),
+        patch('osprey.async_worker.engine.iter_nodes', side_effect=RuntimeError('walker boom')),
+    ):
         await engine._handle_updated_sources()
 
     assert engine._execution_graph is new, 'swap must complete even if cycle-break raises'

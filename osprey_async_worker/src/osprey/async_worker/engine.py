@@ -10,15 +10,16 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from time import time
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Type, TypedDict, TypeVar
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Set, Type, TypedDict, cast
 
 if TYPE_CHECKING:
     from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter
 
 from ddtrace.span import Span as TracerSpan
+from osprey.async_worker.executor import execute as async_execute
 from osprey.engine.ast.ast_utils import iter_nodes
 from osprey.engine.ast.grammar import Assign, Span
-from osprey.engine.ast.sources import Sources, SourcesConfig
+from osprey.engine.ast.sources import SourcesConfig
 from osprey.engine.ast_validator import validate_sources
 from osprey.engine.ast_validator.validator_registry import ValidatorRegistry
 from osprey.engine.ast_validator.validators.feature_name_to_entity_type_mapping import (
@@ -41,11 +42,9 @@ from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.udf.registry import UDFRegistry
 from osprey.engine.utils.periodic_execution_yielder import periodic_execution_yield
 from osprey.worker.lib.instruments import metrics
+from osprey.worker.lib.singletons import CONFIG
 from osprey.worker.lib.sources_config import get_config_registry
 from osprey.worker.lib.sources_provider_base import BaseSourcesProvider
-
-from osprey.async_worker.executor import execute as async_execute
-from osprey.worker.lib.singletons import CONFIG
 
 log = logging.getLogger(__name__)
 
@@ -100,7 +99,10 @@ class AsyncOspreyEngine:
         # Initial compile runs without periodic yields — there is no in-flight
         # work yet to protect, and we want fast cold-start.
         self._execution_graph = self._compile_execution_graph_sync(yield_during_compile=False)
-        self._sources_provider.set_sources_watcher(self._handle_updated_sources)
+        # BaseSourcesProvider.set_sources_watcher is typed Callable[[], None], but the
+        # async provider (AsyncEtcdSourcesProvider) awaits an awaitable result, so a
+        # coroutine callback is valid at runtime. Cast to satisfy the narrower base type.
+        self._sources_provider.set_sources_watcher(cast(Callable[[], None], self._handle_updated_sources))
         self._config_subkey_handler = ConfigSubkeyHandler(config_registry, self._execution_graph.validated_sources)
         self._validation_result_exporter = validation_exporter
 

@@ -107,10 +107,7 @@ class PlainExternalServiceAccessor(Generic[KeyT, ValueT]):
         return result.get()
 
     def batch_get(self, keys: Sequence[KeyT]) -> Sequence[Result[ValueT, Exception]]:
-        non_cached = [
-            k for k in keys
-            if self._cache.get(k) is None or self._is_expired(self._cache[k][1])
-        ]
+        non_cached = [k for k in keys if self._cache.get(k) is None or self._is_expired(self._cache[k][1])]
         if non_cached:
             for k in non_cached:
                 self._cache[k] = (_CacheEntry(), self._expiration())
@@ -118,7 +115,7 @@ class PlainExternalServiceAccessor(Generic[KeyT, ValueT]):
                 results = self._service.batch_get_from_service(non_cached)
                 for i, k in enumerate(non_cached):
                     if results[i].is_ok():
-                        self._cache[k][0].set_value(results[i].value)
+                        self._cache[k][0].set_value(results[i].unwrap())
                     else:
                         self._cache[k][0].set_exception(cast(BaseException, results[i].value))
             except Exception as e:
@@ -126,7 +123,7 @@ class PlainExternalServiceAccessor(Generic[KeyT, ValueT]):
                     self._cache[k][0].set_exception(e)
 
         return [
-            Ok(cast(ValueT, self._cache[k][0].get()))
+            Ok(self._cache[k][0].get())
             if self._cache[k][0].exception is None
             else Err(cast(Exception, self._cache[k][0].exception))
             for k in keys

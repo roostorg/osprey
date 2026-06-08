@@ -5,7 +5,6 @@ The gevent-dependent EtcdSourcesProvider remains in sources_provider.py.
 """
 
 import abc
-from pathlib import Path
 from typing import Callable
 
 from osprey.engine.ast.sources import Sources

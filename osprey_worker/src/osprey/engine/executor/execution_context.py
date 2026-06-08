@@ -19,19 +19,10 @@ from typing import (
     Type,
     TypeAlias,
     TypeVar,
+    cast,
 )
 
 from google.protobuf.timestamp_pb2 import Timestamp
-
-
-@lru_cache(maxsize=1)
-def _is_gevent_patched() -> bool:
-    try:
-        from gevent.monkey import is_module_patched
-
-        return is_module_patched('socket')
-    except ImportError:
-        return False
 from osprey.engine.ast.grammar import ASTNode, Load, Name, Source
 from osprey.engine.ast.printer import print_ast
 from osprey.engine.executor.custom_extracted_features import (
@@ -76,6 +67,16 @@ if TYPE_CHECKING:
     from osprey.engine.ast_validator.validation_context import ValidatedSources
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _is_gevent_patched() -> bool:
+    try:
+        from gevent.monkey import is_module_patched
+
+        return is_module_patched('socket')
+    except ImportError:
+        return False
 
 
 def _label_effect_takes_effect(effect: LabelEffect) -> bool:
@@ -371,7 +372,10 @@ class ExecutionContext:
                 accessor = PlainExternalServiceAccessor(external_service)
             self._external_service_accessors_by_getter_id[id(external_service)] = accessor
 
-        return accessor
+        # The cache dict is typed Dict[int, Any] since it holds both the gevent
+        # ExternalServiceAccessor and PlainExternalServiceAccessor; both satisfy the
+        # ExternalServiceAccessor[KeyT, ValueT] accessor interface promised here.
+        return cast('ExternalServiceAccessor[KeyT, ValueT]', accessor)
 
     def get_async_external_service_accessor(
         self, external_service: 'AsyncExternalService[KeyT, ValueT]'
@@ -493,10 +497,11 @@ class ExecutionResult:
         return Verdicts(
             action_id=self.action.action_id,
             action_name=self.action.action_name,
-            verdicts=[v.verdict for v in self.verdicts] + [
+            verdicts=[v.verdict for v in self.verdicts]
+            + [
                 f'{e.entity.type}/{e.entity.id}/{e.name}'
                 for e in self.effects.get(LabelEffect, [])
-                if _label_effect_takes_effect(e)
+                if isinstance(e, LabelEffect) and _label_effect_takes_effect(e)
             ],
             timestamp=self._get_timestamp_pb2_proto(),
         )

@@ -130,7 +130,7 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
                 result = await self._service.batch_get_from_service(non_cached_keys)
                 for i, key in enumerate(non_cached_keys):
                     if result[i].is_ok():
-                        self._cache[key][0].set_result(result[i].value)
+                        self._cache[key][0].set_result(result[i].unwrap())
                     else:
                         self._cache[key][0].set_exception(cast(BaseException, result[i].value))
             except Exception as e:

@@ -9,13 +9,12 @@ Locks down the behavior that bootstrap_async_udfs:
 from __future__ import annotations
 
 import pytest
-from osprey.engine.stdlib.udfs.json_data import JsonData
-from osprey.engine.stdlib.udfs.mx_lookup import MXLookup as SyncMXLookup
-from osprey.engine.stdlib.udfs.rules import Rule
-
 from osprey.async_worker.adaptor import plugin_manager as pm
 from osprey.async_worker.stdlib_udfs import _async_stdlib_plugin
 from osprey.async_worker.stdlib_udfs.async_mx_lookup import MXLookup as AsyncMXLookup
+from osprey.engine.stdlib.udfs.json_data import JsonData
+from osprey.engine.stdlib.udfs.mx_lookup import MXLookup as SyncMXLookup
+from osprey.engine.stdlib.udfs.rules import Rule
 
 
 @pytest.fixture(autouse=True)

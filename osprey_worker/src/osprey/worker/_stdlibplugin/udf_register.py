@@ -1,5 +1,6 @@
 from typing import Any, Sequence, Type
 
+from osprey.engine.stdlib.udfs.count_regex_matches import CountRegexMatches
 from osprey.engine.stdlib.udfs.domain_chopper import DomainChopper
 from osprey.engine.stdlib.udfs.domain_tld import DomainTld
 from osprey.engine.stdlib.udfs.email_domain import EmailDomain, EmailSubdomain
@@ -29,7 +30,6 @@ from osprey.engine.stdlib.udfs.regex_match import RegexMatch, RegexMatchMap
 from osprey.engine.stdlib.udfs.require import Require
 from osprey.engine.stdlib.udfs.resolve_optional import ResolveOptional
 from osprey.engine.stdlib.udfs.rules import Rule, WhenRules
-from osprey.engine.stdlib.udfs.count_regex_matches import CountRegexMatches
 from osprey.engine.stdlib.udfs.string import (
     StringClean,
     StringEndsWith,

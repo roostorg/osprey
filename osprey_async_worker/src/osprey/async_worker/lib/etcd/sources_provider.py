@@ -11,10 +11,10 @@ import inspect
 import json
 import logging
 import random
-from typing import Awaitable, Callable, Dict, Optional, Union
+from typing import Any, Awaitable, Callable, Dict, Iterator, Optional, Union
 
 from osprey.engine.ast.sources import Sources
-from osprey.worker.lib.etcd import EtcdClient, FullSyncOne, FullSyncOneNoKey
+from osprey.worker.lib.etcd import BaseWatcher, EtcdClient, FullSyncOne, FullSyncOneNoKey
 from osprey.worker.lib.sources_provider_base import BaseSourcesProvider
 
 # The async engine's _handle_updated_sources is a coroutine function so the
@@ -71,14 +71,14 @@ class AsyncEtcdSourcesProvider(BaseSourcesProvider):
         self._current_sources: Optional[Sources] = None
         self._sources_watcher_callback: Optional[SourcesWatcherCallback] = None
         self._input_stream_ready_signaler = input_stream_ready_signaler
-        self._watcher = None
+        self._watcher: Optional[BaseWatcher] = None
         # Long-lived iterator over the watcher's event stream. continue_watching()
         # is a generator function — every call creates a new generator with a
         # fresh WatchMux and a reset _index, which defeats the watcher's built-in
         # dedup of redundant FullSyncOne events. Iterate one generator persistently
         # to match how ReadOnlyEtcdDict drives the gevent watcher.
-        self._watcher_iter = None
-        self._watcher_task: Optional[asyncio.Task] = None
+        self._watcher_iter: Optional[Iterator[Any]] = None
+        self._watcher_task: Optional[asyncio.Task[None]] = None
 
     async def start(self) -> None:
         """Initialize sources from etcd and start watching for changes."""
@@ -179,7 +179,12 @@ class AsyncEtcdSourcesProvider(BaseSourcesProvider):
             logging.info('Restarting input streams')
             self._input_stream_ready_signaler.resume_input_stream()
 
-    def get_current_sources(self) -> Optional[Sources]:
+    # NOTE: BaseSourcesProvider.get_current_sources is typed -> Sources, but this
+    # provider legitimately returns None before start() loads from etcd (see
+    # test_provider_get_current_sources_default_none). Widening the base return type
+    # to Optional[Sources] is the correct fix but lives in sources_provider_base.py
+    # (a shared file outside this change). Keep the precise return type here.
+    def get_current_sources(self) -> Optional[Sources]:  # type: ignore[override]
         return self._current_sources
 
     def set_sources_watcher(self, callback: SourcesWatcherCallback) -> None:

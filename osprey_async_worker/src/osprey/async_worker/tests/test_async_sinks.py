@@ -3,14 +3,12 @@
 import asyncio
 from datetime import datetime
 from typing import List
-from unittest.mock import MagicMock
 
 import pytest
-from osprey.engine.executor.execution_context import Action, ExecutionResult
-
 from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
 from osprey.async_worker.sinks.sink.input_stream import AsyncStaticInputStream
 from osprey.async_worker.sinks.sink.output_sink import AsyncMultiOutputSink, AsyncStdoutOutputSink
+from osprey.engine.executor.execution_context import Action, ExecutionResult
 
 
 def _make_result(action_id: int = 1, action_name: str = 'test') -> ExecutionResult:

@@ -20,6 +20,7 @@ from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
+    from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter
     from osprey.worker.lib.llm.base import BaseLLMProvider
 
 hookimpl_osprey: pluggy.HookimplMarker = pluggy.HookimplMarker(OSPREY_ADAPTOR)
@@ -90,7 +91,11 @@ def bootstrap_output_sinks(config: Config) -> BaseOutputSink:
 
 
 def bootstrap_validation_exporter(config: Config) -> 'BaseValidationResultExporter':
-    from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter, NullValidationResultExporter
+    from osprey.worker.lib.data_exporters.validation_result_exporter import (
+        BaseValidationResultExporter,
+        NullValidationResultExporter,
+    )
+
     load_all_osprey_plugins()
     exporter = plugin_manager.hook.register_validation_exporter(config=config)
     return exporter if isinstance(exporter, BaseValidationResultExporter) else NullValidationResultExporter()
