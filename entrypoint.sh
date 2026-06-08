@@ -41,7 +41,14 @@ cli-osprey-async-worker() {
     # EXPERIMENTAL: asyncio-native worker (Phase 0 — static/JSONL input, stdout sink;
     # no Kafka/coordinator input wired upstream yet). Only functional in the
     # osprey_async_worker/Dockerfile image, which installs osprey_async_worker.
-    exec uv run osprey-async-cli run --rules-path "${OSPREY_RULES_PATH:-/osprey/example_rules}" "$@"
+    # Defaults to the bundled stdlib example rules so the image runs out of the box;
+    # set OSPREY_INPUT_FILE to feed a JSONL action file (otherwise input is empty).
+    local rules_path="${OSPREY_RULES_PATH:-/osprey/osprey_async_worker/example_rules}"
+    local args=(run --rules-path "${rules_path}")
+    if [[ -n "${OSPREY_INPUT_FILE:-}" ]]; then
+        args+=(--input-file "${OSPREY_INPUT_FILE}")
+    fi
+    exec uv run osprey-async-cli "${args[@]}" "$@"
 }
 
 cli-run-tests() {

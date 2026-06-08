@@ -1,0 +1,5 @@
+# Minimal config so the rules directory loads — Osprey requires a non-empty
+# config alongside the rules. The asyncio Phase-0 example does not use it.
+example:
+  some_str: "demo"
+  some_int: 1
