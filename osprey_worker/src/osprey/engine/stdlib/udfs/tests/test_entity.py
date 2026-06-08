@@ -105,8 +105,8 @@ def test_entity_literal_arguments_can_be_names_from_other_source(
 def test_entity_checks_json_value_type(execute_with_result: ExecuteWithResultFunction) -> None:
     result = execute_with_result(
         """
-        A: Entity[str] = EntityJson(type='A', path='$.my_int')
-        B: Entity[int] = EntityJson(type='B', path='$.my_str')
+        A: Entity[str] = EntityJson(type='A', path='$.my_int', coerce_type=False)
+        B: Entity[int] = EntityJson(type='B', path='$.my_str', coerce_type=False)
         """,
         data={'my_int': 123, 'my_str': 'abc'},
     )
