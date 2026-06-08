@@ -12,11 +12,11 @@ FROM python:3.11-slim
 ARG TARGETPLATFORM
 
 WORKDIR /osprey
-ENV ETCD_PEERS=http://etcd:2379
+# Image-structural only: the editable workspace packages resolve from /osprey.
 ENV PYTHONPATH=/osprey
-
-ENV PORT=5000
-EXPOSE ${PORT}
+# Runtime config (rules path, input file, etc.) is supplied via env at run time
+# (docker run -e / compose), not baked here. The Phase-0 async worker reads rules
+# from --rules-path; it does not use etcd or serve a port.
 
 RUN set -ex && \
     apt-get update && \
