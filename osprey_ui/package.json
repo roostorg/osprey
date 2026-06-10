@@ -32,7 +32,6 @@
     "react-router-dom": "5.2.0",
     "react-virtualized": "9.22.6",
     "tippy.js": "^6.3.7",
-    "uuid": "9.0.1",
     "zustand": "3.5.2"
   },
   "devDependencies": {

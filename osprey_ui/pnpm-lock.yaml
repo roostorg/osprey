@@ -89,9 +89,6 @@ importers:
       tippy.js:
         specifier: ^6.3.7
         version: 6.3.7
-      uuid:
-        specifier: 9.0.1
-        version: 9.0.1
       zustand:
         specifier: 3.5.2
         version: 3.5.2(react@18.3.1)
@@ -159,9 +156,6 @@ importers:
       '@types/react-virtualized':
         specifier: 9.21.8
         version: 9.21.8
-      '@types/uuid':
-        specifier: 9.0.5
-        version: 9.0.5
       '@typescript-eslint/eslint-plugin':
         specifier: 8.59.1
         version: 8.59.1(@typescript-eslint/parser@8.59.1(eslint@8.57.0)(typescript@5.9.2))(eslint@8.57.0)(typescript@5.9.2)
@@ -1384,7 +1378,6 @@ packages:
 
   '@types/uuid@9.0.5':
     resolution: {integrity: sha512-xfHdwa1FMJ082prjSJpoEI57GZITiQz10r3vEJCHa2khEFQjKy91aWKz6+zybzssCvXUwE1LQWgWVwZ4nYUvHQ==}
-
   '@types/yargs-parser@21.0.3':
     resolution: {integrity: sha512-I4q9QU9MQv4oEOz4tAHJtNz1cwuLxn2F3xcc2iV5WdqLPpUnj30aUuxt1mAxYTG+oe8CZMV/+6rU4S4gRDzqtQ==}
 
