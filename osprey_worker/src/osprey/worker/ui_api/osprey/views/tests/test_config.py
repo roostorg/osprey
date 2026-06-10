@@ -38,7 +38,7 @@ _base_sources_dict = {'config.yaml': json.dumps({'ui_config': _ui_config_raw, 'l
             UserId = Entity(type='User', id=1)
             GuildId = Entity(type='Guild', id=1)
             SomeLiteral: str = "hi"
-            SomeExtractLiteral: ExtractLiteral[List[int]] = [1, 2, 3]
+            SomeExtractLiteral: ExtractLiteral[list[int]] = [1, 2, 3]
         """,
         'actions/foo.sml': '',
         'actions/bar.sml': '',

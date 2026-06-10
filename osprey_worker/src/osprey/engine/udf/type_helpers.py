@@ -86,6 +86,10 @@ def to_display_str(t: type | None, include_quotes: bool = True) -> str:
                 (optional_arg,) = args_without_none
                 return f'{_to_display_str(optional_arg)} | None'
 
+            if is_union_type(inner_t) and len(args) == 2 and not origin_name:
+                args = [_to_display_str(arg) for arg in args_without_none]
+                return f'{args[0]} | {args[1]}'
+
             args_str = ', '.join(_to_display_str(arg) for arg in args)
             return f'{origin_name}[{args_str}]'
         else:
@@ -210,17 +214,26 @@ def _check_optional(generic_type: type, resolved_type: type) -> bool:
     generic_args = get_args(generic_type)
     resolved_args = get_args(resolved_type)
     if len(generic_args) == len(resolved_args):
+        # This ensures that Optional args always have
+        # the same second argument - None.
         if (
             get_normalized_origin(generic_type) != get_normalized_origin(resolved_type)
             and generic_args[-1] is not resolved_args[-1]
         ):
             return True
     else:
+        # If resolved type is None, then the last argument of the generic
+        # arg has to be None.
         if (
             get_normalized_origin(generic_type) != get_normalized_origin(resolved_type)
             and not resolved_type
             and generic_args[-1] is not None
         ):
+            return True
+
+        # This particularly extends existing behaviour to
+        # work the same with support for native types.
+        if get_normalized_origin(generic_type) != get_normalized_origin(resolved_type) and resolved_type:
             return True
     return False
 
