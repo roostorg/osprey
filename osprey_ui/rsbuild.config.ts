@@ -23,6 +23,5 @@ export default defineConfig({
       ...publicVars,
       'process.env': JSON.stringify(rawPublicVars),
     },
-    include: [{ not: /[\\/]core-js[\\/]/ }],
   },
 });
