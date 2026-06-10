@@ -206,10 +206,11 @@ class OptionalTypeChecker(UnionTypeChecker):
             )
 
         if len(node.variants) > 1 and node.variants[-1].identifier != 'None':
+            args = ' and '.join([x.identifier for x in node.variants])
             raise AnnotationConversionError(
-                message="`Optional` can't have arguments of different types",
+                message="`Optional` can't have arguments of different types or duplicate types",
                 span=node.span,
-                hint=f'got {len(node.variants)} arguments',
+                hint=f'got {args} arguments',
             )
 
         variant = node.variants[0]
