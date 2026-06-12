@@ -5,6 +5,9 @@
 /.pnp
 .pnp.js
 
+# pnpm is the only supported package manager here; never commit an npm lockfile
+package-lock.json
+
 # testing
 /coverage
 
