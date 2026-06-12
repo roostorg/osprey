@@ -63,7 +63,7 @@ importers:
         specifier: 2.2.4
         version: 2.2.4
       lodash:
-        specifier: ^4.18.1
+        specifier: 4.18.1
         version: 4.18.1
       rc-select:
         specifier: 11.3.3
