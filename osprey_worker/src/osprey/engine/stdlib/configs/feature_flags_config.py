@@ -8,10 +8,6 @@ from .._registry import register_config_subkey
 FEATURE_FLAGS_CONFIG_SUBKEY = 'feature_flags'
 
 
-### Feature Flags ###
-WEBHOOKS_USE_PUBSUB = 'WEBHOOKS_USE_PUBSUB'
-
-
 class PercentageFlagInfo(BaseModel):
     value: float
     description: str = ''

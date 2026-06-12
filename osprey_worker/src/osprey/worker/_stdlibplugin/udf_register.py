@@ -1,5 +1,6 @@
 from typing import Any, Sequence, Type
 
+from osprey.engine.stdlib.udfs.count_regex_matches import CountRegexMatches
 from osprey.engine.stdlib.udfs.domain_chopper import DomainChopper
 from osprey.engine.stdlib.udfs.domain_tld import DomainTld
 from osprey.engine.stdlib.udfs.email_domain import EmailDomain, EmailSubdomain
@@ -9,7 +10,6 @@ from osprey.engine.stdlib.udfs.experiments import (
     Experiment,
     ExperimentsBucketAssignment,
     ExperimentWhen,
-    InExperiment,
 )
 from osprey.engine.stdlib.udfs.extract_cookie import ExtractCookie
 from osprey.engine.stdlib.udfs.get_action_id import GetActionId
@@ -22,7 +22,6 @@ from osprey.engine.stdlib.udfs.list_length import ListLength
 from osprey.engine.stdlib.udfs.list_read import ListRead
 from osprey.engine.stdlib.udfs.list_sort import ListSort
 from osprey.engine.stdlib.udfs.mx_lookup import MXLookup
-from osprey.engine.stdlib.udfs.parse_int import ParseInt
 from osprey.engine.stdlib.udfs.phone_country import PhoneCountry
 from osprey.engine.stdlib.udfs.phone_prefix import PhonePrefix
 from osprey.engine.stdlib.udfs.random_bool import RandomBool
@@ -85,7 +84,6 @@ def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
         Experiment,
         ExperimentWhen,
         ExperimentsBucketAssignment,
-        InExperiment,
         ExtractCookie,
         GetActionId,
         GetActionName,
@@ -99,7 +97,6 @@ def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
         ListRead,
         ListSort,
         MXLookup,
-        ParseInt,
         PhoneCountry,
         PhonePrefix,
         RandomBool,
@@ -136,4 +133,5 @@ def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
         TimeDelta,
         TimeSince,
         WhenRules,
+        CountRegexMatches,
     ]

@@ -44,13 +44,31 @@ class BinaryOperationExecutor(BaseNodeExecutor[BinaryOperation, Any]):
         return [self._node.left, self._node.right]
 
 
+def _safe_truediv(left: Any, right: Any) -> Any:
+    if right == 0:
+        return 0
+    return operator.truediv(left, right)
+
+
+def _safe_floordiv(left: Any, right: Any) -> Any:
+    if right == 0:
+        return 0
+    return operator.floordiv(left, right)
+
+
+def _safe_mod(left: Any, right: Any) -> Any:
+    if right == 0:
+        return 0
+    return operator.mod(left, right)
+
+
 _BINARY_OPERATORS = {
     Add: operator.add,
     Subtract: operator.sub,
     Multiply: operator.mul,
-    Divide: operator.truediv,
-    FloorDivide: operator.floordiv,
-    Modulo: operator.mod,
+    Divide: _safe_truediv,
+    FloorDivide: _safe_floordiv,
+    Modulo: _safe_mod,
     Pow: operator.pow,
     LeftShift: operator.lshift,
     RightShift: operator.rshift,

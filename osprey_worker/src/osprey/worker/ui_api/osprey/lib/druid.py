@@ -460,4 +460,14 @@ def parse_query_filter(query_filter: str) -> Optional[Dict[str, Any]]:
     validated_sources = parse_query_to_validated_ast(
         query_filter, rules_sources=ENGINE.instance().execution_graph.validated_sources
     )
-    return DruidQueryTransformer(validated_sources=validated_sources).transform()
+    transformed = DruidQueryTransformer(validated_sources=validated_sources).transform()
+
+    # Handle the tagged response shape from the transformer
+    # (Phase 2: native vs SQL queries)
+    if transformed.get('type') == 'sql':
+        # CountOver queries (SQL) are handled by the SQL routing path.
+        # For now, return the SQL-tagged shape as-is; callers should check for it
+        return transformed
+    else:
+        # Native queries: unwrap the 'filter' key
+        return {'filter': transformed.get('filter')}

@@ -7,18 +7,12 @@ from osprey.engine.ast_validator.validators.validate_call_kwargs import Validate
 from osprey.engine.conftest import CheckFailureFunction, ExecuteFunction, RunValidationFunction
 from osprey.engine.language_types.experiments import NOT_IN_EXPERIMENT_BUCKET, NOT_IN_EXPERIMENT_BUCKET_INDEX
 from osprey.engine.stdlib.udfs.entity import Entity
-from osprey.engine.stdlib.udfs.experiments import (
-    CONTROL_BUCKET,
-    EXPERIMENT_GRANULARITY,
-    Experiment,
-    ExperimentWhen,
-    InExperiment,
-)
+from osprey.engine.stdlib.udfs.experiments import CONTROL_BUCKET, EXPERIMENT_GRANULARITY, Experiment, ExperimentWhen
 from osprey.engine.stdlib.udfs.rules import Rule
 from osprey.engine.udf.registry import UDFRegistry
 
 pytestmark: List[Callable[[Any], Any]] = [
-    pytest.mark.use_udf_registry(UDFRegistry.with_udfs(Entity, Rule, Experiment, ExperimentWhen, InExperiment)),
+    pytest.mark.use_udf_registry(UDFRegistry.with_udfs(Entity, Rule, Experiment, ExperimentWhen)),
     pytest.mark.use_validators([ValidateCallKwargs, UniqueStoredNames]),
 ]
 
@@ -373,32 +367,6 @@ def test_experimentwhen_results(
     """
     data = execute(experiment)
     assert data['B'] == expected_value
-
-
-@mock.patch.object(Experiment, 'hash_mod')
-def test_inexperiment_returns_true_when_in_experiment(hash_mod_mock: mock.MagicMock, execute: ExecuteFunction) -> None:
-    hash_mod_mock.return_value = 0
-    experiment = f"""
-    E1 = Entity(type='MyEntity', id='entity 1')
-    A = Experiment(entity=E1, buckets=['{CONTROL_BUCKET}', 'b'], bucket_sizes=[50.0, 50.0], version=1, revision=1)
-    B = InExperiment(experiment=A)
-    """
-    data = execute(experiment)
-    assert data['B'] is True
-
-
-@mock.patch.object(Experiment, 'hash_mod')
-def test_inexperiment_returns_false_when_not_in_experiment(
-    hash_mod_mock: mock.MagicMock, execute: ExecuteFunction
-) -> None:
-    hash_mod_mock.return_value = 9999
-    experiment = f"""
-    E1 = Entity(type='MyEntity', id='entity 1')
-    A = Experiment(entity=E1, buckets=['{CONTROL_BUCKET}', 'b'], bucket_sizes=[1.0, 1.0], version=1, revision=1)
-    B = InExperiment(experiment=A)
-    """
-    data = execute(experiment)
-    assert data['B'] is False
 
 
 @mock.patch.object(Experiment, 'hash_mod')

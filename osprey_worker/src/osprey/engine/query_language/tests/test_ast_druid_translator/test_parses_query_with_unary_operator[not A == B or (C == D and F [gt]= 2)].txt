@@ -44,5 +44,6 @@
             }
         ],
         "type": "or"
-    }
+    },
+    "type": "native"
 }

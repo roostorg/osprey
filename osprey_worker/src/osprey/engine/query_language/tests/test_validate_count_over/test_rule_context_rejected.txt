@@ -1,0 +1,11 @@
+2 errors occurred while validating:
+[1/2] error: unknown function: `Rule`
+--> main.sml:1:16
+     |
+   1 | AbusiveAction = Rule(
+     |                 ^ called here
+[2/2] error: `CountOver` is query-only
+--> main.sml:3:8
+     |
+   3 |         CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m') >= 10,
+     |         ^ `CountOver(...)` may only be used in query contexts, not inside SML rules

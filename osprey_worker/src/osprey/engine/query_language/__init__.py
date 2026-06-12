@@ -7,6 +7,7 @@ from osprey.engine.ast_validator.validators.variables_must_be_defined import Var
 from osprey.engine.query_language import udfs
 from osprey.engine.query_language.ast_validator import REGISTRY
 from osprey.engine.query_language.udfs.registry import UDF_REGISTRY
+from osprey.engine.query_language.validate_count_over import ValidateCountOver  # noqa: F401
 from osprey.engine.utils.imports import import_all_direct_children
 
 

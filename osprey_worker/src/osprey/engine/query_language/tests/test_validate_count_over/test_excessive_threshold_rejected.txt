@@ -1,0 +1,5 @@
+error: `CountOver` threshold exceeds cap
+--> main.sml:1:71
+     |
+   1 | Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m') >= 1000000
+     |                                                                        ^ threshold must be `<= 100000`

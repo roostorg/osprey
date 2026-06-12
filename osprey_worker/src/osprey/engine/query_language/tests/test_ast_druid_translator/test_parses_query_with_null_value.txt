@@ -15,5 +15,6 @@
             }
         ],
         "type": "and"
-    }
+    },
+    "type": "native"
 }

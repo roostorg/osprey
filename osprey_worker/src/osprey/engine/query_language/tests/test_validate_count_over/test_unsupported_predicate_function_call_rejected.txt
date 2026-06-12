@@ -1,0 +1,5 @@
+error: functions with non-keyword arguments are not supported
+--> main.sml:1:28
+     |
+   1 | Query = CountOver(predicate=SomeUdf(UserLoginIp) == 'result', window='10m') >= 10
+     |                             ^

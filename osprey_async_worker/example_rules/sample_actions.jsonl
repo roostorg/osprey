@@ -1,0 +1,2 @@
+{"id": 1, "name": "create_post", "data": {"user_id": "u1", "event_type": "create_post", "message": "short message"}}
+{"id": 2, "name": "create_post", "data": {"user_id": "u2", "event_type": "create_post", "message": "hello world this is a deliberately long message that exceeds one hundred characters so the LongMessage rule fires"}}

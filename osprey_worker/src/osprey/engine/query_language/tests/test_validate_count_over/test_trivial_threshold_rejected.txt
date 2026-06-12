@@ -1,0 +1,5 @@
+error: `CountOver` threshold is trivial
+--> main.sml:1:71
+     |
+   1 | Query = CountOver(predicate=UserLoginIp == '1.1.1.1', window='10m') >= 0
+     |                                                                        ^ reject thresholds that always or never match (e.g. `>= 0`, `> 0`, `<= 0`, negatives)
