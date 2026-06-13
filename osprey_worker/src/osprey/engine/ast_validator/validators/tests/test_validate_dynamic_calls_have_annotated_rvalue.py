@@ -49,7 +49,7 @@ def test_invalid_annotation(
 
 
 def test_valid_annotation_list(run_validation: RunValidationFunction) -> None:
-    run_validation("Foo: list[str] = JsonData(path='$.foo')")
+    run_validation("Foo: List[str] = JsonData(path='$.foo')")
 
 
 def test_dynamic_fn_must_be_assigned(

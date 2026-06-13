@@ -529,19 +529,23 @@ def pyast_ann_assign_annotation_to_annotation(
 
     if isinstance(annotation, ast.BinOp):
         variants: list[Annotation | AnnotationWithVariants] = []  # type: ignore[no-redef]
-        identifier: str = ''
-
-        # This is for an Optional, as annotation.left wouldn't be
-        # a BinOp, but most likely a name.
-        if not isinstance(annotation.left, ast.BinOp):
-            identifier = 'Optional'
-        else:
-            identifier = 'Union'
 
         left_variant = pyast_ann_assign_annotation_to_annotation(transformer, annotation.left)
         right_variant = pyast_ann_assign_annotation_to_annotation(transformer, annotation.right)
-        variants.append(left_variant)
+
+        if isinstance(left_variant, AnnotationWithVariants):
+            variants.extend(left_variant.variants)
+        else:
+            variants.append(left_variant)
         variants.append(right_variant)
+
+        # Optional arguments are internally represented as a Union, but
+        # they can only wrap a single type with None.
+        identifier: str = ''
+        if variants[-1].identifier == 'None':
+            identifier = 'Optional'
+        else:
+            identifier = 'Union'
 
         return AnnotationWithVariants(identifier=identifier, variants=variants, span=transformer.span_for(annotation))
 
