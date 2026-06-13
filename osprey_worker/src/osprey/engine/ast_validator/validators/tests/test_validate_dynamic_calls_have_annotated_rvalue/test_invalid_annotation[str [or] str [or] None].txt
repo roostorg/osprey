@@ -1,0 +1,5 @@
+error: `Optional` must have one argument or less than two arguments
+--> main.sml:1:5
+     |
+   1 | Foo: str | str | None = JsonData(path='$.foo')
+     |      ^ got 3 arguments

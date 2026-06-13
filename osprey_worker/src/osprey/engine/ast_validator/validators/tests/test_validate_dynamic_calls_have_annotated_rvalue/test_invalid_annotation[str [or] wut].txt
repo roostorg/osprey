@@ -1,5 +1,5 @@
-error: `Optional` can't have arguments of different types or duplicate types
---> main.sml:1:5
+error: expected simple type in `Union`
+--> main.sml:1:11
      |
    1 | Foo: str | wut = JsonData(path='$.foo')
-     |      ^ got str and wut arguments
+     |            ^ got unknown non-generic type `wut`
