@@ -93,6 +93,18 @@ def test_fstring_literal(execute: ExecuteFunction) -> None:
     assert data == {'Bar': 'world', 'Baz': '[hello - world]', 'Foo': 'hello'}
 
 
+def test_fstring_with_literal_braces(execute: ExecuteFunction) -> None:
+    # Regression: literal braces in an f-string must render as literal braces, not be
+    # reinterpreted as str.format() substitution fields (which raised KeyError).
+    data = execute(
+        """
+        Name: ExtractLiteral[str] = "world"
+        Greeting: ExtractLiteral[str] = f"{{hello}} {Name} {{{{}}}}"
+        """
+    )
+    assert data == {'Name': 'world', 'Greeting': '{hello} world {{}}'}
+
+
 def test_export_fails_on_non_literal(check_failure: CheckFailureFunction, execute: ExecuteFunction) -> None:
     with check_failure():
         execute(
