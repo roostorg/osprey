@@ -60,6 +60,10 @@ class _ValidTwoArgTypeTransition:
 
 _INT_OR_FLOAT_T = cast(type, Union[int, float])
 
+# Binary operators excluded from the rule language: a single `**`, `<<`, or `>>` with a large
+# right-hand operand can build a multi-megabyte integer in one step and stall rule evaluation.
+_DISALLOWED_BINARY_OPERATORS = (grammar.Pow, grammar.LeftShift, grammar.RightShift)
+
 
 class ValidateStaticTypes(SourceValidator, HasInput[Dict[str, _TypeAndSpan]], HasResult[ValidateStaticTypesResult]):
     def __init__(self, context: 'ValidationContext'):
@@ -382,6 +386,16 @@ class ValidateStaticTypes(SourceValidator, HasInput[Dict[str, _TypeAndSpan]], Ha
         return udf.get_resolved_rvalue_type(resolved_typevar_type)
 
     def _validate_binary_operation(self, binary_operation: grammar.BinaryOperation) -> type:
+        if isinstance(binary_operation.operator, _DISALLOWED_BINARY_OPERATORS):
+            self.context.add_error(
+                f'the `{binary_operation.operator.original_operator}` operator is not supported',
+                binary_operation.span,
+                hint=(
+                    'exponentiation and bit-shift operators can build very large numbers in a single '
+                    'step, which can stall rule evaluation'
+                ),
+            )
+            return AnyType
         return self._validate_two_arg_type_transitions(
             binary_operation.span,
             binary_operation.operator.original_operator,

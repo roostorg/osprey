@@ -1,0 +1,5 @@
+error: the `<<` operator is not supported
+--> main.sml:1:6
+     |
+   1 | Foo = 1 << 8
+     |       ^ exponentiation and bit-shift operators can build very large numbers in a single step, which can stall rule evaluation
