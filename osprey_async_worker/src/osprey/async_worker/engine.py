@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 from ddtrace.span import Span as TracerSpan
 from osprey.async_worker.executor import execute as async_execute
 from osprey.engine.ast.ast_utils import iter_nodes
-from osprey.engine.ast.grammar import Assign, Span
+from osprey.engine.ast.grammar import Assign, Span, parsed_ast_root_cache
 from osprey.engine.ast.sources import SourcesConfig
 from osprey.engine.ast_validator import validate_sources
 from osprey.engine.ast_validator.validator_registry import ValidatorRegistry
@@ -232,9 +232,18 @@ class AsyncOspreyEngine:
             new_root_ids = {id(s.ast_root) for s in new_graph.validated_sources.sources}
             count = 0
             for source in old_graph.validated_sources.sources:
-                if id(source.ast_root) in new_root_ids:
+                root = source.ast_root
+                if id(root) in new_root_ids:
                     continue
-                for node in iter_nodes(source.ast_root):
+                # Evict this discarded content from parsed_ast_root_cache BEFORE nulling
+                # its parents. That cache memoizes ast_root by source content and is never
+                # evicted, so a later graph that re-uses this exact content (e.g. a rule
+                # revert) would otherwise be handed back this same parent-nulled Root and
+                # fail validation with "`Rule(...)` must be assigned to a variable",
+                # wedging the worker on stale rules. Eviction forces a fresh re-parse on
+                # any future recurrence.
+                parsed_ast_root_cache.pop(source, None)
+                for node in iter_nodes(root):
                     node.parent = None
                     count += 1
             log.debug('broke parent pointers on %d AST nodes from old graph', count)

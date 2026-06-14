@@ -183,3 +183,47 @@ async def test_handle_updated_sources_swallows_cycle_break_errors():
         await engine._handle_updated_sources()
 
     assert engine._execution_graph is new, 'swap must complete even if cycle-break raises'
+
+
+def test_break_old_graph_cycles_evicts_reverted_content_from_ast_cache():
+    """_break_old_graph_cycles must evict a discarded source's content from the
+    never-evicted module-level parsed_ast_root_cache BEFORE nulling its AST parents.
+
+    Otherwise a later graph that re-uses that exact content (e.g. a rule revert)
+    is handed back the same parent-nulled Root and fails validation with
+    "`Rule(...)` must be assigned to a variable", wedging the worker on stale rules.
+    Regression test: fails if the cache eviction is removed.
+    """
+    from osprey.engine.ast.ast_utils import iter_nodes
+    from osprey.engine.ast.grammar import Source, parsed_ast_root_cache
+
+    def rule_parent_type(root):
+        for node in iter_nodes(root):
+            func = getattr(node, 'func', None)
+            if type(node).__name__ == 'Call' and getattr(func, 'identifier', None) == 'Rule':
+                return type(node.parent).__name__ if node.parent is not None else None
+        return None
+
+    content = "MyRule = Rule(\n    when_all=[True],\n    description='x',\n)\n"
+    path = 'actions/regression_evict.sml'
+    before = set(parsed_ast_root_cache.keys())
+    try:
+        old_src = Source(path=path, contents=content)
+        assert rule_parent_type(old_src.ast_root) == 'Assign'  # fresh parse: Rule is assigned
+        assert old_src in parsed_ast_root_cache
+
+        # New graph changes this file (different content) -> old content is discarded.
+        new_src = Source(path=path, contents="Other = Rule(\n    when_all=[False],\n    description='y',\n)\n")
+        old_graph = MagicMock(validated_sources=MagicMock(sources=[old_src]))
+        new_graph = MagicMock(validated_sources=MagicMock(sources=[new_src]))
+
+        AsyncOspreyEngine._break_old_graph_cycles(old_graph, new_graph)
+
+        # Discarded content must be evicted so a later recurrence re-parses fresh.
+        assert old_src not in parsed_ast_root_cache, 'reverted content left in cache -> parent-nulled Root reused'
+        # Re-using the exact content now yields an intact AST (Rule still assigned).
+        assert rule_parent_type(Source(path=path, contents=content).ast_root) == 'Assign'
+    finally:
+        for key in list(parsed_ast_root_cache.keys()):
+            if key not in before:
+                parsed_ast_root_cache.pop(key, None)
