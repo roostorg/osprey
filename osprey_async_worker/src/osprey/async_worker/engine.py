@@ -6,6 +6,7 @@ Provides async execute() that calls the async executor directly.
 """
 
 import asyncio
+import gc
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -105,6 +106,8 @@ class AsyncOspreyEngine:
         self._sources_provider.set_sources_watcher(cast(Callable[[], None], self._handle_updated_sources))
         self._config_subkey_handler = ConfigSubkeyHandler(config_registry, self._execution_graph.validated_sources)
         self._validation_result_exporter = validation_exporter
+        # Freeze the boot graph out of gen-2 GC (see _freeze_resident_graph).
+        self._freeze_resident_graph()
 
     def _compile_execution_graph_sync(self, yield_during_compile: bool = True) -> ExecutionGraph:
         """Compile the execution graph synchronously.
@@ -179,10 +182,10 @@ class AsyncOspreyEngine:
         # only newly-arriving actions read the new graph. Safe regardless of
         # whether the input stream is paused.
         #
-        # We deliberately do NOT call gc.collect() here. Forcing a full gen-2
-        # collection promotes every surviving object in the process into gen 2,
-        # which makes subsequent automatic collections during action processing
-        # measurably more expensive.
+        # After the swap we call _freeze_resident_graph(): gc.collect() then gc.freeze().
+        # The collect promotes survivors into gen 2, but the freeze immediately moves the
+        # resident graph into the permanent generation (excluded from automatic collection),
+        # so per-message gen-2 scans stay cheap as rules recompile.
         #
         # The old graph contains refcycles between AST roots and their children
         # via ASTNode.parent back-pointers (see osprey/engine/ast/grammar.py),
@@ -215,6 +218,7 @@ class AsyncOspreyEngine:
                 log.exception('Failed to export validation results')
 
         self._break_old_graph_cycles(old_graph, new_graph)
+        self._freeze_resident_graph()
 
     @staticmethod
     def _break_old_graph_cycles(old_graph: ExecutionGraph, new_graph: ExecutionGraph) -> None:
@@ -249,6 +253,22 @@ class AsyncOspreyEngine:
             log.debug('broke parent pointers on %d AST nodes from old graph', count)
         except Exception:
             log.exception('failed to break cycles on old execution graph')
+
+    def _freeze_resident_graph(self) -> None:
+        """Move the resident rule graph + other long-lived objects into the permanent
+        GC generation so per-message gen-2 collections stay cheap as rules recompile.
+
+        osprey rebuilds the graph on each etcd update; without freezing, refcycle-held
+        AST objects (parsed_ast_root_cache) accumulate as permanent gen-2 survivors and
+        per-message GC CPU climbs with uptime. Called after the swap + cycle-break so the
+        freeze captures the new resident graph (and at boot for the initial graph).
+        Best-effort: any exception is logged and swallowed.
+        """
+        try:
+            gc.collect()
+            gc.freeze()
+        except Exception:
+            log.exception('gc freeze of resident execution graph failed')
 
     @property
     def execution_graph(self) -> ExecutionGraph:
