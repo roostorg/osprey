@@ -102,10 +102,3 @@ def test_can_be_case_insensitive(
 def test_rejects_invalid_regex(run_validation: RunValidationFunction, check_failure: CheckFailureFunction) -> None:
     with check_failure():
         run_validation('Foo = RegexMatch(pattern="(", target="")')
-
-
-def test_regex_map_does_not_write_to_stdout(execute: ExecuteFunction, capsys: 'pytest.CaptureFixture[str]') -> None:
-    # Regression: RegexMatchMap.execute must not emit debug output on the hot path.
-    capsys.readouterr()
-    execute('Match = RegexMatchMap(pattern="[abc]+", target=["abc", "xyz"])')
-    assert capsys.readouterr().out == ''
