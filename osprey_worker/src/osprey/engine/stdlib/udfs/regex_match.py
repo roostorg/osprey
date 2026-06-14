@@ -64,5 +64,4 @@ class RegexMatchMap(RegexUDFBase, UDFBase[RegexMatchMapArguments, bool]):
         self._op = all if mode == 'all' else any
 
     def execute(self, execution_context: ExecutionContext, arguments: RegexMatchMapArguments) -> bool:
-        print(self._op, list(self._compiled.search(target) is not None for target in arguments.target))
         return self._op(self._compiled.search(target) is not None for target in arguments.target)
