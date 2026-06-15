@@ -4,7 +4,7 @@ on:
     branches: [main]
     paths:
       - 'osprey_ui/package.json'
-      - 'osprey_ui/package-lock.json'
+      - 'osprey_ui/pnpm-lock.yaml'
       - '.github/allowed-licenses.txt'
 permissions:
   contents: read
@@ -15,19 +15,20 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - run: corepack enable pnpm
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: "18"
-          cache: npm
-          cache-dependency-path: osprey_ui/package-lock.json
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: osprey_ui/pnpm-lock.yaml
 
       - name: Format license list
         run: echo "ALLOWED_LICENSES=$(tr '\n' ';' < .github/allowed-licenses.txt | sed 's/;$//')" >> "$GITHUB_ENV"
 
       - name: Install dependencies
         working-directory: osprey_ui
-        run: npm ci --omit=dev --ignore-scripts
+        run: pnpm install --prod --frozen-lockfile --ignore-scripts
 
       - name: Check licenses
         working-directory: osprey_ui
-        run: npx --yes license-checker@25.0.1 --production --excludePrivatePackages --onlyAllow "$ALLOWED_LICENSES"
+        run: pnpm dlx license-checker@25.0.1 --production --excludePrivatePackages --onlyAllow "$ALLOWED_LICENSES"
