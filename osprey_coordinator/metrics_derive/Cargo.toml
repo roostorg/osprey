@@ -3,6 +3,7 @@ name = "osprey_coordinator_metrics_derive"
 version = "0.1.0"
 authors = ["osprey"]
 edition = "2021"
+publish = false
 
 [lib]
 proc-macro = true

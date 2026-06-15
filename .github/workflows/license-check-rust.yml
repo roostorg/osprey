@@ -17,7 +17,8 @@ jobs:
 
       - name: Generate deny.toml
         run: |
-          { echo '[licenses]'; echo 'allow = ['; sed 's/.*/"&",/' .github/allowed-licenses.txt; echo ']'; } \
+          { echo '[licenses]'; echo 'allow = ['; sed 's/.*/"&",/' .github/allowed-licenses.txt; echo ']'; \
+            echo ''; echo '[licenses.private]'; echo 'ignore = true'; } \
             > osprey_coordinator/deny.toml
 
       - uses: EmbarkStudios/cargo-deny-action@bb137d7af7e4fb67e5f82a49c4fce4fad40782fe # v2.0.20
