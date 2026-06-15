@@ -28,7 +28,7 @@ jobs:
           # pip-licenses uses PyPI classifier names, not SPDX IDs, for some packages.
           # Append the pip-licenses equivalents for licenses already approved in allowed-licenses.txt.
           SPDX=$(tr '\n' ';' < .github/allowed-licenses.txt | sed 's/;$//')
-          echo "ALLOWED_LICENSES=${SPDX};Apache Software License;Python Software Foundation License" >> "$GITHUB_ENV"
+          echo "ALLOWED_LICENSES=${SPDX};Apache Software License;BSD License;Python Software Foundation License" >> "$GITHUB_ENV"
 
       - name: Install production dependencies
         run: uv sync --only-group common

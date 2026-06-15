@@ -23,7 +23,10 @@ jobs:
           cache-dependency-path: osprey_ui/pnpm-lock.yaml
 
       - name: Format license list
-        run: echo "ALLOWED_LICENSES=$(tr '\n' ';' < .github/allowed-licenses.txt | sed 's/;$//')" >> "$GITHUB_ENV"
+        run: |
+          SPDX=$(tr '\n' ';' < .github/allowed-licenses.txt | sed 's/;$//')
+          # highcharts uses a custom proprietary license; allowed for now pending #319
+          echo "ALLOWED_LICENSES=${SPDX};Custom: https://www.npmjs.com/package/highcharts-export-server" >> "$GITHUB_ENV"
 
       - name: Install dependencies
         working-directory: osprey_ui
@@ -31,5 +34,4 @@ jobs:
 
       - name: Check licenses
         working-directory: osprey_ui
-        # highcharts is excluded pending license resolution in #319
-        run: pnpm dlx license-checker@25.0.1 --production --excludePrivatePackages --excludePackages highcharts --onlyAllow "$ALLOWED_LICENSES"
+        run: pnpm dlx license-checker@25.0.1 --production --excludePrivatePackages --onlyAllow "$ALLOWED_LICENSES"
