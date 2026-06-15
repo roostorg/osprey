@@ -1,6 +1,7 @@
+import operator
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
-from functools import lru_cache
+from functools import lru_cache, reduce
 from types import UnionType
 from typing import TYPE_CHECKING, Any, Optional, Type, Union, cast
 
@@ -455,7 +456,7 @@ class ValidateStaticTypes(SourceValidator, HasInput[dict[str, _TypeAndSpan]], Ha
         # to support Optional[Entity[str]]
         if origin is None or origin is EntityT:
             return True
-        elif origin is UnionType:
+        elif origin is UnionType or origin is Union:
             return type(None) in t.__args__  # type: ignore[attr-defined]
 
         return False
@@ -480,7 +481,7 @@ class ValidateStaticTypes(SourceValidator, HasInput[dict[str, _TypeAndSpan]], Ha
                 return non_none_args[0]
             elif len(non_none_args) > 1:
                 # Multiple non-None types, return a Union of them
-                return cast(type, Union[tuple(non_none_args)])
+                return cast(type, reduce(operator.or_, non_none_args))
 
         return None
 
