@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Any, Type, TypeVar, overload
+from types import UnionType
+from typing import TYPE_CHECKING, Any, Type, TypeVar, Union, overload
 
 from osprey.engine.ast.grammar import Span
 from osprey.engine.language_types.osprey_invariant_generic import OspreyInvariantGeneric
@@ -210,32 +211,52 @@ def _get_args_excluding_nonetype(t: type) -> list[type]:
     return args
 
 
-def _check_optional(generic_type: type, resolved_type: type) -> bool:
+def _check_origin(generic_type: type, resolved_type: type) -> bool:
     generic_args = get_args(generic_type)
     resolved_args = get_args(resolved_type)
+
+    generic_origin = get_normalized_origin(generic_type)
+    resolved_origin = get_normalized_origin(resolved_type)
+
     if len(generic_args) == len(resolved_args):
         # This ensures that Optional args always have
-        # the same second argument - None.
+        # the same second argument: None.
         if (
-            get_normalized_origin(generic_type) != get_normalized_origin(resolved_type)
+            generic_origin != resolved_origin
             and generic_args[-1] is not resolved_args[-1]
         ):
-            return True
+            return False
     else:
-        # If resolved type is None, then the last argument of the generic
-        # arg has to be None.
+        # If resolved type is None, then the generic_type might be
+        # an Optional.
         if (
-            get_normalized_origin(generic_type) != get_normalized_origin(resolved_type)
+            generic_origin != resolved_origin
             and not resolved_type
             and generic_args[-1] is not None
         ):
-            return True
+            return False
 
-        # This particularly extends existing behaviour to
-        # work the same with support for native types.
-        if get_normalized_origin(generic_type) != get_normalized_origin(resolved_type) and resolved_type:
-            return True
-    return False
+        # If resolved type is not None and the generic_type isn't
+        # an Optional.
+        if (
+            generic_origin != resolved_origin
+            and resolved_type
+            and generic_args[-1] is not type(None)
+        ):
+            return False
+
+        # When an Optional argument is supplied, it'll have one annotation,
+        # and that annotation's origin would likely be None.
+        # Other valid annotations would have Union as their origin, and anything else
+        # wouldn't be valid.
+        if (
+            generic_origin != resolved_origin
+            and resolved_args
+            and resolved_origin in (Union, UnionType, None)
+        ):
+            return False
+
+    return True
 
 
 def get_typevar_substitution(
@@ -263,6 +284,7 @@ def get_typevar_substitution(
     generic_type_args = _get_args_excluding_nonetype(generic_type)
     resolved_type_args = _get_args_excluding_nonetype(resolved_type)
 
+
     if len(generic_type_args) != 1 or len(resolved_type_args) != 1:
         raise UnsupportedTypeError(
             f'both generic type {generic_type} and resolved type {resolved_type} can only have one argument'
@@ -273,7 +295,7 @@ def get_typevar_substitution(
             f'generic type {generic_type} must have exactly one typevar nested at most one level deep'
         )
 
-    if _check_optional(generic_type, resolved_type):
+    if not _check_origin(generic_type, resolved_type):
         raise UnsupportedTypeError(
             f'generic type {generic_type} and concrete type {resolved_type} have different origins'
         )
