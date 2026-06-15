@@ -10,5 +10,6 @@ ISC
 MIT
 MPL-2.0
 Python-2.0
+Python Software Foundation License
 Unicode-3.0
 Unlicense
