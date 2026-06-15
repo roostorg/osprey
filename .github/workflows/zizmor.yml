@@ -1,0 +1,37 @@
+name: GitHub Actions security analysis
+
+on:
+  push:
+    branches: ['main']
+  pull_request:
+    branches: ['**']
+
+concurrency:
+  group: zizmor-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  zizmor:
+    name: Run zizmor
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write  # to upload SARIF results to code scanning
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Run zizmor
+        uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d  # v0.5.6
+        with:
+          version: "1.25.2"
+          # only upload to github advanced security on `main`.
+          # on PRs from forks (which do not have permission to push SARIF results)
+          # we surface findings as PR annotations instead.
+          advanced-security: ${{ github.event_name == 'push' }}
+          annotations: ${{ github.event_name == 'pull_request' }}
