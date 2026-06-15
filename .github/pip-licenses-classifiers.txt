@@ -1,4 +1,5 @@
 Apache Software License
 BSD License
+3-Clause BSD License
 MIT License
 Python Software Foundation License
