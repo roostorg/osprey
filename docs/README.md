@@ -9,7 +9,7 @@ New to the project? We recommend reading the documentation in this order:
 1. **[Code of Conduct](https://github.com/roostorg/.github/blob/main/CODE_OF_CONDUCT.md)** - Understand our community standards
 2. **[Contributing Guidelines](https://github.com/roostorg/.github/blob/main/CONTRIBUTING.md)** - Learn how to contribute
 3. **[Development Guide](DEVELOPMENT.md)** - Set up your development environment and get started using Osprey
-4. **[Osprey UI](UI.md)** - Understand how to use and navigate the UI
+4. **[Osprey UI](ui/README.md)** - Understand how to use and navigate the UI
 
 ## Reporting a Bug or Issue
 
