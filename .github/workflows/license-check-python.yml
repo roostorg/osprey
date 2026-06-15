@@ -39,4 +39,7 @@ jobs:
         run: uv pip install pip-licenses==5.0.0
 
       - name: Check licenses
-        run: uv run pip-licenses --allow-only "$ALLOWED_LICENSES"
+        run: |
+          # google-crc32c is Apache-2.0 but 1.8.0 omits license metadata in PyPI (fix merged,
+          # not yet released); ignored pending googleapis/google-cloud-python#16515
+          uv run pip-licenses --allow-only "$ALLOWED_LICENSES" --ignore-packages google-crc32c
