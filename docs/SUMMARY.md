@@ -5,7 +5,9 @@
 ---
 
 - [User Guide](user/README.md)
-  - [Investigate](user/investigate.md)
+  - [Investigate](user/investigate/README.md)
+    - [Labels](user/investigate/labels.md)
+    - [Query Syntax](user/investigate/query-syntax.md)
   - [Manage](user/manage.md)
   - [Operate](user/operate.md)
 
@@ -20,7 +22,7 @@
 
 ---
 
-# More
+# Concepts & More
 
 - [Writing Rules](rules.md)
 - [User Research & Personas](research-personas.md)
