@@ -24,7 +24,11 @@ jobs:
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - name: Format license list
-        run: echo "ALLOWED_LICENSES=$(tr '\n' ';' < .github/allowed-licenses.txt | sed 's/;$//')" >> "$GITHUB_ENV"
+        run: |
+          # pip-licenses uses PyPI classifier names, not SPDX IDs, for some packages.
+          # Append the pip-licenses equivalents for licenses already approved in allowed-licenses.txt.
+          SPDX=$(tr '\n' ';' < .github/allowed-licenses.txt | sed 's/;$//')
+          echo "ALLOWED_LICENSES=${SPDX};Apache Software License;Python Software Foundation License" >> "$GITHUB_ENV"
 
       - name: Install production dependencies
         run: uv sync --only-group common

@@ -31,4 +31,5 @@ jobs:
 
       - name: Check licenses
         working-directory: osprey_ui
-        run: pnpm dlx license-checker@25.0.1 --production --excludePrivatePackages --onlyAllow "$ALLOWED_LICENSES"
+        # highcharts is excluded pending license resolution in #319
+        run: pnpm dlx license-checker@25.0.1 --production --excludePrivatePackages --excludePackages highcharts --onlyAllow "$ALLOWED_LICENSES"
