@@ -1,0 +1,4 @@
+Apache Software License
+BSD License
+MIT License
+Python Software Foundation License
