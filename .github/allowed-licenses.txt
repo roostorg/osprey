@@ -12,3 +12,4 @@ MPL-2.0
 Python-2.0
 Unicode-3.0
 Unlicense
+ZPL-2.1
