@@ -229,28 +229,17 @@ def _check_origin(generic_type: type, resolved_type: type) -> bool:
     if len(generic_args) == len(resolved_args):
         # This ensures that Optional args always have
         # the same second argument: None.
-        if (
-            generic_origin != resolved_origin
-            and generic_args[-1] is not resolved_args[-1]
-        ):
+        if generic_origin != resolved_origin and generic_args[-1] is not resolved_args[-1]:
             return False
     else:
         # If resolved type is None, then the generic_type might be
         # an Optional.
-        if (
-            generic_origin != resolved_origin
-            and not resolved_type
-            and generic_args[-1] is not None
-        ):
+        if generic_origin != resolved_origin and not resolved_type and generic_args[-1] is not None:
             return False
 
         # If resolved type is not None and the generic_type isn't
         # an Optional.
-        if (
-            generic_origin != resolved_origin
-            and resolved_type
-            and generic_args[-1] is not type(None)
-        ):
+        if generic_origin != resolved_origin and resolved_type and generic_args[-1] is not type(None):
             return False
 
         # When an Optional argument is supplied, it'll have one annotation,
@@ -258,11 +247,7 @@ def _check_origin(generic_type: type, resolved_type: type) -> bool:
         # Other valid annotations would have Union as their origin, and anything else
         # wouldn't be valid.
         # Hack: the list in here is a hack for parameterized list generics.
-        if (
-            generic_origin != resolved_origin
-            and resolved_args
-            and resolved_origin in (Union, UnionType, None, list)
-        ):
+        if generic_origin != resolved_origin and resolved_args and resolved_origin in (Union, UnionType, None, list):
             return False
 
     return True
@@ -292,7 +277,6 @@ def get_typevar_substitution(
 
     generic_type_args = _get_args_excluding_nonetype(generic_type)
     resolved_type_args = _get_args_excluding_nonetype(resolved_type)
-
 
     if len(generic_type_args) != 1 or len(resolved_type_args) != 1:
         raise UnsupportedTypeError(
