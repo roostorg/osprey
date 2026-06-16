@@ -207,3 +207,25 @@ class TestProducer:
         run_id = ProducerConfig.make_run_id()
         assert len(run_id) == 8
         assert all(c in '0123456789abcdef' for c in run_id)
+
+    def test_close_runs_even_if_flush_raises(self) -> None:
+        # Regression: flush() and close() were in one try, so a flush()
+        # exception would skip close() and leak the socket.
+        class FlushFailsProducer(FakeKafkaProducer):
+            def flush(self, timeout: float = 0) -> None:
+                raise RuntimeError('flush exploded')
+
+        fake = FlushFailsProducer()
+        config = ProducerConfig(
+            bootstrap_servers=['ignored'],
+            topic='topic',
+            events=2,
+            rate_per_second=1000.0,
+            run_id='abcdef12',
+        )
+        producer = Producer(config, producer_factory=lambda **kw: fake)
+        producer.start()
+        producer.wait(timeout=5)
+        assert fake.close_called
+        assert isinstance(producer.error, RuntimeError)
+        assert 'flush exploded' in str(producer.error)

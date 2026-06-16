@@ -148,12 +148,16 @@ class Producer:
         except Exception as e:
             self._error = e
         finally:
-            try:
-                producer.flush(timeout=10)
-                producer.close(timeout=10)
-            except Exception as cleanup_error:
-                # Don't let a teardown failure mask the original error from
-                # the send loop above (which is what the caller actually
-                # needs to see); only surface this if nothing else failed.
-                if self._error is None:
-                    self._error = cleanup_error
+            # flush() and close() run in independent try blocks so a flush
+            # failure doesn't skip close() and leak the underlying socket.
+            # Either failure is captured, but only if the send loop above
+            # didn't already surface a more useful error.
+            for step in (
+                lambda: producer.flush(timeout=10),
+                lambda: producer.close(timeout=10),
+            ):
+                try:
+                    step()
+                except Exception as cleanup_error:
+                    if self._error is None:
+                        self._error = cleanup_error
