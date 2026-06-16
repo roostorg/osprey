@@ -213,7 +213,7 @@ services:
         gcloud beta emulators bigtable start --host-port=0.0.0.0:8361 --project=osprey-dev
       "
     healthcheck:
-      test: ["CMD", "bash", "-c", "pgrep -f cbtemulator > /dev/null || exit 1"]
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/8361"]
       interval: 10s
       timeout: 5s
       retries: 5
