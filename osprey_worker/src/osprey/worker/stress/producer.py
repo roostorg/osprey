@@ -151,5 +151,9 @@ class Producer:
             try:
                 producer.flush(timeout=10)
                 producer.close(timeout=10)
-            except Exception:
-                pass
+            except Exception as cleanup_error:
+                # Don't let a teardown failure mask the original error from
+                # the send loop above (which is what the caller actually
+                # needs to see); only surface this if nothing else failed.
+                if self._error is None:
+                    self._error = cleanup_error

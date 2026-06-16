@@ -1,7 +1,7 @@
 import json
 import threading
 import time
-from typing import Any
+from typing import NoReturn
 
 from osprey.worker.stress.producer import (
     Producer,
@@ -14,7 +14,7 @@ from osprey.worker.stress.producer import (
 class FakeKafkaProducer:
     """Captures sends in-memory; mimics the kafka-python API surface we use."""
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: object) -> None:
         self.kwargs = kwargs
         self.sent: list[tuple[str, bytes]] = []
         self._lock = threading.Lock()
@@ -187,7 +187,7 @@ class TestProducer:
         producer.wait(timeout=2)
 
     def test_producer_factory_failure_captured(self) -> None:
-        def boom(**_: Any) -> Any:
+        def boom(**_: object) -> NoReturn:
             raise ConnectionError('no kafka here')
 
         config = ProducerConfig(
