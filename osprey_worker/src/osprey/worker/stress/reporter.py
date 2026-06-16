@@ -16,8 +16,9 @@ The harness has two measurement modes:
 from __future__ import annotations
 
 import json
+from collections.abc import Hashable, Mapping
 from dataclasses import asdict, dataclass, field
-from typing import Any, Mapping, Optional
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -108,8 +109,8 @@ def compute_latency_stats(latencies_ms: list[float]) -> LatencyStats:
 
 def compute_report(
     *,
-    produced: Mapping[Any, float],
-    consumed: Mapping[Any, float],
+    produced: Mapping[Hashable, float],
+    consumed: Mapping[Hashable, float],
     duration_seconds: float,
     thresholds: Thresholds = Thresholds(),
 ) -> Report:
