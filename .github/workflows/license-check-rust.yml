@@ -3,7 +3,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'osprey_coordinator/Cargo.toml'
+      - 'osprey_coordinator/**/Cargo.toml'
       - '.github/allowed-licenses.txt'
 permissions:
   contents: read
