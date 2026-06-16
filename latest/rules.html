@@ -1,0 +1,624 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Writing Rules - Osprey Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-2459343d.css">
+        <link rel="stylesheet" href="css/chrome-ae938929.css">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-5adcde45.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-39dc9328.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-64f08d54.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Osprey Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="https://github.com/roostorg/osprey" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/roostorg/osprey/edit/main/docs/./rules.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="osprey-rules"><a class="header" href="#osprey-rules">Osprey Rules</a></h1>
+<p><img src="images/rules_architecture.png" alt="images/rules_architecture.png"></p>
+<h2 id="creating-rules"><a class="header" href="#creating-rules">Creating Rules</a></h2>
+<p>Osprey rules are written in SML (“Some Madeup Language”) which is a subset of Python with additional restrictions to simplify rule writing. You may write rules that are specific to
+single event types on a network, or ones that are applied to multiple event types.</p>
+<p>By themselves, rules only create variables; without a corresponding <code>WhenRules()</code> function call, the rule will have no effects outside of evaluation and query functionality.</p>
+<p>Rules currently support the following concepts through the <code>Rule(...)</code> function of the same name:</p>
+<ul>
+<li>
+<p><strong>Name</strong></p>
+<p><code>Rule_Name = Rule(...)</code></p>
+<p>The name of the rule also functions as a conventional “RuleId” and the name of the bool that can be used to query individual rule hits in the Osprey Query UI. As a result, changing the name of a rule after activation may affect historical query results in the UI if not logged externally.</p>
+</li>
+<li>
+<p><strong>Logic</strong></p>
+<p><code>when_all=[]</code></p>
+<p>The actual logic that will be used to evaluate Osprey rules is all encompassed as single comma-delimited list of signals within the <code>when_all</code> parameter of the <code>Rule(...)</code> function and supports the use of Labels, Plugins, UDFs and other values to help enrich heuristics.</p>
+<p>At present, when evaluating UDFs or abstracted variables, any <code>NULL</code> evaluations in the series will cause the entire rule function to evaluate as <code>NULL</code>, which may be undesirable.</p>
+</li>
+<li>
+<p><strong>Description</strong></p>
+<p><code>description=f''</code></p>
+<p>There is an additional string description field that is able to be emitted alongside the rule itself to external systems such as logging and ticketing systems to help enrich work-streams that may benefit from plain-language context on what the rule criteria is and what the rule may intend to do.</p>
+<p>It may be helpful to include dynamic variables as well to help enrich operational workflows that may need to identify specific values related to the trigger criteria.</p>
+</li>
+</ul>
+<p>Here’s an example of a simple rule using various signal evaluations and out-of-the-box UDFs:</p>
+<pre><code class="language-python">My_Rule_Name_v2 = Rule(
+    when_all=[
+        # Primary Signal
+        MyFirstValue == True,
+        HasLabel(entity=MyEntityName, label='MyLabel'),
+        ListLength(list=UsersValues) == 5,
+        # Secondary Signal
+        RegexMatch(target=MyStringValue, pattern='(hello|world)'),
+        MySecondValue &gt;= 3,
+        MyThirdValue != Null,
+        # Guardrail Signal
+        (_LocalValue in [1, 2, 3, 5]) or (GlobalValue in ['hello', 'howdy']),
+        not HasLabel(entity=MySecondEntityName, label='MySecondLabel'),
+    ],
+    description=f"{UserA} performed {ActionB} in this way. Emit warning",
+)
+</code></pre>
+<h2 id="rule-structuring"><a class="header" href="#rule-structuring">Rule Structuring</a></h2>
+<p>You will likely find it useful to maintain two subdirectories inside of your main rules directory - a <code>rules</code> directory where actual logic will be added and a <code>models</code> directory for defining the various features that occur in any or specific event types. For example, your structure may look something like this:</p>
+<pre><code class="language-bash">example-rules/
+|  rules/
+|  |  record/
+|  |  |  post/
+|  |  |  |  first_post_link.sml
+|  |  |  |  index.sml
+|  |  |  like/
+|  |  |  |  like_own_post.sml
+|  |  |  |  index.sml
+|  |  account/
+|  |  |  signup/
+|  |  |  |  high_risk_signup.sml
+|  |  |  |  index.sml
+|  |  index.sml
+|  models/
+|  |  record/
+|  |  |  post.sml
+|  |  |  like.sml
+|  |  account/
+|  |  |  signup.sml
+|  main.sml
+</code></pre>
+<p>The <code>main.sml</code> file at the root of your rules directory serves as the entrypoint. It uses <code>Import</code> and <code>Require</code> statements to control which other files are loaded and when, allowing you to compose together logic across the project. This sort of structure lets you define rules and models that are specific to certain event types so that only the necessary rules are run for various event types. For example, you likely have some rules that should only be run on a <code>post</code> event, since only a <code>post</code> will have features like <code>text</code> or <code>mention_count</code>.</p>
+<p>Inside of each directory, you may maintain an <code>index.sml</code> file that will define the conditional logic in which the rules inside that directory are actually included for execution. Although you could handle all of this conditional logic inside of a single file, maintaining separate <code>index.sml</code>s per directory greatly helps with neat organization. See <a href="#workflow-structure-and-file-placement">Workflow Structure and File Placement</a> for more on <code>Import</code> and <code>Require</code>.</p>
+<h2 id="models"><a class="header" href="#models">Models</a></h2>
+<p>Before you actually write a rule, you’ll need to define a “model” for an event type. For this example, we will assume that you run a social media website that lets users create posts, either at the “top level” or as a reply to another top level post. Each post may include text, mentions of other users on your network, and an optional link embed in the post. Let’s say that the event’s JSON structure looks like this:</p>
+<pre><code class="language-json">{
+	"eventType": "userPost",
+	"user": {
+		"userId": "user_id_789",
+		"handle": "carol",
+		"postCount": 3,
+		"accountAgeSeconds": 9002
+	},
+	"postId": "abc123xyz",
+	"replyId": null,
+	"text": "Is anyone online right now? @alice or @bob, you there? If so check this video out",
+	"mentionIds": ["user_id_123", "user_id_456"],
+	"embedLink": "https://youtube.com/watch?id=1"
+}
+</code></pre>
+<p>Inside of our <code>models/record</code> directory, we should now create a <code>post.sml</code> file where we will define the features for a post.</p>
+<pre><code class="language-python">PostId: Entity[str] = EntityJson(
+	type='PostId',
+	path='$.postId',
+)
+
+PostText: str = JsonData(
+	path='$.text',
+)
+
+MentionIds: List[str] = JsonData(
+	path='$.mentionIds',
+)
+
+EmbedLink: Optional[str] = JsonData(
+	path='$.embedLink',
+	required=False,
+)
+
+ReplyId: Entity[str] = JsonData(
+	path='$.replyId',
+	required=False,
+)
+</code></pre>
+<p>The <a href="#user-defined-functions-udfs"><code>JsonData</code> UDF</a> lets us take the event’s JSON and define features based on the contents of that JSON. These features can then be referenced in other rules that we import the <code>models/record/post.sml</code> model into. If you have any values inside your JSON object that may not always be present, you can set <code>required</code> to <code>False</code>, and these features will be <code>None</code> whenever the feature is not present.</p>
+<p>Note that we did not actually create any features for things like <code>userId</code> or <code>handle</code>. That is because these values will be present in <em>any</em> event. It wouldn’t be very nice to have to copy these features into each event type’s model. Therefore, we will actually create a <code>base.sml</code> model that defines these features which are always present. Inside of <code>models/base.sml</code>, let’s define these.</p>
+<pre><code class="language-python">EventType = JsonData(
+	path='$.eventType',
+)
+
+UserId: Entity[str] = EntityJson(
+	type='UserId',
+	path='$.user.userId',
+)
+
+Handle: Entity[str] = EntityJson(
+	type='Handle',
+	path='$.user.handle',
+)
+
+PostCount: int = JsonData(
+	path='$.user.postCount',
+)
+
+AccountAgeSeconds: int = JsonData(
+	path='$.user.accountAgeSeconds',
+)
+</code></pre>
+<p>Here, instead of simply using <code>JsonData</code>, we instead use the <code>EntityJson</code> UDF for the <code>UserID</code>. This is covered in the <a href="#user-defined-functions-udfs">UDFs section</a>, but as a rule of thumb, you likely will want to have values for things like a user’s ID set to be entities. This will help more later, such as when doing data explorations within the Osprey UI.</p>
+<h3 id="model-hierarchy"><a class="header" href="#model-hierarchy">Model Hierarchy</a></h3>
+<p>In practice, you may find it useful to create a hierarchy of base models:</p>
+<ul>
+<li><code>base.sml</code> for features present in every event (user IDs, handles, account stats, etc.)</li>
+<li><code>account_base.sml</code> for features that appear only in account related events, but always appear in each account related event. Similarly, you may add one like <code>record_base.sml</code> for those features which appear in all record events.</li>
+</ul>
+<p>This type of hierarchy prevents duplication (which Osprey does not allow) and ensures features are defined at the appropriate level of abstraction.</p>
+<h2 id="effects-with-whenrules"><a class="header" href="#effects-with-whenrules">Effects with WhenRules</a></h2>
+<p>The <code>WhenRules()</code> function allows for creating effects that trigger external services, create declarations, or modify internal labels by listing <code>Rule</code> objects in sequence within the
+<code>rules_any</code> parameter of <code>WhenRules()</code>. By default, operators and designers may utilize UDFs with predefined effects such as <code>DeclareVerdict()</code>, <code>LabelAdd()</code>, or <code>LabelRemove()</code> upon
+positive rule evaluation.</p>
+<p>Below is an example of the use of a WhenRules() block to verify and email and reject a request.</p>
+<pre><code class="language-python">WhenRules(
+    rules_any=[
+        Enabled_Rule_1,
+        Enabled_Rule_2,
+        # Disabled_Rule_1,
+    ],
+    then=[
+        # Verdicts
+        DeclareVerdict(verdict='reject'),
+        # Labels
+        LabelAdd(entity=UserId, label='recently_challenged', expires_after=TimeDelta(days=7)),
+        LabelAdd(entity=UserId, label='verify', apply_if=NotVerified),
+        LabelAdd(entity=Email, label='pending_verify'),
+        LabelAdd(entity=Domain, label='recently_seen', expires_after=TimeDelta(days=7)),
+    ],
+)
+</code></pre>
+<p><code>WhenRules()</code> must be placed after rule declaration within a file, and it may become difficult to interpret outcomes of rules that are too distributed. Therefore, it may be beneficial
+to place any effects toward the bottom of workflows.</p>
+<h2 id="output-sinks"><a class="header" href="#output-sinks">Output Sinks</a></h2>
+<p>After all rules are evaluated for an input event, a set of output sinks takes the resulting <code>ExecutionResult</code> and performs additional work based on that data. These may be defined
+as part of a plugin for performing domain specific work.</p>
+<p>Some default use cases include a <code>StdoutOutputSink</code> which simply outputs the result to the log, a <code>KafkaOutputSink</code> which pipes data to Kafka (used for Osprey UI), or the
+<code>LabelOutputSink</code> which can add some stateful data to be used in future rules executions.</p>
+<pre><code class="language-python">class StdoutOutputSink(BaseOutputSink):
+    """An output sink that prints to standard out!"""
+
+    def __init__(self, log_sampler: Optional[DynamicLogSampler] = None):
+        pass
+
+    def will_do_work(self, result: ExecutionResult) -&gt; bool:
+        return True
+
+    def push(self, result: ExecutionResult) -&gt; None:
+        print(f'result: {result.extracted_features_json} {result.verdicts}')
+
+    def stop(self) -&gt; None:
+        pass
+</code></pre>
+<p>Passing data to these output sinks is standardized through the use of <code>Effects</code>, which are outputs of some functions, usually UDFs.</p>
+<pre><code class="language-python">def push(self, result: ExecutionResult) -&gt; None:
+    users_to_ban = result.effects[BanUserEffect]
+    ban_users(users_to_ban)
+</code></pre>
+<h2 id="user-defined-functions-udfs"><a class="header" href="#user-defined-functions-udfs">User Defined Functions (UDFs)</a></h2>
+<p>User Defined Functions (UDFs) are plugins written in Python that enable users of Osprey to extend and customize their use of the Osprey SML. UDFs are implemented as Python functions and are registered
+as a plugin. They extend the <code>UDFBase</code> abstract base class with a set of arguments and an output. These will be executed whenever called in SML.</p>
+<pre><code class="language-python"># example_plugins/text_contains.py
+class TextContainsArguments(ArgumentsBase):
+    text: str
+    phrase: str
+    case_sensitive = False
+
+class TextContains(UDFBase[TextContainsArguments, bool]):
+    def execute(self, execution_context: ExecutionContext, arguments: TextContainsArguments) -&gt; bool:
+        escaped = re.escape(arguments.phrase)
+        pattern = rf'\b{escaped}\b'
+        flags = 0 if arguments.case_sensitive else re.IGNORECASE
+        regex = re.compile(pattern, flags)
+        return bool(regex.search(arguments.text))
+
+# example_plugins/register_plugins.py
+@hookimpl_osprey
+def register_udfs():
+    return [TextContains]
+</code></pre>
+<p>Usage in SML:</p>
+<pre><code class="language-python"># example_rules/post_contains_hello.sml
+ContainsHello = Rule(
+  when_all=[
+    EventType == 'create_post',
+    TextContains(text=PostText, phrase='hello'),
+  ],
+  description='Post contains the word "hello"',
+)
+</code></pre>
+<h3 id="effect-udfs"><a class="header" href="#effect-udfs">Effect UDFs</a></h3>
+<p>Plugins may also define external effects, which are useful for performing functionality in your primary service. Effects are simply passed to output sinks at the end of a rule run.
+These UDFs have an output that extends <code>EffectBase</code>, and can be called as a result of a <code>WhenRules</code>.</p>
+<pre><code class="language-python"># example_plugins/src/ban_user.py
+class BanUser(UDFBase[BanUserArguments, BanUserEffect]):
+    category = UdfCategories.ENGINE
+
+    def execute(self, execution_context: ExecutionContext, arguments: BanUserArguments) -&gt; BanUserEffect:
+        return BanUserEffect(
+            entity=arguments.entity,
+            comment=arguments.comment,
+        )
+
+# example_rules/post_contains_hello.sml
+WhenRules(
+  rules_any=[ContainsHello],
+  then=[BanUser(entity=UserId, comment='User said "hello"')],
+)
+</code></pre>
+<p>UDF outputs can also implement the <code>CustomExtractedFeature</code> interface - which get persisted in the outputs for the UI. <code>EffectToCustomExtractedFeatureBase</code> can also be used when effects need additional processing for use in the UI.</p>
+<h2 id="labels"><a class="header" href="#labels">Labels</a></h2>
+<p>Labels are a standard plugin that enable stateful rules, and touch many parts of Osprey. They are effectively tags on various entities, which may be arbitrarily defined. For more about labels, see <a href="user/investigate/labels.html">User Guide → Investigate → Labels</a>.</p>
+<h3 id="creating-entities"><a class="header" href="#creating-entities">Creating Entities</a></h3>
+<p>Labels are applied to Entities, which are dynamically interpreted from outputs of the UDF <code>EntityJson</code>, usually applied to pieces of data that are generally consistent across actions such as User ID or email.</p>
+<pre><code class="language-python"># user.sml
+UserId: Entity[str] = EntityJson(
+  type='User',
+  path='$.user_id'
+)
+</code></pre>
+<p>It is possible to create new UDFs that also create entities by having the output of UDF set to <code>EntityT</code>.</p>
+<h3 id="adding-labels"><a class="header" href="#adding-labels">Adding Labels</a></h3>
+<p>Labels may be added in a <code>WhenRules()</code> clause. This will cause the labels output sink to tag the given entity with the given label at the end of the rules run.</p>
+<pre><code class="language-python">WhenRules(
+    rules_any=[
+        Sent_Too_Many_DMs,
+    ],
+    then=[
+        LabelAdd(entity=UserId, label='likely_spammer')
+    ],
+)
+</code></pre>
+<h3 id="using-labels"><a class="header" href="#using-labels">Using Labels</a></h3>
+<p>Since labels may be retrieved during a rule run, they can be effectively used as state for your rules.</p>
+<pre><code class="language-python">Should_Warn_User_Of_Spammer = Rule(
+    when_all=[
+        HasLabel(entity=UserId, label='likely_spammer'),
+        This_Is_A_New_DM,
+    ],
+)
+</code></pre>
+<p>Labels will also be shown in the UI for entities, and can also be set manually. Note that since the UI only searches across actions, <code>HasLabel()</code> will not work in the Query UI.
+Instead, you may use <code>DidAddLabel</code>, which will be true when the given action added a label to a specific entity.</p>
+<pre><code class="language-python"># UI Query
+DidAddLabel(entity_type="UserId", label_name="likely_spammer")
+</code></pre>
+<h2 id="notable-gotchas"><a class="header" href="#notable-gotchas">Notable Gotchas</a></h2>
+<h3 id="nulls"><a class="header" href="#nulls">Nulls</a></h3>
+<p>Nulls are the case where a rule or variable in SML does not exist. This can occur for many reasons - either a piece of data is missing or a rule didn’t run. Unlike many programming languages, generally rules with null valued variables will not evaluate that rule (and thus, downstream rules will not evaluate either). The exception cases are when nulls are explicitly checked in a rule. For example:</p>
+<pre><code class="language-python">Thing: int = JsonData(path='$.property_that_doesnt_exist')
+
+# Evaluates to False
+MyFirstRule = Rule(when_all=[
+    Thing != Null,
+])
+
+# Skips evaluation and sets to Null
+MySecondRule = Rule(when_all=[
+    Thing &gt; 1,
+])
+
+# Skips evaluation and sets to Null
+MyThirdRule = Rule(when_all=[
+    MySecondRule,
+])
+</code></pre>
+<h3 id="workflow-structure-and-file-placement"><a class="header" href="#workflow-structure-and-file-placement">Workflow Structure and File Placement</a></h3>
+<p>SML files can be composed to make your rules easier to understand. The <code>Import</code> statement allows you to include rules and variables found in other files.</p>
+<pre><code class="language-python"># models/action_name.sml
+ActionName = "foo"
+
+# main.sml
+Import(
+    rules=[
+        'models/action_name.sml',
+        'models/http_request.sml',
+    ]
+)
+
+MyRule = Rule(when_all=[ActionName == "foo"])
+</code></pre>
+<p><code>Require</code> allows you to selectively run other SML scripts. Requires supports templating and conditionals, allowing scripts to be filtered out if necessary. This is important in situations where some rules or UDFs are particularly expensive to run (such as making a call to an AI service, for example).</p>
+<pre><code class="language-python"># main.sml
+Require(rule=f'actions/{ActionName}.sml')  # will execute 'actions/foo.sml'
+
+Require(rule='ai_services/my_ai_service.sml', require_if=ActionName == "register")
+</code></pre>
+<h2 id="full-example"><a class="header" href="#full-example">Full Example</a></h2>
+<p>The following is a complete walkthrough of writing a rule using the project structure described above. The goal is to flag accounts whose first post mentions at least one user and includes a link.</p>
+<h3 id="writing-the-rule"><a class="header" href="#writing-the-rule">Writing the Rule</a></h3>
+<p>We’ll create <code>rules/record/post/first_post_link.sml</code> for the rule logic. This file defines both the conditions that cause the rule to evaluate to <code>True</code> and the actions to take when it does.</p>
+<pre><code class="language-python"># First, import the models that you will need inside of this rule
+Import(
+    rules=[
+        'models/base.sml',
+        'models/record/post.sml',
+    ],
+)
+
+# Next, define a variable that uses the `Rule` UDF
+FirstPostLinkRule = Rule(
+    # Set the conditions in which this rule will be `True`
+    when_all=[
+        PostCount == 1, # if this is the user's first post
+        EmbedLink != None, # if there is a link inside of the post
+        ListLength(list=MentionIds) &gt;= 1, # if there is at least one mention in the post
+    ],
+    description='First post for user includes a link embed',
+)
+
+# Finally, set which effect UDFs will be triggered
+WhenRules(
+    rules_any=[FirstPostLinkRule],
+    then=[
+        # This is a custom effect UDF that we have implemented
+        ReportRecord(
+            entity=PostId,
+            comment='This was the first post by a user and included a link',
+            severity=3,
+        ),
+    ],
+)
+</code></pre>
+<h3 id="wiring-up-the-rule"><a class="header" href="#wiring-up-the-rule">Wiring Up the Rule</a></h3>
+<p>We want this rule to run <em>only</em> when the event is a post event. Using the project structure described above, this involves three files.</p>
+<p>First, <code>main.sml</code> at the project root includes a single <code>Require</code> statement pointing to the top-level rules index:</p>
+<pre><code class="language-python">Require(
+    rule='rules/index.sml',
+)
+</code></pre>
+<p>Next, <code>rules/index.sml</code> conditionally requires the post rules when the event type matches:</p>
+<pre><code class="language-python">Import(
+    rules=[
+        'models/base.sml',
+    ],
+)
+
+Require(
+    rule='rules/record/post/index.sml',
+    require_if=EventType == 'userPost',
+)
+</code></pre>
+<p>Finally, <code>rules/record/post/index.sml</code> requires the new rule:</p>
+<pre><code class="language-python">Import(
+    rules=[
+        'models/base.sml',
+        'models/record/post.sml',
+    ],
+)
+
+Require(
+    rule='rules/record/post/first_post_link.sml',
+)
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="development/releases.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="research-personas.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="development/releases.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="research-personas.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-c2a407aa.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
