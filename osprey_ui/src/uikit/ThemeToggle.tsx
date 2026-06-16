@@ -1,23 +1,24 @@
-import { Switch } from 'antd';
-import { MoonOutlined, SunOutlined } from '@ant-design/icons';
+import { Segmented } from 'antd';
+import { DesktopOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons';
 
-import useThemeStore from '../stores/ThemeStore';
+import useThemeStore, { ThemePreference } from '../stores/ThemeStore';
+
+const OPTIONS = [
+  { value: 'light' as const, icon: <SunOutlined />, title: 'Light theme' },
+  { value: 'system' as const, icon: <DesktopOutlined />, title: 'Use system theme' },
+  { value: 'dark' as const, icon: <MoonOutlined />, title: 'Dark theme' },
+];
 
 const ThemeToggle = () => {
-  const mode = useThemeStore((state) => {
-    return state.mode;
-  });
-  const toggleMode = useThemeStore((state) => {
-    return state.toggleMode;
-  });
+  const preference = useThemeStore((state) => state.preference);
+  const setPreference = useThemeStore((state) => state.setPreference);
 
   return (
-    <Switch
-      checked={mode === 'dark'}
-      onChange={toggleMode}
-      checkedChildren={<MoonOutlined />}
-      unCheckedChildren={<SunOutlined />}
-      aria-label={mode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+    <Segmented
+      value={preference}
+      onChange={(value) => setPreference(value as ThemePreference)}
+      options={OPTIONS}
+      aria-label="Theme"
     />
   );
 };
