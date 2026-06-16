@@ -1,3 +1,5 @@
+import operator
+from functools import reduce
 from types import UnionType
 from typing import TYPE_CHECKING, Any, Type, TypeVar, Union, overload
 from typing import get_origin as get_origin_not_normalized
@@ -87,11 +89,17 @@ def to_display_str(t: type | None, include_quotes: bool = True) -> str:
                 (optional_arg,) = args_without_none
                 return f'{_to_display_str(optional_arg)} | None'
 
+            # Also for Optionals
             if is_union_type(inner_t) and len(args) == 2 and not origin_name:
                 args = [_to_display_str(arg) for arg in args_without_none]
                 return f'{args[0]} | {args[1]}'
 
-            args_str = ', '.join(_to_display_str(arg) for arg in args)
+            # For Union types that aren't Optionals
+            if is_union_type(inner_t) and len(args) >= 2 and origin_name:
+                args_str = reduce(operator.or_, args_without_none)
+                return f'{args_str}'
+
+            args_str = ','.join(_to_display_str(arg) for arg in args)
             return f'{origin_name}[{args_str}]'
         else:
             return repr(inner_t).replace('typing.', '')
@@ -249,10 +257,11 @@ def _check_origin(generic_type: type, resolved_type: type) -> bool:
         # and that annotation's origin would likely be None.
         # Other valid annotations would have Union as their origin, and anything else
         # wouldn't be valid.
+        # Hack: the list in here is a hack for parameterized list generics.
         if (
             generic_origin != resolved_origin
             and resolved_args
-            and resolved_origin in (Union, UnionType, None)
+            and resolved_origin in (Union, UnionType, None, list)
         ):
             return False
 
