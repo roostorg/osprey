@@ -127,10 +127,21 @@ class Consumer:
         try:
             payload = json.loads(raw.decode('utf-8'))
         except (ValueError, UnicodeDecodeError):
+            # Garbage at the byte level is tolerated — Kafka can carry malformed
+            # bytes from broken producers and we shouldn't take down the
+            # measurement run for transport noise.
             return False
         action_id = payload.get('ActionId')
         if not isinstance(action_id, int):
-            return False
+            # Schema-level violation: a well-formed JSON result missing a valid
+            # ActionId means the harness was pointed at rules that didn't wire
+            # GetActionId() (or wired it wrong). Raise loudly so the caller sees
+            # the misconfiguration via consumer.error instead of getting silent
+            # zero matches.
+            raise ValueError(
+                f'result message has missing or non-int ActionId (got {type(action_id).__name__}); '
+                f'ensure the rule set exposes ActionId via GetActionId()'
+            )
         if self._config.action_id_filter is not None and action_id not in self._config.action_id_filter:
             return False
         # First-write-wins so duplicate effect dispatches don't reset the time.

@@ -188,7 +188,10 @@ class TestConsumerMessageHygiene:
         consumer.wait(timeout=3)
         assert consumer.consumed == {42: consumer.consumed[42]}
 
-    def test_skips_missing_action_id_field(self) -> None:
+    def test_raises_on_missing_action_id_field(self) -> None:
+        # A well-formed result with no ActionId means the rule set didn't
+        # wire GetActionId() — that's a configuration error, not noise. The
+        # error should surface via consumer.error so the CLI reports it.
         fake = FakeKafkaConsumer()
         config = ConsumerConfig(
             bootstrap_servers=['ignored'],
@@ -200,13 +203,14 @@ class TestConsumerMessageHygiene:
         consumer = Consumer(config, consumer_factory=lambda *a, **kw: fake)
         consumer.start()
         fake.feed(json.dumps({'OtherField': 'no action id here'}).encode('utf-8'))
-        fake.feed(make_result_payload(7))
         consumer.wait(timeout=3)
-        assert set(consumer.consumed.keys()) == {7}
+        assert isinstance(consumer.error, ValueError)
+        assert 'ActionId' in str(consumer.error)
 
-    def test_skips_non_int_action_id(self) -> None:
-        # Belt-and-suspenders: if a rule ever emits ActionId as a string,
-        # we shouldn't crash; we just don't match it.
+    def test_raises_on_non_int_action_id(self) -> None:
+        # A result that has ActionId but emits it as a string means a rule
+        # is overriding the int contract. Raise so the caller sees it instead
+        # of getting silent zero matches.
         fake = FakeKafkaConsumer()
         config = ConsumerConfig(
             bootstrap_servers=['ignored'],
@@ -219,7 +223,8 @@ class TestConsumerMessageHygiene:
         consumer.start()
         fake.feed(json.dumps({'ActionId': 'not-an-int'}).encode('utf-8'))
         consumer.wait(timeout=3)
-        assert consumer.consumed == {}
+        assert isinstance(consumer.error, ValueError)
+        assert 'ActionId' in str(consumer.error)
 
 
 class TestConsumerLifecycle:
