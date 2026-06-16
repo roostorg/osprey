@@ -38,7 +38,7 @@ _base_sources_dict = {'config.yaml': json.dumps({'ui_config': _ui_config_raw, 'l
             UserId = Entity(type='User', id=1)
             GuildId = Entity(type='Guild', id=1)
             SomeLiteral: str = "hi"
-            SomeExtractLiteral: ExtractLiteral[list[int]] = [1, 2, 3]
+            SomeExtractLiteral: ExtractLiteral[List[int]] = [1, 2, 3]
         """,
         'actions/foo.sml': '',
         'actions/bar.sml': '',
@@ -102,10 +102,10 @@ def test_get_ui_config(client: 'FlaskClient[Response]') -> None:
             OInt: ExtractLiteral[int | None] = 123
             OFloat: ExtractLiteral[float | None] = 123.4
             OBool: ExtractLiteral[bool | None] = True
-            LStr: ExtractLiteral[list[str]] = ['hello']
-            LInt: ExtractLiteral[list[int]] = [123]
-            LFloat: ExtractLiteral[list[float]] = [123.4]
-            LBool: ExtractLiteral[list[bool]] = [True]
+            LStr: ExtractLiteral[List[str]] = ['hello']
+            LInt: ExtractLiteral[List[int]] = [123]
+            LFloat: ExtractLiteral[List[float]] = [123.4]
+            LBool: ExtractLiteral[List[bool]] = [True]
             R = Rule(when_all=[True], description='')
         """,
     }
