@@ -112,15 +112,13 @@ def _is_parameterized_generic(t: type) -> bool:
     if not is_generic_type(t):
         return False
 
+    # With native typing support, builtin generics are now types.GenericAlias.
+    if isinstance(t, typing.GenericAlias):
+        return len(t.__args__) > 0
+
     # Ensure we're working with the base/origin of the generic class. Otherwise things like `Foo[str]` will show as
     # having no parameters.
     t = get_normalized_origin(t) or t
-
-    # From python 3.9, get_parameters will return an empty tuple for non-indexed built-in generics
-    # https://github.com/ilevkivskyi/typing_inspect/pull/94
-    # Hack: Built-in generics are defined a special class typing._SpecialGenericAlias with an _nparams attribute
-    if isinstance(t, typing._SpecialGenericAlias):  # type: ignore
-        return t._nparams > 0
 
     # If this has any parameters
     return len(get_parameters(t)) > 0
@@ -138,7 +136,7 @@ def _is_simple_type(t: type) -> bool:
 
 
 def _is_single_arg_invariant_generic(t: type) -> bool:
-    origin = get_normalized_origin(t)
+    origin = get_normalized_origin(t) or t
     return (
         # NOTE: Treating lists as invariant is the only safe way to handle lists that might be mutated. If we assume
         # no mutation then we could do a `is_compatible_type` check on the list item types.

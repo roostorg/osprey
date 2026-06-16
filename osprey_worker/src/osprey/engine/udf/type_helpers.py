@@ -1,10 +1,10 @@
 from types import UnionType
 from typing import TYPE_CHECKING, Any, Type, TypeVar, Union, overload
+from typing import get_origin as get_origin_not_normalized
 
 from osprey.engine.ast.grammar import Span
 from osprey.engine.language_types.osprey_invariant_generic import OspreyInvariantGeneric
 from typing_inspect import get_args, get_parameters, is_generic_type, is_union_type
-from typing_inspect import get_origin as get_origin_not_normalized
 
 if TYPE_CHECKING:
     from osprey.engine.ast_validator.validation_context import ValidationContext

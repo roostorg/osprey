@@ -44,7 +44,7 @@ def test_dynamic_result_coerces_type(udf_registry: UDFRegistry, execute_with_res
     result = execute_with_result(
         """
         A: int = Test()
-        B: list[str] = Test()
+        B: List[str] = Test()
         """
     )
 
