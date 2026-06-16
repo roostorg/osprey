@@ -205,7 +205,7 @@ services:
   bigtable:
     hostname: bigtable
     container_name: bigtable
-    image: gcr.io/google.com/cloudsdktool/cloud-sdk:573.0.0@sha256:e032d744e8de1312d7461684ef365777c0036933c39c47c72cfc1adafc22de67
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:572.0.0@sha256:f67318c2d4719e3d9579ee724dd16b9d028ae916c4919586ae01e9e26d6c1beb
     ports:
       - "127.0.0.1:8361:8361"
     command: >
@@ -222,7 +222,7 @@ services:
 
   bigtable-initializer:
     container_name: bigtable-initializer
-    image: gcr.io/google.com/cloudsdktool/cloud-sdk:573.0.0@sha256:e032d744e8de1312d7461684ef365777c0036933c39c47c72cfc1adafc22de67
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:572.0.0@sha256:f67318c2d4719e3d9579ee724dd16b9d028ae916c4919586ae01e9e26d6c1beb
     depends_on:
       bigtable:
         condition: service_healthy
