@@ -48,8 +48,6 @@ class TestComputeLatencyStats:
         assert stats.p50_ms == 75.0
 
     def test_raises_on_empty(self) -> None:
-        # Match percentile()'s ValueError instead of letting an IndexError leak;
-        # this function is public and callers deserve a clear error.
         with pytest.raises(ValueError, match='non-empty'):
             compute_latency_stats([])
 
