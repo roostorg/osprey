@@ -17,8 +17,7 @@ const getInitialPreference = (): ThemePreference => {
   return 'system';
 };
 
-const resolveMode = (pref: ThemePreference): ThemeMode =>
-  pref === 'system' ? getSystemMode() : pref;
+const resolveMode = (pref: ThemePreference): ThemeMode => (pref === 'system' ? getSystemMode() : pref);
 
 type ThemeStore = {
   preference: ThemePreference;
