@@ -3,7 +3,6 @@ from osprey.worker.stress.cli import (
     EXIT_INTERNAL_ERROR,
     build_parser,
     cmd_measure,
-    cmd_run,
     main,
 )
 
@@ -70,14 +69,3 @@ class TestMeasureStub:
     def test_main_dispatches_to_measure(self) -> None:
         rc = main(['measure'])
         assert rc == EXIT_INTERNAL_ERROR
-
-
-class TestRunBlocked:
-    def test_run_returns_internal_error_until_consumer_lands(self, capsys: pytest.CaptureFixture[str]) -> None:
-        # While #330 (consumer) is unmerged, `cmd_run` short-circuits with a
-        # clear message pointing at the blocker rather than crashing.
-        args = build_parser().parse_args(['run', '--events', '1', '--rate', '1'])
-        rc = cmd_run(args)
-        assert rc == EXIT_INTERNAL_ERROR
-        captured = capsys.readouterr()
-        assert '#330' in captured.err
