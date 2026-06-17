@@ -10,7 +10,6 @@
   - [Release Process](development/releases.md)
 - [User Interface](UI.md)
 - [Writing Rules](rules.md)
-- [LLM Provider & Tool Calling](llm.md)
 - [User Research & Personas](user_personas.md)
 
 ---

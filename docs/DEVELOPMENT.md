@@ -138,11 +138,6 @@ Implement any subset of these in your plugin's `register_plugins.py`:
 | `register_input_stream` | `BaseInputStream` | Single-provider (`firstresult`). |
 | `register_execution_result_store` | `ExecutionResultStore` | Single-provider (`firstresult`). |
 | `register_labels_service_or_provider` | `LabelsServiceBase \| LabelsProvider` | Single-provider (`firstresult`). |
-| `register_llm_provider` | `BaseLLMProvider` | Single-provider (`firstresult`). LLM API access for AI-assisted features. |
-
-The `register_llm_provider` hook and the vendor-neutral tool-calling helpers
-(`@tool`, `ToolRegistry`, `run_tool_loop`) have their own page:
-[LLM provider & tool calling](llm.md).
 
 ## Rules
 
