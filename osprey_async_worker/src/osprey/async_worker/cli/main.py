@@ -14,7 +14,11 @@ from typing import TYPE_CHECKING, AsyncIterator, Optional, Tuple, Union, cast
 
 import click
 from osprey.async_worker.engine import AsyncOspreyEngine
-from osprey.async_worker.sinks.sink.input_stream import AsyncBaseInputStream, AsyncStaticInputStream
+from osprey.async_worker.sinks.sink.input_stream import (
+    AsyncBaseInputStream,
+    AsyncKafkaInputStream,
+    AsyncStaticInputStream,
+)
 from osprey.async_worker.sinks.sink.output_sink import AsyncStdoutOutputSink
 from osprey.async_worker.sinks.sink.rules_sink import AsyncRulesSink
 from osprey.engine.ast.sources import Sources
@@ -94,6 +98,30 @@ class AsyncFileInputStream(AsyncBaseInputStream[BaseAckingContext[Action]]):
                 yield NoopAckingContext(action)
 
 
+def build_kafka_input_stream(
+    topic: str,
+    bootstrap_servers: str,
+    group_id: Optional[str],
+    offset_reset: str,
+) -> AsyncKafkaInputStream:
+    """Build a Kafka-backed async input stream.
+
+    Uses the plain kafka-python consumer (not the gevent-patched one); the async
+    worker polls it off the event loop, so the FairRLock patch is unnecessary.
+    The envelope shape matches the gevent worker's KafkaInputStream.
+    """
+    from kafka import KafkaConsumer
+
+    consumer = KafkaConsumer(
+        topic,
+        bootstrap_servers=[s.strip() for s in bootstrap_servers.split(',') if s.strip()],
+        group_id=group_id,
+        auto_offset_reset=offset_reset,
+        enable_auto_commit=True,
+    )
+    return AsyncKafkaInputStream(consumer)
+
+
 @click.group()
 def cli() -> None:
     pass
@@ -104,7 +132,36 @@ def cli() -> None:
 @click.option('--input-file', type=click.Path(exists=True), default=None, help='Path to JSONL input file')
 @click.option('--max-concurrent', type=int, default=12, help='Max concurrent async UDF executions')
 @click.option('--with-plugins', is_flag=True, default=False, help='Load all plugins (requires external services)')
-def run(rules_path: str, input_file: Optional[str], max_concurrent: int, with_plugins: bool) -> None:
+@click.option(
+    '--input-source',
+    type=click.Choice(['file', 'kafka']),
+    default='file',
+    help='Where actions come from: a JSONL file or a Kafka topic.',
+)
+@click.option('--kafka-topic', default='osprey.actions_input', help='Kafka topic to consume (--input-source kafka).')
+@click.option(
+    '--kafka-bootstrap-servers',
+    default='localhost:9092',
+    help='Comma-separated Kafka bootstrap servers (--input-source kafka).',
+)
+@click.option('--kafka-group-id', default=None, help='Kafka consumer group id (--input-source kafka).')
+@click.option(
+    '--kafka-offset-reset',
+    type=click.Choice(['latest', 'earliest']),
+    default='latest',
+    help='Where to start consuming when no committed offset exists.',
+)
+def run(
+    rules_path: str,
+    input_file: Optional[str],
+    max_concurrent: int,
+    with_plugins: bool,
+    input_source: str,
+    kafka_topic: str,
+    kafka_bootstrap_servers: str,
+    kafka_group_id: Optional[str],
+    kafka_offset_reset: str,
+) -> None:
     """Run the async rules worker with a static rules file and optional input file."""
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
     logger.info('Starting async osprey worker (Phase 0)')
@@ -129,7 +186,15 @@ def run(rules_path: str, input_file: Optional[str], max_concurrent: int, with_pl
 
     # Input stream
     input_stream: AsyncBaseInputStream[BaseAckingContext[Action]]
-    if input_file:
+    if input_source == 'kafka':
+        logger.info(f'Consuming from Kafka topic {kafka_topic!r} at {kafka_bootstrap_servers}')
+        input_stream = build_kafka_input_stream(
+            topic=kafka_topic,
+            bootstrap_servers=kafka_bootstrap_servers,
+            group_id=kafka_group_id,
+            offset_reset=kafka_offset_reset,
+        )
+    elif input_file:
         input_stream = AsyncFileInputStream(input_file)
     else:
         # No input — just validate the worker boots correctly
