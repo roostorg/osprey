@@ -91,7 +91,7 @@ function getDefaultGranularityForTimeSpan(start: string | null, end: string | nu
 }
 
 function getChartData(timeseriesData: TimeseriesResult[]): [number, number][] {
-  if (timeseriesData.length <= 1) {
+  if (timeseriesData.length === 0) {
     return [];
   }
   return timeseriesData.map((point: TimeseriesResult) => [Date.parse(point.timestamp), point.result.count]);
