@@ -1,4 +1,4 @@
-import typing
+import types
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, TypeVar
@@ -113,7 +113,7 @@ def _is_parameterized_generic(t: type) -> bool:
         return False
 
     # With native typing support, builtin generics are now types.GenericAlias.
-    if isinstance(t, typing.GenericAlias):
+    if isinstance(t, types.GenericAlias):
         return len(t.__args__) > 0
 
     # Ensure we're working with the base/origin of the generic class. Otherwise things like `Foo[str]` will show as
