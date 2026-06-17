@@ -39,6 +39,27 @@ DEFAULT_INPUT_TOPIC = 'osprey.actions_input'
 DEFAULT_OUTPUT_TOPIC = 'osprey.execution_results'
 
 
+def _positive_int(s: str) -> int:
+    value = int(s)
+    if value <= 0:
+        raise argparse.ArgumentTypeError(f'must be > 0, got {value}')
+    return value
+
+
+def _positive_float(s: str) -> float:
+    value = float(s)
+    if value <= 0:
+        raise argparse.ArgumentTypeError(f'must be > 0, got {value}')
+    return value
+
+
+def _nonneg_float(s: str) -> float:
+    value = float(s)
+    if value < 0:
+        raise argparse.ArgumentTypeError(f'must be >= 0, got {value}')
+    return value
+
+
 def _add_common_kafka_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         '--bootstrap-servers',
@@ -87,11 +108,11 @@ def build_parser() -> argparse.ArgumentParser:
         'run',
         help='Produce synthetic events and measure their round-trip (closed-loop).',
     )
-    run.add_argument('--events', type=int, default=1000, help='Number of events to produce.')
-    run.add_argument('--rate', type=float, default=100.0, help='Events per second.')
+    run.add_argument('--events', type=_positive_int, default=1000, help='Number of events to produce.')
+    run.add_argument('--rate', type=_positive_float, default=100.0, help='Events per second.')
     run.add_argument(
         '--drain-seconds',
-        type=float,
+        type=_nonneg_float,
         default=30.0,
         help='Max wall-clock time to wait for in-flight events to be evaluated after producer finishes.',
     )
@@ -110,7 +131,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_common_kafka_args(measure)
     _add_threshold_args(measure)
-    measure.add_argument('--duration', type=float, default=60.0)
+    measure.add_argument('--duration', type=_positive_float, default=60.0)
     measure.add_argument('--report', choices=('human', 'json'), default='human')
 
     return parser
