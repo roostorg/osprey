@@ -477,9 +477,15 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
                 ):
                     yield context
 
-                # Prioritize shutdown so we can ack the last action and disconnect gracefully
+                # The sink may have marked this action for nack. Ack (carrying its
+                # verdicts) and nack are mutually exclusive, and this decision is the
+                # same on every finalize path below — graceful disconnect or normal.
+                ack = not context.should_nack
+                verdicts = context.get_verdicts() if ack else None
+
+                # Prioritize shutdown so we can finalize the last action and disconnect gracefully
                 if self._shutdown_event.is_set():
-                    await bidirectional_stream.send_graceful_disconnect(ack_id, verdicts=context.get_verdicts())
+                    await bidirectional_stream.send_graceful_disconnect(ack_id, ack=ack, verdicts=verdicts)
                     break
 
                 # Pause-and-rotate on rule reload. Mirrors the gevent equivalent at
@@ -491,7 +497,7 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
                     and self._input_stream_ready_signaler.should_pause_input_stream()
                 ):
                     logger.info('Disconnecting due to input stream ready signaler')
-                    await bidirectional_stream.send_graceful_disconnect(ack_id, verdicts=context.get_verdicts())
+                    await bidirectional_stream.send_graceful_disconnect(ack_id, ack=ack, verdicts=verdicts)
                     await self._input_stream_ready_signaler.wait_until_resume()
                     break
 
@@ -499,15 +505,11 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
                 uptime = bidirectional_stream.get_uptime()
                 if uptime > max_uptime_allowed:
                     logger.debug(f'Reconnecting because {uptime} seconds have passed')
-                    await bidirectional_stream.send_graceful_disconnect(ack_id, verdicts=context.get_verdicts())
+                    await bidirectional_stream.send_graceful_disconnect(ack_id, ack=ack, verdicts=verdicts)
                     break
 
-                # Normal path: ack — or nack, if the rules sink marked the context —
-                # the last action and request the next one. Verdicts only ride on an ack.
-                if context.should_nack:
-                    bidirectional_stream.send_ack_or_nack(ack_id, ack=False)
-                else:
-                    bidirectional_stream.send_ack_or_nack(ack_id, verdicts=context.get_verdicts())
+                # Normal path: ack (or nack) the last action and request the next one.
+                bidirectional_stream.send_ack_or_nack(ack_id, ack=ack, verdicts=verdicts)
 
                 info_log_osprey_action(
                     osprey_coordinator_action.action_id, osprey_coordinator_action.action_name, 'acking'

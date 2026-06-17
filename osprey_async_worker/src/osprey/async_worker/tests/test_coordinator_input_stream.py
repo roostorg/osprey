@@ -70,6 +70,18 @@ def test_send_ack_or_nack_emits_nack_when_not_ack():
     assert nack_req.action_request.ack_or_nack.HasField('nack')
 
 
+@pytest.mark.asyncio
+async def test_send_graceful_disconnect_emits_nack_when_not_ack():
+    """Graceful-disconnect finalize paths must nack a nacked context, not ack it."""
+    stream = OspreyCoordinatorBiDirectionalStream.__new__(OspreyCoordinatorBiDirectionalStream)
+    stream._outgoing_queue = asyncio.Queue()
+
+    await stream.send_graceful_disconnect(99, ack=False)
+
+    req = stream._outgoing_queue.get_nowait()
+    assert req.disconnect.ack_or_nack.HasField('nack')
+
+
 # --- OspreyCoordinatorInputStream ---
 
 
