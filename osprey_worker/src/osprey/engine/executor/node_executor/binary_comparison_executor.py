@@ -1,5 +1,6 @@
 import operator
-from typing import TYPE_CHECKING, Callable, List
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from osprey.engine.ast.grammar import (
     ASTNode,
@@ -64,7 +65,7 @@ class BinaryComparisonExecutor(BaseNodeExecutor[BinaryComparison, bool]):
 
         return bool(self.comparator(left, right))
 
-    def get_dependent_nodes(self) -> List[ASTNode]:
+    def get_dependent_nodes(self) -> list[ASTNode]:
         return [self._node.left, self._node.right]
 
 

@@ -1,6 +1,6 @@
 import logging
 from pathlib import PurePosixPath
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from flask import Blueprint, jsonify
 from osprey.engine.ast.grammar import (
@@ -45,7 +45,7 @@ _NON_FEATURE_CALLS: frozenset[str] = frozenset(
 )
 
 
-def _format_annotation(annotation: Any) -> Optional[str]:
+def _format_annotation(annotation: Any) -> str | None:
     """Format a type annotation AST node into a readable string like 'str', 'Entity[int]', 'Optional[str]'."""
     if annotation is None:
         return None
@@ -75,7 +75,7 @@ def _derive_category(file_path: str) -> str:
     return parts[0]
 
 
-def _find_assign_for_feature(sources: Any, feature_name: str, source_path: str, source_line: int) -> Optional[Assign]:
+def _find_assign_for_feature(sources: Any, feature_name: str, source_path: str, source_line: int) -> Assign | None:
     """Look up the Assign AST node for a feature in its source file.
 
     First try exact (file, line) match. Fall back to first Assign in the file
@@ -124,13 +124,13 @@ def _extraction_fn_from_value(value: Any) -> str:
     return type(value).__name__
 
 
-def _extract_features_from_engine() -> List[Dict[str, Any]]:
+def _extract_features_from_engine() -> list[dict[str, Any]]:
     """Walk the engine AST and return the catalog of extracted features with references."""
     engine = ENGINE.instance()
     sources = engine.execution_graph.validated_sources.sources
     locations = engine.get_known_feature_locations()
 
-    features: Dict[str, Dict[str, Any]] = {}
+    features: dict[str, dict[str, Any]] = {}
 
     for loc in locations:
         assign = _find_assign_for_feature(sources, loc.name, loc.source_path, loc.source_line)
@@ -154,9 +154,9 @@ def _extract_features_from_engine() -> List[Dict[str, Any]]:
         }
 
     feature_names = set(features.keys())
-    rule_refs: Dict[str, Set[str]] = {}
-    feature_refs: Dict[str, Set[str]] = {}
-    whenrules_refs: Dict[str, int] = {}
+    rule_refs: dict[str, set[str]] = {}
+    feature_refs: dict[str, set[str]] = {}
+    whenrules_refs: dict[str, int] = {}
 
     for source in sources:
         for statement in source.ast_root.statements:
@@ -167,7 +167,7 @@ def _extract_features_from_engine() -> List[Dict[str, Any]]:
                 and get_func_identifier(statement.value) == 'Rule'
             ):
                 rule_name = statement.target.identifier
-                refs: Set[str] = set()
+                refs: set[str] = set()
                 when_all_arg = statement.value.find_argument('when_all')
                 if when_all_arg:
                     collect_name_references(when_all_arg.value, refs)
@@ -176,7 +176,7 @@ def _extract_features_from_engine() -> List[Dict[str, Any]]:
                 continue
 
             # WhenRules(...) calls — bare statement OR assigned.
-            call_node: Optional[Call] = None
+            call_node: Call | None = None
             if isinstance(statement, Call) and get_func_identifier(statement) == 'WhenRules':
                 call_node = statement
             elif (
@@ -224,8 +224,8 @@ def features_list() -> Any:
     """Return the catalog of extracted features across the rules engine."""
     features = _extract_features_from_engine()
 
-    categories: Dict[str, int] = {}
-    extraction_fns: Dict[str, int] = {}
+    categories: dict[str, int] = {}
+    extraction_fns: dict[str, int] = {}
     for f in features:
         categories[f['category']] = categories.get(f['category'], 0) + 1
         extraction_fns[f['extraction_fn']] = extraction_fns.get(f['extraction_fn'], 0) + 1

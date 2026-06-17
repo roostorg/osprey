@@ -1,4 +1,6 @@
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
+
+from typing import Any
 
 from sqlalchemy import BigInteger, Column
 from sqlalchemy.dialects.postgresql import JSONB
@@ -20,7 +22,7 @@ class PgStoredExecutionResult(Model):
     def insert(
         cls,
         id: int,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
     ) -> None:
         """
         Adds a single `execution_result` to the database
@@ -30,23 +32,23 @@ class PgStoredExecutionResult(Model):
             session.add(execution_result)
 
     @classmethod
-    def select_one(cls, id: int) -> Optional['PgStoredExecutionResult']:
+    def select_one(cls, id: int) -> 'PgStoredExecutionResult' | None:
         """
         Gets stored execution result with id if it exists
         """
         with scoped_session() as session:
-            execution_result: Optional['PgStoredExecutionResult'] = (
+            execution_result: 'PgStoredExecutionResult' | None = (
                 session.query(PgStoredExecutionResult).filter(PgStoredExecutionResult.id == id).one_or_none()
             )
             return execution_result
 
     @classmethod
-    def select_many(cls, ids: List[int]) -> List['PgStoredExecutionResult']:
+    def select_many(cls, ids: list[int]) -> list['PgStoredExecutionResult']:
         """
         Gets list of stored execution results with given ids
         """
         with scoped_session() as session:
-            execution_results: List['PgStoredExecutionResult'] = (
+            execution_results: list['PgStoredExecutionResult'] = (
                 session.query(PgStoredExecutionResult).filter(PgStoredExecutionResult.id.in_(ids)).all()
             )
             return execution_results
