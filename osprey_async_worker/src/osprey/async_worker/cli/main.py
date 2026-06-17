@@ -10,9 +10,10 @@ import logging
 import signal
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, AsyncIterator, Optional, Tuple, Union, cast
+from typing import AsyncIterator, Optional, Tuple
 
 import click
+from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
 from osprey.async_worker.engine import AsyncOspreyEngine
 from osprey.async_worker.sinks.sink.input_stream import (
     AsyncBaseInputStream,
@@ -31,12 +32,6 @@ from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.singletons import CONFIG
 from osprey.worker.lib.sources_provider_base import StaticSourcesProvider
 from osprey.worker.sinks.utils.acking_contexts_base import BaseAckingContext, NoopAckingContext
-
-if TYPE_CHECKING:
-    # Type-only: the sync OspreyEngine module imports gevent at module top. The
-    # async CLI must not import gevent eagerly, so the --with-plugins branch imports
-    # bootstrap_engine_with_helpers lazily. Reference its return type here for typing only.
-    from osprey.worker.lib.osprey_engine import OspreyEngine
 
 logger = get_logger(__name__)
 
@@ -74,6 +69,29 @@ def bootstrap_stdlib_engine(rules_path: str) -> Tuple[AsyncOspreyEngine, UDFHelp
     )
 
     return engine, udf_helpers
+
+
+def bootstrap_plugin_engine(rules_path: str) -> Tuple[AsyncOspreyEngine, UDFHelpers, AsyncBaseOutputSink]:
+    """Bootstrap the async engine with all async plugins loaded.
+
+    Loads UDFs, AST validators, and output sinks from the ``osprey_async_plugin``
+    entry-point group (plus the first-party async stdlib plugin). No gevent and
+    no sync engine — the output sink is whatever the plugins register.
+    """
+    from osprey.async_worker.adaptor.plugin_manager import (
+        bootstrap_async_ast_validators,
+        bootstrap_async_output_sinks,
+        bootstrap_async_udfs,
+    )
+
+    config = CONFIG.instance()
+    bootstrap_async_ast_validators()
+    udf_registry, udf_helpers = bootstrap_async_udfs(config)
+
+    sources_provider = StaticSourcesProvider(sources=Sources.from_path(Path(rules_path)))
+    engine = AsyncOspreyEngine(sources_provider=sources_provider, udf_registry=udf_registry)
+    output_sink = bootstrap_async_output_sinks(config)
+    return engine, udf_helpers, output_sink
 
 
 class AsyncFileInputStream(AsyncBaseInputStream[BaseAckingContext[Action]]):
@@ -171,18 +189,16 @@ def run(
     # Side-effecting: configures the global CONFIG singleton and worker-type tag.
     init_config()
 
-    # The --with-plugins branch bootstraps the sync OspreyEngine; the default branch
-    # the AsyncOspreyEngine. Both expose the .execution_graph / .get_config_subkey
-    # surface that AsyncRulesSink reaches into (it runs the standalone async_execute
-    # against engine.execution_graph rather than calling engine.execute()).
-    engine: Union['OspreyEngine', AsyncOspreyEngine]
+    # --with-plugins loads the async plugin system (osprey_async_plugin entry
+    # points plus the first-party async stdlib plugin): plugin UDFs, validators,
+    # and output sinks. The default branch uses stdlib UDFs and a stdout sink.
+    engine: AsyncOspreyEngine
+    output_sink: AsyncBaseOutputSink
     if with_plugins:
-        from osprey.worker.lib.osprey_engine import bootstrap_engine_with_helpers
-
-        sources_provider = StaticSourcesProvider(sources=Sources.from_path(Path(rules_path)))
-        engine, udf_helpers = bootstrap_engine_with_helpers(sources_provider=sources_provider)
+        engine, udf_helpers, output_sink = bootstrap_plugin_engine(rules_path)
     else:
         engine, udf_helpers = bootstrap_stdlib_engine(rules_path)
+        output_sink = AsyncStdoutOutputSink()
 
     # Input stream
     input_stream: AsyncBaseInputStream[BaseAckingContext[Action]]
@@ -200,20 +216,8 @@ def run(
         # No input — just validate the worker boots correctly
         input_stream = AsyncStaticInputStream([])
 
-    # Output sink
-    output_sink = AsyncStdoutOutputSink()
-
-    # Build and run the async rules sink.
-    # NOTE: AsyncRulesSink is annotated to require AsyncOspreyEngine, but the
-    # --with-plugins branch supplies the sync OspreyEngine. The sink only touches
-    # .execution_graph / .get_config_subkey (and runs async_execute against the
-    # graph directly), which both engines provide, so this works at runtime today.
-    # It is nonetheless a real type-level mismatch in the --with-plugins path; the
-    # proper fix (a shared engine Protocol, or an async plugin bootstrap) is out of
-    # scope for this type-only pass. Cast to keep the call type-correct without
-    # changing which bootstrap function runs.
     rules_sink = AsyncRulesSink(
-        engine=cast(AsyncOspreyEngine, engine),
+        engine=engine,
         input_stream=input_stream,
         output_sink=output_sink,
         udf_helpers=udf_helpers,

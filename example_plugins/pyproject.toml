@@ -16,3 +16,6 @@ where = ["src"]
 
 [project.entry-points.osprey_plugin]
 register_plugins = "register_plugins"
+
+[project.entry-points.osprey_async_plugin]
+register_async_plugins = "register_async_plugins"
