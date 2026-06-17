@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🛠 Breaking changes
 
 ### 🎉 New features
+- Add `osprey-stress` CLI: closed-loop stress harness that produces synthetic events at a configurable rate, observes their `ExecutionResult`s on the output topic, and reports drop rate + p50/p95/p99 latency. Exits non-zero on threshold breach so it can gate CI on pipeline health. Closes [#324](https://github.com/roostorg/osprey/issues/324); built across [#327](https://github.com/roostorg/osprey/pull/327) (UDF), [#328](https://github.com/roostorg/osprey/pull/328) (reporter), [#329](https://github.com/roostorg/osprey/pull/329) (producer), [#330](https://github.com/roostorg/osprey/pull/330) (consumer). The `measure` subcommand is reserved for open-loop mode against jetstream traffic once [#236](https://github.com/roostorg/osprey/pull/236) lands.
 - Add Postgres execution result store ([#171](https://github.com/roostorg/osprey/pull/171) by [@serendipty01](https://github.com/serendipty01))
 - Add `ParseInt` UDF — converts a numeric string to an integer ([#190](https://github.com/roostorg/osprey/pull/190) by [@bealsbe](https://github.com/bealsbe))
 - Add `StringSlice` UDF which extracts a substring by index range ([#189](https://github.com/roostorg/osprey/pull/189) by [@bealsbe](https://github.com/bealsbe))
