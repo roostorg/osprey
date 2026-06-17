@@ -57,6 +57,24 @@ class TestParser:
         with pytest.raises(SystemExit):
             build_parser().parse_args([])
 
+    @pytest.mark.parametrize(
+        'argv',
+        [
+            ['run', '--events', '0'],
+            ['run', '--events', '-5'],
+            ['run', '--rate', '0'],
+            ['run', '--rate', '-1.5'],
+            ['run', '--drain-seconds', '-0.1'],
+            ['measure', '--duration', '0'],
+            ['measure', '--duration', '-10'],
+        ],
+    )
+    def test_rejects_non_positive_numeric_args(self, argv: list[str]) -> None:
+        # Regression: previously the parser accepted 0 / negatives, which led
+        # to ZeroDivisionError later when computing max_runtime_seconds.
+        with pytest.raises(SystemExit):
+            build_parser().parse_args(argv)
+
 
 class TestMeasureStub:
     def test_measure_returns_internal_error_for_now(self, capsys: pytest.CaptureFixture[str]) -> None:
