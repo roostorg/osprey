@@ -1,8 +1,10 @@
-# IDE Setup Recommendations
+# IDE Setup
+
+Use the IDE of your choice to work on Osprey.
 
 ## VS Code
 
-Install these extensions for the best development experience:
+If using VS Code, we recommend you install these extensions for the best development experience:
 
 - **Python** (Microsoft)
 - **Ruff** (Astral Software)

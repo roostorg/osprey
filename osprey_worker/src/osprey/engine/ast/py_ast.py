@@ -289,15 +289,21 @@ class OspreyAstNodeTransformer:
     def transform_JoinedStr(self, node: ast.JoinedStr) -> FormatString:
         format_string_parts: ListT[str] = []
         names = []
+        # Tracks the unescaped length of the parts seen so far, so error carets stay positioned
+        # the same way even though literal braces are doubled in `format_string_parts` below.
+        unescaped_length = 0
 
         for value in node.values:
             if isinstance(value, ast.Str):
                 assert isinstance(value.s, str)
-                format_string_parts.append(value.s)
+                # Escape literal braces so the reconstructed `format_string` is a valid
+                # `str.format()` template; interpolated names are added as `{name}` fields below.
+                format_string_parts.append(value.s.replace('{', '{{').replace('}', '}}'))
+                unescaped_length += len(value.s)
                 continue
 
             if isinstance(value, ast.FormattedValue):
-                offset_by = sum(len(n) for n in format_string_parts) + 3
+                offset_by = unescaped_length + 3
                 self.invariant(
                     value.format_spec is None and value.conversion == -1,
                     'a format string cannot have a format spec',
@@ -328,7 +334,9 @@ class OspreyAstNodeTransformer:
                     node=node,
                 )
                 names.append(name)
-                format_string_parts.append(f'{{{name.identifier}}}')
+                placeholder = f'{{{name.identifier}}}'
+                format_string_parts.append(placeholder)
+                unescaped_length += len(placeholder)
 
         format_string = ''.join(format_string_parts)
         return FormatString(span=self.span_for(node), format_string=format_string, names=names)

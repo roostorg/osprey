@@ -2,13 +2,14 @@
 title = "Osprey Documentation"
 authors = ["ROOST"]
 language = "en"
-src = "docs"
+src = "."
 
 [build]
-build-dir = "book"
+build-dir = "./book"
 
 [output.html]
-edit-url-template = "https://github.com/roostorg/osprey/edit/main/{path}"
+site-url = "/osprey/"
+edit-url-template = "https://github.com/roostorg/osprey/edit/main/docs/{path}"
 git-repository-url = "https://github.com/roostorg/osprey"
 
 [output.html.print]

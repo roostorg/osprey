@@ -1,56 +1,123 @@
-name: Deploy mdBook site to Pages
+# docs in `main` get built into `/latest`, docs from tags get built into a subdirectory
+# matching the tag name (e.g. `/0.1`). Automatically runs when updating the docs, editing
+# this workflow, or pushing a new tag.
+#
+# Does not handle directly publishing to GitHub Pages; just updates the `gh-pages` branch to
+# let GitHub build and deploy from that branch.
+
+name: Update docs with mdbook
 
 on:
-  # Runs on pushes targeting the default branch
   push:
-    branches: ["main"]
+    branches: ['main']
+    paths:
+      - 'docs/**'
+      - '.github/workflows/mdbook.yml'
+    tags:
+      - '[0-9]*'
 
-  # Allows you to run this workflow manually from the Actions tab
+  # Allows you to run this workflow manually from the Actions tab.
+  # To backfill an old version, pass the tag as the `ref` input so the new
+  # workflow file runs from main but checks out docs from the specified tag.
   workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Tag to build and deploy docs from (e.g. 0.1); leave empty for latest main'
+        required: false
+        type: string
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+# Write access needed to push to the gh-pages branch
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
-  group: "pages"
+  group: 'mdbook'
   cancel-in-progress: false
 
 jobs:
-  # Build job
   build:
     runs-on: ubuntu-latest
+    if: ${{ github.repository == 'roostorg/osprey' }}
     env:
       MDBOOK_VERSION: 0.5.2
     steps:
+      # inputs.ref is only set for manual backfills; push-to-main and tag-push events
+      # default to the triggering ref automatically
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+
+      - name: Determine deployment path
+        id: deploy-path
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        run: |
+          # For manual backfill, use the input ref; otherwise derive from the triggering ref
+          DEPLOY_REF="${INPUT_REF}"
+          if [[ -z "$DEPLOY_REF" ]]; then
+            if [[ "${{ github.event_name }}" == "workflow_dispatch" && "$GITHUB_REF_NAME" != "main" ]]; then
+              echo "Dispatching from a non-main branch requires a ref input (e.g. a tag name)" >&2
+              exit 1
+            fi
+            DEPLOY_REF="$GITHUB_REF_NAME"
+          fi
+          if [[ "$GITHUB_REF_TYPE" == "tag" || "$DEPLOY_REF" =~ ^[0-9] ]]; then
+            if [[ "$DEPLOY_REF" =~ [^A-Za-z0-9._-] ]]; then
+               echo "Refusing unsafe deploy ref: $DEPLOY_REF" >&2
+               exit 1
+            fi
+            echo "path=$DEPLOY_REF" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=latest" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install mdBook
         run: |
-          curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf -y | sh
-          rustup update
-          cargo install --version ${MDBOOK_VERSION} mdbook
-      - name: Setup Pages
-        id: pages
-        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d  # v6.0.0
-      - name: Build with mdBook
-        run: mdbook build
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
-        with:
-          path: ./book
+          ARCH="x86_64-unknown-linux-gnu"
+          ARCHIVE="mdbook-v${MDBOOK_VERSION}-${ARCH}.tar.gz"
+          URL="https://github.com/rust-lang/mdBook/releases/download/v${MDBOOK_VERSION}/${ARCHIVE}"
+          mkdir -p mdbook-bin
+          curl -sSL -o mdbook.tar.gz "$URL"
+          tar -xzf mdbook.tar.gz -C mdbook-bin
+          rm mdbook.tar.gz
 
-  # Deployment job
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
+      - name: Build with mdBook
+        run: ${{ github.workspace }}/mdbook-bin/mdbook build docs
+
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128  # v5.0.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DEPLOY_PATH: ${{ steps.deploy-path.outputs.path }}
+        run: |
+          # Clone the gh-pages branch, or initialize it if this is the first deployment
+          if git ls-remote --exit-code --heads origin gh-pages > /dev/null 2>&1; then
+            git clone --depth=1 --single-branch --branch gh-pages \
+              "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+              _gh-pages
+          else
+            mkdir _gh-pages
+            git -C _gh-pages init
+            git -C _gh-pages checkout --orphan gh-pages
+            git -C _gh-pages remote add origin \
+              "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          fi
+
+          touch _gh-pages/.nojekyll
+
+          # Deploy the versioned docs
+          rm -rf "_gh-pages/${DEPLOY_PATH}"
+          cp -r docs/book "_gh-pages/${DEPLOY_PATH}"
+
+          # Regenerate the root version index
+          (cd _gh-pages && tree -d -L 1 -H . -T "Osprey Documentation" -o index.html --noreport)
+
+          # Commit and push
+          git -C _gh-pages config user.name "github-actions[bot]"
+          git -C _gh-pages config user.email "github-actions[bot]@users.noreply.github.com"
+          git -C _gh-pages add --all
+          git -C _gh-pages diff --staged --quiet || \
+            git -C _gh-pages commit --message "Deploy docs: ${DEPLOY_PATH}"
+          git -C _gh-pages push origin gh-pages
