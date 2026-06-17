@@ -25,6 +25,7 @@ import time
 from collections.abc import Hashable, Mapping
 from typing import Sequence, cast
 
+from osprey.worker.stress.consumer import Consumer, ConsumerConfig
 from osprey.worker.stress.producer import Producer, ProducerConfig, _action_id_for
 from osprey.worker.stress.reporter import (
     EXIT_INTERNAL_ERROR,
@@ -120,26 +121,6 @@ def _bootstrap_list(s: str) -> list[str]:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    # The full closed-loop orchestration depends on the Consumer, which lands
-    # via #330. Until that merges, this subcommand is a placeholder so the CLI
-    # structure can be reviewed independently. When #330 lands, the lazy
-    # import below will resolve and the body below it activates.
-    try:
-        # consumer lands via #330; the ImportError path below is the intended
-        # dev-time behavior until that merges.
-        from osprey.worker.stress.consumer import (  # type: ignore[import-untyped]  # noqa: F401
-            Consumer,
-            ConsumerConfig,
-        )
-    except ImportError:
-        print(
-            '[osprey-stress] `run` is blocked on #330 (stress consumer). '
-            'This subcommand will become available once #330 merges; the CLI '
-            'structure (arg parsing, threshold gates, report format) is reviewable today.',
-            file=sys.stderr,
-        )
-        return EXIT_INTERNAL_ERROR
-
     run_id = ProducerConfig.make_run_id()
     expected_action_ids = frozenset(_action_id_for(run_id, n) for n in range(args.events))
 
