@@ -35,6 +35,9 @@ from osprey.worker.sinks.utils.acking_contexts_base import BaseAckingContext, No
 
 logger = get_logger(__name__)
 
+# How long to let the sink drain the in-flight action on shutdown before cancelling.
+_GRACEFUL_SHUTDOWN_SECONDS = 10.0
+
 
 def init_config() -> Config:
     config = CONFIG.instance()
@@ -259,14 +262,27 @@ def run(
             # The sink finished on its own rather than via a shutdown signal —
             # surface any fatal error instead of reporting a clean shutdown.
             sink_error = sink_task.exception()
+            await rules_sink.stop()
         else:
-            sink_task.cancel()
+            # Graceful shutdown: stop the input stream FIRST so the in-flight
+            # action can finalize through the stream's own shutdown path (the
+            # coordinator stream acks/nacks and graceful-disconnects after the
+            # current yield resumes), then drain with a bounded timeout. Only
+            # fall back to cancellation if the sink doesn't drain in time.
+            await rules_sink.stop()
             try:
-                await sink_task
-            except asyncio.CancelledError:
-                pass
-
-        await rules_sink.stop()
+                await asyncio.wait_for(asyncio.shield(sink_task), timeout=_GRACEFUL_SHUTDOWN_SECONDS)
+            except asyncio.TimeoutError:
+                logger.warning('Sink did not drain within %ss of shutdown; cancelling', _GRACEFUL_SHUTDOWN_SECONDS)
+                sink_task.cancel()
+                try:
+                    await sink_task
+                except asyncio.CancelledError:
+                    pass
+            except Exception:
+                pass  # a sink failure is surfaced via sink_error below
+            if sink_task.done() and not sink_task.cancelled():
+                sink_error = sink_task.exception()
 
         if sink_error is not None:
             logger.error('Async worker sink task failed', exc_info=sink_error)
