@@ -264,21 +264,29 @@ def run(
             sink_error = sink_task.exception()
             await rules_sink.stop()
         else:
-            # Graceful shutdown: stop the input stream FIRST so the in-flight
-            # action can finalize through the stream's own shutdown path (the
-            # coordinator stream acks/nacks and graceful-disconnects after the
-            # current yield resumes), then drain with a bounded timeout. Only
-            # fall back to cancellation if the sink doesn't drain in time.
-            await rules_sink.stop()
+            # Graceful shutdown under a single bounded budget covering BOTH
+            # stopping the input stream (which can itself block, e.g. Kafka
+            # consumer.close()) and draining the in-flight action. The input
+            # stream is stopped first so the action can finalize through the
+            # stream's own shutdown path (the coordinator stream acks/nacks and
+            # graceful-disconnects after the current yield resumes); we fall back
+            # to cancellation only if the whole thing overruns the budget.
+            async def _stop_and_drain() -> None:
+                await rules_sink.stop()
+                await sink_task
+
+            drain = asyncio.ensure_future(_stop_and_drain())
             try:
-                await asyncio.wait_for(asyncio.shield(sink_task), timeout=_GRACEFUL_SHUTDOWN_SECONDS)
+                await asyncio.wait_for(asyncio.shield(drain), timeout=_GRACEFUL_SHUTDOWN_SECONDS)
             except asyncio.TimeoutError:
-                logger.warning('Sink did not drain within %ss of shutdown; cancelling', _GRACEFUL_SHUTDOWN_SECONDS)
+                logger.warning('Graceful shutdown exceeded %ss; cancelling', _GRACEFUL_SHUTDOWN_SECONDS)
+                drain.cancel()
                 sink_task.cancel()
-                try:
-                    await sink_task
-                except asyncio.CancelledError:
-                    pass
+                for task in (drain, sink_task):
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
             except Exception:
                 pass  # a sink failure is surfaced via sink_error below
             if sink_task.done() and not sink_task.cancelled():
