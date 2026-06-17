@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Select, Spin } from 'antd';
 import ReactECharts from 'echarts-for-react';
+import type { EChartsType } from 'echarts';
 import dayjs from 'dayjs';
 import shallow from 'zustand/shallow';
 
@@ -185,8 +186,7 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
 
   // Activate lineX brush mode immediately so the user can drag to select a date range
   // without needing to click a toolbox button first (matching the previous Highcharts zoomType:'x' UX).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function handleChartReady(chart: any): void {
+  function handleChartReady(chart: EChartsType): void {
     chart.dispatchAction({
       type: 'takeGlobalCursor',
       key: 'brush',
