@@ -3,7 +3,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from functools import lru_cache, reduce
 from types import UnionType
-from typing import TYPE_CHECKING, Any, Optional, Type, Union, cast
+from typing import TYPE_CHECKING, Any, Type, Union, cast
 
 from osprey.engine.ast import grammar
 from osprey.engine.ast.error_utils import SpanWithHint
@@ -461,7 +461,7 @@ class ValidateStaticTypes(SourceValidator, HasInput[dict[str, _TypeAndSpan]], Ha
 
         return False
 
-    def _get_non_none_type(self, t: type) -> Optional[type]:
+    def _get_non_none_type(self, t: type) -> type | None:
         """Extract the non-None type from an Optional[T] type.
 
         Returns T if t is Optional[T], otherwise returns None.

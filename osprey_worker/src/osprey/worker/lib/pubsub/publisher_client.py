@@ -1,7 +1,6 @@
 import abc
 from concurrent import futures
 from threading import Lock
-from typing import Set, Union
 
 from google.cloud import pubsub_v1
 from osprey.worker.lib.instruments import metrics
@@ -22,7 +21,7 @@ class BasePubsubPublisherClient(abc.ABC):
 
 class BatchPubsubPublisherClient(BasePubsubPublisherClient):
     _futures_buffer_lock: Lock = Lock()
-    _futures_buffer: Set[pubsub_v1.publisher.futures.Future] = set()
+    _futures_buffer: set[pubsub_v1.publisher.futures.Future] = set()
     _publisher: pubsub_v1.PublisherClient
 
     def __init__(self, batch_settings: pubsub_v1.types.BatchSettings):
@@ -37,7 +36,7 @@ class BatchPubsubPublisherClient(BasePubsubPublisherClient):
         with self._futures_buffer_lock:
             self._futures_buffer.remove(future)
 
-    def publish(self, topic: str, data: bytes, **attributes: Union[bytes, str]) -> None:
+    def publish(self, topic: str, data: bytes, **attributes: bytes | str) -> None:
         if len(self._futures_buffer) >= self._max_future_buffer_size:
             # https://github.com/googleapis/google-cloud-python/issues/6201 ????
             futures.wait(self._futures_buffer, return_when=futures.ALL_COMPLETED)

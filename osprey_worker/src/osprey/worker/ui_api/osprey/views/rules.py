@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from flask import Blueprint, jsonify
 from osprey.engine.ast.grammar import (
@@ -36,7 +36,7 @@ def _description_to_string(value: Any) -> str:
     raise TypeError(f'BUG: Rule description was {value!r}, should have been caught by validator.')
 
 
-def _extract_rules_from_engine() -> tuple[List[Dict[str, Any]], int]:
+def _extract_rules_from_engine() -> tuple[list[dict[str, Any]], int]:
     """Walk the engine once, collecting Rule defs and WhenRules → Rule reference counts.
 
     WhenRules can appear in a source iterated before the Rule they reference
@@ -47,14 +47,14 @@ def _extract_rules_from_engine() -> tuple[List[Dict[str, Any]], int]:
     engine = ENGINE.instance()
     sources = engine.execution_graph.validated_sources.sources
 
-    whenrules_ref_count: Dict[str, int] = {}
+    whenrules_ref_count: dict[str, int] = {}
     when_rules_total = 0
-    rules: List[Dict[str, Any]] = []
+    rules: list[dict[str, Any]] = []
 
     for source in sources:
         for statement in source.ast_root.statements:
             # WhenRules(...) — bare statement or assigned
-            call_node: Optional[Call] = None
+            call_node: Call | None = None
             if isinstance(statement, Call) and get_func_identifier(statement) == 'WhenRules':
                 call_node = statement
             elif (
@@ -83,7 +83,7 @@ def _extract_rules_from_engine() -> tuple[List[Dict[str, Any]], int]:
             rule_name = statement.target.identifier
             call = statement.value
 
-            when_all: List[str] = []
+            when_all: list[str] = []
             when_all_arg = call.find_argument('when_all')
             if when_all_arg is not None and isinstance(when_all_arg.value, AstList):
                 for item in when_all_arg.value.items:
@@ -96,7 +96,7 @@ def _extract_rules_from_engine() -> tuple[List[Dict[str, Any]], int]:
             if description_arg is not None:
                 description = _description_to_string(description_arg.value)
 
-            refs: Set[str] = set()
+            refs: set[str] = set()
             if when_all_arg is not None:
                 collect_name_references(when_all_arg.value, refs)
             if description_arg is not None:

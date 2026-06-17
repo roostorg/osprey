@@ -2,7 +2,7 @@ import datetime
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Self, Tuple
+from typing import Any, Self
 from unittest.mock import Mock, patch
 
 from osprey.engine.executor.custom_extracted_features import (
@@ -34,7 +34,7 @@ def test_default_custom_extracted_features():
     sample_rate_full = SampleRateExtractedFeature(sample_rate=100)
     sample_rate_full_packed = None
 
-    cases: Sequence[Tuple[CustomExtractedFeature, Any]] = [
+    cases: Sequence[tuple[CustomExtractedFeature, Any]] = [
         (action_id, action_id_packed),
         (timestamp, timestamp_packed),
         (error_count, error_count_packed),
