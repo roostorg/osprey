@@ -37,6 +37,7 @@ jobs:
           docker compose -f docker-compose.yaml -f docker-compose.test.yaml --profile test build
 
       - name: Run integration tests
+        timeout-minutes: 12  # cap; see issue #368
         run: ./run-tests.sh --junitxml=/tmp/test-results/junit-pytest.xml
 
       - name: Upload test results
