@@ -111,7 +111,7 @@ def test_conversion_of_complex_annotation(
         ('Union', ('str',), '`Union` of one item'),
         ('List', ('str', 'int'), 'unexpected additional'),
         ('Unknown', ('str', 'int'), 'can only check dynamic return values of'),
-        ('Optional', (), '`Optional` must have one argument or less than two arguments'),
+        ('Optional', (), '`Optional` must have one or two arguments'),
         ('Optional', ('str', 'int'), "`Optional` can't have arguments of different types"),
         ('Optional', ('List',), 'expected simple type in `Optional`'),
         ('Entity', (), '`Entity` must have exactly one argument'),
