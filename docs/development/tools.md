@@ -1,21 +1,21 @@
-# Development Tools Overview
+# Development Tools
 
-## Ruff - Linting and Formatting
+Familiarize yourself with these development tools to better understand how to work on and debug Osprey.
 
-**Purpose**: Replaces Black, isort, Flake8, and other tools
+## Ruff
 
-**Configuration**: Located in `pyproject.toml` under `[tool.ruff]`
+Linting and formatting. Replaces Black, isort, Flake8, and other tools. Configuration in `pyproject.toml` under `[tool.ruff]`.
 
-**Key Rules Enabled**:
+Key rules enabled:
 
-- `E` - pycodestyle errors
-- `F` - pyflakes
-- `I` - isort (import sorting)
-- `B006` - flake8-bugbear (mutable default arguments)
+- `E`: pycodestyle errors
+- `F`: pyflakes
+- `I`: isort (import sorting)
+- `B006`: flake8-bugbear (mutable default arguments)
 
-**Commands**:
+Commands:
 
-```bash
+```sh
 # Check for issues
 uv run ruff check
 
@@ -29,22 +29,20 @@ uv run ruff format
 uv run ruff check path/to/file.py
 ```
 
-## MyPy - Type Checking
+## MyPy
 
-**Purpose**: Static type checking for Python
+Static type checking for Python. Configuration in `pyproject.toml` under `[tool.mypy]`.
 
-**Configuration**: Located in `pyproject.toml` under `[tool.mypy]`
-
-**Key Features**:
+Key features:
 
 - Pydantic plugin support
 - SQLAlchemy plugin support
 - Relaxed strict mode (matching legacy codebase)
 - Ignores protobuf generated files
 
-**Commands**:
+Commands:
 
-```bash
+```sh
 # Type check entire project
 uv run mypy .
 
@@ -58,15 +56,13 @@ uv run mypy osprey_worker/
 uv run mypy --show-traceback path/to/file.py
 ```
 
-## Pre-commit - Git Hooks
+## Pre-commit
 
-**Purpose**: Automated quality checks before commits
+Git hooks for automated quality checks before committing code. Configuration in `.pre-commit-config.yaml`.
 
-**Configuration**: Located in `.pre-commit-config.yaml`
+Commands:
 
-**Commands**:
-
-```bash
+```sh
 # Run all hooks on staged files
 uv run pre-commit run
 
@@ -83,13 +79,11 @@ uv run pre-commit autoupgrade
 git commit --no-verify
 ```
 
-## UV - Package Management
+## UV
 
-**Purpose**: Fast Python package manager and environment management
+Python package and environment management. Key commands:
 
-**Key Commands**:
-
-```bash
+```sh
 # Install dependencies
 uv sync
 

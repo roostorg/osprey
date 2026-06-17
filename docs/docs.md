@@ -17,7 +17,7 @@ To build the site locally, clone this repository and install `mdbook` (follow th
 Once installed, use the `mdbook` command-line tool from the root of this repo. For example, to automatically start watching, building, and serving the site:
 
 ```shell
-mdbook serve
+mdbook serve docs
 ```
 
 Then make your changes, preview them in your web browser (at [http://localhost:3000](http://localhost:3000) by default), commit, push, and open a pull request like any other git project. 
