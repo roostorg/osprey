@@ -502,8 +502,12 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
                     await bidirectional_stream.send_graceful_disconnect(ack_id, verdicts=context.get_verdicts())
                     break
 
-                # Normal path: ack the last action and request the next one
-                bidirectional_stream.send_ack_or_nack(ack_id, verdicts=context.get_verdicts())
+                # Normal path: ack — or nack, if the rules sink marked the context —
+                # the last action and request the next one. Verdicts only ride on an ack.
+                if context.should_nack:
+                    bidirectional_stream.send_ack_or_nack(ack_id, ack=False)
+                else:
+                    bidirectional_stream.send_ack_or_nack(ack_id, verdicts=context.get_verdicts())
 
                 info_log_osprey_action(
                     osprey_coordinator_action.action_id, osprey_coordinator_action.action_name, 'acking'

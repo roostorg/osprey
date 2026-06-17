@@ -143,15 +143,16 @@ async def test_handle_event_calls_sync_callback():
 
 
 @pytest.mark.asyncio
-async def test_handle_event_skips_callback_on_unchanged_hash():
-    """Hash-equality short-circuit: if the new sources match current, no callback."""
+async def test_handle_event_skips_callback_on_already_applied_hash():
+    """Dedup short-circuit: if the new sources match what the engine has APPLIED,
+    no callback. Dedup keys off the applied hash, not merely the received one."""
+    from osprey.engine.ast.sources import Sources
+
     provider = AsyncEtcdSourcesProvider(etcd_key='/test/key', etcd_client=MagicMock())
     payload = {'main.sml': '# noop'}
 
-    # Seed _current_sources with the same content the next event will deliver.
-    from osprey.engine.ast.sources import Sources
-
-    provider._current_sources = Sources.from_dict(payload)
+    # The engine has already compiled & applied this exact content.
+    provider._applied_sources_hash = Sources.from_dict(payload).hash()
 
     callback = MagicMock()
     provider.set_sources_watcher(callback)
@@ -159,3 +160,40 @@ async def test_handle_event_skips_callback_on_unchanged_hash():
     await provider._handle_event(_make_full_sync_event(payload))
 
     callback.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_handle_event_reapplies_after_failed_compile():
+    """Self-heal: a recompile that never reports applied must NOT suppress the
+    next identical re-delivery, or the worker wedges on stale rules.
+
+    Models a failed/dropped compile by invoking the callback (which would
+    compile) but never calling mark_sources_applied(). The same payload
+    redelivered must fire the callback again.
+    """
+    from osprey.engine.ast.sources import Sources
+
+    provider = AsyncEtcdSourcesProvider(etcd_key='/test/key', etcd_client=MagicMock())
+    good = {'main.sml': '# good'}
+    bad = {'main.sml': '# bad'}
+
+    callback = MagicMock()
+    provider.set_sources_watcher(callback)
+
+    with patch('osprey.async_worker.lib.etcd.sources_provider.asyncio.sleep', return_value=None):
+        # First payload applies cleanly (engine confirms via mark_sources_applied).
+        await provider._handle_event(_make_full_sync_event(good))
+        provider.mark_sources_applied(Sources.from_dict(good).hash())
+        assert callback.call_count == 1
+
+        # Re-delivery of the applied payload is deduped.
+        await provider._handle_event(_make_full_sync_event(good))
+        assert callback.call_count == 1
+
+        # New payload whose compile "fails" — callback fires but apply is never marked.
+        await provider._handle_event(_make_full_sync_event(bad))
+        assert callback.call_count == 2
+
+        # Identical re-delivery must re-fire (self-heal), not be suppressed.
+        await provider._handle_event(_make_full_sync_event(bad))
+        assert callback.call_count == 3

@@ -90,7 +90,14 @@ def bootstrap_plugin_engine(rules_path: str) -> Tuple[AsyncOspreyEngine, UDFHelp
 
     sources_provider = StaticSourcesProvider(sources=Sources.from_path(Path(rules_path)))
     engine = AsyncOspreyEngine(sources_provider=sources_provider, udf_registry=udf_registry)
-    output_sink = bootstrap_async_output_sinks(config)
+
+    output_sink: AsyncBaseOutputSink = bootstrap_async_output_sinks(config)
+    if not getattr(output_sink, '_sinks', None):
+        logger.warning(
+            'No async output sink was registered by any osprey_async_plugin; '
+            'falling back to the stdout sink so execution results are not silently dropped.'
+        )
+        output_sink = AsyncStdoutOutputSink()
     return engine, udf_helpers, output_sink
 
 
@@ -130,12 +137,15 @@ def build_kafka_input_stream(
     """
     from kafka import KafkaConsumer
 
+    # Manual commit: AsyncKafkaInputStream commits offsets only after a polled
+    # batch has been handed to (and processed by) the rules sink, so a crash
+    # mid-batch reprocesses rather than silently dropping actions (at-least-once).
     consumer = KafkaConsumer(
         topic,
         bootstrap_servers=[s.strip() for s in bootstrap_servers.split(',') if s.strip()],
         group_id=group_id,
         auto_offset_reset=offset_reset,
-        enable_auto_commit=True,
+        enable_auto_commit=False,
     )
     return AsyncKafkaInputStream(consumer)
 
@@ -238,10 +248,18 @@ def run(
         sink_task = asyncio.create_task(rules_sink.run())
 
         # Wait for either the sink to finish or a shutdown signal
-        done = asyncio.create_task(stop_event.wait())
-        await asyncio.wait([sink_task, done], return_when=asyncio.FIRST_COMPLETED)
+        stop_task = asyncio.create_task(stop_event.wait())
+        await asyncio.wait([sink_task, stop_task], return_when=asyncio.FIRST_COMPLETED)
 
-        if not sink_task.done():
+        if not stop_task.done():
+            stop_task.cancel()
+
+        sink_error: Optional[BaseException] = None
+        if sink_task.done():
+            # The sink finished on its own rather than via a shutdown signal —
+            # surface any fatal error instead of reporting a clean shutdown.
+            sink_error = sink_task.exception()
+        else:
             sink_task.cancel()
             try:
                 await sink_task
@@ -249,6 +267,11 @@ def run(
                 pass
 
         await rules_sink.stop()
+
+        if sink_error is not None:
+            logger.error('Async worker sink task failed', exc_info=sink_error)
+            raise sink_error
+
         logger.info('Async worker shutdown complete')
 
     asyncio.run(_run())

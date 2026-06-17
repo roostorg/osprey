@@ -52,6 +52,8 @@ class _PollableConsumer(Protocol):
 
     def poll(self, timeout_ms: int = ..., max_records: int = ...) -> Mapping[Any, Sequence[Any]]: ...
 
+    def commit(self) -> None: ...
+
     def close(self) -> None: ...
 
 
@@ -65,6 +67,12 @@ class AsyncKafkaInputStream(AsyncBaseInputStream[BaseAckingContext[Action]]):
     via ``asyncio.to_thread``; the loop stays responsive and the bounded poll
     timeout lets ``stop()`` interrupt between polls. The consumer is injected so
     this module needs neither the kafka client nor any gevent-tainted helper.
+
+    Offsets are committed manually, once per polled batch, only after every
+    record in that batch has been handed back to (and processed by) the
+    consumer of this generator. With ``enable_auto_commit=False`` this gives
+    at-least-once delivery: a crash mid-batch reprocesses the batch rather than
+    losing actions to an offset that was auto-committed before processing.
     """
 
     def __init__(
@@ -105,6 +113,10 @@ class AsyncKafkaInputStream(AsyncBaseInputStream[BaseAckingContext[Action]]):
                         logger.exception('Error decoding Kafka record; skipping')
                         continue
                     yield NoopAckingContext(action)
+            # Reached only after the generator resumes past the last yielded
+            # record of this batch, i.e. once the batch has been processed.
+            if batches and not self._stopped:
+                await asyncio.to_thread(self._consumer.commit)
 
     async def stop(self) -> None:
         self._stopped = True

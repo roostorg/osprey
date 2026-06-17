@@ -69,6 +69,13 @@ class AsyncEtcdSourcesProvider(BaseSourcesProvider):
         self._etcd_key = etcd_key
         self._client = etcd_client or EtcdClient()
         self._current_sources: Optional[Sources] = None
+        # The hash the engine has actually compiled and swapped in. Dedup keys off
+        # this (not the last *received* sources) so a failed/dropped compile leaves
+        # it behind and the next identical etcd re-delivery re-fires the recompile
+        # instead of being suppressed (which would wedge the worker on stale rules).
+        # Advanced only from mark_sources_applied(); seeded None so every event
+        # before the first successful apply triggers a compile attempt.
+        self._applied_sources_hash: Optional[str] = None
         self._sources_watcher_callback: Optional[SourcesWatcherCallback] = None
         self._input_stream_ready_signaler = input_stream_ready_signaler
         self._watcher: Optional[BaseWatcher] = None
@@ -159,10 +166,13 @@ class AsyncEtcdSourcesProvider(BaseSourcesProvider):
 
         # Etcd watcher reconnects and session refreshes re-deliver the current
         # value as a FullSyncOne event, so we see many events where the
-        # content is unchanged. Skip recompile when the sources hash matches
-        # what we already have — recompile transiently doubles peak memory and
-        # can push pods over the OOM line.
-        if self._current_sources is not None and new_sources.hash() == self._current_sources.hash():
+        # content is unchanged. Skip the (peak-memory-doubling) recompile only
+        # when the engine has ALREADY applied this exact hash. Comparing against
+        # the last *applied* hash — not merely the last *received* one — keeps
+        # this self-healing: if a recompile fails the engine keeps its old graph
+        # and _applied_sources_hash stays behind, so the next re-delivery re-fires
+        # the recompile instead of leaving the worker wedged on stale rules.
+        if self._applied_sources_hash is not None and new_sources.hash() == self._applied_sources_hash:
             return
 
         if self._input_stream_ready_signaler is not None:
@@ -186,6 +196,12 @@ class AsyncEtcdSourcesProvider(BaseSourcesProvider):
     # (a shared file outside this change). Keep the precise return type here.
     def get_current_sources(self) -> Optional[Sources]:  # type: ignore[override]
         return self._current_sources
+
+    def mark_sources_applied(self, sources_hash: str) -> None:
+        # Advances the dedup baseline only once the engine confirms it compiled
+        # and swapped these sources, so failed/dropped applies retry on the next
+        # etcd re-delivery rather than being deduped away.
+        self._applied_sources_hash = sources_hash
 
     def set_sources_watcher(self, callback: SourcesWatcherCallback) -> None:
         self._sources_watcher_callback = callback

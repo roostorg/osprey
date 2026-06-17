@@ -46,6 +46,30 @@ async def test_bidirectional_stream_queue_based():
     assert item == 'test_request'
 
 
+def test_acking_context_should_nack_contract():
+    """The out-of-band ack path keys off should_nack, so mark_as_nack must flip it."""
+    from osprey.worker.sinks.utils.acking_contexts_base import NoopAckingContext
+
+    ctx = NoopAckingContext(item='x')
+    assert ctx.should_nack is False
+    ctx.mark_as_nack()
+    assert ctx.should_nack is True
+
+
+def test_send_ack_or_nack_emits_nack_when_not_ack():
+    """ack=False must enqueue a Nack (not an Ack), so a nacked context isn't acked."""
+    stream = OspreyCoordinatorBiDirectionalStream.__new__(OspreyCoordinatorBiDirectionalStream)
+    stream._outgoing_queue = asyncio.Queue()
+
+    stream.send_ack_or_nack(123, ack=True)
+    stream.send_ack_or_nack(456, ack=False)
+
+    ack_req = stream._outgoing_queue.get_nowait()
+    nack_req = stream._outgoing_queue.get_nowait()
+    assert ack_req.action_request.ack_or_nack.HasField('ack')
+    assert nack_req.action_request.ack_or_nack.HasField('nack')
+
+
 # --- OspreyCoordinatorInputStream ---
 
 

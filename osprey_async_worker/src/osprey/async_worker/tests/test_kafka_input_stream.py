@@ -18,16 +18,27 @@ class _FakeRecord:
 
 
 class _FakeConsumer:
-    """Returns each queued batch once per poll(), then empty batches."""
+    """Returns each queued batch once per poll(), then empty batches.
+
+    Once batches are exhausted, flips the stream's stop flag on the next poll so
+    the async generator terminates instead of spinning on empty polls.
+    """
 
     def __init__(self, batches: Sequence[Sequence[_FakeRecord]]):
         self._batches = list(batches)
         self.closed = False
+        self.commits = 0
+        self.stream: object = None  # set by the test to enable auto-stop
 
     def poll(self, timeout_ms: int = 0, max_records: int = 0) -> Mapping[str, Sequence[_FakeRecord]]:
         if self._batches:
             return {'tp-0': self._batches.pop(0)}
+        if self.stream is not None:
+            self.stream._stopped = True  # type: ignore[attr-defined]
         return {}
+
+    def commit(self) -> None:
+        self.commits += 1
 
     def close(self) -> None:
         self.closed = True
@@ -88,6 +99,26 @@ async def test_gen_yields_decoded_actions_then_stops() -> None:
 
     assert collected == [1, 2]
     assert consumer.closed is True
+
+
+async def test_commits_once_after_batch_is_processed() -> None:
+    records = [
+        _FakeRecord(_osprey_envelope(1, 'operation#create', {'message': 'a'})),
+        _FakeRecord(_osprey_envelope(2, 'operation#create', {'message': 'b'})),
+    ]
+    consumer = _FakeConsumer([records])
+    stream = AsyncKafkaInputStream(consumer, poll_timeout_ms=1, max_records=10)
+    consumer.stream = stream  # auto-stop once polls go empty
+
+    collected: List[int] = []
+    async for ctx in stream:
+        with ctx as action:
+            collected.append(action.action_id)
+
+    assert collected == [1, 2]
+    # Exactly one commit, and only after both records in the batch were processed
+    # (manual-commit at-least-once, not auto-commit-before-processing).
+    assert consumer.commits == 1
 
 
 async def test_gen_skips_malformed_record_and_continues() -> None:

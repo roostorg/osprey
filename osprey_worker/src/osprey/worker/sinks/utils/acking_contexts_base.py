@@ -44,6 +44,13 @@ class BaseAckingContext(abc.ABC, Generic[_T]):
     def mark_as_nack(self) -> None:
         self._should_nack = True
 
+    @property
+    def should_nack(self) -> bool:
+        """Whether this item was marked for nack. Consumers that send ack/nack
+        out-of-band (e.g. the async coordinator stream) must consult this rather
+        than always acking."""
+        return self._should_nack
+
     def __enter__(self) -> _T:
         return self._item
 
