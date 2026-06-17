@@ -1,7 +1,7 @@
 """Tests for the async coordinator input stream."""
 
 import asyncio
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from osprey.async_worker.lib.coordinator_input_stream import (
@@ -13,8 +13,13 @@ from osprey.async_worker.lib.coordinator_input_stream import (
 # --- GrpcConnectionDiscoveryPool ---
 
 
-def test_discovery_pool_creates_channels():
-    """Pool creates grpc.aio channels from service discovery."""
+@pytest.mark.asyncio
+async def test_discovery_pool_creates_channels():
+    """Pool creates grpc.aio channels from service discovery.
+
+    Async so a running event loop exists: grpc.aio.insecure_channel() binds to
+    the running loop, and constructing it without one raises 'no running event
+    loop' (order-dependent when other async tests have closed their loop)."""
     mock_service = MagicMock()
     mock_service.connection_address = 'localhost'
     mock_service.grpc_port = 50051
@@ -90,10 +95,12 @@ async def test_input_stream_stop():
     """Stop sets the shutdown event."""
     stream = OspreyCoordinatorInputStream.__new__(OspreyCoordinatorInputStream)
     stream._shutdown_event = asyncio.Event()
+    stream._channel_pool = AsyncMock()  # stop() awaits channel_pool.close()
 
     assert not stream._shutdown_event.is_set()
     await stream.stop()
     assert stream._shutdown_event.is_set()
+    stream._channel_pool.close.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -101,6 +108,7 @@ async def test_input_stream_shutdown_event_unblocks():
     """Setting shutdown event should unblock any waiters."""
     stream = OspreyCoordinatorInputStream.__new__(OspreyCoordinatorInputStream)
     stream._shutdown_event = asyncio.Event()
+    stream._channel_pool = AsyncMock()  # stop() awaits channel_pool.close()
 
     unblocked = False
 

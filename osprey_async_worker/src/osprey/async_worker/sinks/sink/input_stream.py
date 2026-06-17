@@ -2,10 +2,12 @@
 
 import abc
 import asyncio
+import functools
 import json
 import logging
 from collections import deque
-from typing import Any, AsyncIterator, Generic, Mapping, Protocol, Sequence, TypeVar
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, AsyncIterator, Callable, Generic, Mapping, Protocol, Sequence, TypeVar
 
 from osprey.engine.executor.execution_context import Action
 from osprey.worker.lib.utils.dates import parse_go_timestamp
@@ -85,6 +87,13 @@ class AsyncKafkaInputStream(AsyncBaseInputStream[BaseAckingContext[Action]]):
         self._poll_timeout_ms = poll_timeout_ms
         self._max_records = max_records
         self._stopped = False
+        # kafka-python consumers are NOT safe for concurrent calls. Funnel every
+        # consumer operation (poll/commit/close) through a single worker thread so
+        # stop()'s close() can never race an in-flight poll() on another thread.
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='async-kafka-consumer')
+
+    async def _run_on_consumer(self, fn: Callable[[], Any]) -> Any:
+        return await asyncio.get_running_loop().run_in_executor(self._executor, fn)
 
     @staticmethod
     def decode(record_value: Any) -> Action:
@@ -100,10 +109,12 @@ class AsyncKafkaInputStream(AsyncBaseInputStream[BaseAckingContext[Action]]):
 
     async def _gen(self) -> AsyncIterator[BaseAckingContext[Action]]:
         while not self._stopped:
-            batches = await asyncio.to_thread(
-                self._consumer.poll,
-                timeout_ms=self._poll_timeout_ms,
-                max_records=self._max_records,
+            batches = await self._run_on_consumer(
+                functools.partial(
+                    self._consumer.poll,
+                    timeout_ms=self._poll_timeout_ms,
+                    max_records=self._max_records,
+                )
             )
             for records in batches.values():
                 for record in records:
@@ -116,8 +127,13 @@ class AsyncKafkaInputStream(AsyncBaseInputStream[BaseAckingContext[Action]]):
             # Reached only after the generator resumes past the last yielded
             # record of this batch, i.e. once the batch has been processed.
             if batches and not self._stopped:
-                await asyncio.to_thread(self._consumer.commit)
+                await self._run_on_consumer(self._consumer.commit)
 
     async def stop(self) -> None:
         self._stopped = True
-        await asyncio.to_thread(self._consumer.close)
+        # close() is queued on the single worker thread, so it runs only after any
+        # in-flight poll/commit returns — never concurrently with them.
+        try:
+            await self._run_on_consumer(self._consumer.close)
+        finally:
+            self._executor.shutdown(wait=False)

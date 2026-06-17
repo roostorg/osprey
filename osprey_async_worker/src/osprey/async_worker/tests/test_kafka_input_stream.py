@@ -5,9 +5,12 @@ upstream producer (e.g. at-kafka in Osprey-compatible mode) writes, plus the
 poll/skip/stop behaviour of the async stream, without a real Kafka broker.
 """
 
+import asyncio
 import json
+import threading
 from typing import Any, List, Mapping, Sequence
 
+import pytest
 from osprey.async_worker.sinks.sink.input_stream import AsyncKafkaInputStream
 from osprey.worker.sinks.utils.acking_contexts_base import NoopAckingContext
 
@@ -119,6 +122,53 @@ async def test_commits_once_after_batch_is_processed() -> None:
     # Exactly one commit, and only after both records in the batch were processed
     # (manual-commit at-least-once, not auto-commit-before-processing).
     assert consumer.commits == 1
+
+
+async def test_stop_does_not_close_consumer_during_inflight_poll() -> None:
+    """stop() must not close() the (thread-unsafe) consumer while a poll() is in
+    flight. All consumer ops share one worker thread, so close() is queued behind
+    the active poll and can only run once it returns."""
+    poll_entered = threading.Event()
+    release_poll = threading.Event()
+    order: List[str] = []
+
+    class _BlockingConsumer:
+        def __init__(self) -> None:
+            self.closed = False
+
+        def poll(self, timeout_ms: int = 0, max_records: int = 0) -> Mapping[str, Sequence[Any]]:
+            order.append('poll_start')
+            poll_entered.set()
+            release_poll.wait(2.0)
+            order.append('poll_end')
+            return {}
+
+        def commit(self) -> None:
+            order.append('commit')
+
+        def close(self) -> None:
+            order.append('close')
+            self.closed = True
+
+    consumer = _BlockingConsumer()
+    stream = AsyncKafkaInputStream(consumer, poll_timeout_ms=1, max_records=1)
+    anext_task = asyncio.create_task(stream.__aiter__().__anext__())
+
+    # Wait until poll() is actually executing on the consumer's worker thread.
+    await asyncio.get_running_loop().run_in_executor(None, poll_entered.wait, 2.0)
+
+    # Request stop while poll is still blocked; close() must stay queued.
+    stop_task = asyncio.create_task(stream.stop())
+    await asyncio.sleep(0.05)
+    assert 'close' not in order, 'close() ran concurrently with an in-flight poll()'
+
+    release_poll.set()
+    with pytest.raises(StopAsyncIteration):
+        await anext_task
+    await stop_task
+
+    assert consumer.closed
+    assert order.index('poll_end') < order.index('close')
 
 
 async def test_gen_skips_malformed_record_and_continues() -> None:
