@@ -43,7 +43,8 @@ class BulkActionJob(Model):
     original_filename: str = Column(Text, nullable=False)
     total_rows: int = Column(Integer, nullable=False)
     processed_rows: int = Column(Integer, nullable=False)
-    error: str | None = Column(Text)
+    # sqlalchemy 1.4 mypy plugin doesn't read nullable= when inferring Mapped[T].
+    error: str | None = Column(Text, nullable=True)  # type: ignore[misc]
     action_workflow_name: str = Column(Text, nullable=False)
     entity_type: str = Column(Text, nullable=False)
     created_at: datetime = Column(DateTime(timezone=True), nullable=False)
@@ -179,11 +180,13 @@ class BulkActionTask(Model):
     chunk_number: int = Column(Integer, nullable=False)
     row_offset: int = Column(Integer, nullable=False)
     row_count: int = Column(Integer, nullable=False)
-    error: str | None = Column(Text)
+    # sqlalchemy 1.4 mypy plugin doesn't read nullable= when inferring Mapped[T].
+    error: str | None = Column(Text, nullable=True)  # type: ignore[misc]
     attempts: int = Column(Integer, nullable=False)
     failed_row_offsets = Column(ARRAY(Integer), nullable=False)
     created_at: datetime = Column(DateTime(timezone=True), nullable=False)
-    completed_at: datetime | None = Column(DateTime(timezone=True))
+    # sqlalchemy 1.4 mypy plugin doesn't read nullable= when inferring Mapped[T].
+    completed_at: datetime | None = Column(DateTime(timezone=True), nullable=True)  # type: ignore[misc]
 
     @classmethod
     def get_one(cls, task_id: int) -> 'BulkActionTask' | None:
