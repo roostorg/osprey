@@ -6,6 +6,5 @@
             "value": "gmail.com"
         },
         "type": "search"
-    },
-    "type": "native"
+    }
 }

@@ -3,6 +3,5 @@
         "dimension": "A",
         "type": "selector",
         "value": -1
-    },
-    "type": "native"
+    }
 }

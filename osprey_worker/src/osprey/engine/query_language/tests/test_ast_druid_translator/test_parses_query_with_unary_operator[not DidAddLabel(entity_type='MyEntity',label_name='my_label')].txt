@@ -6,6 +6,5 @@
             "type": "like"
         },
         "type": "not"
-    },
-    "type": "native"
+    }
 }

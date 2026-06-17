@@ -18,6 +18,5 @@
             }
         ],
         "type": "and"
-    },
-    "type": "native"
+    }
 }

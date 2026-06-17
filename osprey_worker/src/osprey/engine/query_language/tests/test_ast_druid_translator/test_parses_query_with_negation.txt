@@ -58,6 +58,5 @@
             }
         ],
         "type": "and"
-    },
-    "type": "native"
+    }
 }
