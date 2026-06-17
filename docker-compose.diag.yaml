@@ -1,0 +1,8 @@
+# TEMP DIAGNOSTIC override (do not merge): grant SYS_PTRACE so py-spy can
+# attach to the hung process, and mount the diagnostic runner.
+services:
+  test_runner:
+    cap_add:
+      - SYS_PTRACE
+    volumes:
+      - ./diag.sh:/osprey/diag.sh
