@@ -9,9 +9,6 @@ or from within osprey_worker/ subpaths.
 
 from typing import TYPE_CHECKING
 
-import pytest
-from gevent import monkey
-
 if TYPE_CHECKING:
     from _pytest.config import Config
     from _pytest.config.argparsing import Parser
@@ -58,25 +55,3 @@ def pytest_configure(config: 'Config') -> None:
         'vary_output_by_py_version(): instructs the `check_output` feature to record a separate file for '
         'different python major/minor versions',
     )
-
-
-@pytest.hookimpl(trylast=True)
-def pytest_sessionfinish(session: object, exitstatus: int) -> None:
-    """Force-exit the gevent-monkey-patched test process once the run is done.
-
-    The test runner launches pytest under gevent monkey-patching
-    (``python -m gevent.monkey --module pytest``). After the suite finishes,
-    the process can stall inside gevent's interpreter finalization and never
-    exit, so the integration-tests CI job hangs until its 30-minute timeout.
-    Exit immediately here (trylast, so this runs after the junit/terminal
-    hooks) to skip that teardown. Guarded on gevent being active so a plain
-    ``pytest`` run finalizes normally.
-    """
-    import os
-    import sys
-
-    if not monkey.is_module_patched('socket'):
-        return
-    sys.stdout.flush()
-    sys.stderr.flush()
-    os._exit(exitstatus)
