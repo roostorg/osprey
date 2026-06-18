@@ -18,8 +18,9 @@ for i in $(seq 1 8); do
       docker exec "$NAME" bash -lc '
         cd /osprey
         uv pip install py-spy >/tmp/spy.log 2>&1 || echo "py-spy install failed"
-        PID=$(pgrep -f gevent.monkey | head -1)
-        echo "WATCHER-IN: gevent python PID=$PID"
+        PID=$(pgrep -x python3.11 | head -1)
+        [ -z "$PID" ] && PID=$(pgrep -f "python3.11 -m gevent.monkey" | tail -1)
+        echo "WATCHER-IN: hung python PID=$PID"
         [ -z "$PID" ] && { echo "WATCHER-IN: no gevent python"; exit 0; }
         echo "----- ps -ef -----"; ps -ef
         echo "----- per-thread comm/wchan -----"
