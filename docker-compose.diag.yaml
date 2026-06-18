@@ -1,26 +1,6 @@
-# TEMP DIAGNOSTIC override (do not merge): observe the real test_runner
-# `docker compose run` entrypoint from an EXTERNAL sidecar sharing its PID
-# namespace, so py-spy can capture the native stack of the hung process WITHOUT
-# perturbing it.
+# TEMP DIAGNOSTIC override (do not merge): grant SYS_PTRACE so py-spy (run via
+# `docker exec` after the hang has set in) can attach to the hung PID 1.
 services:
   test_runner:
     cap_add:
       - SYS_PTRACE
-
-  pyspy:
-    build:
-      context: .
-      dockerfile: osprey_worker/Dockerfile
-    pid: "service:test_runner"
-    cap_add:
-      - SYS_PTRACE
-    profiles:
-      - test
-    depends_on:
-      test_runner:
-        condition: service_started
-    environment:
-      - PYTHONPATH=/osprey
-    volumes:
-      - ./spy.sh:/osprey/spy.sh
-    entrypoint: ["bash", "/osprey/spy.sh"]
