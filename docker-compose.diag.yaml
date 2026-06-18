@@ -1,10 +1,9 @@
-# TEMP DIAGNOSTIC override (do not merge): run the real test_runner entrypoint
-# with a pseudo-TTY (mimicking `docker compose run` without -T) and observe it
-# from an EXTERNAL sidecar that shares the PID namespace, so py-spy can capture
-# the native stack of the hung process WITHOUT perturbing it.
+# TEMP DIAGNOSTIC override (do not merge): observe the real test_runner
+# `docker compose run` entrypoint from an EXTERNAL sidecar sharing its PID
+# namespace, so py-spy can capture the native stack of the hung process WITHOUT
+# perturbing it.
 services:
   test_runner:
-    tty: true
     cap_add:
       - SYS_PTRACE
 
