@@ -1,4 +1,3 @@
-
 import { Drawer } from 'antd';
 
 import useApplicationConfigStore from '../../stores/ApplicationConfigStore';

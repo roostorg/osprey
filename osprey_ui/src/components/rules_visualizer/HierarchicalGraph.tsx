@@ -70,7 +70,13 @@ const HierarchicalGraph = ({
     let tip: Instance | undefined;
     if (ToolTip) {
       cy.nodes().bind('mouseover', (event) => {
-        tip = renderToolTipWithTippy(event.target as NodeSingular, ToolTip, containerRef, toolTipRef, tooltipRootRef) as Instance | undefined;
+        tip = renderToolTipWithTippy(
+          event.target as NodeSingular,
+          ToolTip,
+          containerRef,
+          toolTipRef,
+          tooltipRootRef
+        ) as Instance | undefined;
       });
       cy.nodes().bind('mouseout', () => {
         if (tip) {

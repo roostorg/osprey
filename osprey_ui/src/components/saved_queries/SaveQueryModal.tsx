@@ -1,4 +1,3 @@
-
 import { Modal, Form, Input } from 'antd';
 
 import { createSavedQuery } from '../../actions/SavedQueryActions';

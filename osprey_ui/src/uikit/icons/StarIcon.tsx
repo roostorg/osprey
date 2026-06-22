@@ -1,5 +1,3 @@
-
-
 import { Colors } from '../../Constants';
 
 interface StarIconProps {

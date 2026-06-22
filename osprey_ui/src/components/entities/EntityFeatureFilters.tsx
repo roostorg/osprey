@@ -28,7 +28,10 @@ function sortFeatureFiltersByEventVolume([, countA]: [string, number], [, countB
   return countB - countA;
 }
 
-const debouncedWidthCheck = (setHiddenFilterIndex: (index: number) => void, setPreviousWidth: (width: number) => void) =>
+const debouncedWidthCheck = (
+  setHiddenFilterIndex: (index: number) => void,
+  setPreviousWidth: (width: number) => void
+) =>
   debounce(() => {
     setHiddenFilterIndex(-1);
     setPreviousWidth(window.innerWidth);

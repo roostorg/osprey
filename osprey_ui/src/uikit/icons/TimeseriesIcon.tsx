@@ -1,5 +1,3 @@
-
-
 interface TimeseriesIconProps {
   width?: number;
   height?: number;

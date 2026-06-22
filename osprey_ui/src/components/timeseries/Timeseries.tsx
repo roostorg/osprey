@@ -169,10 +169,7 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
 
   const [timeseriesData, setTimeseriesData] = React.useState<TimeseriesResult[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
-  const defaultGranularity = React.useMemo(
-    () => getDefaultGranularityForTimeSpan(start, end),
-    [start, end]
-  );
+  const defaultGranularity = React.useMemo(() => getDefaultGranularityForTimeSpan(start, end), [start, end]);
   const [granularity, setGranularity] = React.useState(defaultGranularity);
 
   React.useEffect(() => {

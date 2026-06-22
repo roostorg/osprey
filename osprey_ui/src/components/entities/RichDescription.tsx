@@ -1,5 +1,3 @@
-
-
 import RichDescriptorValue from './RichDescriptorValue';
 
 import styles from './RichDescription.module.css';

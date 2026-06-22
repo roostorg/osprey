@@ -1,5 +1,3 @@
-
-
 interface FilterIconProps {
   width?: number;
   height?: number;

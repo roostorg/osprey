@@ -1,5 +1,3 @@
-
-
 interface QueryIconProps {
   width?: number;
   height?: number;

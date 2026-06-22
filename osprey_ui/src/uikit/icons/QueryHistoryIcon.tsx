@@ -1,5 +1,3 @@
-
-
 interface QueryHistoryIconProps {
   width?: number;
   height?: number;

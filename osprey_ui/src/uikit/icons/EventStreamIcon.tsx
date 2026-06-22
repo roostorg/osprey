@@ -1,5 +1,3 @@
-
-
 interface EventStreamIconProps {
   width?: number;
   height?: number;

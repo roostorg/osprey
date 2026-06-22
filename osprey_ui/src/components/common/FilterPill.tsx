@@ -1,4 +1,3 @@
-
 import classNames from 'classnames';
 
 import OspreyButton from '../../uikit/OspreyButton';

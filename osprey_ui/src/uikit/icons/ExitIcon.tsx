@@ -1,5 +1,3 @@
-
-
 interface ExitIconProps {
   width?: number;
   height?: number;

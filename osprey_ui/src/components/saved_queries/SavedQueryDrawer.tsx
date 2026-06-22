@@ -1,4 +1,3 @@
-
 import { Drawer } from 'antd';
 
 import { getSavedQueryHistory } from '../../actions/SavedQueryActions';

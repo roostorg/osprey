@@ -1,5 +1,3 @@
-
-
 interface CloseCircleIconProps {
   width?: number;
   height?: number;

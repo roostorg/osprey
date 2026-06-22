@@ -1,4 +1,3 @@
-
 import { Link } from 'react-router-dom';
 
 import { QueryRecord, MomentRangeValues } from '../../types/QueryTypes';

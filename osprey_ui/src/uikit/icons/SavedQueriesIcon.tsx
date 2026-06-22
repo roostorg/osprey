@@ -1,5 +1,3 @@
-
-
 interface SavedQueriesIconProps {
   width?: number;
   height?: number;

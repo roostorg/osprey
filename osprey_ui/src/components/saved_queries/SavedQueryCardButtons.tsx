@@ -1,4 +1,3 @@
-
 import { Link } from 'react-router-dom';
 
 import { SavedQuery, MomentRangeValues } from '../../types/QueryTypes';

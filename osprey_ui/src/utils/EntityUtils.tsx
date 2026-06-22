@@ -1,5 +1,3 @@
-
-
 import Feature from '../components/common/Feature';
 import EntityWithPopover from '../components/entities/EntityWithPopover';
 import useApplicationConfigStore, { LabelInfoMapping } from '../stores/ApplicationConfigStore';

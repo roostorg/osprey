@@ -1,5 +1,3 @@
-
-
 interface TopNIconProps {
   width?: number;
   height?: number;
