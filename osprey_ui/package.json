@@ -35,7 +35,7 @@
     "zustand": "3.5.2"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
+    "@eslint/js": "9.39.4",
     "@types/classnames": "2.2.9",
     "@types/cytoscape": "^3.19.4",
     "@types/cytoscape-dagre": "^2.3.0",
@@ -59,17 +59,17 @@
     "@rsbuild/plugin-sass": "1.5.1",
     "@rstest/core": "0.9.9",
     "core-js": "3.49.0",
-    "eslint": "^9.39.4",
-    "eslint-plugin-jsx-a11y": "^6.10.2",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "globals": "^17.6.0",
+    "eslint": "9.39.4",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react": "7.37.5",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.6.0",
     "prettier": "3.6.2",
     "rc-picker": "2.7.6",
     "react-refresh": "0.18.0",
     "sass": "^1.92.0",
     "typescript": "5.9.2",
-    "typescript-eslint": "^8.59.4"
+    "typescript-eslint": "8.61.1"
   },
   "scripts": {
     "start": "rsbuild",

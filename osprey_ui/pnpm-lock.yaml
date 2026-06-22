@@ -94,7 +94,7 @@ importers:
         version: 3.5.2(react@18.3.1)
     devDependencies:
       '@eslint/js':
-        specifier: ^9.39.4
+        specifier: 9.39.4
         version: 9.39.4
       '@rsbuild/core':
         specifier: 2.0.1
@@ -166,19 +166,19 @@ importers:
         specifier: 3.49.0
         version: 3.49.0
       eslint:
-        specifier: ^9.39.4
+        specifier: 9.39.4
         version: 9.39.4
       eslint-plugin-jsx-a11y:
-        specifier: ^6.10.2
+        specifier: 6.10.2
         version: 6.10.2(eslint@9.39.4)
       eslint-plugin-react:
-        specifier: ^7.37.5
+        specifier: 7.37.5
         version: 7.37.5(eslint@9.39.4)
       eslint-plugin-react-hooks:
-        specifier: ^7.1.1
+        specifier: 7.1.1
         version: 7.1.1(eslint@9.39.4)
       globals:
-        specifier: ^17.6.0
+        specifier: 17.6.0
         version: 17.6.0
       prettier:
         specifier: 3.6.2
@@ -196,7 +196,7 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
       typescript-eslint:
-        specifier: ^8.59.4
+        specifier: 8.61.1
         version: 8.61.1(eslint@9.39.4)(typescript@5.9.2)
 
 packages:
