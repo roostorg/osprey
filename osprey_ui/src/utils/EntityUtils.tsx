@@ -1,12 +1,9 @@
-import * as React from 'react';
-
 import Feature from '../components/common/Feature';
 import EntityWithPopover from '../components/entities/EntityWithPopover';
 import useApplicationConfigStore, { LabelInfoMapping } from '../stores/ApplicationConfigStore';
 import { SortedLabels, Label, LabelConnotation } from '../types/LabelTypes';
 import { FeatureLocation } from '../types/ConfigTypes';
 import EntityNameWithPopover from '../components/entities/EntityNameWithPopover';
-import FeatureName from '../components/common/FeatureName';
 
 export function wrapEntityKeysWithFeatureLocationsMenu(
   featureName: string,

@@ -29,7 +29,7 @@ const Collapse = ({
   defaultArrowPosition = true,
 }: CollapseProps) => {
   const contentRef = React.useRef(null);
-  const contentRect = useResizeObserver(contentRef.current);
+  const contentRect = useResizeObserver(contentRef);
 
   const maxHeight = contentRect?.height ?? 0;
 

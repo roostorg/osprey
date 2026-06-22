@@ -31,7 +31,7 @@ export class FormattedBulkJobTask {
     this.task = task;
     this.formatted_task = new Map();
 
-    const addItem = (key: string, value: any) => {
+    const addItem = (key: string, value: unknown) => {
       if (value === null) {
         this.formatted_task.set(key, 'None');
         return;

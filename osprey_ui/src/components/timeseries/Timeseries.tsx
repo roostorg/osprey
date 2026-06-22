@@ -13,7 +13,6 @@ import TimeseriesIcon from '../../uikit/icons/TimeseriesIcon';
 import Panel from '../common/Panel';
 
 import styles from './Timeseries.module.css';
-import { makeEntityRoute } from '../../utils/RouteUtils';
 
 const CHART_TYPE = 'column';
 // prettier-ignore
@@ -170,9 +169,11 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
 
   const [timeseriesData, setTimeseriesData] = React.useState<TimeseriesResult[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
-  const [granularity, setGranularity] = React.useState(getDefaultGranularityForTimeSpan(start, end));
+  const defaultGranularity = React.useMemo(() => getDefaultGranularityForTimeSpan(start, end), [start, end]);
+  const [granularity, setGranularity] = React.useState(defaultGranularity);
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset data and loading on query change
     setIsLoading(true);
 
     let shouldApply = true;
@@ -203,8 +204,9 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
 
   React.useEffect(() => {
     // update granularity when we change the query range
-    setGranularity(getDefaultGranularityForTimeSpan(start, end));
-  }, [start, end]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync granularity with calculated default
+    setGranularity(defaultGranularity);
+  }, [defaultGranularity]);
 
   function handleChartSelection(event: Highcharts.ChartSelectionContextObject): false {
     const newRange = event.xAxis?.[0];

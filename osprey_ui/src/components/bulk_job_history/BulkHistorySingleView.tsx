@@ -13,7 +13,7 @@ const BulkHistorySingleView = ({ taskId }: BulkHistoryPanelProps) => {
   return renderFromPromiseResult(viewContent, (bulkHistoryCards) => (
     <div className={styles.listContainer}>
       {bulkHistoryCards.map((value, index) => (
-        <BulkHistoryCard task={value} index={index} />
+        <BulkHistoryCard key={value.task_id} task={value} index={index} />
       ))}
     </div>
   ));

@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 interface FilterIconProps {
   width?: number;
   height?: number;
