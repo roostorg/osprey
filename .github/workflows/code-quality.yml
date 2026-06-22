@@ -46,7 +46,7 @@ jobs:
 
       - name: Run pre-commit python checks (ruff, mypy, etc.)
         env:
-          SKIP: prettier-osprey-ui
+          SKIP: prettier-osprey-ui,eslint-osprey-ui
         run: |
           uv run pre-commit install --install-hooks
           uv run pre-commit run --show-diff-on-failure --color=always --all-files
@@ -76,6 +76,10 @@ jobs:
 
       - name: Run prettier check
         run: corepack pnpm run format:check
+        working-directory: osprey_ui
+
+      - name: Run eslint check
+        run: corepack pnpm run lint
         working-directory: osprey_ui
 
       - name: Typecheck

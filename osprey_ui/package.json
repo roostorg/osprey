@@ -35,6 +35,7 @@
     "zustand": "3.5.2"
   },
   "devDependencies": {
+    "@eslint/js": "9.39.4",
     "@types/classnames": "2.2.9",
     "@types/cytoscape": "^3.19.4",
     "@types/cytoscape-dagre": "^2.3.0",
@@ -53,19 +54,22 @@
     "@types/react-router-dom": "5.3.3",
     "@types/react-virtualized": "9.21.8",
     "@types/uuid": "9.0.5",
-    "@typescript-eslint/eslint-plugin": "8.59.1",
-    "@typescript-eslint/parser": "8.59.1",
     "@rsbuild/core": "2.0.1",
     "@rsbuild/plugin-react": "1.4.6",
     "@rsbuild/plugin-sass": "1.5.1",
     "@rstest/core": "0.9.9",
     "core-js": "3.49.0",
-    "eslint": "8.57.0",
+    "eslint": "9.39.4",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react": "7.37.5",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.6.0",
     "prettier": "3.6.2",
     "rc-picker": "2.7.6",
     "react-refresh": "0.18.0",
     "sass": "^1.92.0",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "typescript-eslint": "8.61.1"
   },
   "scripts": {
     "start": "rsbuild",
@@ -75,8 +79,8 @@
     "preview": "rsbuild preview",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",
-    "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
-    "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix"
+    "lint": "eslint --suppressions-location ./eslint-suppressions.json --pass-on-unpruned-suppressions src",
+    "lint:fix": "eslint --suppressions-location ./eslint-suppressions.json --pass-on-unpruned-suppressions --fix src"
   },
   "browserslist": {
     "production": [
