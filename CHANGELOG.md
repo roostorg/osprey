@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### 📚 3rd party library updates
+- Upgrade `protobuf` from 4.25.8 to 5.29.6 ([#317](https://github.com/roostorg/osprey/issues/317), [#XXX](https://github.com/roostorg/osprey/pull/XXX)); as a downstream consequence, also upgrade 
+  - `grpcio` from 1.49.1/1.53.x to 1.74.0
+  - `grpcio-tools` from 1.49.1/1.53.x to 1.71.2
+  - `google-cloud-logging` from 3.4.0 to 3.12.0
+  - `google-cloud-pubsub` from 2.15.2 to 2.38.0
+  - `tink` from 1.9.0 to 1.15.0
+  - relax `grpcio-health-checking`, `grpcio-reflection`, and `grpcio-status` from exact pins to floor constraints
+  - regenerate all gRPC bindings
 - Upgrade `simplejson` from 3.19.3 to 3.20.2 ([#174](https://github.com/roostorg/osprey/pull/174) by [@dependabot](https://github.com/dependabot))
 - Upgrade `requests-mock` from 1.9.3 to 1.12.1 ([#176](https://github.com/roostorg/osprey/pull/176) by [@dependabot](https://github.com/dependabot))
 - Upgrade `antd` and `@ant-design/icons` to v5 (Ant Design 5 migration) ([#238](https://github.com/roostorg/osprey/pull/238) by [@haileyok](https://github.com/haileyok))
