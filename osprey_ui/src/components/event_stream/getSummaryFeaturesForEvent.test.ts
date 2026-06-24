@@ -1,9 +1,11 @@
+import { describe, it, expect } from '@rstest/core';
+
 import DefaultFeature from '../../models/DefaultFeature';
 import { OspreyEvent } from '../../types/QueryTypes';
 
 import { getSummaryFeaturesForEvent } from './getSummaryFeaturesForEvent';
 
-const makeEvent = (extracted: Record<string, unknown>): OspreyEvent => {
+const makeEvent = (extracted: Record<string, string>): OspreyEvent => {
   return {
     timestamp: '2025-01-01T00:00:00Z',
     id: 'evt-1',
