@@ -21,7 +21,7 @@ export async function getBulkJob(taskId: string | undefined): Promise<BulkJobTas
 }
 
 // use numJobs in the future to fetch N number of jobs
-export async function getLastNBulkJobs(numJobs: number = 25): Promise<BulkJobTask[]> {
+export async function getLastNBulkJobs(_numJobs: number = 25): Promise<BulkJobTask[]> {
   const response: HTTPResponse = await HTTPUtils.get(`/bulk_history`);
 
   if (!response.ok) {

@@ -103,7 +103,7 @@ function splitStringRegexMatch(str: string, pattern: string): Array<{ substring:
 
   try {
     regex = new RegExp(pattern, 'g');
-  } catch (error) {
+  } catch (_error) {
     // invalid regex can't match in the string, so no need to force error handling upstream.
     return [{ substring: str, matched: false }];
   }

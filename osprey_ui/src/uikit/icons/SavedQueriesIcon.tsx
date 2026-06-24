@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 interface SavedQueriesIconProps {
   width?: number;
   height?: number;
