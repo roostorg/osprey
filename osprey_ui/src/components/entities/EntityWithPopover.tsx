@@ -103,8 +103,17 @@ const EntityWithPopover = ({ entityId, featureName, entityType }: EntityWithPopo
   }>();
 
   const isRouteEntity = entityRouteType === entityType && entityRouteId === entityId;
-  const decodedEntityType = decodeURIComponent(entityType);
-  const decodedEntityId = decodeURIComponent(entityId);
+  // `decodeURIComponent` throws on malformed input (stray `%`, etc.). Fall
+  // back to the raw value so a bad ID doesn't crash the whole popover.
+  const safeDecode = (s: string): string => {
+    try {
+      return decodeURIComponent(s);
+    } catch {
+      return s;
+    }
+  };
+  const decodedEntityType = safeDecode(entityType);
+  const decodedEntityId = safeDecode(entityId);
 
   const handleShowLabelDrawer = () => {
     updateShowLabelDrawer(true);
