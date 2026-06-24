@@ -23,7 +23,7 @@ export async function getApplicationConfig(): Promise<ApplicationConfig> {
   rawConfigData.known_feature_locations.forEach((feature) => {
     const { source_path: category, name: featureName } = feature;
 
-    if (knownFeatureCategories.hasOwnProperty(category)) {
+    if (Object.prototype.hasOwnProperty.call(knownFeatureCategories, category)) {
       knownFeatureCategories[category].push(featureName);
     } else {
       knownFeatureCategories[category] = [featureName];

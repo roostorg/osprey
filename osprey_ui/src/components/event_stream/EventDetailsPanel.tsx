@@ -66,7 +66,7 @@ const MenuBar = ({ onClick, currentTab, storedExecutionResult }: MenuBarProps) =
   );
 };
 
-const Json = ({ content }: { content: any }) => {
+const Json = ({ content }: { content: unknown }) => {
   const code = hljs.highlight('json', JSON.stringify(content, null, 2), true);
   return (
     <pre className={styles.jsonWrap}>

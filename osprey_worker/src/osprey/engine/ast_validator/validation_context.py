@@ -62,8 +62,8 @@ class ValidationContext:
         self._validation_results = {}
         self._errors = []
         self._warnings = []
-        self._validator_registry = validator_registry or ValidatorRegistry.get_instance()
         self._udf_registry = udf_registry
+        self._validator_registry = validator_registry or ValidatorRegistry.get_instance()
         self._validator_stack = []
         self._validator_inputs = {}
         self._warning_as_error = warning_as_error

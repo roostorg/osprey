@@ -142,6 +142,7 @@ services:
       - druid-broker
       - postgres
       - snowflake-id-worker
+      - minio
     ports:
       - "127.0.0.1:5004:5004"
     command: ["osprey-ui-api"]
@@ -160,6 +161,12 @@ services:
       - BIGTABLE_EMULATOR_HOST=bigtable:8361
       - SNOWFLAKE_API_ENDPOINT=http://snowflake-id-worker:8088
       - SNOWFLAKE_EPOCH=1420070400000
+      - OSPREY_EXECUTION_RESULT_STORAGE_BACKEND=minio
+      - OSPREY_MINIO_ENDPOINT=minio:9000
+      - OSPREY_MINIO_ACCESS_KEY=minioadmin
+      - OSPREY_MINIO_SECRET_KEY=minioadmin123
+      - OSPREY_MINIO_SECURE=false
+      - OSPREY_MINIO_EXECUTION_RESULTS_BUCKET=execution-output
     volumes:
       - ./osprey_worker:/osprey/osprey_worker
       - ./osprey_rpc:/osprey/osprey_rpc
@@ -198,7 +205,7 @@ services:
   bigtable:
     hostname: bigtable
     container_name: bigtable
-    image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:572.0.0@sha256:f67318c2d4719e3d9579ee724dd16b9d028ae916c4919586ae01e9e26d6c1beb
     ports:
       - "127.0.0.1:8361:8361"
     command: >
@@ -210,11 +217,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 60s
     restart: unless-stopped
 
   bigtable-initializer:
     container_name: bigtable-initializer
-    image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:572.0.0@sha256:f67318c2d4719e3d9579ee724dd16b9d028ae916c4919586ae01e9e26d6c1beb
     depends_on:
       bigtable:
         condition: service_healthy

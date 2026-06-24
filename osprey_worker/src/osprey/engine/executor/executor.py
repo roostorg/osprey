@@ -16,7 +16,6 @@ from osprey.engine.stdlib.udfs.json_utils import MissingJsonPath
 from osprey.engine.udf.base import BatchableUDFBase
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
-from osprey.worker.lib.pigeon.exceptions import RPCException
 from result import Err, Ok
 
 from .dependency_chain import DependencyChain
@@ -155,8 +154,6 @@ def _wrapped_batch_execution(
                 error_info_.append(NodeErrorInfo(result.value, node))
             if not _is_spammy_exception(result.value):
                 exc_name = result.value.__class__.__name__
-                if isinstance(result.value, RPCException):
-                    exc_name = exc_name + f'.{result.value.code().name.lower()}'
                 metrics.increment(
                     'udf_execution',
                     tags=metric_tags
@@ -176,8 +173,6 @@ def _wrapped_batch_execution(
                 error_info_.append(NodeErrorInfo(e, node))
             if not _is_spammy_exception(e):
                 exc_name = e.__class__.__name__
-                if isinstance(e, RPCException):
-                    exc_name = exc_name + f'.{e.code().name.lower()}'
                 metrics.increment(
                     'udf_execution',
                     tags=metric_tags
@@ -228,8 +223,6 @@ def _wrapped_execution(
             # Ignore some well-known "unexpected" exceptions that are spammy.
             elif not _is_spammy_exception(caught_exception):
                 exc_name = caught_exception.__class__.__name__
-                if isinstance(caught_exception, RPCException):
-                    exc_name = exc_name + f'.{caught_exception.code().name.lower()}'
                 metrics.increment(
                     'udf_execution',
                     tags=metric_tags + [f'exc_name:{exc_name}', 'result:unexpected_failure'],

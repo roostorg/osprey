@@ -25,8 +25,8 @@ const nodeStyle: Css.Node = {
   shape: (node) => typeToShape[node.data('type')],
 };
 
-const ToolTip = ({ node }: { node: any }) => {
-  return <div>{node.data('file_path')}</div>;
+const ToolTip = ({ node }: { node: { data: (key: string) => unknown } }) => {
+  return <div>{String(node.data('file_path'))}</div>;
 };
 
 const RulesVisualizerView = () => {
@@ -166,7 +166,7 @@ function getLabel(node: Node) {
 }
 
 function getLabelTypeName(label_type?: string) {
-  const labelTypeName = Object.entries(LabelType).find(([key, value]) => value === label_type);
+  const labelTypeName = Object.entries(LabelType).find(([, value]) => value === label_type);
   return labelTypeName?.[0] || '';
 }
 

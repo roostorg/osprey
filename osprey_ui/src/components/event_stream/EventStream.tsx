@@ -89,6 +89,7 @@ const EventStream: React.FC = () => {
 
   React.useEffect(() => {
     const { start, end } = executedQuery;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset stream when query changes
     setEventStream([]);
     setQueryOffset(null);
 

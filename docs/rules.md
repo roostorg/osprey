@@ -4,37 +4,37 @@
 
 ## Creating Rules
 
-Osprey rules are written in SML (Some Madeup Language) which is a subset of Python with additional restrictions to simplify rule writing. You may write rules that are specific to
+Osprey rules are written in SML (“Some Madeup Language”) which is a subset of Python with additional restrictions to simplify rule writing. You may write rules that are specific to
 single event types on a network, or ones that are applied to multiple event types.
 
-By themselves, rules only create variables, and without a corresponding `WhenRules()` function call, the rule will have no effects outside of evaluation and query functionality.
+By themselves, rules only create variables; without a corresponding `WhenRules()` function call, the rule will have no effects outside of evaluation and query functionality.
 
-Rules currently support the following concepts through the `Rule(...)` function of the same name.
+Rules currently support the following concepts through the `Rule(...)` function of the same name:
 
-- Name
+- **Name**
 
-    `Rule_Name = Rule(...)`
+  `Rule_Name = Rule(...)`
 
-    The name of the rule also functions as a conventional "RuleId" and the name of the bool that can be used to query individual rule hits in the Osprey Query UI. As a result, changing the name of a rule after activation may affect historical query results in the UI if not logged externally.
+  The name of the rule also functions as a conventional "RuleId" and the name of the bool that can be used to query individual rule hits in the Osprey Query UI. As a result, changing the name of a rule after activation may affect historical query results in the UI if not logged externally.
 
-- Logic
+- **Logic**
 
-    `when_all=[]`
+  `when_all=[]`
 
-    The actual logic that will be used to evaluate Osprey rules is all encompassed as single comma-delimited list of signals within the `when_all` parameter of the `Rule(...)` function and supports the use of Labels, Plugins, UDFs and other values to help enrich heuristics.
+  The actual logic that will be used to evaluate Osprey rules is all encompassed as single comma-delimited list of signals within the `when_all` parameter of the `Rule(...)` function and supports the use of Labels, Plugins, UDFs and other values to help enrich heuristics.
 
     At present, when evaluating UDFs or abstracted variables, any `NULL` evaluations in the series will cause the entire rule function to evaluate as `NULL`, which may be undesirable.
 
-- Description
+- **Description**
 
-    `description=f''`
+  `description=f''`
 
-    There is an additional string description field that is able to be emitted alongside the rule itself to external systems such as logging and ticketing systems to help enrich work-streams that may benefit from plain-language context on what the rule criteria is and what the rule may intend to do.
+  There is an additional string description field that is able to be emitted alongside the rule itself to external systems such as logging and ticketing systems to help enrich work-streams that may benefit from plain-language context on what the rule criteria is and what the rule may intend to do.
 
     It may be helpful to include dynamic variables as well to help enrich operational workflows that may need to identify specific values related to the trigger criteria.
 
 
-An example is below of a simple rule using various signal evaluations and out-of-the-box UDFs.
+Here's an example of a simple rule using various signal evaluations and out-of-the-box UDFs:
 
 ```python
 My_Rule_Name_v2 = Rule(
@@ -303,7 +303,7 @@ UDF outputs can also implement the `CustomExtractedFeature` interface - which ge
 
 ## Labels
 
-Labels are a standard plugin that enable stateful rules, and touch many parts of Osprey. They are effectively tags on various entities, which may be arbitrarily defined.
+Labels are a standard plugin that enable stateful rules, and touch many parts of Osprey. They are effectively tags on various entities, which may be arbitrarily defined. For more about labels, see [User Guide → Investigate → Labels](user/investigate/labels.md).
 
 ### Creating Entities
 

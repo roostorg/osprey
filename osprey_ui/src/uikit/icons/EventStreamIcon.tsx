@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 interface EventStreamIconProps {
   width?: number;
   height?: number;

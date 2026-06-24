@@ -20,7 +20,7 @@ const RulesVisualizerHeader = ({
   showLabelDownstream,
 }: {
   cy: Core | null;
-  setIsLoading: Function;
+  setIsLoading: (loading: boolean) => void;
   showLabelUpstream: boolean;
   showLabelDownstream: boolean;
 }) => {
@@ -107,7 +107,6 @@ const RulesVisualizerHeader = ({
             onSelect={handleFeatureSelect}
             filterOption
             defaultOpen
-            autoFocus
           >
             <Input.Search size="large" placeholder="Search by action or label" enterButton allowClear />
           </AutoComplete>
@@ -118,7 +117,7 @@ const RulesVisualizerHeader = ({
   );
 };
 
-function getSuggestions(actions: Set<String>, labels: Map<string, LabelInfo>) {
+function getSuggestions(actions: Set<string>, labels: Map<string, LabelInfo>) {
   return [
     {
       label: 'Actions',

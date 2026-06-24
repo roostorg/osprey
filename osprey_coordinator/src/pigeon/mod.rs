@@ -32,7 +32,6 @@ use tower::util::BoxCloneService;
 use tower::{Layer, Service as TowerService, ServiceExt};
 use tracing::{debug, info, warn};
 
-pub mod grpc_client;
 mod grpc_timeout;
 mod health;
 mod instrumented_connection;

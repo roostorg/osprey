@@ -7,7 +7,7 @@ import useApplicationConfigStore from '../../stores/ApplicationConfigStore';
 import { LabelStatus, LabelMutation, Label } from '../../types/LabelTypes';
 import { IntervalOptions } from '../../types/QueryTypes';
 import OspreyButton, { ButtonColors } from '../../uikit/OspreyButton';
-import Text, { TextSizes, TextWeights } from '../../uikit/Text';
+import Text, { TextWeights } from '../../uikit/Text';
 
 import styles from './LabelForm.module.css';
 

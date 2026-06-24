@@ -1,9 +1,0 @@
-{
-  "plugins": ["react-hooks"],
-  "overrides": [
-    {
-      "files": ["**/*.{ts,tsx}"],
-      "parser": "@typescript-eslint/parser"
-    }
-  ]
-}

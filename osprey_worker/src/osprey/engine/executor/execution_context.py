@@ -172,6 +172,10 @@ class ExecutionContext:
         """Returns the action name that the execution context is currently being invoked upon."""
         return self._action.action_name
 
+    def get_action_id(self) -> int:
+        """Returns the action id of the event that the execution context is currently being invoked upon."""
+        return self._action.action_id
+
     def get_action_time(self) -> datetime:
         """Returns the time of the action that the execution context is currently being invoked upon."""
         return self._action.timestamp

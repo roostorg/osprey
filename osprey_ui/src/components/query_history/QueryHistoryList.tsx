@@ -59,8 +59,10 @@ const QueryHistoryListContent = ({
   }, [offset, userEmail]);
 
   React.useEffect(() => {
-    setAccumulatedQueries(accumulatedQueries);
-  }, [accumulatedQueries, initialQueries]);
+    // Reset accumulated queries when initial queries change (parent data reload)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync with parent data load
+    setAccumulatedQueries(initialQueries);
+  }, [initialQueries]);
 
   const handleCancelSave = () => {
     setQueryIdToSave(null);

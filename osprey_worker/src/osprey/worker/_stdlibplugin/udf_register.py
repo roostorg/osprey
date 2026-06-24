@@ -12,6 +12,7 @@ from osprey.engine.stdlib.udfs.experiments import (
     InExperiment,
 )
 from osprey.engine.stdlib.udfs.extract_cookie import ExtractCookie
+from osprey.engine.stdlib.udfs.get_action_id import GetActionId
 from osprey.engine.stdlib.udfs.get_action_name import GetActionName
 from osprey.engine.stdlib.udfs.import_ import Import
 from osprey.engine.stdlib.udfs.ip_network import IpNetwork
@@ -86,6 +87,7 @@ def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
         ExperimentsBucketAssignment,
         InExperiment,
         ExtractCookie,
+        GetActionId,
         GetActionName,
         HasLabel,
         Import,
