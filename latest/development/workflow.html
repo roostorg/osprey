@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-39dc9328.js";
+            window.path_to_searchindex_js = "../searchindex-6f3c97c1.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-64f08d54.js"></script>
@@ -192,13 +192,40 @@
 <li><strong>YAML/JSON/TOML validation</strong></li>
 <li><strong>Ruff linting and formatting</strong></li>
 </ol>
+<h3 id="manual-checks"><a class="header" href="#manual-checks">Manual Checks</a></h3>
+<p>Before pushing, run:</p>
+<pre><code class="language-bash"># Comprehensive linting check
+uv run ruff check
+
+# Format all code
+uv run ruff format
+
+# Type checking (on specific files/modules)
+uv run mypy osprey_worker/src/osprey_worker/lib
+# Or you can type check every module (this will happen in CI)
+uv run mypy .
+
+# Run all pre-commit hooks
+uv run pre-commit run --all-files
+</code></pre>
+<h2 id="commit-standards"><a class="header" href="#commit-standards">Commit Standards</a></h2>
+<p>Follow <a href="https://www.conventionalcommits.org/">Conventional Commits</a> format:</p>
+<pre><code>feat: add user authentication system
+fix: resolve database connection timeout
+docs: update API documentation
+refactor: simplify rule evaluation logic
+</code></pre>
+<p><strong>Examples:</strong></p>
+<ul>
+<li><code>feat:</code> - New features</li>
+<li><code>fix:</code> - Bug fixes</li>
+<li><code>docs:</code> - Documentation changes</li>
+<li><code>refactor:</code> - Code refactoring</li>
+<li><code>test:</code> - Adding or updating tests</li>
+<li><code>chore:</code> - Maintenance tasks</li>
+</ul>
 <h2 id="making-changes"><a class="header" href="#making-changes">Making Changes</a></h2>
 <ol>
-<li>
-<p><strong>Sync Dependencies</strong></p>
-<pre><code class="language-bash">uv sync --frozen
-</code></pre>
-</li>
 <li>
 <p><strong>Create a new branch:</strong></p>
 <pre><code class="language-bash">git checkout -b username/feature-name
@@ -209,11 +236,7 @@
 </li>
 <li>
 <p><strong>Run quality checks:</strong></p>
-<pre><code class="language-bash"># This prevents uv.lock from being modified
-# this is preferred.
-uv sync --frozen
-
-uv run ruff check --fix
+<pre><code class="language-bash">uv run ruff check --fix
 uv run ruff format
 </code></pre>
 </li>
@@ -233,38 +256,6 @@ git commit -m "feat: descriptive commit message"
 </code></pre>
 </li>
 </ol>
-<h2 id="commit-standards"><a class="header" href="#commit-standards">Commit Standards</a></h2>
-<p>Follow <a href="https://www.conventionalcommits.org/">Conventional Commits</a> format:</p>
-<pre><code>feat: add user authentication system
-fix: resolve database connection timeout
-docs: update API documentation
-refactor: simplify rule evaluation logic
-</code></pre>
-<p><strong>Examples:</strong></p>
-<ul>
-<li><code>feat:</code> - New features</li>
-<li><code>fix:</code> - Bug fixes</li>
-<li><code>docs:</code> - Documentation changes</li>
-<li><code>refactor:</code> - Code refactoring</li>
-<li><code>test:</code> - Adding or updating tests</li>
-<li><code>chore:</code> - Maintenance tasks</li>
-</ul>
-<h3 id="manual-checks"><a class="header" href="#manual-checks">Manual Checks</a></h3>
-<p>Before pushing, run:</p>
-<pre><code class="language-bash"># Comprehensive linting check
-uv run ruff check
-
-# Format all code
-uv run ruff format
-
-# Type checking (on specific files/modules)
-uv run mypy osprey_worker/src/osprey_worker/lib
-# Or you can type check every module (this will happen in CI)
-uv run mypy .
-
-# Run all pre-commit hooks
-uv run pre-commit run --all-files
-</code></pre>
 
                     </main>
 

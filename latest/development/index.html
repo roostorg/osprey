@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-39dc9328.js";
+            window.path_to_searchindex_js = "../searchindex-6f3c97c1.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-64f08d54.js"></script>
@@ -273,6 +273,24 @@ def register_output_sinks(config: Config) -&gt; Sequence[BaseOutputSink]:
 def register_ast_validators() -&gt; None:
     # Register AST validators
 </code></pre>
+<h3 id="available-hooks"><a class="header" href="#available-hooks">Available hooks</a></h3>
+<p>Implement any subset of these in your plugin’s <code>register_plugins.py</code>:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Hook</th><th>Returns</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td><code>register_udfs</code></td><td><code>Sequence[Type[UDFBase]]</code></td><td>Custom user-defined functions.</td></tr>
+<tr><td><code>register_output_sinks</code></td><td><code>Sequence[BaseOutputSink]</code></td><td>Where execution results go.</td></tr>
+<tr><td><code>register_ast_validators</code></td><td><code>Sequence[Type[BaseValidator]]</code></td><td>Extra SML validators.</td></tr>
+<tr><td><code>register_action_proto_deserializer</code></td><td><code>ActionProtoDeserializer | None</code></td><td>Custom action proto → JSON.</td></tr>
+<tr><td><code>register_input_stream</code></td><td><code>BaseInputStream</code></td><td>Single-provider (<code>firstresult</code>).</td></tr>
+<tr><td><code>register_execution_result_store</code></td><td><code>ExecutionResultStore</code></td><td>Single-provider (<code>firstresult</code>).</td></tr>
+<tr><td><code>register_labels_service_or_provider</code></td><td><code>LabelsServiceBase | LabelsProvider</code></td><td>Single-provider (<code>firstresult</code>).</td></tr>
+</tbody>
+</table>
+</div>
 <h2 id="rules"><a class="header" href="#rules">Rules</a></h2>
 <p>Rules are written in SML, some examples are provided in <code>example_rules/</code> with YAML config, the rules are mounted to the worker processes when the containers start via environment variables. ex:</p>
 <pre><code class="language-bash">OSPREY_RULES=./example_rules uv run python3.11 osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink
