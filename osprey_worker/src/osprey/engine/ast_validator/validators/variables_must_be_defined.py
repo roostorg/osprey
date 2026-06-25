@@ -9,7 +9,7 @@ from osprey.engine.utils.get_closest_string_within_threshold import get_closest_
 from ..base_validator import BaseValidator, HasInput, HasResult
 from .imports_must_not_have_cycles import ImportsMustNotHaveCycles
 from .unique_stored_names import UniqueStoredNames
-from .validate_call_kwargs import ValidateCallKwargs
+from .validate_call_kwargs import ValidateCallKwargs, udf_mapping_key
 
 
 class VariablesMustBeDefined(BaseValidator, HasInput[Set[str]], HasResult[Mapping[Source, Set[str]]]):
@@ -131,7 +131,7 @@ class VariablesMustBeDefined(BaseValidator, HasInput[Set[str]], HasResult[Mappin
 
     def get_imported_sources(self, node: Call) -> Sequence[Source]:
         udf_mapping = self.context.get_validator_result(ValidateCallKwargs)
-        call_udf, _ = udf_mapping[id(node)]
+        call_udf, _ = udf_mapping[udf_mapping_key(node)]
         assert isinstance(call_udf, Import)
         return [s for s, _ in call_udf.sources_and_spans]
 

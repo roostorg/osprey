@@ -22,7 +22,7 @@ from typing_extensions import get_origin
 from ..base_validator import HasInput, HasResult, SourceValidator
 from .imports_must_not_have_cycles import ImportsMustNotHaveCycles
 from .unique_stored_names import UniqueStoredNames
-from .validate_call_kwargs import UDFNodeMapping, ValidateCallKwargs
+from .validate_call_kwargs import UDFNodeMapping, ValidateCallKwargs, udf_mapping_key
 from .validate_dynamic_calls_have_annotated_rvalue import ValidateDynamicCallsHaveAnnotatedRValue
 from .variables_must_be_defined import VariablesMustBeDefined
 
@@ -301,7 +301,7 @@ class ValidateStaticTypes(SourceValidator, HasInput[Dict[str, _TypeAndSpan]], Ha
         return List[child_type]  # type: ignore # Doesn't like runtime types like this
 
     def _validate_call(self, call: grammar.Call) -> type:
-        udf, arguments = self._udf_node_mapping[id(call)]
+        udf, arguments = self._udf_node_mapping[udf_mapping_key(call)]
 
         # Special case to handle import. Need to do this so we populate name types.
         if isinstance(udf, Import):
