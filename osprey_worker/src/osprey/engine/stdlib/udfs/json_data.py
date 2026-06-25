@@ -20,11 +20,11 @@ class Arguments(ArgumentsBase):
     Defaults to `True`. If `False`, will gracefully handle both missing and present-but-null values.
     """
 
-    coerce_type: bool = False
+    coerce_type: bool = True
     """Whether to attempt to convert the value to the expected type.
 
-    By default `JsonData` just asserts that the value already is the right type. Setting this to `True` can be useful
-    to, eg, parse a number from a string if the number was too big to represent in JSON.
+    By default `JsonData` will attempt to coerce the value to the declared type (e.g., parse a number from a string).
+    If coercion fails, it still raises `InvalidJsonType`. Set to `False` to require exact type matches.
     """
 
 

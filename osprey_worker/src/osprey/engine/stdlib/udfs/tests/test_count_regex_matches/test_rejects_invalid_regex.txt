@@ -1,0 +1,5 @@
+error: invalid regex pattern '(': missing ), unterminated subpattern at position 0
+--> main.sml:1:33
+     |
+   1 | Foo = CountRegexMatches(patterns=["valid", "("], target="")
+     |                                  ^

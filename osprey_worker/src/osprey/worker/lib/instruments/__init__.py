@@ -80,6 +80,18 @@ class _DogStatsd(DogStatsd):
             max_buffer_size=max_buffer_size,  # type:ignore
             constant_tags=constant_tags,
             use_ms=use_ms,
+            # Pack multiple metrics per datagram. Default (disable_buffering=True) sends one
+            # UDP packet per metric, which overruns the DD agent's socket recv buffer at
+            # high emission rates and causes silent kernel drops. max_buffer_len auto-selects
+            # 1432 bytes for UDP / 8192 for UDS.
+            disable_buffering=False,
+            # Client-side aggregation of counters/gauges/sets: collapses repeated
+            # increment('foo', tags=T) calls on the same (metric, tags) within a flush
+            # window into a single send. At ~1.5k action/s/process emitting ~100 distinct
+            # (metric, action-tag) combos, this cuts counter-packet rate by ~30x without
+            # changing the aggregated total the agent sees. Histograms and timings are
+            # untouched — they still emit every sample so percentiles stay accurate.
+            disable_aggregation=False,
         )
         self.prefix = None
         self.debug = False
@@ -204,6 +216,19 @@ class _DogStatsd(DogStatsd):
 
 
 metrics = _DogStatsd()
+
+
+def set_worker_type_tag(worker_type: str) -> None:
+    """Add worker_type as a constant tag on the metrics singleton.
+
+    Must be called once at startup. All subsequent metrics will include
+    the worker_type tag automatically — no per-call-site changes needed.
+    """
+    tag = f'worker_type:{worker_type}'
+    if metrics.constant_tags is None:
+        metrics.constant_tags = [tag]
+    elif tag not in metrics.constant_tags:
+        metrics.constant_tags.append(tag)
 
 
 class concurrency(contextlib.ContextDecorator):

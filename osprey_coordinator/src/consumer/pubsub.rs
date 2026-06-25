@@ -117,7 +117,11 @@ async fn create_pubsub_subscription_client(
 ) -> SubscriberClient<InterceptedService<Channel, AuthorizationHeaderInterceptor>> {
     let emulator_host = std::env::var("PUBSUB_EMULATOR_HOST").ok();
 
-    let timeout = Duration::from_secs(5);
+    let timeout_secs: u64 = std::env::var("PUBSUB_CHANNEL_TIMEOUT_SECS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(5);
+    let timeout = Duration::from_secs(timeout_secs);
 
     if let Some(emulator_host) = emulator_host {
         tracing::info!("Creating subscription client to emulator");
@@ -179,6 +183,14 @@ pub async fn start_pubsub_subscriber(
         .unwrap_or("5000".to_string())
         .parse::<usize>()
         .unwrap();
+    let min_lease_extension_secs = std::env::var("PUBSUB_MIN_LEASE_EXTENSION_SECS")
+        .unwrap_or_else(|_| "30".to_string())
+        .parse::<u32>()
+        .unwrap();
+    let max_lease_extension_secs = std::env::var("PUBSUB_MAX_LEASE_EXTENSION_SECS")
+        .unwrap_or_else(|_| "600".to_string())
+        .parse::<u32>()
+        .unwrap();
 
     let config = ConsumerConfig::default();
     let max_time_to_send_to_async_queue = config.max_time_to_send_to_async_queue;
@@ -191,7 +203,8 @@ pub async fn start_pubsub_subscriber(
     let flow_control = FlowControl::default()
         .set_max_messages(max_messages)
         .set_max_processing_messages(max_processing_messages)
-        .set_max_bytes(1024 * 1024 * 1024);
+        .set_max_bytes(1024 * 1024 * 1024)
+        .set_duration_per_lease_extension(min_lease_extension_secs, max_lease_extension_secs);
     StreamingPullManager::new(
         subscriber_client,
         subscription_name,

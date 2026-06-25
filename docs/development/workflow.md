@@ -17,48 +17,25 @@ Every commit automatically runs:
 3. **YAML/JSON/TOML validation**
 4. **Ruff linting and formatting**
 
-## Making Changes
+### Manual Checks
 
-1. **Sync Dependencies**
-   ```bash
-   uv sync --frozen
-   ```
+Before pushing, run:
 
-2. **Create a new branch:**
+```bash
+# Comprehensive linting check
+uv run ruff check
 
-   ```bash
-   git checkout -b username/feature-name
-   ```
+# Format all code
+uv run ruff format
 
-3. **Make your changes**
+# Type checking (on specific files/modules)
+uv run mypy osprey_worker/src/osprey_worker/lib
+# Or you can type check every module (this will happen in CI)
+uv run mypy .
 
-4. **Run quality checks:**
-
-   ```bash
-   # This prevents uv.lock from being modified
-   # this is preferred.
-   uv sync --frozen
-
-   uv run ruff check --fix
-   uv run ruff format
-   ```
-
-5. **Test your changes** (if tests exist)
-
-6. **Commit your changes:**
-
-   ```bash
-   git add .
-   git commit -m "feat: descriptive commit message"
-   ```
-
-   Pre-commit hooks will run automatically and may fix formatting issues.
-
-7. **Push your branch:**
-
-   ```bash
-   git push origin username/feature-name
-   ```
+# Run all pre-commit hooks
+uv run pre-commit run --all-files
+```
 
 ## Commit Standards
 
@@ -80,22 +57,36 @@ refactor: simplify rule evaluation logic
 - `test:` - Adding or updating tests
 - `chore:` - Maintenance tasks
 
-### Manual Checks
+## Making Changes
 
-Before pushing, run:
+1. **Create a new branch:**
 
-```bash
-# Comprehensive linting check
-uv run ruff check
+   ```bash
+   git checkout -b username/feature-name
+   ```
 
-# Format all code
-uv run ruff format
+2. **Make your changes**
 
-# Type checking (on specific files/modules)
-uv run mypy osprey_worker/src/osprey_worker/lib
-# Or you can type check every module (this will happen in CI)
-uv run mypy .
+3. **Run quality checks:**
 
-# Run all pre-commit hooks
-uv run pre-commit run --all-files
-```
+   ```bash
+   uv run ruff check --fix
+   uv run ruff format
+   ```
+
+4. **Test your changes** (if tests exist)
+
+5. **Commit your changes:**
+
+   ```bash
+   git add .
+   git commit -m "feat: descriptive commit message"
+   ```
+
+   Pre-commit hooks will run automatically and may fix formatting issues.
+
+6. **Push your branch:**
+
+   ```bash
+   git push origin username/feature-name
+   ```
