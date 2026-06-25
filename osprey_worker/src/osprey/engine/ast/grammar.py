@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import OrderedDict
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from pathlib import Path
@@ -12,13 +12,52 @@ from gevent.lock import Semaphore
 # from osprey.worker.ui_api.lib.osprey_shared.logging import get_logger
 from osprey.engine.utils.types import add_slots, cached_property
 
-# Keep these outside `Source` so we don't break pickling/hashing/eq
-# Will this leak memory? Maybe
-# TODO(old): put this stuff back in cached_property
-parsed_ast_root_cache: Dict['Source', 'Root'] = {}
-ast_root_lock_cache: Dict['Source', Semaphore] = defaultdict(lambda: Semaphore())
-
 # logger = get_logger()
+
+# Maximum number of parsed source ASTs retained at once. A ruleset is in the low thousands of
+# files; this leaves headroom for a few reload generations while bounding growth on the per-query
+# UI-API parse path, which previously leaked an AST for every distinct query for the process life.
+_AST_ROOT_CACHE_MAX_SIZE = 4096
+
+
+class _BoundedASTRootCache:
+    """A size-bounded, least-recently-used cache mapping a `Source` to its parsed `Root`.
+
+    Kept outside `Source` so we don't break pickling/hashing/eq on the frozen dataclass. Replaces a
+    previously unbounded module-global dict (and a per-`Source` lock `defaultdict`) that never
+    evicted, leaking every distinct source parsed over the process lifetime.
+    """
+
+    def __init__(self, max_size: int) -> None:
+        assert max_size > 0, 'cache max_size must be positive'
+        self._max_size = max_size
+        self._entries: 'OrderedDict[Source, Root]' = OrderedDict()
+
+    def get(self, source: 'Source') -> 'Optional[Root]':
+        root = self._entries.get(source)
+        if root is not None:
+            self._entries.move_to_end(source)
+        return root
+
+    def put(self, source: 'Source', root: 'Root') -> None:
+        self._entries[source] = root
+        self._entries.move_to_end(source)
+        while len(self._entries) > self._max_size:
+            self._entries.popitem(last=False)
+
+    def __len__(self) -> int:
+        return len(self._entries)
+
+    def __contains__(self, source: object) -> bool:
+        return source in self._entries
+
+
+parsed_ast_root_cache = _BoundedASTRootCache(_AST_ROOT_CACHE_MAX_SIZE)
+
+# A single lock guarding parsing. Parsing is pure CPU work that doesn't yield and only runs on a
+# cache miss, so one global lock suffices and -- unlike the previous per-`Source` defaultdict --
+# does not retain a lock object per distinct source forever.
+_ast_root_parse_lock = Semaphore()
 
 
 @add_slots
@@ -47,24 +86,15 @@ class Source:
     @property
     def ast_root(self) -> 'Root':
         """Returns the ast of this source."""
-        ast_root_lock = ast_root_lock_cache[self]
-        # If there is lock contention (which there should never be, print out some debug info).
-        if ast_root_lock.locked():
-            import traceback
-
-            # logger.error('CONTENTION FOR AST ROOT LOCK')
-            traceback.print_stack()
-
-        with ast_root_lock:
-            if self in parsed_ast_root_cache:
-                return parsed_ast_root_cache[self]
+        with _ast_root_parse_lock:
+            cached = parsed_ast_root_cache.get(self)
+            if cached is not None:
+                return cached
 
             from .py_ast import transform
 
-            # logger.debug(f'transforming {self.path}')
             parsed_ast_root = transform(self)
-            parsed_ast_root_cache[self] = parsed_ast_root  # hack to get around frozen dataclass for now
-            # logger.debug(f'finished transforming {self.path}')
+            parsed_ast_root_cache.put(self, parsed_ast_root)
             return parsed_ast_root
 
 
