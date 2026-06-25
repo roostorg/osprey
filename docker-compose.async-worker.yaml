@@ -1,0 +1,24 @@
+# EXPERIMENTAL — opt-in asyncio-native worker (Phase 0: static rules + stdout sink,
+# no Kafka input). Kept in its own compose file so it is never built or started by the
+# default stack (or the `test` profile). Run it explicitly with:
+#   docker compose -f docker-compose.async-worker.yaml up --build osprey-async-worker
+services:
+  osprey-async-worker:
+    container_name: osprey-async-worker
+    build:
+      context: .
+      dockerfile: osprey_async_worker/Dockerfile
+    command: ["osprey-async-worker"]
+    environment:
+      - PYTHONPATH=/osprey
+      # Bundled stdlib example rules + sample actions so the worker runs out of the box.
+      - OSPREY_RULES_PATH=/osprey/osprey_async_worker/example_rules
+      - OSPREY_INPUT_FILE=/osprey/osprey_async_worker/example_rules/sample_actions.jsonl
+      - DD_TRACE_ENABLED=False
+      - DD_DOGSTATSD_DISABLE=True
+    volumes:
+      - ./osprey_async_worker:/osprey/osprey_async_worker
+      - ./osprey_worker:/osprey/osprey_worker
+      - ./osprey_rpc:/osprey/osprey_rpc
+      - ./example_rules:/osprey/example_rules
+      - ./entrypoint.sh:/osprey/entrypoint.sh
