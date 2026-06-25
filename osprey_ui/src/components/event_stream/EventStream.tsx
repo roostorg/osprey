@@ -7,7 +7,6 @@ import {
 } from '@ant-design/icons';
 import { Empty, List, Skeleton, Tooltip, Spin } from 'antd';
 import classNames from 'classnames';
-import { memoize } from 'lodash';
 import { AutoSizer, List as VList, ListRowProps } from 'react-virtualized';
 import shallow from 'zustand/shallow';
 
@@ -20,6 +19,7 @@ import EventStreamIcon from '../../uikit/icons/EventStreamIcon';
 import Panel from '../common/Panel';
 import EventStreamCard from './EventStreamCard';
 import FeatureSelectModal from './FeatureSelectModal';
+import { getSummaryFeaturesForEvent } from './getSummaryFeaturesForEvent';
 
 import styles from './EventStream.module.css';
 import { FeatureLocation } from '../../types/ConfigTypes';
@@ -119,14 +119,6 @@ const EventStream: React.FC = () => {
     return eventStream.length - index < 5;
   };
 
-  const getSummaryFeatures = React.useMemo(
-    () =>
-      memoize((actionName: string) =>
-        defaultSummaryFeatures.filter((f) => f.appliesTo(actionName)).map((f) => f.features)
-      ),
-    [defaultSummaryFeatures]
-  );
-
   const renderListRows = ({ key, index, style, isVisible }: ListRowProps) => {
     if (isVisible && shouldLoadMoreResults(index)) {
       handlePaginatedScanQuery();
@@ -134,7 +126,9 @@ const EventStream: React.FC = () => {
 
     const item = eventStream[index];
     const features =
-      customSummaryFeatures == null ? getSummaryFeatures(item.extracted_features.ActionName) : [customSummaryFeatures];
+      customSummaryFeatures == null
+        ? getSummaryFeaturesForEvent(item, defaultSummaryFeatures)
+        : [customSummaryFeatures];
 
     return (
       <List.Item
@@ -159,7 +153,7 @@ const EventStream: React.FC = () => {
 
     const features =
       customSummaryFeatures == null
-        ? getSummaryFeatures(eventStream[index].extracted_features.ActionName)
+        ? getSummaryFeaturesForEvent(eventStream[index], defaultSummaryFeatures)
         : [customSummaryFeatures];
 
     if (!features.length) {
