@@ -154,7 +154,7 @@ class ExecutionContext:
         self._visited_executions: set[DependencyChain] = set()
         # a k/v store of effects, by effect type
         self._effects: defaultdict[Type[EffectBase], list[EffectBase]] = defaultdict(list)
-        self._external_service_accessors_by_getter_id: dict[int, ExternalServiceAccessor[Any, Any]] = {}
+        self._external_service_accessors_by_getter_id: dict[int, Any] = {}
         self._async_external_service_accessors_by_getter_id: dict[int, Any] = {}
         self._dependency_dag = TopologicalSorter()
         self._chain_by_id: dict[int, DependencyChain] = {}
