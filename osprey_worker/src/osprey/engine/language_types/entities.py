@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Tuple, Type, TypeVar, Union
+from typing import Any, Type, TypeVar
 
 import typing_inspect
 from osprey.engine.language_types.osprey_invariant_generic import OspreyInvariantGeneric
@@ -22,7 +22,7 @@ class EntityT(OspreyInvariantGeneric[_T], PostExecutionConvertible[_T]):
         if t not in (str, int):
             raise TypeError(f'Can only have `str` or `int` entities, got `{t.__name__}`')
 
-    def __class_getitem__(cls, args: Union[Type[Any], Tuple[Type[Any], ...]]) -> Type[Any]:
+    def __class_getitem__(cls, args: Type[Any] | tuple[Type[Any], ...]) -> Type[Any]:
         ret_cls = super().__class_getitem__(args)
 
         # Because the super method returned we know we have reasonably shaped args

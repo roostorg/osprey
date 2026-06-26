@@ -1,6 +1,7 @@
 import time
+from collections.abc import Iterable
 from datetime import datetime, timedelta
-from typing import Any, Iterable, List, Optional, Set
+from typing import Any
 
 import sentry_sdk
 from osprey.engine.language_types.entities import EntityT
@@ -110,7 +111,7 @@ class BulkLabelSink(BaseSink):
                 tags.append(f'prev_status:{task.task_status}')
                 metrics.increment('handled_message', tags=tags)
 
-    def _build_top_n_queries(self, task: BulkLabelTask) -> List[TopNDruidQuery]:
+    def _build_top_n_queries(self, task: BulkLabelTask) -> list[TopNDruidQuery]:
         """
         Returns a list of `TopNDruidQuery`s.
         These are separated based on smaller time intervals if the task is set to `no_limit`,
@@ -120,7 +121,7 @@ class BulkLabelSink(BaseSink):
         assert isinstance(task.query, dict)
         query = task.query.copy()
         query['dimension'] = task.dimension
-        queries: List[TopNDruidQuery] = []
+        queries: list[TopNDruidQuery] = []
 
         query['limit'] = BULK_LABEL_DEFAULT_LIMIT
         claim_until_seconds = DEFAULT_BULK_LABEL_COLLECTING_HEARTBEAT
@@ -155,7 +156,7 @@ class BulkLabelSink(BaseSink):
 
         return queries
 
-    def _collect_entity_ids(self, task: BulkLabelTask) -> Set[str]:
+    def _collect_entity_ids(self, task: BulkLabelTask) -> set[str]:
         def _execute_top_n_query_and_get_result(query: TopNDruidQuery) -> Any:
             try:
                 query_data: TopNPoPResponse = query.execute(
@@ -171,7 +172,7 @@ class BulkLabelSink(BaseSink):
                     return query_data['result']
 
                 # Fall back to parsing logic if direct access fails
-                current_raw_data: List[PeriodData] = query_data.current_period
+                current_raw_data: list[PeriodData] = query_data.current_period
                 if not current_raw_data:
                     return dict()
                 current_period = PeriodData.parse_obj(current_raw_data[0]).dict(exclude={'timestamp'})
@@ -221,7 +222,7 @@ class BulkLabelSink(BaseSink):
         assert task.excluded_entities is not None
         queries = self._build_top_n_queries(task)
         total_num_queries = len(queries)
-        entity_ids: Set[str] = set()
+        entity_ids: set[str] = set()
         excluded_ids = set(task.excluded_entities)
         query_timeout = (
             DEFAULT_BULK_LABEL_DRUID_QUERY_TIMEOUT if not task.no_limit else NO_LIMIT_BULK_LABEL_DRUID_QUERY_TIMEOUT
@@ -264,7 +265,7 @@ class BulkLabelSink(BaseSink):
     def _process_task(self, task: BulkLabelTask) -> None:
         logger.info(f'[task_id:{task.id}] Starting bulk label task')
 
-        entity_ids: Set[str] = self._collect_entity_ids(task)
+        entity_ids: set[str] = self._collect_entity_ids(task)
         # https://docs.sqlalchemy.org/en/14/orm/extensions/mypy.html#introspection-of-columns-based-on-typeengine
         assert task.expected_total_entities_to_label is not None
         assert task.excluded_entities is not None
@@ -387,7 +388,7 @@ class BulkLabelSink(BaseSink):
         analytics_publisher: BasePublisher,
         webhooks_publisher: BasePublisher,
         task: BulkLabelTask,
-        include_ids: Optional[Set[str]] = None,
+        include_ids: set[str] | None = None,
     ) -> None:
         assert isinstance(task.query, dict)
         assert isinstance(task.label_reason, str)
@@ -409,7 +410,7 @@ class BulkLabelSink(BaseSink):
 
         print('[~] Re-running druid TopN Query')
         res: TopNPoPResponse = TopNDruidQuery(**task.query).execute(calculate_previous_period=False)
-        current_raw_data: List[PeriodData] = res.current_period
+        current_raw_data: list[PeriodData] = res.current_period
         current_period = PeriodData.parse_obj(current_raw_data[0]).dict(exclude={'timestamp'})
         results = current_period.get('result', [])
         print(f'[!] Found {len(results)} entities to attempt rollback on.')

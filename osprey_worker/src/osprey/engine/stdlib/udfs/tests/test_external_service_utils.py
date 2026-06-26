@@ -1,5 +1,3 @@
-from typing import List, Optional
-
 import gevent
 import pytest
 from gevent.event import Event
@@ -8,9 +6,7 @@ from osprey.engine.executor.external_service_utils import ExternalService, Exter
 
 class CountingService(ExternalService[str, int]):
     def __init__(self) -> None:
-        from typing import List
-
-        self.calls: List[str] = []
+        self.calls: list[str] = []
 
     def get_from_service(self, key: str) -> int:
         self.calls.append(key)
@@ -20,7 +16,7 @@ class CountingService(ExternalService[str, int]):
 class BlockingService(CountingService):
     def __init__(self) -> None:
         super().__init__()
-        self.blocking_events: List[Event] = []
+        self.blocking_events: list[Event] = []
 
     def get_from_service(self, key: str) -> int:
         event = Event()
@@ -35,23 +31,23 @@ class FailingService(ExternalService[str, int]):
     """Always raises on the first call for a key."""
 
     def __init__(self) -> None:
-        self.calls: List[str] = []
+        self.calls: list[str] = []
 
     def get_from_service(self, key: str) -> int:
         self.calls.append(key)
         raise RuntimeError(f'timeout for {key}')
 
 
-class CountErrorOnceFailingService(ExternalService[str, Optional[int]]):
+class CountErrorOnceFailingService(ExternalService[str, int | None]):
     """Always raises, but opts in to count_error_once."""
 
     def __init__(self) -> None:
-        self.calls: List[str] = []
+        self.calls: list[str] = []
 
     def count_error_once(self) -> bool:
         return True
 
-    def get_from_service(self, key: str) -> Optional[int]:
+    def get_from_service(self, key: str) -> int | None:
         self.calls.append(key)
         raise RuntimeError(f'timeout for {key}')
 
@@ -153,14 +149,14 @@ def test_count_error_once_concurrent_waiters() -> None:
     """With count_error_once, concurrent waiters get None while the
     initiating greenlet gets the exception."""
 
-    class BlockingThenFailService(ExternalService[str, Optional[int]]):
+    class BlockingThenFailService(ExternalService[str, int | None]):
         def __init__(self) -> None:
             self.event = Event()
 
         def count_error_once(self) -> bool:
             return True
 
-        def get_from_service(self, key: str) -> Optional[int]:
+        def get_from_service(self, key: str) -> int | None:
             self.event.wait()
             raise RuntimeError('timeout')
 

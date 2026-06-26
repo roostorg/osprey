@@ -1,4 +1,5 @@
-from typing import Mapping, Type, Union
+from collections.abc import Mapping
+from typing import Type
 
 from osprey.engine.ast.grammar import Number, UnaryOperation, UnaryOperator, USub
 from osprey.engine.executor.node_executor.unary_operation_executor import _UNARY_OPERATORS
@@ -18,18 +19,16 @@ class OspreyUnaryExecutor:
         self._node = node
         self._executed_value = self._execute_unary_operation()
 
-    def get_execution_value(self) -> Union[int, float]:
+    def get_execution_value(self) -> int | float:
         return self._executed_value
 
     def get_modified_node(self) -> UnaryOperation:
         return self._node
 
-    def _execute_unary_operation(self) -> Union[int, float]:
+    def _execute_unary_operation(self) -> int | float:
         if self._validate_unary_operation():
             assert isinstance(self._node.operand, self._valid_unary_ops_to_type[self._node.operator.__class__])
-            executed_value: Union[int, float] = _UNARY_OPERATORS[self._node.operator.__class__](
-                self._node.operand.value
-            )
+            executed_value: int | float = _UNARY_OPERATORS[self._node.operator.__class__](self._node.operand.value)
             self._node.operand.value = executed_value
             return executed_value
         else:

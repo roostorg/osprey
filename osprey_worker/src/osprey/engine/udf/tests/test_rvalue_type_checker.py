@@ -1,4 +1,5 @@
-from typing import List, Sequence, Tuple, Type
+from collections.abc import Sequence
+from typing import Type
 
 import pytest
 from osprey.engine.ast.grammar import Annotation, AnnotationWithVariants, Span
@@ -179,7 +180,7 @@ def test_coerce_simple(span: Span, identifier: str, value: object, result: Resul
     if result.is_ok():
         assert checker.coerce(value) == result.unwrap()
     else:
-        expected_exceptions: Tuple[Type[Exception], ...] = (ValueError, TypeError)
+        expected_exceptions: tuple[Type[Exception], ...] = (ValueError, TypeError)
         with pytest.raises(expected_exceptions) as e:
             checker.coerce(value)
 
@@ -211,7 +212,7 @@ def test_coerce_simple(span: Span, identifier: str, value: object, result: Resul
 def test_coerce_complex(
     span: Span,
     outer_identifier: str,
-    inner_identifiers: List[str],
+    inner_identifiers: list[str],
     value: object,
     result: Result[object, str],
 ) -> None:
@@ -225,7 +226,7 @@ def test_coerce_complex(
     if result.is_ok():
         assert checker.coerce(value) == result.unwrap()
     else:
-        expected_exceptions: Tuple[Type[Exception], ...] = (ValueError, TypeError)
+        expected_exceptions: tuple[Type[Exception], ...] = (ValueError, TypeError)
         with pytest.raises(expected_exceptions) as e:
             checker.coerce(value)
 

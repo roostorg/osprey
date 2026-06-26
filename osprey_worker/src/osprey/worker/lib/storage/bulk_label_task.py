@@ -2,9 +2,10 @@ from __future__ import absolute_import
 
 import logging
 import time
+from collections.abc import Iterator
 from datetime import datetime
 from random import random
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any
 
 from osprey.worker.lib.osprey_shared.labels import LabelStatus
 from osprey.worker.lib.storage.types import Enum
@@ -57,14 +58,14 @@ class BulkLabelTask(Model):
     @classmethod
     def enqueue(
         cls,
-        query: Dict[str, Any],
+        query: dict[str, Any],
         dimension: str,
         initiated_by: str,
         label_name: str,
         label_reason: str,
         label_status: LabelStatus,
-        label_expiry: Optional[datetime],
-        excluded_entities: List[str],
+        label_expiry: datetime | None,
+        excluded_entities: list[str],
         expected_total_entities_to_label: int,
         no_limit: bool,
     ) -> 'BulkLabelTask':
@@ -89,13 +90,13 @@ class BulkLabelTask(Model):
         return task
 
     @classmethod
-    def get_one(cls, task_id: int) -> Optional['BulkLabelTask']:
+    def get_one(cls, task_id: int) -> 'BulkLabelTask' | None:
         with scoped_session() as session:
-            task: Optional[BulkLabelTask] = session.query(BulkLabelTask).get(task_id)
+            task: BulkLabelTask | None = session.query(BulkLabelTask).get(task_id)
             return task
 
     @classmethod
-    def get_last_n(cls, last_n: int) -> List['BulkLabelTask']:
+    def get_last_n(cls, last_n: int) -> list['BulkLabelTask']:
         table = cls.__table__
         query = table.select().limit(last_n).order_by(table.c.id.desc())
         with scoped_session() as session:
@@ -182,7 +183,7 @@ class BulkLabelTask(Model):
             self.claim_until = func.now() + func.cast(func.concat(claim_until_seconds, ' SECONDS'), INTERVAL)
 
     @classmethod
-    def claim(cls) -> Optional['BulkLabelTask']:
+    def claim(cls) -> 'BulkLabelTask' | None:
         """Claim one task to process."""
         table = cls.__table__
 
@@ -254,7 +255,7 @@ class BulkLabelTask(Model):
             assert isinstance(row, BulkLabelTask)
             return row
 
-    def release(self, status: TaskStatus, result: Optional[str] = None) -> None:
+    def release(self, status: TaskStatus, result: str | None = None) -> None:
         with scoped_session(commit=True) as session:
             session.add(self)
             self.task_status = status

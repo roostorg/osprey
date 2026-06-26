@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import asdict
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Generic, Optional, Set, Type, TypeVar, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Type, TypeVar
 
 from flask import abort
 from osprey.worker.ui_api.osprey.lib.druid import BaseDruidQuery
@@ -26,7 +27,7 @@ class AbilityRegistry:
     sets `ability.class_name` on registration
     """
 
-    registry: Dict[str, Type[Ability[Any, Any]]] = {}
+    registry: dict[str, Type[Ability[Any, Any]]] = {}
 
     def register(self, name: str) -> Callable[[Type[AbilityT]], Type[AbilityT]]:
         def inner_wrapper(wrapped_class: Type[AbilityT]) -> Type[AbilityT]:
@@ -66,7 +67,7 @@ class HashableEntityKey(ExplicitHash):
 
 
 ModelT = TypeVar('ModelT', bound=BaseModel)
-ItemT = TypeVar('ItemT', bound=Union[int, str, ExplicitHash])
+ItemT = TypeVar('ItemT', bound=int | str | ExplicitHash)
 
 
 # Note:
@@ -90,9 +91,9 @@ class Ability(ABC, GenericModel, Generic[ModelT, ItemT]):
     # - At least one of these 3 variables has to be present in any given Ability. Empty abilities are not allowed
     # - allow_specific and allow_all_except are sets so they cannot be empty if they are present
     # - allow_all cannot be false if it is present
-    allow_all: Optional[bool] = None
-    allow_specific: Optional[Set[ItemT]] = None
-    allow_all_except: Optional[Set[ItemT]] = None
+    allow_all: bool | None = None
+    allow_specific: set[ItemT] | None = None
+    allow_all_except: set[ItemT] | None = None
 
     class Config:
         allow_population_by_field_name = True
@@ -117,9 +118,9 @@ class Ability(ABC, GenericModel, Generic[ModelT, ItemT]):
 
     @root_validator
     def ability_root_validator(cls, values: Any) -> Any:
-        allow_all_value: Optional[bool] = values.get('allow_all')
-        allow_all_except_value: Optional[Set[ItemT]] = values.get('allow_all_except')
-        allow_specific_value: Optional[Set[ItemT]] = values.get('allow_specific')
+        allow_all_value: bool | None = values.get('allow_all')
+        allow_all_except_value: set[ItemT] | None = values.get('allow_all_except')
+        allow_specific_value: set[ItemT] | None = values.get('allow_specific')
         if allow_all_value is None and allow_all_except_value is None and allow_specific_value is None:
             raise ValueError('`allow_all`, `allow_all_except`, and `allow_specific` cannot all be None')
         if allow_all_value is not None and allow_all_value is False:
@@ -173,7 +174,7 @@ class QueryFilterAbility(Ability[ModelT, ItemT], Generic[ModelT, ItemT]):
     # The default query filter (None)
     # This method works on the query that is going to be sent to Druid.
     @abstractmethod
-    def _get_query_filter(self) -> Optional[Dict[str, Any]]:
+    def _get_query_filter(self) -> dict[str, Any] | None:
         raise NotImplementedError()
 
 
@@ -184,7 +185,7 @@ Start DataCensorAbility classes
 
 @dataclass(unsafe_hash=True)
 class DictPath:
-    action_name: Optional[str]
+    action_name: str | None
     path: str
     is_star_path: bool  # True if this path applies to everything
 
@@ -289,8 +290,8 @@ class DataCensorAbility(Ability[ModelT, ItemT], Generic[ModelT, ItemT]):
     if TYPE_CHECKING:
         # Duplicate these type definitions from the superclass to work around a bug in the Pydantic mypy plugin:
         # https://github.com/samuelcolvin/pydantic/issues/2613
-        allow_specific: Optional[Set[ItemT]]
-        allow_all_except: Optional[Set[ItemT]]
+        allow_specific: set[ItemT] | None
+        allow_all_except: set[ItemT] | None
 
     def _request_is_allowed(self, input_model: BaseModel) -> bool:
         return True
@@ -307,8 +308,8 @@ class DataCensorAbility(Ability[ModelT, ItemT], Generic[ModelT, ItemT]):
 
     @classmethod
     def censor_all_leafs(
-        cls, data: Dict[str, Any], json_path_exceptions: Optional[Set[DictPath]] = None
-    ) -> Dict[str, Any]:
+        cls, data: dict[str, Any], json_path_exceptions: set[DictPath] | None = None
+    ) -> dict[str, Any]:
         """
         This method censors all of `data`, excluding any paths in `json_path_exceptions`
         """
@@ -320,7 +321,7 @@ class DataCensorAbility(Ability[ModelT, ItemT], Generic[ModelT, ItemT]):
         return data
 
     @staticmethod
-    def censor_leafs(data: Dict[str, Any], field: str, json_path_exceptions: Optional[Set[DictPath]] = None) -> None:
+    def censor_leafs(data: dict[str, Any], field: str, json_path_exceptions: set[DictPath] | None = None) -> None:
         """
         This method recursively censors all leaf values beneath data[field].
         Any leafs with paths matching the `json_path_exceptions` are skipped (uncensored).
@@ -335,8 +336,8 @@ class DataCensorAbility(Ability[ModelT, ItemT], Generic[ModelT, ItemT]):
             return
 
         def _recursively_censor_leafs(
-            node: Any, json_path_exceptions: Set[DictPath], current_path: DictPath
-        ) -> Optional[Any]:
+            node: Any, json_path_exceptions: set[DictPath], current_path: DictPath
+        ) -> Any | None:
             """
             This method recursively censors all leaf values beneath the given `node`.
             Any leafs matching the `json_path_exceptions` will be skipped (uncensored).
@@ -357,15 +358,15 @@ class DataCensorAbility(Ability[ModelT, ItemT], Generic[ModelT, ItemT]):
         start_path = DictPath(field)
         data[field] = _recursively_censor_leafs(data[field], json_path_exceptions, start_path)
 
-    def censor_data(self, data: Dict[str, Any], action_name: str) -> Dict[str, Any]:
+    def censor_data(self, data: dict[str, Any], action_name: str) -> dict[str, Any]:
         """
-        A method that takes a Dict and outputs a censored version based on the
+        A method that takes a dict and outputs a censored version based on the
         ability's permissions/allowances.
         """
 
         if self.allow_all_except:
 
-            def _censor_at_path(data: Dict[str, Any], path: DictPath) -> None:
+            def _censor_at_path(data: dict[str, Any], path: DictPath) -> None:
                 """
                 Recursively censors all leaf values at the provided `path`
                 """
@@ -451,7 +452,7 @@ def make_marker_ability() -> Type[Ability[_MarkerAbilityModel, _MarkerAbilityAll
             return True
 
         @root_validator(allow_reuse=True)
-        def root_validator(cls, values: Dict[str, object]) -> Dict[str, object]:
+        def root_validator(cls, values: dict[str, object]) -> dict[str, object]:
             assert values['allow_all'], f'Marker ability {values["name"]} must have `allow_all` set to `true`'
             return values
 
@@ -500,7 +501,7 @@ class CanViewEventsByEntity(Ability[BaseDruidQuery, HashableEntityKey]):
 
 @register_ability('CAN_VIEW_EVENTS_BY_ACTION')
 class CanViewEventsByAction(QueryFilterAbility[BaseDruidQuery, str]):
-    def _get_query_filter(self) -> Optional[Dict[str, Any]]:
+    def _get_query_filter(self) -> dict[str, Any] | None:
         if self.allow_all:
             return None  # if allow all is set, then we don't need to inject an acl filter into the query
 
