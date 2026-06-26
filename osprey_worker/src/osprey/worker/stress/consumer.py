@@ -16,7 +16,6 @@ import json
 import threading
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 from kafka import KafkaConsumer
 
@@ -27,7 +26,7 @@ class ConsumerConfig:
     topic: str
     group_id: str
     # If set, only record action_ids in this set. None = open-loop, count all.
-    action_id_filter: Optional[frozenset[int]] = None
+    action_id_filter: frozenset[int] | None = None
     # Max wall-clock time to keep reading after start() is called.
     max_runtime_seconds: float = 60.0
     # If we've matched every id in action_id_filter, stop early.
@@ -46,15 +45,15 @@ class Consumer:
         self._consumer_factory = consumer_factory
         self._consumed: dict[int, float] = {}
         self._stop_event = threading.Event()
-        self._thread: Optional[threading.Thread] = None
-        self._error: Optional[BaseException] = None
+        self._thread: threading.Thread | None = None
+        self._error: BaseException | None = None
 
     @property
     def consumed(self) -> dict[int, float]:
         return dict(self._consumed)
 
     @property
-    def error(self) -> Optional[BaseException]:
+    def error(self) -> BaseException | None:
         return self._error
 
     def start(self) -> None:
@@ -66,7 +65,7 @@ class Consumer:
     def stop(self) -> None:
         self._stop_event.set()
 
-    def wait(self, timeout: Optional[float] = None) -> None:
+    def wait(self, timeout: float | None = None) -> None:
         if self._thread is None:
             return
         self._thread.join(timeout=timeout)

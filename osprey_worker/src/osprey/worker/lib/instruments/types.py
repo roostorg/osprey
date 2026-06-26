@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, TypeVar, Union
+from typing import Any, TypeVar
 
 from typing_extensions import Protocol, TypeAlias
 
@@ -18,5 +18,5 @@ class SupportsDunderGT(Protocol):
     def __gt__(self, __other: Any) -> bool: ...
 
 
-SupportsRichComparison: TypeAlias = Union[SupportsDunderLT, SupportsDunderGT]
+SupportsRichComparison: TypeAlias = SupportsDunderLT | SupportsDunderGT
 SupportsRichComparisonT = TypeVar('SupportsRichComparisonT', bound=SupportsRichComparison)

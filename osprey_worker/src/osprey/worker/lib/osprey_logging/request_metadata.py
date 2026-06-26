@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from flask import has_request_context, request
 from osprey.worker.lib.osprey_logging.util import METADATA_FINALIZER_KEY, METADATA_KEY, USER_ID_KEY
@@ -15,7 +15,7 @@ def set_user(user):
     set_user_id(user.id)
 
 
-def get(key: str) -> Optional[Any]:
+def get(key: str) -> Any | None:
     """
     Get a key from the request metadata.
 

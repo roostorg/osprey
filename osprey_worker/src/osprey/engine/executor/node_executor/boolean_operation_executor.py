@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Callable, Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
+from typing import TYPE_CHECKING
 
 from osprey.engine.ast.grammar import And, ASTNode, BooleanOperation, Or
 

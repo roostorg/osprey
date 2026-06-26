@@ -1,5 +1,4 @@
 import logging
-from typing import Dict, Optional
 
 from osprey.engine.ast.sources import Sources
 from osprey.worker.lib.etcd import EtcdClient
@@ -26,23 +25,23 @@ class EtcdSourcesProvider(BaseSourcesProvider):
     def __init__(
         self,
         etcd_key: str,
-        etcd_client: Optional[EtcdClient] = None,
-        input_stream_ready_signaler: Optional[InputStreamReadySignaler] = None,
+        etcd_client: EtcdClient | None = None,
+        input_stream_ready_signaler: InputStreamReadySignaler | None = None,
     ):
         self._sources_dict: ReadOnlyEtcdDict[str, str] = ReadOnlyEtcdDict(etcd_key=etcd_key, etcd_client=etcd_client)
         self._current_sources = Sources.from_dict(self._sources_dict.copy())
-        self._sources_watcher_callback: Optional[SourcesWatcherCallback] = None
+        self._sources_watcher_callback: SourcesWatcherCallback | None = None
         self._input_stream_ready_signaler = input_stream_ready_signaler
         # The consumer (engine) compiles this initial snapshot at construction, so
         # seed the applied-hash to it — a later re-delivery of the same value is a
         # genuine no-op and should be skipped. See _notify_watcher for why dedup
         # keys off the *applied* hash rather than the last *received* one.
-        self._applied_sources_hash: Optional[str] = self._current_sources.hash()
+        self._applied_sources_hash: str | None = self._current_sources.hash()
 
         self._sources_dict.add_watcher(self._notify_watcher)
         self._sources_dict.watch()
 
-    def _notify_watcher(self, sources_dict: Dict[str, str]) -> None:
+    def _notify_watcher(self, sources_dict: dict[str, str]) -> None:
         new_sources = Sources.from_dict(sources_dict)
 
         # Etcd watcher reconnects and session refreshes re-deliver the current

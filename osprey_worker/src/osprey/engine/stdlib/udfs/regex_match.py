@@ -1,5 +1,4 @@
 import re
-from typing import List
 
 from ._prelude import ArgumentsBase, ConstExpr, ExecutionContext, UDFBase, ValidationContext
 from .categories import UdfCategories
@@ -41,7 +40,7 @@ class RegexMatch(RegexUDFBase, UDFBase[RegexMatchArguments, bool]):
 
 
 class RegexMatchMapArguments(RegexArgumentsBase):
-    target: List[str]
+    target: list[str]
     """A target string to evaluate the regex pattern on."""
 
     mode: ConstExpr[str] = ConstExpr.for_default('mode', 'any')

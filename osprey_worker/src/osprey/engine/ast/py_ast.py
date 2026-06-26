@@ -1,8 +1,7 @@
 """This implements the Python AST -> Osprey AST transformer."""
 
 import ast
-from typing import Any, Optional, Type, TypeVar, Union
-from typing import List as ListT
+from typing import Any, Type, TypeVar
 
 from .ast_utils import iter_field_values
 from .errors import OspreySyntaxError
@@ -98,7 +97,7 @@ class OspreyAstNodeTransformer:
 
     def __init__(self, source: Source):
         self.source = source
-        self.current_node: Optional[ast.AST] = None
+        self.current_node: ast.AST | None = None
 
     def transform(self, node: ast.AST) -> ASTNode:
         # Store current node here, so that invariant will work in given node's context.
@@ -151,7 +150,7 @@ class OspreyAstNodeTransformer:
                 Literal,
                 FormatString,
                 value,
-                hint=f'`{annotation.identifier}` assignment expects an rvalue of type `Union[Literal, FormatString]`',
+                hint=f'`{annotation.identifier}` assignment expects an rvalue of type `Literal | FormatString`',
             )
         return Assign(span=self.span_for(node), target=target, value=value, annotation=annotation)
 
@@ -160,7 +159,7 @@ class OspreyAstNodeTransformer:
         context = pyast_context_to_osprey_context(self, node.ctx, span=span)
         return Name(span=span, identifier=node.id, context=context)
 
-    def transform_NameConstant(self, node: ast.NameConstant) -> Union[Boolean, None_]:
+    def transform_NameConstant(self, node: ast.NameConstant) -> Boolean | None_:
         self.invariant(node.value in (True, False, None), 'unexpected name constant', node=node)
         if node.value is None:
             return None_(span=self.span_for(node))
@@ -170,7 +169,7 @@ class OspreyAstNodeTransformer:
 
     # typeshed is missing ast.Constant as it is new in python 3.8
     # so we are typing as Any until it gains that definition.
-    def transform_Constant(self, node: Any) -> Union[String, Number, Boolean, None_]:
+    def transform_Constant(self, node: Any) -> String | Number | Boolean | None_:
         span = self.span_for(node)
         if isinstance(node.value, str):
             return String(span=span, value=node.value)
@@ -287,7 +286,7 @@ class OspreyAstNodeTransformer:
         return List(span=self.span_for(node), items=items)
 
     def transform_JoinedStr(self, node: ast.JoinedStr) -> FormatString:
-        format_string_parts: ListT[str] = []
+        format_string_parts: list[str] = []
         names = []
         # Tracks the unescaped length of the parts seen so far, so error carets stay positioned
         # the same way even though literal braces are doubled in `format_string_parts` below.
@@ -342,8 +341,8 @@ class OspreyAstNodeTransformer:
         return FormatString(span=self.span_for(node), format_string=format_string, names=names)
 
     def span_for(self, node: ast.AST, offset_by: int = 0) -> Span:
-        start_line: Optional[int] = getattr(node, 'lineno', None)
-        start_pos: Optional[int] = getattr(node, 'col_offset', None)
+        start_line: int | None = getattr(node, 'lineno', None)
+        start_pos: int | None = getattr(node, 'col_offset', None)
         assert start_line is not None, f'Every AST node should have a span, but {node!r} did not.'
         assert start_pos is not None, f'Every AST node should have a span, but {node!r} did not.'
         return Span(source=self.source, start_line=start_line, start_pos=start_pos + offset_by)
@@ -385,7 +384,7 @@ class OspreyAstNodeTransformer:
 
         return expr
 
-    def expect_pyast_union(self, ty: Type[T], ty2: Type[V], node: ASTNode, hint: str = '') -> Union[T, V]:
+    def expect_pyast_union(self, ty: Type[T], ty2: Type[V], node: ASTNode, hint: str = '') -> T | V:
         # This function is a bit hacky, but lets us convince mypy that we have a union type.
         if not (isinstance(node, ty) or isinstance(node, ty2)):
             if isinstance(node, ASTNode):
@@ -483,7 +482,7 @@ def pyast_context_to_osprey_context(
 def fixup_parents(root: Root) -> None:
     """Traverses the AST, updating the nodes to point to their parent nodes."""
 
-    def recursively_insert_parents(parent_node: Optional[ASTNode], current_node: ASTNode) -> None:
+    def recursively_insert_parents(parent_node: ASTNode | None, current_node: ASTNode) -> None:
         assert isinstance(current_node, ASTNode)
         current_node.parent = parent_node
 
@@ -500,7 +499,7 @@ def fixup_parents(root: Root) -> None:
 # noinspection PyPep8Naming
 def pyast_ann_assign_annotation_to_annotation(
     transformer: OspreyAstNodeTransformer, annotation: ast.expr
-) -> Union[Annotation, AnnotationWithVariants]:
+) -> Annotation | AnnotationWithVariants:
     annotation_hint: str = (
         'annotation must be in the form of `Target: Annotation = Value`, where `Annotation` is a `Name` '
         'or `Name[Name, ...]`'
@@ -512,7 +511,7 @@ def pyast_ann_assign_annotation_to_annotation(
         return Annotation(identifier='None', span=transformer.span_for(annotation))
 
     if isinstance(annotation, ast.Subscript):
-        variants: ListT[Union[Annotation, AnnotationWithVariants]] = []
+        variants: list[Annotation | AnnotationWithVariants] = []
         value = transformer.expect_pyast_ty(ast.Name, annotation.value, hint=annotation_hint)
         slice = annotation.slice
 
@@ -527,6 +526,28 @@ def pyast_ann_assign_annotation_to_annotation(
             variants.append(variant)
 
         return AnnotationWithVariants(identifier=value.id, variants=variants, span=transformer.span_for(annotation))
+
+    if isinstance(annotation, ast.BinOp):
+        variants: list[Annotation | AnnotationWithVariants] = []  # type: ignore[no-redef]
+
+        left_variant = pyast_ann_assign_annotation_to_annotation(transformer, annotation.left)
+        right_variant = pyast_ann_assign_annotation_to_annotation(transformer, annotation.right)
+
+        if isinstance(left_variant, AnnotationWithVariants):
+            variants.extend(left_variant.variants)
+        else:
+            variants.append(left_variant)
+        variants.append(right_variant)
+
+        # Optional arguments are internally represented as a Union, but
+        # they can only wrap a single type with None.
+        identifier: str = ''
+        if variants[-1].identifier == 'None':
+            identifier = 'Optional'
+        else:
+            identifier = 'Union'
+
+        return AnnotationWithVariants(identifier=identifier, variants=variants, span=transformer.span_for(annotation))
 
     raise transformer.make_syntax_error(
         error=f'unexpected node: `{annotation.__class__.__name__}`',

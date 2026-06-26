@@ -1,5 +1,6 @@
 import operator
-from typing import TYPE_CHECKING, Any, Callable, List
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from osprey.engine.ast.grammar import (
     Add,
@@ -40,7 +41,7 @@ class BinaryOperationExecutor(BaseNodeExecutor[BinaryOperation, Any]):
         right = execution_context.resolved(self._node.right)
         return self.operator(left, right)
 
-    def get_dependent_nodes(self) -> List[ASTNode]:
+    def get_dependent_nodes(self) -> list[ASTNode]:
         return [self._node.left, self._node.right]
 
 

@@ -1,4 +1,5 @@
-from typing import Any, Callable, List
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
@@ -15,7 +16,7 @@ from osprey.engine.conftest import (
 from osprey.engine.stdlib.udfs.json_data import JsonData
 from osprey.engine.udf.registry import UDFRegistry
 
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_validators([ValidateCallKwargs, ValidateDynamicCallsHaveAnnotatedRValue, UniqueStoredNames]),
     pytest.mark.use_udf_registry(UDFRegistry.with_udfs(JsonData)),
 ]
@@ -49,11 +50,11 @@ def test_execute_value_not_present(execute: ExecuteFunction, execute_with_result
     assert '$.foo' in error_message
     assert result.extracted_features['Foo'] is None
 
-    result = execute_with_result("Foo: Optional[str] = JsonData(path='$.foo', required=True)", data={})
+    result = execute_with_result("Foo: str | None = JsonData(path='$.foo', required=True)", data={})
     assert not result.error_infos
     assert result.extracted_features['Foo'] is None
 
-    result = execute_with_result("Foo: Optional[str] = JsonData(path='$.foo', required=False)", data={})
+    result = execute_with_result("Foo: str | None = JsonData(path='$.foo', required=False)", data={})
     assert not result.error_infos
     assert result.extracted_features['Foo'] is None
 
@@ -69,7 +70,7 @@ def test_execute_coerce_type(execute: ExecuteFunction) -> None:
         """
         Foo: int = JsonData(path='$.foo', coerce_type=True)
         Bar: int = JsonData(path='$.bar', coerce_type=True, required=False)
-        Foo2: Optional[int] = JsonData(path='$.foo', coerce_type=True, required=False)
+        Foo2: int | None = JsonData(path='$.foo', coerce_type=True, required=False)
         """,
         data={'foo': '123', 'bar': None},
     )
