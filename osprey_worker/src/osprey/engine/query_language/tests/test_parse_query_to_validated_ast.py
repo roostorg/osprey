@@ -86,7 +86,7 @@ def test_static_types_are_converted_post_execution(
         Foo = Entity(type="Name", id="some name")
         Bar = Entity(type="User", id=123)
         ARule = Rule(when_all=[True], description="")
-        AnOptional: Optional[bool] = True
+        AnOptional: bool | None = True
         """
     )
     parse_query_to_validated_ast('Foo in "hello"', sources)

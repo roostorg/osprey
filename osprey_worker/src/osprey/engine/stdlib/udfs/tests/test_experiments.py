@@ -8,12 +8,18 @@ from osprey.engine.ast_validator.validators.validate_call_kwargs import Validate
 from osprey.engine.conftest import CheckFailureFunction, ExecuteFunction, RunValidationFunction
 from osprey.engine.language_types.experiments import NOT_IN_EXPERIMENT_BUCKET, NOT_IN_EXPERIMENT_BUCKET_INDEX
 from osprey.engine.stdlib.udfs.entity import Entity
-from osprey.engine.stdlib.udfs.experiments import CONTROL_BUCKET, EXPERIMENT_GRANULARITY, Experiment, ExperimentWhen
+from osprey.engine.stdlib.udfs.experiments import (
+    CONTROL_BUCKET,
+    EXPERIMENT_GRANULARITY,
+    Experiment,
+    ExperimentWhen,
+    InExperiment,
+)
 from osprey.engine.stdlib.udfs.rules import Rule
 from osprey.engine.udf.registry import UDFRegistry
 
 pytestmark: list[Callable[[Any], Any]] = [
-    pytest.mark.use_udf_registry(UDFRegistry.with_udfs(Entity, Rule, Experiment, ExperimentWhen)),
+    pytest.mark.use_udf_registry(UDFRegistry.with_udfs(Entity, Rule, Experiment, ExperimentWhen, InExperiment)),
     pytest.mark.use_validators([ValidateCallKwargs, UniqueStoredNames]),
 ]
 

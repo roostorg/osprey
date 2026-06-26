@@ -50,11 +50,11 @@ def test_execute_value_not_present(execute: ExecuteFunction, execute_with_result
     assert '$.foo' in error_message
     assert result.extracted_features['Foo'] is None
 
-    result = execute_with_result("Foo: Optional[str] = JsonData(path='$.foo', required=True)", data={})
+    result = execute_with_result("Foo: str | None = JsonData(path='$.foo', required=True)", data={})
     assert not result.error_infos
     assert result.extracted_features['Foo'] is None
 
-    result = execute_with_result("Foo: Optional[str] = JsonData(path='$.foo', required=False)", data={})
+    result = execute_with_result("Foo: str | None = JsonData(path='$.foo', required=False)", data={})
     assert not result.error_infos
     assert result.extracted_features['Foo'] is None
 
@@ -70,7 +70,7 @@ def test_execute_coerce_type(execute: ExecuteFunction) -> None:
         """
         Foo: int = JsonData(path='$.foo', coerce_type=True)
         Bar: int = JsonData(path='$.bar', coerce_type=True, required=False)
-        Foo2: Optional[int] = JsonData(path='$.foo', coerce_type=True, required=False)
+        Foo2: int | None = JsonData(path='$.foo', coerce_type=True, required=False)
         """,
         data={'foo': '123', 'bar': None},
     )
