@@ -3,7 +3,7 @@ import json
 import os
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, List, Optional
+from typing import Any
 
 import pytz
 from osprey.worker.ui_api.osprey.lib.abilities import Ability
@@ -43,7 +43,7 @@ class TemporaryAbilityToken(Model):
     created_at = Column(DateTime(timezone=True), nullable=False)
 
     @classmethod
-    def create(cls, abilities: List[Ability[Any, Any]], creation_origin: str) -> 'TemporaryAbilityToken':
+    def create(cls, abilities: list[Ability[Any, Any]], creation_origin: str) -> 'TemporaryAbilityToken':
         """
         Adds a single `ability_token` to the database
         """
@@ -63,8 +63,8 @@ class TemporaryAbilityToken(Model):
         return ability_token
 
     @classmethod
-    def _get_ability_token_for_update(cls, token: str, session: Session) -> Optional['TemporaryAbilityToken']:
-        ability_token: Optional['TemporaryAbilityToken'] = (
+    def _get_ability_token_for_update(cls, token: str, session: Session) -> 'TemporaryAbilityToken' | None:
+        ability_token: 'TemporaryAbilityToken' | None = (
             session.query(TemporaryAbilityToken)
             .with_for_update()  # This prevents double consumption by locking the row until the session is over
             .filter(TemporaryAbilityToken.token == token)
@@ -100,17 +100,17 @@ class TemporaryAbilityToken(Model):
             return ConsumptionResult.SUCCESS
 
     @classmethod
-    def get_abilities(cls, email: str) -> List[Ability[Any, Any]]:
+    def get_abilities(cls, email: str) -> list[Ability[Any, Any]]:
         """
         Gets all the temporary abilities associated with `email` that haven't expired yet
         """
         with scoped_session() as session:
-            access_tokens: List['TemporaryAbilityToken'] = (
+            access_tokens: list['TemporaryAbilityToken'] = (
                 session.query(TemporaryAbilityToken)  # type: ignore # query is untyped
                 .filter(TemporaryAbilityToken.consumed_by_email == email)
                 .filter(TemporaryAbilityToken.abilities_expire_at > datetime.now(tz=pytz.utc))
             )
             return [ability for ability_token in access_tokens for ability in ability_token.abilities()]
 
-    def abilities(self) -> List[Ability[Any, Any]]:
+    def abilities(self) -> list[Ability[Any, Any]]:
         return [Ability.validate(ability_json) for ability_json in self.abilities_json]  # type: ignore # mypy doesn't like the list comprehension

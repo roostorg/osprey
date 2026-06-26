@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import collections
 import logging
 import weakref
+from collections import deque
+from collections.abc import Callable
 from random import choice, randint, uniform
 from time import time
-from typing import TYPE_CHECKING, Callable, Deque, Dict, List, Optional
+from typing import TYPE_CHECKING
 
 import gevent
 from gevent.lock import RLock
@@ -33,11 +34,11 @@ ListenerFn = Callable[[Literal['UP', 'DOWN'], Service], None]
 
 class ServiceWrapper:
     service: Service
-    visible_at: Optional[float]
+    visible_at: float | None
 
     __slots__ = ('service', 'visible_at')
 
-    def __init__(self, service: Service, visible_at: Optional[float]) -> None:
+    def __init__(self, service: Service, visible_at: float | None) -> None:
         self.service = service
         self.visible_at = visible_at
 
@@ -71,11 +72,11 @@ class ServiceWatcher:
 
         self._lock = RLock()
 
-        self._instances: Dict[str, ServiceWrapper] = {}
-        self._rotation: Deque[str] = collections.deque()
+        self._instances: dict[str, ServiceWrapper] = {}
+        self._rotation: deque[str] = deque()
 
         self._listeners: weakref.WeakSet[ListenerFn] = weakref.WeakSet()
-        self._watcher_greenlet: Optional[gevent.Greenlet] = None
+        self._watcher_greenlet: gevent.Greenlet | None = None
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__}: {self.key}>'
@@ -86,7 +87,7 @@ class ServiceWatcher:
 
     def select(
         self,
-        selector: Optional[SelectorFunctionType] = None,
+        selector: SelectorFunctionType | None = None,
         tolerate_draining: bool = False,
     ) -> Service:
         """Selects an instance of a service based on a selector."""
@@ -122,10 +123,10 @@ class ServiceWatcher:
 
     def select_all(
         self,
-        selector: Optional[SelectorFunctionType] = None,
+        selector: SelectorFunctionType | None = None,
         include_not_yet_visible: bool = False,
         tolerate_draining: bool = False,
-    ) -> List[Service]:
+    ) -> list[Service]:
         """Selects all instances of a service based on a selector."""
         self.ensure_watching()
 

@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
+from collections.abc import Iterator
 from random import choice
-from typing import Iterator, Optional
 
 import pytest
 from faker import Faker
@@ -20,9 +20,7 @@ def sqlalchemy_session() -> Iterator[Session]:
         yield session
 
 
-def _create_query(
-    executed_by: Optional[str] = None, parent_id: Optional[int] = None, insert: Optional[bool] = False
-) -> Query:
+def _create_query(executed_by: str | None = None, parent_id: int | None = None, insert: bool | None = False) -> Query:
     query = Query()
     query.parent_id = parent_id
     query.executed_by = executed_by if executed_by else fake.email()
@@ -37,7 +35,7 @@ def _create_query(
     return query
 
 
-def _create_saved_query(query: Query, saved_by: Optional[str] = None) -> SavedQuery:
+def _create_saved_query(query: Query, saved_by: str | None = None) -> SavedQuery:
     saved_query = SavedQuery()
     saved_query.query_id = query.id
     saved_query.name = fake.pystr()

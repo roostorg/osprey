@@ -1,5 +1,6 @@
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, List, Mapping, Optional, Sequence, Set
+from typing import Any
 from urllib.parse import urlencode
 
 import requests
@@ -11,23 +12,23 @@ from requests.models import ChunkedEncodingError
 
 
 class CreateTemporaryAbilityTokenRequest(BaseModel):
-    abilities: List[Mapping[str, Any]]
+    abilities: list[Mapping[str, Any]]
 
 
 class BulkCreateTemporaryAbilityTokenRequest(BaseModel):
-    create_temporary_ability_token_requests: List[CreateTemporaryAbilityTokenRequest]
+    create_temporary_ability_token_requests: list[CreateTemporaryAbilityTokenRequest]
     creation_origin: str
 
 
 class BulkCreateTemporaryAbilityTokenResponse(BaseModel):
-    ability_tokens: List[str]
+    ability_tokens: list[str]
 
 
 @dataclass(frozen=True)
 class EntityUrlOptions:
     """Additional options that can be passed to customize the generated links."""
 
-    entity_feature_filters: Set[str] = field(default_factory=set)
+    entity_feature_filters: set[str] = field(default_factory=set)
     """Applies a feature filter to the entity view, which will filter down events that only match the provided
     entity id for the fields specified. This is applied as a logical OR, if there are more than one values present in
     the set. Meaning, if you specify `UserId` and `TargetUserId`, it will filter down the event stream where the entity
@@ -40,11 +41,11 @@ def bulk_create_entity_ability_links(
     osprey_ui_endpoint: str,
     osprey_ui_api_endpoint: str,
     creation_origin: str,
-    entities: List[EntityT[str]],
+    entities: list[EntityT[str]],
     raise_on_error: bool = False,
     entity_url_options: EntityUrlOptions = EntityUrlOptions(),
-) -> Optional[Sequence[str]]:
-    abilities_list: List[List[Mapping[str, Any]]] = [
+) -> Sequence[str] | None:
+    abilities_list: list[list[Mapping[str, Any]]] = [
         [
             {'name': 'CAN_VIEW_LABELS_FOR_ENTITY', 'allow_all': True},
             {'name': 'CAN_VIEW_EVENTS_BY_ENTITY', 'allow_specific': [{'type': entity.type, 'id': entity.id}]},
@@ -92,7 +93,7 @@ def bulk_create_entity_ability_links(
 
 
 def bulk_create_temporary_ability_token(
-    endpoint: str, signer: Signer, creation_origin: str, abilities_list: List[List[Mapping[str, Any]]]
+    endpoint: str, signer: Signer, creation_origin: str, abilities_list: list[list[Mapping[str, Any]]]
 ) -> BulkCreateTemporaryAbilityTokenResponse:
     request = BulkCreateTemporaryAbilityTokenRequest(
         creation_origin=creation_origin,
@@ -110,7 +111,7 @@ def bulk_create_temporary_ability_token(
 
 
 def create_temporary_ability_token(
-    endpoint: str, signer: Signer, creation_origin: str, abilities: List[Mapping[str, Any]]
+    endpoint: str, signer: Signer, creation_origin: str, abilities: list[Mapping[str, Any]]
 ) -> str:
     request = BulkCreateTemporaryAbilityTokenRequest(
         creation_origin=creation_origin,

@@ -1,5 +1,6 @@
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Dict, Generic, Optional, Sequence, Tuple, cast
+from typing import Generic, cast
 
 from gevent.event import AsyncResult
 
@@ -28,10 +29,10 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
 
     def __init__(self, service: ExternalService[KeyT, ValueT]):
         self._service = service
-        # Key -> Tuple[ AsyncResult[ValueT], Expiration datetime ]
-        self._cache: Dict[KeyT, Tuple[AsyncResult[ValueT], Optional[datetime]]] = {}
+        # Key -> tuple[ AsyncResult[ValueT], Expiration datetime ]
+        self._cache: dict[KeyT, tuple[AsyncResult[ValueT], datetime | None]] = {}
 
-    def _is_past_cache_expiration(self, cache_expiration: Optional[datetime]) -> bool:
+    def _is_past_cache_expiration(self, cache_expiration: datetime | None) -> bool:
         """
         Helper method to perform a time check on an optional datetime.
         """
@@ -39,7 +40,7 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
             return False
         return datetime.now() > cache_expiration
 
-    def _get_cache_expiration_datetime(self) -> Optional[datetime]:
+    def _get_cache_expiration_datetime(self) -> datetime | None:
         """
         Helper method to generate an optional cache expiration datetime based on the cache TTL.
         """
@@ -52,7 +53,7 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
         The new value is then used to update the cache entry for subsequent `get` calls.
         """
         # Provide an explicit type annotation for cache_entry.
-        cache_entry: Tuple[AsyncResult[ValueT], Optional[datetime]] = (
+        cache_entry: tuple[AsyncResult[ValueT], datetime | None] = (
             AsyncResult(),
             self._get_cache_expiration_datetime(),
         )

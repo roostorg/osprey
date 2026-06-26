@@ -1,5 +1,6 @@
 import copy
-from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Type, TypeVar, Union
+from collections.abc import Callable, Iterator, Sequence
+from typing import Any, Type, TypeVar
 
 # from osprey.engine.utils.periodic_execution_yielder import maybe_periodic_yield
 from .grammar import ASTNode, Root, Statement
@@ -26,7 +27,7 @@ def iter_fields(node: 'ASTNode') -> Iterator[str]:
 
     traverse_mro(node.__class__)
 
-    seen_fields: Set[str] = set()
+    seen_fields: set[str] = set()
 
     for klass in ordered_mro:
         for field in getattr(klass, '__annotations__', ()):
@@ -39,11 +40,11 @@ def iter_fields(node: 'ASTNode') -> Iterator[str]:
 
 
 def _make_memoized_field_values_iterator() -> Callable[
-    ['ASTNode'], Iterator[Tuple[str, Union['ASTNode', Sequence['ASTNode']]]]
+    ['ASTNode'], Iterator[tuple[str, 'ASTNode' | Sequence['ASTNode']]]
 ]:
-    _field_cache: Dict[Type['ASTNode'], List[str]] = {}
+    _field_cache: dict[Type['ASTNode'], list[str]] = {}
 
-    def _iter_field_values(node: ASTNode) -> Iterator[Tuple[str, Union['ASTNode', Sequence['ASTNode']]]]:
+    def _iter_field_values(node: ASTNode) -> Iterator[tuple[str, 'ASTNode' | Sequence['ASTNode']]]:
         # To avoid the cost of iterating fields over known node classes,
         # perform simple memoization.
 
@@ -87,7 +88,7 @@ def iter_nodes(root: 'ASTNode') -> Iterator['ASTNode']:
     return _iter_inner(root)
 
 
-def filter_nodes(root: 'ASTNode', ty: Type[T], filter_fn: Optional[Callable[[T], bool]] = None) -> Iterator[T]:
+def filter_nodes(root: 'ASTNode', ty: Type[T], filter_fn: Callable[[T], bool] | None = None) -> Iterator[T]:
     """Given a root, iterate over nodes, filtering out those who's type do not
     match the given `ty`.
 

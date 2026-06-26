@@ -1,6 +1,5 @@
 import datetime
 from dataclasses import dataclass
-from typing import Optional
 
 from osprey.engine.utils.types import add_slots
 
@@ -17,7 +16,7 @@ class TimeDeltaT(PostExecutionConvertible[float]):
         return self.timedelta.total_seconds()
 
     @classmethod
-    def inner_from_optional(cls, maybe_time_delta: 'Optional[TimeDeltaT]') -> Optional[datetime.timedelta]:
+    def inner_from_optional(cls, maybe_time_delta: 'TimeDeltaT | None') -> datetime.timedelta | None:
         if maybe_time_delta is None:
             return None
 
