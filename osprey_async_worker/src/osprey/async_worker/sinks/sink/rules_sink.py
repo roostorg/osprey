@@ -4,7 +4,6 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from random import randint
-from typing import Optional
 
 import sentry_sdk
 from ddtrace import tracer
@@ -74,8 +73,8 @@ class AsyncRulesRunner:
         self,
         action: Action,
         tag: str,
-        parent_tracer_span: Optional[TracerSpan] = None,
-    ) -> Optional[ExecutionResult]:
+        parent_tracer_span: TracerSpan | None = None,
+    ) -> ExecutionResult | None:
         sample_config = self._sampler.sample(action)
         tags = [
             tag,
@@ -88,7 +87,7 @@ class AsyncRulesRunner:
             metrics.increment('dropped_message', tags=tags)
             return None
 
-        result: Optional[ExecutionResult] = None
+        result: ExecutionResult | None = None
         try:
             with metrics.timed('handled_message', tags=tags, use_ms=True):
                 result = await async_execute(

@@ -5,13 +5,16 @@ concurrent.futures.ThreadPoolExecutor for rule compilation.
 Provides async execute() that calls the async executor directly.
 """
 
+from __future__ import annotations
+
 import asyncio
 import gc
 import logging
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from time import time
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Set, Type, TypedDict, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
 if TYPE_CHECKING:
     from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter
@@ -87,7 +90,7 @@ class AsyncOspreyEngine:
         sources_provider: BaseSourcesProvider,
         udf_registry: UDFRegistry,
         should_yield_during_compilation: bool = False,
-        validation_exporter: Optional['BaseValidationResultExporter'] = None,
+        validation_exporter: 'BaseValidationResultExporter' | None = None,
     ):
         self._sources_provider = sources_provider
         self._udf_registry = udf_registry
@@ -282,9 +285,9 @@ class AsyncOspreyEngine:
         self,
         udf_helpers: UDFHelpers,
         action: Action,
-        max_concurrent: Optional[int] = None,
+        max_concurrent: int | None = None,
         sample_rate: int = 100,
-        parent_tracer_span: Optional[TracerSpan] = None,
+        parent_tracer_span: TracerSpan | None = None,
     ) -> ExecutionResult:
         """Execute an action against the rules using the async executor."""
         if max_concurrent is None:
@@ -300,13 +303,13 @@ class AsyncOspreyEngine:
             parent_tracer_span=parent_tracer_span,
         )
 
-    def get_config_subkey(self, model_class: Type[ModelT]) -> ModelT:
+    def get_config_subkey(self, model_class: type[ModelT]) -> ModelT:
         return self._config_subkey_handler.get_config_subkey(model_class)
 
-    def watch_config_subkey(self, model_class: Type[ModelT], update_callback: Callable[[ModelT], None]) -> None:
+    def watch_config_subkey(self, model_class: type[ModelT], update_callback: Callable[[ModelT], None]) -> None:
         self._config_subkey_handler.watch_config_subkey(model_class, update_callback)
 
-    def get_known_feature_locations(self) -> List[FeatureLocation]:
+    def get_known_feature_locations(self) -> list[FeatureLocation]:
         """Return locations of named identifiers that the rules engine extracts.
 
         Mirrors osprey.worker.lib.osprey_engine.OspreyEngine.get_known_feature_locations:
@@ -337,19 +340,19 @@ class AsyncOspreyEngine:
             if _should_extract(span)
         ]
 
-    def get_known_action_names(self) -> Set[str]:
+    def get_known_action_names(self) -> set[str]:
         return {
             Path(source.path).stem for source in self.execution_graph.validated_sources.sources.glob('actions/*.sml')
         }
 
-    def get_rule_to_info_mapping(self) -> Dict[str, str]:
+    def get_rule_to_info_mapping(self) -> dict[str, str]:
         return self._execution_graph.validated_sources.get_validator_result(RuleNameToDescriptionMapping)
 
-    def get_feature_name_to_entity_type_mapping(self) -> Dict[str, str]:
+    def get_feature_name_to_entity_type_mapping(self) -> dict[str, str]:
         """Returns a mapping from 'feature name' -> 'entity type' for each feature that holds an entity."""
         return self._execution_graph.validated_sources.get_validator_result(FeatureNameToEntityTypeMapping)
 
-    def get_post_execution_feature_name_to_value_type_mapping(self) -> Dict[str, type]:
+    def get_post_execution_feature_name_to_value_type_mapping(self) -> dict[str, type]:
         """Returns a mapping from 'feature name' -> 'value type' for each feature."""
         post_execution_name_to_type_and_span = ValidateStaticTypes.to_post_execution_types(
             self._execution_graph.validated_sources.get_validator_result(ValidateStaticTypes)
