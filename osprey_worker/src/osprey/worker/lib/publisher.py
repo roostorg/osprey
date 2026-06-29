@@ -1,12 +1,17 @@
 import abc
+import logging
 from typing import Dict, Optional, TypeVar
 
+import google.auth
+from google.auth.exceptions import DefaultCredentialsError
 from google.cloud import pubsub_v1
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.pubsub.publisher_client import BatchPubsubPublisherClient
 from pydantic import BaseModel
 
 _PydanticModelT = TypeVar('_PydanticModelT', bound=BaseModel)
+
+logger = logging.getLogger(__name__)
 
 
 class BasePublisher(abc.ABC):
@@ -40,6 +45,15 @@ class NullPublisher(BasePublisher):
 
 
 class PubSubPublisher(BasePublisher):
+    """Publishes Pydantic models to a Google Cloud Pub/Sub topic.
+
+    Degrades to noop mode when GCP credentials cannot be resolved at construction
+    time (e.g. local dev or adopter environments without GCP). In noop mode no
+    underlying client is built, publish() and stop() return immediately, and a
+    `PubSubPublisher.publisher.noop` metric is incremented per call so the inert
+    state is visible in dashboards. A one-time warning is logged at construction.
+    """
+
     def __init__(
         self,
         project_id: str,
@@ -54,6 +68,16 @@ class PubSubPublisher(BasePublisher):
             topic_id=topic_id,
         )
         self._project = project_id
+        self._raise_on_error = raise_on_error
+        self._tags = [f'project:{self._project}', f'topic:{self._topic_name}']
+        self._enabled = _check_gcp_credentials()
+        if not self._enabled:
+            logger.warning(
+                'GCP credentials not detected — PubSubPublisher running in noop mode (project=%s, topic=%s)',
+                project_id,
+                topic_id,
+            )
+            return
         batch_settings = pubsub_v1.types.BatchSettings(
             max_bytes=max_bytes,  # default 1MB
             max_messages=max_messages,  # default 100 messages
@@ -61,8 +85,6 @@ class PubSubPublisher(BasePublisher):
         )
         # self._publisher = pubsub_v1.PublisherClient(batch_settings=batch_settings)
         self._publisher = BatchPubsubPublisherClient(batch_settings=batch_settings)
-        self._raise_on_error = raise_on_error
-        self._tags = [f'project:{self._project}', f'topic:{self._topic_name}']
 
     def prepare_data(self, data: _PydanticModelT) -> bytes:
         """
@@ -72,6 +94,9 @@ class PubSubPublisher(BasePublisher):
         return data.json(exclude_none=True).encode()
 
     def publish(self, data: _PydanticModelT, attributes: Optional[Dict[str, str]] = None) -> None:
+        if not self._enabled:
+            metrics.increment(f'{self.__class__.__name__}.publisher.noop', tags=self._tags)
+            return
         if attributes is None:
             attributes = {}
 
@@ -89,6 +114,8 @@ class PubSubPublisher(BasePublisher):
         metrics.increment(f'{self.__class__.__name__}.publisher.success', tags=self._tags)
 
     def stop(self) -> None:
+        if not self._enabled:
+            return
         self._publisher.stop()
 
 
@@ -103,3 +130,17 @@ class StrPubSubPublisher(PubSubPublisher):
             attributes = {}
 
         super().publish(data, attributes)  # type: ignore[type-var]
+
+
+_gcp_credentials_available: Optional[bool] = None
+
+
+def _check_gcp_credentials() -> bool:
+    global _gcp_credentials_available
+    if _gcp_credentials_available is None:
+        try:
+            google.auth.default()
+            _gcp_credentials_available = True
+        except DefaultCredentialsError:
+            _gcp_credentials_available = False
+    return _gcp_credentials_available
