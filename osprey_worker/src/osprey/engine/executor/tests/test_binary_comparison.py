@@ -24,8 +24,8 @@ def test_equality(execute: ExecuteFunction, statement: str, expected: bool) -> N
         f"""
         Foo: ExtractLiteral[str] = "hello"
         Bar: ExtractLiteral[str] = "world"
-        Bizz: Optional[str] = None
-        Buzz: Optional[str] = "some_value"
+        Bizz: str | None = None
+        Buzz: str | None = "some_value"
         Ret: bool = {statement}
         """
     )
@@ -181,8 +181,8 @@ def test_optional_null_check_before_comparison(execute: ExecuteFunction, opt_val
     """Test that type narrowing works for X != None and X >= 90 pattern."""
     data = execute(
         f"""
-        OptVal: Optional[int] = {opt_val}
-        # Type narrowing: after OptVal != None, OptVal is narrowed from Optional[int] to int
+        OptVal: int | None = {opt_val}
+        # Type narrowing: after OptVal != None, OptVal is narrowed from int | None to int
         Ret = OptVal != None and OptVal >= 90
         """
     )
@@ -194,8 +194,8 @@ def test_optional_null_check_chained_narrowing(execute: ExecuteFunction) -> None
     """Test chained type narrowing with multiple optional values."""
     data = execute(
         """
-        A: Optional[int] = 100
-        B: Optional[int] = 50
+        A: int | None = 100
+        B: int | None = 50
         # Both A and B get narrowed after their respective null checks
         Ret = A != None and B != None and A >= 90 and B >= 40
         """
@@ -216,8 +216,8 @@ def test_optional_or_pattern_null_check(execute: ExecuteFunction, opt_val: objec
     """Test that type narrowing works for X == None or X >= 90 pattern."""
     data = execute(
         f"""
-        OptVal: Optional[int] = {opt_val}
-        # Type narrowing: after OptVal == None is false, OptVal is narrowed from Optional[int] to int
+        OptVal: int | None = {opt_val}
+        # Type narrowing: after OptVal == None is false, OptVal is narrowed from int | None to int
         Ret = OptVal == None or OptVal >= 90
         """
     )

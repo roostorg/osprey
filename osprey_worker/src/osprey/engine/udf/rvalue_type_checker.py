@@ -1,5 +1,8 @@
+import operator
 from abc import ABC, abstractmethod
-from typing import Callable, ClassVar, Dict, List, Optional, Sequence, Tuple, Type, TypeVar, Union
+from collections.abc import Callable, Sequence
+from functools import reduce
+from typing import ClassVar, Type, TypeVar
 
 from osprey.engine.ast.grammar import Annotation, Annotations, AnnotationWithVariants, Assign, Span
 from osprey.engine.language_types.entities import EntityT
@@ -27,7 +30,7 @@ class RValueTypeChecker(ABC):
         raise TypeError(f'Cannot coerce `{obj!r}` to {to_display_str(self.to_typing_type())}')
 
 
-_AnnotationMaybeWithVariantT = Union[Annotation, AnnotationWithVariants]
+_AnnotationMaybeWithVariantT = Annotation | AnnotationWithVariants
 TypeConstructorT = Callable[[_AnnotationMaybeWithVariantT, str], RValueTypeChecker]
 
 
@@ -52,8 +55,8 @@ class TypeRegistry:
     """Holds information about generic and non-generic types that can be checked at runtime."""
 
     def __init__(self) -> None:
-        self._non_generic_types: Dict[str, RValueTypeChecker] = {}
-        self._generic_types: Dict[str, Type[GenericTypeChecker]] = {}
+        self._non_generic_types: dict[str, RValueTypeChecker] = {}
+        self._generic_types: dict[str, Type[GenericTypeChecker]] = {}
 
     def register_non_generic(self, name: str, type_checker: RValueTypeChecker) -> None:
         self._non_generic_types[name] = type_checker
@@ -62,13 +65,13 @@ class TypeRegistry:
         self._generic_types[type_checker.name()] = type_checker
         return type_checker
 
-    def get_non_generic(self, node: Annotation) -> Optional[RValueTypeChecker]:
+    def get_non_generic(self, node: Annotation) -> RValueTypeChecker | None:
         return self._non_generic_types.get(node.identifier)
 
-    def get_generic(self, node: AnnotationWithVariants) -> Optional[Type[GenericTypeChecker]]:
+    def get_generic(self, node: AnnotationWithVariants) -> Type[GenericTypeChecker] | None:
         return self._generic_types.get(node.identifier)
 
-    def generic_names(self) -> List[str]:
+    def generic_names(self) -> list[str]:
         return list(self._generic_types.keys())
 
 
@@ -136,7 +139,7 @@ class UnionTypeChecker(GenericTypeChecker):
                 hint=hint,
             )
 
-        seen_types: Dict[str, Span] = {}
+        seen_types: dict[str, Span] = {}
         inner_types = []
         for variant in node.variants:
             # Check if the variant was already seen for this Union.
@@ -153,11 +156,11 @@ class UnionTypeChecker(GenericTypeChecker):
 
         return UnionTypeChecker(tuple(inner_types))
 
-    def __init__(self, inner_types: Tuple[RValueTypeChecker, ...]):
+    def __init__(self, inner_types: tuple[RValueTypeChecker, ...]):
         assert len(inner_types) > 1, f'Tried to create union with {len(inner_types)} inner types: {inner_types}'
         self.inner_types = inner_types
 
-    def _find_working_inner_type(self, obj: object) -> Optional[RValueTypeChecker]:
+    def _find_working_inner_type(self, obj: object) -> RValueTypeChecker | None:
         for inner_type in self.inner_types:
             if inner_type.check(obj):
                 return inner_type
@@ -184,7 +187,7 @@ class UnionTypeChecker(GenericTypeChecker):
     def to_typing_type(self) -> type:
         # Mypy doesn't like runtime types like this
         # noinspection PyTypeChecker
-        return Union[tuple(inner.to_typing_type() for inner in self.inner_types)]  # type: ignore
+        return reduce(operator.or_, (inner.to_typing_type() for inner in self.inner_types))  # type: ignore
 
 
 @REGISTRY.register_generic
@@ -195,11 +198,19 @@ class OptionalTypeChecker(UnionTypeChecker):
 
     @classmethod
     def parse(cls, node: AnnotationWithVariants, type_constructor: TypeConstructorT) -> 'OptionalTypeChecker':
-        if len(node.variants) != 1:
+        if len(node.variants) < 1 or len(node.variants) > 2:
             raise AnnotationConversionError(
-                message='`Optional` must have exactly one argument',
+                message='`Optional` must have one or two arguments',
                 span=node.span,
                 hint=f'got {len(node.variants)} arguments',
+            )
+
+        if len(node.variants) > 1 and node.variants[-1].identifier != 'None':
+            args = ' and '.join([x.identifier for x in node.variants])
+            raise AnnotationConversionError(
+                message="`Optional` can't have arguments of different types or duplicate types",
+                span=node.span,
+                hint=f'got {args} arguments',
             )
 
         variant = node.variants[0]
@@ -208,7 +219,7 @@ class OptionalTypeChecker(UnionTypeChecker):
 
 
 class BaseWrapperTypeChecker(GenericTypeChecker):
-    wrapped_type: ClassVar[Optional[Annotations]] = None
+    wrapped_type: ClassVar[Annotations | None] = None
 
     @classmethod
     def name(cls) -> str:
@@ -231,7 +242,7 @@ class BaseWrapperTypeChecker(GenericTypeChecker):
             inner_type = type_constructor(variant, f'expected simple type in `{cls.name()}`')
         return cls((inner_type,))
 
-    def __init__(self, inner_types: Tuple[RValueTypeChecker, ...]):
+    def __init__(self, inner_types: tuple[RValueTypeChecker, ...]):
         assert len(inner_types) == 1, (
             f'Tried to create `{self.name()}` with {len(inner_types)} inner types: {inner_types}'
         )
@@ -302,7 +313,7 @@ class ListTypeChecker(GenericTypeChecker):
 
     def to_typing_type(self) -> type:
         # noinspection PyTypeChecker
-        return List[self.item_checker.to_typing_type()]  # type: ignore # Doesn't like runtime types like this
+        return list[self.item_checker.to_typing_type()]  # type: ignore # Doesn't like runtime types like this
 
 
 @REGISTRY.register_generic
@@ -356,7 +367,7 @@ def _get_default_error_message() -> str:
 
 
 def _convert_simple_annotation_to_typechecker(
-    node: _AnnotationMaybeWithVariantT, error_message: Optional[str] = None
+    node: _AnnotationMaybeWithVariantT, error_message: str | None = None
 ) -> RValueTypeChecker:
     assert not isinstance(node, AnnotationWithVariants), 'expected simple annotation'
     checker = REGISTRY.get_non_generic(node)

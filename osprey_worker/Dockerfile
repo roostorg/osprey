@@ -50,7 +50,7 @@ RUN mkdir -p /osprey/osprey_worker /osprey/osprey_rpc /osprey/example_plugins/sr
 # image, so the gevent worker stays free of it (osprey.async_worker is not importable
 # here, so execution_context's optional async import cleanly falls back to None).
 RUN pip install --upgrade pip uv && \
-    uv sync --locked --no-install-package osprey-async-worker --python=$(which python3.11) && \
+    uv sync --frozen --no-install-package osprey-async-worker --python=$(which python3.11) && \
     pip cache purge && uv cache clean
 
 # https://tld.readthedocs.io/en/latest/#update-the-list-of-tld-names

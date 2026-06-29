@@ -1,5 +1,6 @@
 import dataclasses
-from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
+from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING, Any, cast
 
 import simplejson
 from flask import Flask
@@ -48,7 +49,7 @@ class OspreyFlask(Flask):
 
         return super().make_response(rv)
 
-    def _json_encode_response(self, rv: Mapping[str, object], encoder: Optional[Callable[[], Any]] = None) -> Any:
+    def _json_encode_response(self, rv: Mapping[str, object], encoder: Callable[[], Any] | None = None) -> Any:
         return self.response_class(
             simplejson.dumps(
                 rv,

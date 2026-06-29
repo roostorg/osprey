@@ -6,8 +6,8 @@ discovery layer relies on:
 
   - ``HashRingNode(name: bytes, num_replicas: int)`` with ``.name`` / ``.num_replicas``
   - ``HashRing(default_num_replicas).add_nodes([...])``
-  - ``HashRing.find_node(key: bytes) -> Optional[bytes]``        (the node *name*)
-  - ``HashRing.find_nodes(key: bytes, count: int) -> List[bytes]`` (distinct names)
+  - ``HashRing.find_node(key: bytes) -> bytes | None``        (the node *name*)
+  - ``HashRing.find_nodes(key: bytes, count: int) -> list[bytes]`` (distinct names)
 
 Placement is deterministic (MD5 over ``<name>:<replica>`` virtual points) so every
 worker computes the same ring for the same membership. Exact placement is an
@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import bisect
 import hashlib
-from typing import Dict, List, Optional, Sequence, Set
+from collections.abc import Sequence
 
 
 class HashRingNode:
@@ -37,9 +37,9 @@ def _hash(data: bytes) -> int:
 class HashRing:
     def __init__(self, default_num_replicas: int = 512) -> None:
         self._default_num_replicas = default_num_replicas
-        self._points: List[int] = []  # sorted virtual-point hashes
-        self._owner: Dict[int, bytes] = {}  # point hash -> node name
-        self._names: Set[bytes] = set()
+        self._points: list[int] = []  # sorted virtual-point hashes
+        self._owner: dict[int, bytes] = {}  # point hash -> node name
+        self._names: set[bytes] = set()
 
     def add_node(self, node: HashRingNode) -> None:
         if node.name in self._names:
@@ -57,19 +57,19 @@ class HashRing:
         for node in nodes:
             self.add_node(node)
 
-    def find_node(self, key: bytes) -> Optional[bytes]:
+    def find_node(self, key: bytes) -> bytes | None:
         if not self._points:
             return None
         idx = bisect.bisect(self._points, _hash(key)) % len(self._points)
         return self._owner[self._points[idx]]
 
-    def find_nodes(self, key: bytes, count: int) -> List[bytes]:
+    def find_nodes(self, key: bytes, count: int) -> list[bytes]:
         if not self._points or count <= 0:
             return []
         start = bisect.bisect(self._points, _hash(key))
         total = len(self._points)
-        result: List[bytes] = []
-        seen: Set[bytes] = set()
+        result: list[bytes] = []
+        seen: set[bytes] = set()
         for offset in range(total):
             name = self._owner[self._points[(start + offset) % total]]
             if name not in seen:

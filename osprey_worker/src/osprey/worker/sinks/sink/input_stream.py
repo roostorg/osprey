@@ -2,8 +2,9 @@ import abc
 import inspect
 import json
 from collections import deque
+from collections.abc import Iterator, Sequence
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Generic, Iterator, List, Optional, Sequence, Type, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Generic, Type, TypeVar, cast
 
 import gevent
 import msgpack
@@ -50,7 +51,7 @@ class BaseInputStream(abc.ABC, Generic[_T]):
 
     def __init__(self) -> None:
         super().__init__()
-        self._iterator: Optional[Iterator[_T]] = None
+        self._iterator: Iterator[_T] | None = None
         self._iterator_lock = RLock()
 
     @abc.abstractmethod
@@ -93,20 +94,18 @@ class StaticInputStream(BaseInputStream[_T]):
 
 
 class StaticMessagesInputStream(
-    BaseInputStream[Union[NoopAckingContext[Action], PullPubSubMessageContext[List[_PydanticModelT]]]]
+    BaseInputStream[NoopAckingContext[Action] | PullPubSubMessageContext[list[_PydanticModelT]]]
 ):
     """An input stream that will return a static list of contexts, until exhausted.
 
     This should only be used in tests to mock a stream of message contexts.
     """
 
-    def __init__(
-        self, contexts: Sequence[Union[NoopAckingContext[Action], PullPubSubMessageContext[List[_PydanticModelT]]]]
-    ):
+    def __init__(self, contexts: Sequence[NoopAckingContext[Action] | PullPubSubMessageContext[list[_PydanticModelT]]]):
         super().__init__()
         self._contexts = list(contexts)
 
-    def _gen(self) -> Iterator[Union[NoopAckingContext[Action], PullPubSubMessageContext[List[_PydanticModelT]]]]:
+    def _gen(self) -> Iterator[NoopAckingContext[Action] | PullPubSubMessageContext[list[_PydanticModelT]]]:
         return iter(self._contexts)
 
 
@@ -127,7 +126,7 @@ class BasePubSubInputStream(BaseInputStream[_T]):
         self.subscription_path = subscription_path
         self.max_messages = max_messages
 
-    def _pull(self, max_messages: Optional[int] = None) -> 'PullResponse':
+    def _pull(self, max_messages: int | None = None) -> 'PullResponse':
         max_messages_to_pull = max_messages if max_messages is not None else self.max_messages
         with metrics.timed('pubsub_consumer.poll_time', tags=[f'subscription_path:{self.subscription_path}']):
             return self.subscriber.pull(
@@ -262,7 +261,7 @@ class SynchronousPubSubMultiProtoInputStream(BasePubSubInputStream[PullPubSubMes
         self,
         subscriber: SubscriberClient,
         subscription_path: str,
-        proto_message_classes: List[Type[ProtoMessage]],
+        proto_message_classes: list[Type[ProtoMessage]],
         max_messages: int = 250,
     ):
         super().__init__(subscriber, subscription_path, max_messages)
@@ -320,7 +319,7 @@ class RawPubSubInputStream(BasePubSubInputStream[PullPubSubMessageContext[Pubsub
                     )
 
 
-class PubSubBulkInputStream(BasePubSubInputStream[PullPubSubMessageContext[List[_PydanticModelT]]]):
+class PubSubBulkInputStream(BasePubSubInputStream[PullPubSubMessageContext[list[_PydanticModelT]]]):
     def __init__(
         self, subscriber: SubscriberClient, subscription_path: str, model: Type[_PydanticModelT], bulk_size: int
     ):
@@ -328,7 +327,7 @@ class PubSubBulkInputStream(BasePubSubInputStream[PullPubSubMessageContext[List[
         self._model = model
         self._bulk_size = bulk_size
 
-    def _gen(self) -> Iterator[PullPubSubMessageContext[List[_PydanticModelT]]]:
+    def _gen(self) -> Iterator[PullPubSubMessageContext[list[_PydanticModelT]]]:
         with self.subscriber as subscriber:
             while True:
                 try:
@@ -337,8 +336,8 @@ class PubSubBulkInputStream(BasePubSubInputStream[PullPubSubMessageContext[List[
                         logger.debug(f'No messages received for subscription {self.subscription_path}')
                         continue
 
-                    messages: List[_PydanticModelT] = []
-                    ack_ids: List[str] = []
+                    messages: list[_PydanticModelT] = []
+                    ack_ids: list[str] = []
 
                     for received_message in response.received_messages:
                         message = received_message.message
@@ -367,7 +366,7 @@ _ModelT = TypeVar('_ModelT', bound=Model, covariant=True)
 
 class _ClaimableModel(Protocol[_ModelT]):
     @classmethod
-    def claim(cls) -> Optional[_ModelT]: ...
+    def claim(cls) -> _ModelT | None: ...
 
 
 class PostgresInputStream(BaseInputStream[_ModelT]):
@@ -397,7 +396,7 @@ class PostgresInputStream(BaseInputStream[_ModelT]):
             before_sleep=_before_sleep,
             before=_log_before_attempt,
         )
-        def claim_with_retry() -> Optional[_ModelT]:
+        def claim_with_retry() -> _ModelT | None:
             with metrics.timed('claim_postgres_row', tags=self._tags):
                 return self._model.claim()
 

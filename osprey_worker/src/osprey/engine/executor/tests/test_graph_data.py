@@ -37,7 +37,7 @@ def test_node_deletion() -> None:
 
 
 def test_node_deletion_with_edge_preservation() -> None:
-    """  # noqa: W605
+    r"""  # noqa: W605
     We are testing that the following graph:
 
     1-----2
@@ -81,7 +81,7 @@ def test_node_deletion_with_edge_preservation() -> None:
 
 
 def test_node_deletion_without_edge_preservation() -> None:
-    """  # noqa: W605
+    r"""  # noqa: W605
     We are testing that the following graph:
 
     1     2

@@ -1,5 +1,6 @@
 from collections import defaultdict
-from typing import DefaultDict, Mapping, Sequence, Set, cast
+from collections.abc import Mapping, Sequence
+from typing import cast
 
 from osprey.engine.ast.ast_utils import filter_nodes, iter_nodes
 from osprey.engine.ast.grammar import Assign, ASTNode, Call, Load, Name, Source, Store
@@ -12,7 +13,7 @@ from .unique_stored_names import UniqueStoredNames
 from .validate_call_kwargs import ValidateCallKwargs
 
 
-class VariablesMustBeDefined(BaseValidator, HasInput[Set[str]], HasResult[Mapping[Source, Set[str]]]):
+class VariablesMustBeDefined(BaseValidator, HasInput[set[str]], HasResult[Mapping[Source, set[str]]]):
     """
     Checks that values are defined before being used.
     """
@@ -21,17 +22,17 @@ class VariablesMustBeDefined(BaseValidator, HasInput[Set[str]], HasResult[Mappin
         # We need to ensure that call kwargs are validated before we run this.
         self.context.validator_depends_on(validator_classes=[ValidateCallKwargs, ImportsMustNotHaveCycles])
         # Allow the validator to insert a set of known-available names.
-        global_names: Set[str] = self.context.get_validator_input(type(self), set())
+        global_names: set[str] = self.context.get_validator_input(type(self), set())
         identifier_index = self.context.get_validator_result(UniqueStoredNames)
-        identifiers_by_source: DefaultDict[Source, Set[str]] = defaultdict(set)
+        identifiers_by_source: defaultdict[Source, set[str]] = defaultdict(set)
 
         for identifier, span in identifier_index.items():
             identifiers_by_source[span.source].add(identifier)
 
-        self.known_identifiers_by_source: Mapping[Source, Set[str]] = {}
+        self.known_identifiers_by_source: Mapping[Source, set[str]] = {}
 
         for source in self.context.sources:
-            known_identifiers: Set[str] = set(global_names)
+            known_identifiers: set[str] = set(global_names)
             for node in iter_nodes(source.ast_root):
                 if is_import(node):
                     imported_sources = self.get_imported_sources(cast(Call, node))
@@ -124,7 +125,7 @@ class VariablesMustBeDefined(BaseValidator, HasInput[Set[str]], HasResult[Mappin
 
             self.known_identifiers_by_source[source] = known_identifiers
 
-    def get_result(self) -> Mapping[Source, Set[str]]:
+    def get_result(self) -> Mapping[Source, set[str]]:
         if not hasattr(self, 'known_identifiers_by_source'):
             raise RuntimeError('Validator must be run before `get_result` is called')
         return self.known_identifiers_by_source

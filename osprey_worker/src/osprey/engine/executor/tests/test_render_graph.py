@@ -1,6 +1,6 @@
 import copy
 import json
-from typing import Any, Dict, Set
+from typing import Any
 
 import pytest
 from osprey.engine.ast_validator.validation_context import ValidatedSources
@@ -149,8 +149,8 @@ def execution_graph(run_validation: RunValidationFunction) -> ExecutionGraph:
 
 
 def get_labels_view_graph(
-    execution_graph: ExecutionGraph, label_names: Set[str], show_upstream: bool = False, show_downstream: bool = True
-) -> Dict[str, Any]:
+    execution_graph: ExecutionGraph, label_names: set[str], show_upstream: bool = False, show_downstream: bool = True
+) -> dict[str, Any]:
     """
     Returns a graph of the specified label_names
     """
@@ -162,11 +162,11 @@ def get_labels_view_graph(
         show_label_upstream=show_upstream,
         show_label_downstream=show_downstream,
     )
-    val: Dict[str, Any] = json.loads(json.dumps(render.data))
+    val: dict[str, Any] = json.loads(json.dumps(render.data))
     return val
 
 
-def get_actions_view_graph(execution_graph: ExecutionGraph, action_names: Set[str]) -> Dict[str, Any]:
+def get_actions_view_graph(execution_graph: ExecutionGraph, action_names: set[str]) -> dict[str, Any]:
     """
     Returns a graph of the specified action_names
     """
@@ -176,18 +176,18 @@ def get_actions_view_graph(execution_graph: ExecutionGraph, action_names: Set[st
         execution_graph=execution_graph,
         action_names_to_render=action_names,
     )
-    val: Dict[str, Any] = json.loads(json.dumps(render.data))
+    val: dict[str, Any] = json.loads(json.dumps(render.data))
     return val
 
 
-def assert_graphs_are_equal(actual_graph: Dict[str, Any], expected_graph: Dict[str, Any]) -> None:
+def assert_graphs_are_equal(actual_graph: dict[str, Any], expected_graph: dict[str, Any]) -> None:
     """
     Asserts that the two supplied graphs are equal. Note that actual_graph and expected_graph will have different
     unique IDs but the same data-- This is expected behavior, hence why this logic is necessary to ensure a fair
     comparison.
     """
 
-    def remove_references_to_ids(graph: Dict[str, Any]) -> None:
+    def remove_references_to_ids(graph: dict[str, Any]) -> None:
         """
         Removes all ID fields and replaces all node IDs inside edges with their actual node data
         """

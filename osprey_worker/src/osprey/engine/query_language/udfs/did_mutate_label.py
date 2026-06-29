@@ -1,5 +1,3 @@
-from typing import Dict
-
 from osprey.engine import shared_constants
 from osprey.engine.ast_validator.validation_context import ValidationContext
 from osprey.engine.language_types.labels import LabelStatus
@@ -33,7 +31,7 @@ class DidAddLabel(DidMutateLabel):
     `DidAddLabel(entity_type='User',label_name='user_hell_ban')`
     """
 
-    def to_druid_query(self) -> Dict[str, object]:
+    def to_druid_query(self) -> dict[str, object]:
         return {
             'type': 'like',
             'dimension': shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_NAME,
@@ -58,7 +56,7 @@ class DidRemoveLabel(DidMutateLabel):
     `DidRemoveLabel(entity_type='User',label_name='user_hell_ban')`
     """
 
-    def to_druid_query(self) -> Dict[str, object]:
+    def to_druid_query(self) -> dict[str, object]:
         return {
             'type': 'like',
             'dimension': shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_NAME,

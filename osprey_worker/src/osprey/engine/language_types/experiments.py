@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, List
+from typing import Any
 
 from osprey.engine.utils.types import add_slots
 
@@ -23,16 +23,16 @@ NOT_IN_EXPERIMENT_BUCKET_INDEX = -1  # bucket index value for entities not in th
 
 @add_slots
 @dataclass(frozen=True)
-class ExperimentT(PostExecutionConvertible[List[str]]):
+class ExperimentT(PostExecutionConvertible[list[str]]):
     name: str
     entity: EntityT[Any]
-    buckets: List[str]
-    bucket_sizes: List[float]
+    buckets: list[str]
+    bucket_sizes: list[float]
     resolved_bucket: str
     version: int
     revision: int
 
-    def to_post_execution_value(self) -> List[str]:
+    def to_post_execution_value(self) -> list[str]:
         return [
             self.name,
             self.entity.id,

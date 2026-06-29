@@ -6,7 +6,6 @@ using the async executor instead of the gevent one.
 
 from datetime import datetime
 from textwrap import dedent
-from typing import Dict, Optional, Union
 
 import pytest
 from osprey.async_worker.executor import execute as async_execute
@@ -21,7 +20,7 @@ from osprey.engine.stdlib import get_config_registry
 from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.lib.singletons import CONFIG
 
-SourcesDict = Union[Sources, str, Dict[str, str]]
+SourcesDict = Sources | str | dict[str, str]
 
 
 def _into_sources(sources_dict: SourcesDict) -> Sources:
@@ -61,13 +60,13 @@ def async_execute_with_result(stdlib_udf_registry: UDFRegistry):
 
     async def _execute(
         sources_dict: SourcesDict,
-        data: Optional[Dict[str, object]] = None,
+        data: dict[str, object] | None = None,
         action_name: str = 'test',
         action_id: int = 1,
-        udf_helpers: Optional[UDFHelpers] = None,
-        udf_registry: Optional[UDFRegistry] = None,
+        udf_helpers: UDFHelpers | None = None,
+        udf_registry: UDFRegistry | None = None,
         max_concurrent: int = 12,
-        action_time: Optional[datetime] = None,
+        action_time: datetime | None = None,
     ) -> ExecutionResult:
         registry = udf_registry or stdlib_udf_registry
         sources = _into_sources(sources_dict)
@@ -99,14 +98,14 @@ def async_execute_fn(async_execute_with_result):
 
     async def _execute(
         sources_dict: SourcesDict,
-        data: Optional[Dict[str, object]] = None,
+        data: dict[str, object] | None = None,
         action_name: str = 'test',
         action_id: int = 1,
-        udf_helpers: Optional[UDFHelpers] = None,
-        udf_registry: Optional[UDFRegistry] = None,
+        udf_helpers: UDFHelpers | None = None,
+        udf_registry: UDFRegistry | None = None,
         max_concurrent: int = 12,
         allow_errors: bool = False,
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         result = await async_execute_with_result(
             sources_dict=sources_dict,
             data=data,
