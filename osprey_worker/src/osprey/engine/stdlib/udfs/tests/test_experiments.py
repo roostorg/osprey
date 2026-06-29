@@ -13,13 +13,12 @@ from osprey.engine.stdlib.udfs.experiments import (
     EXPERIMENT_GRANULARITY,
     Experiment,
     ExperimentWhen,
-    InExperiment,
 )
 from osprey.engine.stdlib.udfs.rules import Rule
 from osprey.engine.udf.registry import UDFRegistry
 
 pytestmark: list[Callable[[Any], Any]] = [
-    pytest.mark.use_udf_registry(UDFRegistry.with_udfs(Entity, Rule, Experiment, ExperimentWhen, InExperiment)),
+    pytest.mark.use_udf_registry(UDFRegistry.with_udfs(Entity, Rule, Experiment, ExperimentWhen)),
     pytest.mark.use_validators([ValidateCallKwargs, UniqueStoredNames]),
 ]
 
