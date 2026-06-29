@@ -28,7 +28,7 @@ Using Osprey and want to add your project/organization to this list? [Open a pul
 
 ## Development
 
-- See [DEVELOPMENT.md](./docs/DEVELOPMENT.md) for comprehensive development setup and workflow documentation
+- See [DEVELOPMENT](./docs/development) for comprehensive development setup and workflow documentation
 - All code changes should pass linting (Ruff) and type checking (MyPy)
 - Pre-commit hooks automatically run on each commit to maintain code quality
 
