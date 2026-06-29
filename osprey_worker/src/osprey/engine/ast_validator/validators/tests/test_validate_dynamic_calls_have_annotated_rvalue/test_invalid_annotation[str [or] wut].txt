@@ -1,0 +1,5 @@
+error: expected simple type in `Union`
+--> main.sml:1:11
+     |
+   1 | Foo: str | wut = JsonData(path='$.foo')
+     |            ^ got unknown non-generic type `wut`

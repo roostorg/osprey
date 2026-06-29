@@ -1,5 +1,3 @@
-from typing import Optional
-
 from osprey.engine.ast import ast_utils, grammar, printer
 
 from .validation_context import ValidationContext
@@ -10,7 +8,7 @@ def add_must_assign_to_variable_error(
     message: str,
     node: grammar.ASTNode,
     example_variable_name: str = 'SomeVariable',
-    type_annotation: Optional[str] = None,
+    type_annotation: str | None = None,
 ) -> None:
     parent = node.parent
     type_annotation_str = '' if type_annotation is None else f': {type_annotation}'

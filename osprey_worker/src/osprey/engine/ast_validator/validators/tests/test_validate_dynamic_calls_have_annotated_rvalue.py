@@ -28,16 +28,16 @@ def test_missing_annotation_and_argument(
     'annotation',
     (
         'wut',  # Invalid type
-        'Union[str, str]',  # Duplicate arg
-        'Union[str, wut]',  # Invalid arg type
+        'str | str',  # Duplicate arg
+        'str | wut',  # Invalid arg type
         'Union',  # Missing arg
-        'List[str, str]',  # Extra arg
-        'List[str, int, float]',  # Extra args with different types
-        'List[wut]',  # Invalid arg type
-        'List',  # Missing arg
-        'Optional[str, str]',  # Extra arg
-        'Optional[str, int, float]',  # Extra args with different types
-        'Optional[wut]',  # Invalid arg type
+        'list[str, str]',  # Extra arg
+        'list[str, int, float]',  # Extra args with different types
+        'list[wut]',  # Invalid arg type
+        'list',  # Missing arg
+        'str | str | None',  # Extra arg
+        'str | int | float | None',  # Extra args with different types
+        'wut | None',  # Invalid arg type
         'Optional',  # Missing arg
     ),
 )

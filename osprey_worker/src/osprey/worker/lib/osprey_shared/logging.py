@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime, timedelta
 from random import SystemRandom
-from typing import Optional
 
 
 class RollingCounter:
@@ -84,14 +83,14 @@ class DynamicLogSampler(logging.Filter):
         else:
             self._process_log_record(record)
 
-    def _process_log_record(self, record: Optional[logging.LogRecord] = None):
+    def _process_log_record(self, record: logging.LogRecord | None = None):
         self.rolling_log_counter.increment()
         self.num_increments_since_log_recalculation += 1
         # Only recalculate once per num_increments_per_recalculation log msgs to prevent excessive recalculation
         if self.num_increments_since_log_recalculation >= self.num_increments_per_recalculation:
             self._recalculate_probability()
 
-    def _process_error_record(self, record: Optional[logging.LogRecord] = None):
+    def _process_error_record(self, record: logging.LogRecord | None = None):
         self.rolling_error_counter.increment()
         self.num_increments_since_error_recalculation += 1
         # Only recalculate once per num_increments_since_error_recalculation errors to prevent excessive recalculation
@@ -116,7 +115,7 @@ class DynamicLogSampler(logging.Filter):
         else:
             self.error_probability = 1.0
 
-    def _should_log(self, record: Optional[logging.LogRecord] = None) -> bool:
+    def _should_log(self, record: logging.LogRecord | None = None) -> bool:
         if record is not None and record.levelno >= logging.ERROR:
             if self.error_probability <= 0:
                 return False
@@ -138,7 +137,7 @@ DEFAULT_DYNAMIC_LOG_SAMPLER = DynamicLogSampler(target_max_logs_per_minute=30, t
 
 
 def get_logger(
-    name: Optional[str] = None, dynamic_log_sampler: Optional[DynamicLogSampler] = DEFAULT_DYNAMIC_LOG_SAMPLER
+    name: str | None = None, dynamic_log_sampler: DynamicLogSampler | None = DEFAULT_DYNAMIC_LOG_SAMPLER
 ) -> logging.Logger:
     """
     Gets a dynamically sampled logger with a shared log rate limit across all loggers

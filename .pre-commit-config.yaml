@@ -55,7 +55,7 @@ repos:
         pass_filenames: true
       - id: eslint-osprey-ui
         name: eslint (osprey_ui)
-        entry: npx --prefix osprey_ui eslint
+        entry: npx --prefix osprey_ui eslint --config osprey_ui/eslint.config.mjs
         files: ^osprey_ui/src/.*\.(jsx?|tsx?)$
         language: system
         pass_filenames: true

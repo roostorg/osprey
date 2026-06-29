@@ -1,5 +1,5 @@
 import abc
-from typing import Generic, Optional, Type, TypeVar
+from typing import Generic, Type, TypeVar
 
 import typing_inspect
 
@@ -19,7 +19,7 @@ class PostExecutionConvertible(abc.ABC, Generic[_T]):
     # These are static methods so that the implementations can access the generic type. With a classmethod we'd just
     # get `PostExecutionConvertible`, but with the static method we'd get (say) `PostExecutionConvertible[str]`.
     @staticmethod
-    def maybe_post_execution_type(t: type) -> Optional[type]:
+    def maybe_post_execution_type(t: type) -> type | None:
         origin = typing_inspect.get_origin(t)
         if origin is None:
             origin = t

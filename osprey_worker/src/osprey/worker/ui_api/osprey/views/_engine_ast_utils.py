@@ -1,6 +1,6 @@
 """Shared engine-AST traversal helpers used by views (features.py, rules.py, ...)."""
 
-from typing import Any, Optional, Set
+from typing import Any
 
 from osprey.engine.ast.grammar import (
     Attribute,
@@ -19,7 +19,7 @@ from osprey.engine.ast.grammar import (
 )
 
 
-def get_func_identifier(call: Call) -> Optional[str]:
+def get_func_identifier(call: Call) -> str | None:
     """Get the function name from a Call node."""
     if isinstance(call.func, Name):
         return call.func.identifier
@@ -68,7 +68,7 @@ def ast_to_string(node: Any) -> str:
     return str(node)
 
 
-def collect_name_references(node: Any, out: Set[str]) -> None:
+def collect_name_references(node: Any, out: set[str]) -> None:
     """Recursively collect all Name.identifier values referenced by an expression node.
 
     Skip the function-identifier position of Call nodes (we don't treat e.g.

@@ -1,5 +1,6 @@
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Type, TypeVar
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Type, TypeVar
 
 from pydantic.main import BaseModel
 
@@ -17,14 +18,14 @@ class ConfigSubkeyHandler:
 
     def __init__(self, config_registry: ConfigRegistry, initial_sources: 'ValidatedSources') -> None:
         self._config_registry = config_registry
-        self._config_subkey_handlers: Dict[Type[BaseModel], List[Callable[[Any], None]]] = defaultdict(list)
+        self._config_subkey_handlers: dict[Type[BaseModel], list[Callable[[Any], None]]] = defaultdict(list)
         # Holds the parsed configs
         self._known_good_parsed_config = self._parse_new_config(initial_sources)
 
     def _validate_subkey_registered(self, model_class: Type[BaseModel]) -> None:
         assert self._config_registry.has_model(model_class), 'Must register config subkey models before using them!'
 
-    def _parse_new_config(self, validated_sources: 'ValidatedSources') -> Dict[Type[BaseModel], BaseModel]:
+    def _parse_new_config(self, validated_sources: 'ValidatedSources') -> dict[Type[BaseModel], BaseModel]:
         raw_config = validated_sources.sources.config
 
         # First parse and validate all config subkeys

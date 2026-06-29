@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from osprey.engine.ast.grammar import ASTNode, FormatString
 

@@ -2,20 +2,13 @@ import json
 import logging
 import traceback
 from collections import defaultdict
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import lru_cache
 from typing import (
     TYPE_CHECKING,
     Any,
-    DefaultDict,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Set,
     Type,
     TypeAlias,
     TypeVar,
@@ -119,10 +112,10 @@ class ExternalServiceException(Exception):
 class WhenRulesAuditEntry:
     """Audit record for a single WhenRules evaluation."""
 
-    rules_evaluated: List[str]
-    rules_matched: List[str]
-    rules_failed: List[str]
-    effects_emitted: List[str]
+    rules_evaluated: list[str]
+    rules_matched: list[str]
+    rules_failed: list[str]
+    effects_emitted: list[str]
     effects_failed: int
     is_degraded: bool
 
@@ -155,19 +148,19 @@ class ExecutionContext:
         self._input_encoding = action.encoding
         self._execution_graph = execution_graph
         self._udf_helpers: UDFHelpers = helpers
-        self._outputs: Dict[str, Any] = {}
-        self._pending_executions: Set[DependencyChain] = set()
-        self._resolved_node_values: Dict[int, NodeResult] = {}
-        self._visited_executions: Set[DependencyChain] = set()
+        self._outputs: dict[str, Any] = {}
+        self._pending_executions: set[DependencyChain] = set()
+        self._resolved_node_values: dict[int, NodeResult] = {}
+        self._visited_executions: set[DependencyChain] = set()
         # a k/v store of effects, by effect type
-        self._effects: DefaultDict[Type[EffectBase], List[EffectBase]] = defaultdict(list)
-        self._external_service_accessors_by_getter_id: Dict[int, Any] = {}
-        self._async_external_service_accessors_by_getter_id: Dict[int, Any] = {}
+        self._effects: defaultdict[Type[EffectBase], list[EffectBase]] = defaultdict(list)
+        self._external_service_accessors_by_getter_id: dict[int, Any] = {}
+        self._async_external_service_accessors_by_getter_id: dict[int, Any] = {}
         self._dependency_dag = TopologicalSorter()
-        self._chain_by_id: Dict[int, DependencyChain] = {}
+        self._chain_by_id: dict[int, DependencyChain] = {}
         # feature name -> serializable feature
-        self._custom_extracted_features: Dict[str, Any] = {}
-        self._rule_audit_entries: List[WhenRulesAuditEntry] = []
+        self._custom_extracted_features: dict[str, Any] = {}
+        self._rule_audit_entries: list[WhenRulesAuditEntry] = []
 
         self.enqueue_source(execution_graph.get_entry_point())
 
@@ -214,7 +207,7 @@ class ExecutionContext:
         """Called by the assignment node executor to store an output key/value pair."""
         self._outputs[key] = value
 
-    def get_outputs(self) -> Dict[str, Any]:
+    def get_outputs(self) -> dict[str, Any]:
         """Gets the output of the executor. This should only be called by the main executor, once execution has
         finished. Under no circumstance should anything else call this function."""
         return {
@@ -222,7 +215,7 @@ class ExecutionContext:
             for k, v in self._outputs.items()
         }
 
-    def get_data(self) -> Dict[str, Any]:
+    def get_data(self) -> dict[str, Any]:
         """Gets the input-data that the execution context is currently being invoked upon."""
         return self._data
 
@@ -230,7 +223,7 @@ class ExecutionContext:
         """Gets the encoding type of the Osprey action data (e.g. json or proto)"""
         return self._input_encoding
 
-    def get_secret_data(self) -> Dict[str, Any]:
+    def get_secret_data(self) -> dict[str, Any]:
         """Gets the secret input-data that the execution context is currently being invoked upon."""
         return self._action.secret_data
 
@@ -275,7 +268,7 @@ class ExecutionContext:
     def add_rule_audit_entry(self, entry: WhenRulesAuditEntry) -> None:
         self._rule_audit_entries.append(entry)
 
-    def get_rule_audit_entries(self) -> List[WhenRulesAuditEntry]:
+    def get_rule_audit_entries(self) -> list[WhenRulesAuditEntry]:
         return list(self._rule_audit_entries)
 
     def add_custom_extracted_feature(
@@ -303,9 +296,9 @@ class ExecutionContext:
         for custom_extracted_feature in custom_extracted_features:
             self.add_custom_extracted_feature(custom_extracted_feature, error_on_duplicate_keys)
 
-    def get_extracted_features(self) -> Dict[str, Any]:
+    def get_extracted_features(self) -> dict[str, Any]:
         """
-        Returns a `Dict[str, Any]` of all of the extracted features, including the base extracted features ("outputs")
+        Returns a `dict[str, Any]` of all of the extracted features, including the base extracted features ("outputs")
         and any custom extracted features supplied via `add_custom_extracted_feature` or `add_custom_extracted_features`.
 
         If any custom extracted features have the same key as a base extracted feature, the custom extracted feature will
@@ -399,13 +392,13 @@ class Action:
 
     action_id: int
     action_name: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
     timestamp: datetime
-    secret_data: Dict[str, Any] = field(default_factory=dict)
+    secret_data: dict[str, Any] = field(default_factory=dict)
     encoding: str = 'unknown'
 
     @classmethod
-    def from_dict(cls: Type[_ActionT], d: Dict[str, Any]) -> '_ActionT':
+    def from_dict(cls: Type[_ActionT], d: dict[str, Any]) -> '_ActionT':
         return cls(
             action_id=int(d['action_id']),
             action_name=d['action_name'],
@@ -414,7 +407,7 @@ class Action:
             timestamp=datetime.fromisoformat(d['timestamp']),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         # secret data intentionally left out
         return {
             'action_id': self.action_id,
@@ -444,16 +437,16 @@ class NodeErrorInfo:
 class ExecutionResult:
     """The result of the execution of an action."""
 
-    extracted_features: Dict[str, Any]
+    extracted_features: dict[str, Any]
     action: Action
     # A k/v store of effects, by effect class type
     effects: Mapping[Type[EffectBase], Sequence[EffectBase]]
     error_infos: Sequence[NodeErrorInfo]
     # leaving it up to the users of `validator_results`, but maybe we want to enforce
     # some kind of typing when outputing `validator_results`
-    validator_results: Dict[Any, Any] = field(default_factory=dict)
+    validator_results: dict[Any, Any] = field(default_factory=dict)
     sample_rate: int = 100
-    trace_id: Optional[str] = None
+    trace_id: str | None = None
     rule_audit_entries: Sequence[WhenRulesAuditEntry] = field(default_factory=list)
 
     def add_custom_extracted_feature(self, custom_extracted_feature: CustomExtractedFeature[Any]) -> None:

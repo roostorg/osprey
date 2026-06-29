@@ -10,9 +10,11 @@ import asyncio
 import collections
 import json
 import logging
+from collections import deque
+from collections.abc import Callable
 from random import randint, uniform
 from time import time
-from typing import Any, Callable, ClassVar, Deque, Dict, List, Optional, Tuple
+from typing import Any, ClassVar
 
 from osprey.async_worker.lib.discovery.hash_ring import HashRing, HashRingNode
 from osprey.worker.lib import etcd
@@ -43,10 +45,10 @@ class _AsyncHashRing:
         self._key = key
         self._default_num_replicas = default_num_replicas
         self._ring: HashRing = HashRing(default_num_replicas)
-        self._members: Dict[bytes, HashRingNode] = {}
-        self._overrides: Dict[Any, Any] = {}
+        self._members: dict[bytes, HashRingNode] = {}
+        self._overrides: dict[Any, Any] = {}
         self._initialized = False
-        self._watch_task: Optional[asyncio.Task[None]] = None
+        self._watch_task: asyncio.Task[None] | None = None
 
     async def ensure_initialized(self) -> None:
         if self._initialized:
@@ -93,8 +95,8 @@ class _AsyncHashRing:
 
     def _update_from_value(self, value: str) -> None:
         data = json.loads(value)
-        members: List[HashRingNode] = []
-        overrides: Dict[Any, Any] = {}
+        members: list[HashRingNode] = []
+        overrides: dict[Any, Any] = {}
 
         if isinstance(data, list):
             members = self._read_members(data)
@@ -108,7 +110,7 @@ class _AsyncHashRing:
         self._members = {m.name: m for m in members}
         self._overrides = overrides
 
-    def _read_members(self, raw: List[Any]) -> List[HashRingNode]:
+    def _read_members(self, raw: list[Any]) -> list[HashRingNode]:
         members = []
         for item in raw:
             if isinstance(item, str):
@@ -121,7 +123,7 @@ class _AsyncHashRing:
         return members
 
     @staticmethod
-    def _read_overrides(raw: List[Any]) -> Dict[Any, Any]:
+    def _read_overrides(raw: list[Any]) -> dict[Any, Any]:
         result = {}
         for items in raw:
             if len(items) >= 2:
@@ -165,7 +167,7 @@ class _AsyncHashRing:
 class _ServiceWrapper:
     __slots__ = ('service', 'visible_at')
 
-    def __init__(self, service: Service, visible_at: Optional[float]) -> None:
+    def __init__(self, service: Service, visible_at: float | None) -> None:
         self.service = service
         self.visible_at = visible_at
 
@@ -191,12 +193,12 @@ class AsyncServiceWatcher:
         self._etcd_client = etcd_client
         self._key = f'{base_key}/{service_name}/instances'
         self._service_name = service_name
-        self._instances: Dict[str, _ServiceWrapper] = {}
-        self._rotation: Deque[str] = collections.deque()
+        self._instances: dict[str, _ServiceWrapper] = {}
+        self._rotation: deque[str] = collections.deque()
         self._ring = _AsyncHashRing(etcd_client, f'{base_key}/{service_name}/ring')
-        self._listeners: List[ListenerFn] = []
+        self._listeners: list[ListenerFn] = []
         self._initialized = False
-        self._watch_task: Optional[asyncio.Task[None]] = None
+        self._watch_task: asyncio.Task[None] | None = None
 
     async def ensure_initialized(self) -> None:
         if self._initialized:
@@ -259,7 +261,7 @@ class AsyncServiceWatcher:
                 f'instances={list(self._instances.keys())}'
             )
 
-    def select_all(self, tolerate_draining: bool = False) -> List[Service]:
+    def select_all(self, tolerate_draining: bool = False) -> list[Service]:
         services = []
         for service_id in self._rotation:
             wrapper = self._instances[service_id]
@@ -354,7 +356,7 @@ class AsyncDirectory:
     Uses the sync EtcdClient via run_in_executor for etcd reads.
     """
 
-    _instances: ClassVar[Dict[Tuple[Any, ...], 'AsyncDirectory']] = {}
+    _instances: ClassVar[dict[tuple[Any, ...], 'AsyncDirectory']] = {}
 
     @classmethod
     def instance(cls, secure: bool = False) -> 'AsyncDirectory':
@@ -366,14 +368,14 @@ class AsyncDirectory:
     def __init__(self, base_key: str = '/discovery', secure: bool = False) -> None:
         self._base_key = base_key
         self._etcd_client = EtcdClient(secure=secure)
-        self._watchers: Dict[str, AsyncServiceWatcher] = {}
+        self._watchers: dict[str, AsyncServiceWatcher] = {}
 
     def get_watcher(self, service_name: str) -> AsyncServiceWatcher:
         if service_name not in self._watchers:
             self._watchers[service_name] = AsyncServiceWatcher(self._etcd_client, self._base_key, service_name)
         return self._watchers[service_name]
 
-    def select_all(self, service_name: str) -> List[Service]:
+    def select_all(self, service_name: str) -> list[Service]:
         watcher = self.get_watcher(service_name)
         return watcher.select_all()
 

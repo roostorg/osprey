@@ -1,5 +1,5 @@
 import re
-from typing import List, Optional, cast
+from typing import cast
 
 from osprey.engine.ast import grammar
 from osprey.engine.ast_validator.validation_utils import add_must_assign_to_variable_error
@@ -18,14 +18,14 @@ _HAS_FORMAT_STRING_RE = re.compile(r'\{([^\d\W]\w*)\}')
 
 class RuleArguments(ArgumentsBase):
     # TODO - Should we require that this is a list literal? If so, should we require it be non-empty?
-    when_all: List[bool]
+    when_all: list[bool]
     description: str
 
 
 class Rule(UDFBase[RuleArguments, RuleT]):
     """Defines a named rule with conditions. Evaluates to true when all conditions in when_all are met."""
 
-    name: Optional[str] = None
+    name: str | None = None
     category = UdfCategories.ENGINE
 
     def __init__(self, validation_context: ValidationContext, arguments: RuleArguments):
@@ -115,9 +115,9 @@ class Rule(UDFBase[RuleArguments, RuleT]):
 
 class WhenRulesArguments(ArgumentsBase):
     # TODO - Should we require this be non-empty?
-    rules_any: List[RuleT]
+    rules_any: list[RuleT]
     # TODO - Should we require this be non-empty?
-    then: List[EffectBase]
+    then: list[EffectBase]
 
 
 class WhenRules(UDFBase[WhenRulesArguments, None]):
@@ -150,7 +150,7 @@ class WhenRules(UDFBase[WhenRulesArguments, None]):
         #    `ListExecutor`, in order to peek inside, and grab each non-failed item within the list.
         rules_any_value = []
         rules_any_failed = 0
-        failed_rule_names: List[str] = []
+        failed_rule_names: list[str] = []
         assert isinstance(rules_any_node, grammar.List), 'BUG: `rules_any node is not a List!'
         for item in rules_any_node.items:
             resolved = execution_context.resolved(item, return_none_for_failed_values=True)
@@ -188,10 +188,10 @@ class WhenRules(UDFBase[WhenRulesArguments, None]):
         passing_rules = [rule for rule in arguments.rules_any if rule.value]
         passing_names = [rule.name for rule in passing_rules]
         assert hasattr(self, '_failed_rule_names'), 'BUG: resolve_arguments() must be called before execute()'
-        failed_rule_names: List[str] = self._failed_rule_names
+        failed_rule_names: list[str] = self._failed_rule_names
         then_failed: int = self._then_failed
 
-        effects_emitted: List[str] = []
+        effects_emitted: list[str] = []
         if passing_rules:
             effects_emitted = [type(o).__name__ for o in arguments.then if isinstance(o, EffectBase)]
 

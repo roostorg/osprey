@@ -1,4 +1,5 @@
-from typing import Any, Callable, List
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 from osprey.engine.ast_validator.validators.imports_must_not_have_cycles import ImportsMustNotHaveCycles
@@ -15,7 +16,7 @@ from osprey.engine.query_language.tests.conftest import MakeRulesSourcesFunction
 
 # The validators and UDFs that the rules source validation should use, *not* the query source validation.
 # We need to include the specific validators that parse_query_to_validated_ast expects.
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_standard_rules_validators(),
     pytest.mark.use_validators(
         [
@@ -85,7 +86,7 @@ def test_static_types_are_converted_post_execution(
         Foo = Entity(type="Name", id="some name")
         Bar = Entity(type="User", id=123)
         ARule = Rule(when_all=[True], description="")
-        AnOptional: Optional[bool] = True
+        AnOptional: bool | None = True
         """
     )
     parse_query_to_validated_ast('Foo in "hello"', sources)

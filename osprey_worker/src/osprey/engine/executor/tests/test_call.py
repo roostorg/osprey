@@ -54,7 +54,7 @@ def test_dynamic_result_coerces_type(udf_registry: UDFRegistry, execute_with_res
     e_info = result.error_infos[0]
     assert isinstance(e_info.error, InvalidDynamicReturnType)
     assert str(e_info.error) == (
-        'Function `Test` with dynamic return type returned `int` but was expected to return `List[str]`.'
+        'Function `Test` with dynamic return type returned `int` but was expected to return `list[str]`.'
     )
 
 

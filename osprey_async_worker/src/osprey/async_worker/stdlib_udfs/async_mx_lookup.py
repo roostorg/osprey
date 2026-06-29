@@ -8,7 +8,6 @@ Class named `MXLookup` to shadow the sync version in the UDF registry.
 """
 
 import asyncio
-from typing import Optional
 
 import aiodns
 import pycares
@@ -18,7 +17,7 @@ from osprey.engine.stdlib.udfs.mx_lookup import Arguments
 from osprey.engine.stdlib.udfs.mx_lookup import MXLookup as SyncMXLookup
 
 _DNS_TIMEOUT = 5.0
-_resolver: Optional[aiodns.DNSResolver] = None
+_resolver: aiodns.DNSResolver | None = None
 
 
 def _get_resolver() -> aiodns.DNSResolver:
