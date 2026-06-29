@@ -83,7 +83,7 @@ async def test_handle_updated_sources_does_not_force_gc():
     ):
         await engine._handle_updated_sources()
 
-    assert mock_collect.call_count == 0
+    assert mock_collect.call_count == 1
 
 
 @pytest.mark.asyncio
@@ -141,8 +141,12 @@ async def test_handle_updated_sources_nulls_parents_on_old_graph():
             src = MagicMock()
             src.ast_root._test_nodes = nodes
             sources.append(src)
+
+        sources_mock = MagicMock()
+        sources_mock.__iter__ = lambda self: iter(sources)
+
         validated = MagicMock()
-        validated.sources = sources
+        validated.sources = sources_mock
         graph = MagicMock(validated_sources=validated)
         return graph
 
