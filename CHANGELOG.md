@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replace `moment` with `dayjs` ([#238](https://github.com/roostorg/osprey/pull/238) by [@haileyok](https://github.com/haileyok))
 - Add project-scoped Playwright MCP registration (`@playwright/mcp@0.0.73` via `npx`) so Claude Code can drive a browser against `osprey_ui` for ad-hoc UI verification ([#243](https://github.com/roostorg/osprey/pull/243) by [@haileyok](https://github.com/haileyok))
 - Replace react-scripts with rsbuild/rspack ([#235](https://github.com/roostorg/osprey/pull/235) by [@chimosky](https://github.com/chimosky))
+- Replace `highcharts` (proprietary) with `echarts` (Apache 2.0) in the Timeseries chart ([#374](https://github.com/roostorg/osprey/issues/374))
 
 ### 🛠 Breaking changes
 
