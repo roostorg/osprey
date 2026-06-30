@@ -39,6 +39,7 @@ common = [
     { name = "google-cloud-bigquery", specifier = "==3.27.0" },
     { name = "google-cloud-bigtable", specifier = "==2.10.0" },
     { name = "google-cloud-core", specifier = "==2.6.0" },
+    { name = "google-cloud-kms", specifier = "==3.5.1" },
     { name = "google-cloud-pubsub", specifier = "==2.15.2" },
     { name = "google-cloud-storage", specifier = "==2.10.0" },
     { name = "google-resumable-media", specifier = "==2.7.2" },
@@ -711,6 +712,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a8/dd/1eef226e470369b26824a505c34482c0b493bc35fe8e0c6b003b5feca21a/google_cloud_core-2.6.0.tar.gz", hash = "sha256:e76149739f90fac1fc6757c09f47eaccb3145b54adbd7759b0f7c4b235f46c83", size = 36001, upload-time = "2026-05-07T08:04:04.124Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/84/4a/98da8930ab109c73d9a5d13782a9ebb81ea8c111f6d534a567b71d23e52b/google_cloud_core-2.6.0-py3-none-any.whl", hash = "sha256:6d63ac8e5eca6d9e4319d0a1e2265fadcd7f1049904378caecfa01cf52dd869e", size = 29390, upload-time = "2026-05-07T08:02:34.672Z" },
+]
+
+[[package]]
+name = "google-cloud-kms"
+version = "3.5.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "google-api-core", extra = ["grpc"] },
+    { name = "google-auth" },
+    { name = "grpc-google-iam-v1" },
+    { name = "proto-plus" },
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ec/d4/2e8d1c39be35152b8b15ad8f3e841d048f77fa17ae777f8014ed3eed4b15/google_cloud_kms-3.5.1.tar.gz", hash = "sha256:b5f1ac87f8dc9a6642439e93baa5a63ee2d4d18c140669941689e9ab5abed1d9", size = 327236, upload-time = "2025-05-20T18:46:22.705Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/78/86/480d298145d15caf994cd13ee0fac764a3d29d07367550e604f31369d81f/google_cloud_kms-3.5.1-py3-none-any.whl", hash = "sha256:11dc9a1b4edcc6794c5fee7e4e7dbd14b051bde99f4702bd70fec193d152abdc", size = 270815, upload-time = "2025-05-20T18:46:21.116Z" },
 ]
 
 [[package]]
