@@ -10,23 +10,16 @@ common = [
     "ddtrace==2.21.11",
     "deepmerge==0.3.0",
     "dnspython==2.6.1",
-    "erlpack",
     "faker==4.18.0",
     "flask==1.1.4",
     "gevent==24.2.1",
     "google-api-core==2.19.2",
-    "google-api-python-client==2.105.0",
     "google-auth==2.40.3",
-    "google-auth-httplib2==0.4.0",
-    "google-cloud-appengine-logging==1.6.2",
-    "google-cloud-audit-log==0.3.2",
     "google-cloud-bigquery==3.27.0",
     "google-cloud-bigtable==2.10.0",
     "google-cloud-core==2.6.0",
     "google-cloud-kms==3.5.1",
-    "google-cloud-logging==3.4.0",
     "google-cloud-pubsub==2.15.2",
-    "google-cloud-secret-manager==2.24.0",
     "google-cloud-storage==2.10.0",
     "google-resumable-media==2.7.2",
     "googleapis-common-protos==1.70.0",
@@ -51,7 +44,6 @@ common = [
     "minio>=7.2.16",
     "mmh3==3.0.0",
     "msgpack==1.2.1",
-    "nostril",
     "phone-iso3166==0.3.8",
     "pluggy==1.5.0",
     "protobuf==4.25.8",
@@ -126,11 +118,9 @@ override-dependencies = ["ddtrace>=2.17.2,<3.0.0"]
 default-groups = ["common", "dev"]
 
 [tool.uv.sources]
-erlpack = { git = "https://github.com/discord/erlpack.git", rev = "b25ebd51ae4c097bd7f756fd4e1c841b61bfe50b" }
 greenlet = { git = "https://github.com/discord/greenlet.git", rev = "a75d78f1547c74a81134644a179467525a255466" }
 gunicorn = { git = "https://github.com/discord/gunicorn.git", rev = "979efdcb918daa536d8923668241c6e6bf1edb58" }
 jsonpath-rw = { url = "https://github.com/kennknowles/python-jsonpath-rw/archive/6f5647bb3ad2395c20f0191fef07a1df51c9fed8.tar.gz" }
-nostril = { url = "https://github.com/casics/nostril/archive/v1.2.0.tar.gz" }
 osprey_rpc = { workspace = true }
 osprey_worker = { workspace = true }
 osprey_async_worker = { workspace = true }
@@ -226,11 +216,9 @@ ignore_unused = [
     "grpcio-health-checking",
     "grpcio-reflection",
     "grpcio-status",
-    # Needs investigation: may be unused, verify before removing
-    "erlpack",
-    "google-api-python-client",
-    "google-auth-httplib2",
-    "nostril",
+    # Required at module load by tink.integration.gcpkms (imported in
+    # osprey.worker.lib.encryption.base). Not imported directly by our code.
+    "google-cloud-kms",
 ]
 
 [tool.pytest.ini_options]
