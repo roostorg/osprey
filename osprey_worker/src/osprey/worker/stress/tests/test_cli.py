@@ -1,5 +1,6 @@
 import io
 import time
+from typing import Callable
 from unittest.mock import MagicMock
 
 import pytest
@@ -13,6 +14,20 @@ from osprey.worker.stress.cli import (
     main,
     probe_topic_head,
 )
+
+
+def _wait_until(predicate: Callable[[], bool], deadline_seconds: float = 5.0, sleep_step: float = 0.01) -> None:
+    """Block until `predicate()` returns True or fail after `deadline_seconds`.
+
+    Used by the ProgressReporter tests to avoid fixed sleep() windows that flake
+    on busy CI runners.
+    """
+    deadline = time.monotonic() + deadline_seconds
+    while time.monotonic() < deadline:
+        if predicate():
+            return
+        time.sleep(sleep_step)
+    raise AssertionError(f'predicate did not become true within {deadline_seconds}s')
 
 
 class TestParser:
@@ -184,10 +199,14 @@ class TestProgressReporter:
             output=sink,
         )
         reporter.start()
+        # Initial baseline taken in start() = (input=1000, output=500).
+        # First tick: in_delta=100, out_delta=50; wait for that to appear.
         tick(50, 30, 1100, 550)
-        time.sleep(0.15)
+        _wait_until(lambda: 'in_topic_Δ=100' in sink.getvalue())
+        # Second tick: in_delta=200, out_delta=100. Once that line lands the
+        # reporter has emitted at least twice and we have the state we need.
         tick(100, 70, 1200, 600)
-        time.sleep(0.10)
+        _wait_until(lambda: 'in_topic_Δ=200' in sink.getvalue())
         reporter.stop()
 
         lines = [ln for ln in sink.getvalue().splitlines() if ln]
@@ -236,11 +255,10 @@ class TestProgressReporter:
             output=sink,
         )
         reporter.start()
-        time.sleep(0.25)
+        # Half the probes raise; the reporter must keep ticking past failures.
+        # Wait until at least one successful tick has emitted output.
+        _wait_until(lambda: bool(sink.getvalue()))
         reporter.stop()
-        # Reporter should still be running (not crashed) — verified by stop
-        # succeeding cleanly and at least one line landing in the sink.
-        assert sink.getvalue()
 
 
 class TestTopicSnapshot:

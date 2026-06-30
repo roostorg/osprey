@@ -20,6 +20,7 @@ against any external input source. Today it prints a stub message.
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 import threading
 import time
@@ -37,6 +38,8 @@ from osprey.worker.stress.reporter import (
     compute_report,
     exit_code_for,
 )
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_BOOTSTRAP = 'localhost:9092'
 DEFAULT_INPUT_TOPIC = 'osprey.actions_input'
@@ -87,8 +90,9 @@ def probe_topic_head(
             consumer.close(autocommit=False)
         except Exception:
             # Probe is best-effort. A noisy close() during teardown would mask
-            # the snapshot value the caller needs.
-            pass
+            # the snapshot value the caller needs. Log so it's discoverable
+            # without becoming user-visible noise.
+            logger.debug('probe_topic_head: consumer.close() failed for topic %s', topic, exc_info=True)
 
 
 class ProgressReporter:
@@ -129,9 +133,20 @@ class ProgressReporter:
             raise RuntimeError('ProgressReporter already started')
         self._start_monotonic = time.monotonic()
         # Probe baselines on the calling thread so the first periodic emit can
-        # diff against them without racing the worker's startup.
-        self._initial_input = self._probe_input()
-        self._initial_output = self._probe_output()
+        # diff against them without racing the worker's startup. Best-effort:
+        # if the broker hiccups now we'd rather start with zero baselines
+        # (consumer is already running, the user wants the run to proceed)
+        # than abort cmd_run from inside this constructor-adjacent path.
+        try:
+            self._initial_input = self._probe_input()
+        except Exception:
+            logger.debug('ProgressReporter.start: initial input probe failed', exc_info=True)
+            self._initial_input = 0
+        try:
+            self._initial_output = self._probe_output()
+        except Exception:
+            logger.debug('ProgressReporter.start: initial output probe failed', exc_info=True)
+            self._initial_output = 0
         self._thread = threading.Thread(target=self._run, name='stress-progress', daemon=True)
         self._thread.start()
 
@@ -148,8 +163,9 @@ class ProgressReporter:
                 self._emit()
             except Exception:
                 # A failed probe (broker hiccup, transient timeout) shouldn't
-                # tear down the in-flight stress run. Skip the tick.
-                pass
+                # tear down the in-flight stress run. Skip the tick but log so
+                # repeated failures are diagnosable.
+                logger.debug('ProgressReporter tick failed; skipping', exc_info=True)
 
     def _emit(self) -> None:
         elapsed = max(time.monotonic() - self._start_monotonic, 0.001)
