@@ -187,9 +187,12 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
     setGranularity(defaultGranularity);
   }, [defaultGranularity]);
 
+  const chartInstanceRef = React.useRef<EChartsType | null>(null);
+
   // Activate lineX brush mode immediately so the user can drag to select a date range
   // without needing to click a toolbox button first (matching the previous Highcharts zoomType:'x' UX).
   function handleChartReady(chart: EChartsType): void {
+    chartInstanceRef.current = chart;
     chart.dispatchAction({
       type: 'takeGlobalCursor',
       key: 'brush',
@@ -201,6 +204,9 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
     const area = params.areas?.[0];
     if (!area?.coordRange) return;
     const [startTs, endTs] = area.coordRange;
+
+    // Clear the brush selection immediately so it doesn't persist over the chart.
+    chartInstanceRef.current?.dispatchAction({ type: 'brush', areas: [] });
 
     // ECharts does not close over executedQuery like React handlers do,
     // so read the latest value directly from the store.
@@ -218,7 +224,7 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
   const tooltipDateFormat = getDateFormatForGranularity('other');
 
   const chartOptions = {
-    grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
+    grid: { left: '3%', right: '4%', bottom: 70, containLabel: true },
     xAxis: {
       type: 'time',
       splitLine: { show: true },
@@ -240,7 +246,7 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
       trigger: 'axis',
       formatter: (params: unknown) => {
         const list = params as Array<{ data: [number, number] }>;
-        if (!list.length) return '';
+        if (!Array.isArray(list) || !list.length || !list[0]?.data) return '';
         const [timestamp, value] = list[0].data;
         return `${dayjs(timestamp).format(tooltipDateFormat)}: ${Number(value).toLocaleString()}`;
       },
@@ -275,7 +281,7 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
           <EmptyOverlay show={chartData.length === 0}>
             <ReactECharts
               option={chartOptions}
-              style={{ height: 300 }}
+              style={{ height: 400 }}
               onChartReady={handleChartReady}
               onEvents={{ brushEnd: handleBrushEnd }}
             />
