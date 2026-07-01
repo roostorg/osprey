@@ -2,6 +2,7 @@ import abc
 from typing import TypeVar
 
 from google.cloud import pubsub_v1
+from kafka import KafkaProducer
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.pubsub.publisher_client import BatchPubsubPublisherClient
 from pydantic import BaseModel
@@ -103,3 +104,32 @@ class StrPubSubPublisher(PubSubPublisher):
             attributes = {}
 
         super().publish(data, attributes)  # type: ignore[type-var]
+
+
+class KafkaPublisher(BasePublisher):
+    def __init__(self, bootstrap_servers: list[str], client_id: str, kafka_topic: str):
+        self._kafka_topic = kafka_topic
+        self._bootstrap_servers = bootstrap_servers
+        self._client_id = client_id
+
+        self._publisher = KafkaProducer(bootstrap_servers=self._bootstrap_servers, client_id=self._client_id)
+
+    def _prepare_data(self, data: _PydanticModelT) -> bytes:
+        """
+        Convert the data to bytes for publishing. Some topics will require packing to bytes in a specific way.
+        Override this method if needed.
+        """
+        return data.json(exclude_none=True).encode()
+
+    def publish(self, data: _PydanticModelT, attributes: dict[str, str] | None = None) -> None:
+        if attributes is None:
+            attributes = {}
+
+        try:
+            processed_data = self._prepare_data(data)
+            self._publisher.send(self._kafka_topic, value=processed_data, **attributes)
+        except Exception:
+            pass
+
+    def stop(self) -> None:
+        self._publisher.close()
