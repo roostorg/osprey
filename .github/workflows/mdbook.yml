@@ -85,6 +85,8 @@ jobs:
           rm mdbook.tar.gz
 
       - name: Build with mdBook
+        env:
+          MDBOOK_OUTPUT__HTML__SITE_URL: /osprey/${{ steps.deploy-path.outputs.path }}/
         run: ${{ github.workspace }}/mdbook-bin/mdbook build docs
 
       - name: Deploy to GitHub Pages
