@@ -20,7 +20,7 @@ class NullBackend:
     def _err() -> RuleDraftBackendError:
         return RuleDraftBackendError(
             'No rule-submission backend is configured. Set OSPREY_RULES_SUBMISSION_BACKEND '
-            'to one of: github, local. See docs for what each one needs.',
+            'to one of: github, gitlab, local. See docs for what each one needs.',
             status_code=503,
         )
 

@@ -898,3 +898,171 @@ def test_local_backend_rejects_path_traversal(client: 'FlaskClient[Response]', m
                 wire_into_main=False,
             )
         assert 'escapes the configured rules directory' in exc_info.value.message
+
+
+def _set_gitlab_backend(monkeypatch: pytest.MonkeyPatch, **overrides: str) -> None:
+    defaults = {
+        'OSPREY_RULES_SUBMISSION_BACKEND': 'gitlab',
+        'OSPREY_GITLAB_PROJECT': 'alice/osprey-rules',
+        'OSPREY_GITLAB_TOKEN': 'gl_fake_token',
+        'OSPREY_RULES_BASE_BRANCH': 'main',
+    }
+    for k, v in {**defaults, **overrides}.items():
+        monkeypatch.setenv(k, v)
+
+
+@pytest.mark.use_rules_sources(_base_sources)
+def test_gitlab_submit_returns_503_when_missing_required_env(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv('OSPREY_RULES_SUBMISSION_BACKEND', 'gitlab')
+    monkeypatch.delenv('OSPREY_GITLAB_PROJECT', raising=False)
+    monkeypatch.delenv('OSPREY_GITLAB_TOKEN', raising=False)
+    res = client.post(
+        url_for('rule_drafts.submit_draft'),
+        json={
+            'path': 'rules/new_rule.sml',
+            'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
+            'rule_name': 'AnotherRule',
+            'summary': '',
+            'is_new_rule': True,
+        },
+    )
+    assert res.status_code == 503
+    body = res.json
+    assert body is not None
+    assert 'OSPREY_GITLAB_PROJECT' in body['error']
+
+
+@pytest.mark.use_rules_sources(_base_sources)
+def test_gitlab_submit_happy_path_opens_merge_request(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _set_gitlab_backend(monkeypatch, OSPREY_RULES_PATH_IN_REPO='rules')
+
+    project_url = 'https://gitlab.com/api/v4/projects/alice%2Fosprey-rules'
+    # OSPREY_RULES_PATH_IN_REPO='rules' prepends the subdir to the bare filename,
+    # so the file lands at rules/new_rule.sml -> 'rules%2Fnew_rule.sml' in the URL.
+    file_url = f'{project_url}/repository/files/rules%2Fnew_rule.sml'
+
+    with requests_mock_module.Mocker() as m:
+        m.get(file_url, status_code=404)
+        m.post(f'{project_url}/repository/branches', status_code=201, json={})
+        m.post(file_url, status_code=201, json={})
+        m.post(
+            f'{project_url}/merge_requests',
+            status_code=201,
+            json={'iid': 7, 'web_url': 'https://gitlab.com/alice/osprey-rules/-/merge_requests/7'},
+        )
+
+        res = client.post(
+            url_for('rule_drafts.submit_draft'),
+            json={
+                'path': 'new_rule.sml',
+                'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
+                'rule_name': 'AnotherRule',
+                'summary': 'add bye rule',
+                'is_new_rule': True,
+            },
+        )
+
+    assert res.status_code == 200
+    body = res.json
+    assert body is not None
+    assert body['title'] == 'Merge request !7 opened'
+    assert body['url'] == 'https://gitlab.com/alice/osprey-rules/-/merge_requests/7'
+    assert body['main_sml_updated'] is False
+    assert body['mr_iid'] == 7
+    assert body['path_in_repo'] == 'rules/new_rule.sml'
+
+
+@pytest.mark.use_rules_sources(_base_sources)
+def test_gitlab_self_hosted_url_is_threaded_into_requests(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _set_gitlab_backend(
+        monkeypatch,
+        OSPREY_GITLAB_URL='https://gitlab.acme.test',
+        OSPREY_GITLAB_PROJECT='acme/rules',
+    )
+
+    project_url = 'https://gitlab.acme.test/api/v4/projects/acme%2Frules'
+    file_url = f'{project_url}/repository/files/new_rule.sml'
+
+    with requests_mock_module.Mocker() as m:
+        m.get(file_url, status_code=404)
+        m.post(f'{project_url}/repository/branches', status_code=201, json={})
+        m.post(file_url, status_code=201, json={})
+        m.post(
+            f'{project_url}/merge_requests',
+            status_code=201,
+            json={'iid': 1, 'web_url': 'https://gitlab.acme.test/acme/rules/-/merge_requests/1'},
+        )
+
+        res = client.post(
+            url_for('rule_drafts.submit_draft'),
+            json={
+                'path': 'new_rule.sml',
+                'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
+                'rule_name': 'AnotherRule',
+                'summary': '',
+                'is_new_rule': True,
+            },
+        )
+
+    assert res.status_code == 200
+    body = res.json
+    assert body is not None
+    assert body['url'] == 'https://gitlab.acme.test/acme/rules/-/merge_requests/1'
+
+
+@pytest.mark.use_rules_sources(_base_sources)
+def test_gitlab_pending_filters_to_rules_path_and_sml(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _set_gitlab_backend(monkeypatch, OSPREY_RULES_PATH_IN_REPO='rules')
+
+    project_url = 'https://gitlab.com/api/v4/projects/alice%2Fosprey-rules'
+
+    with requests_mock_module.Mocker() as m:
+        m.get(
+            f'{project_url}/merge_requests',
+            json=[
+                {
+                    'iid': 1,
+                    'title': 'Add rule X',
+                    'web_url': 'https://gitlab.com/alice/osprey-rules/-/merge_requests/1',
+                    'source_branch': 'rule-draft/alice/X-1',
+                    'author': {'username': 'alice'},
+                    'created_at': '2026-07-01T12:00:00Z',
+                },
+                {
+                    'iid': 2,
+                    'title': 'Update README',
+                    'web_url': 'https://gitlab.com/alice/osprey-rules/-/merge_requests/2',
+                    'source_branch': 'docs/readme',
+                    'author': {'username': 'alice'},
+                    'created_at': '2026-07-01T13:00:00Z',
+                },
+            ],
+        )
+        m.get(
+            f'{project_url}/merge_requests/1/diffs',
+            json=[{'new_path': 'rules/x.sml'}],
+        )
+        m.get(
+            f'{project_url}/merge_requests/2/diffs',
+            json=[{'new_path': 'README.md'}],
+        )
+
+        res = client.get(url_for('rule_drafts.pending_drafts'))
+
+    assert res.status_code == 200
+    body = res.json
+    assert body is not None
+    assert len(body['pending']) == 1
+    entry = body['pending'][0]
+    assert entry['title'] == 'Add rule X'
+    assert entry['url'] == 'https://gitlab.com/alice/osprey-rules/-/merge_requests/1'
+    assert entry['touched_files'] == ['rules/x.sml']
+    assert entry['mr_iid'] == 1

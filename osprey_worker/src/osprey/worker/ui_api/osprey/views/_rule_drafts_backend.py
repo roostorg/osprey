@@ -16,8 +16,8 @@ Adding a new backend: implement a class with `submit_draft` and
 `list_pending_drafts` matching the Protocol below, add a case in
 `load_backend()`, and update the "unknown backend" error message here plus
 the "no backend configured" message in `_rule_drafts_null.py`. The existing
-`_rule_drafts_github.py` module is a working template for HTTP-backed
-adapters; `_rule_drafts_local.py` for filesystem.
+`_rule_drafts_github.py` and `_rule_drafts_gitlab.py` modules are working
+templates for HTTP-backed adapters; `_rule_drafts_local.py` for filesystem.
 """
 
 from __future__ import annotations
@@ -117,7 +117,7 @@ class RuleSubmissionBackend(Protocol):
 def load_backend() -> RuleSubmissionBackend:
     """Select and instantiate the configured backend.
 
-    `OSPREY_RULES_SUBMISSION_BACKEND` picks one of: github, local, null.
+    `OSPREY_RULES_SUBMISSION_BACKEND` picks one of: github, gitlab, local, null.
     Unset or empty defaults to `null`. Unknown values raise so a typo doesn't
     silently degrade to no-op submission.
     """
@@ -132,11 +132,15 @@ def load_backend() -> RuleSubmissionBackend:
         from ._rule_drafts_github import GitHubBackend
 
         return GitHubBackend.from_env()
+    if name == 'gitlab':
+        from ._rule_drafts_gitlab import GitLabBackend
+
+        return GitLabBackend.from_env()
     if name == 'local':
         from ._rule_drafts_local import LocalBackend
 
         return LocalBackend.from_env()
     raise RuleDraftBackendError(
-        f'Unknown OSPREY_RULES_SUBMISSION_BACKEND {name!r}; valid values are github, local, null.',
+        f'Unknown OSPREY_RULES_SUBMISSION_BACKEND {name!r}; valid values are github, gitlab, local, null.',
         status_code=500,
     )

@@ -71,6 +71,7 @@ The Submit button routes drafts through a pluggable backend. Pick one for your d
 |---|---|---|
 | `null` (default) | Returns 503 on any submit or list call. Ships as the default so an unconfigured install never writes anything. | none |
 | `github` | Opens a pull request on a configured repo. Works with github.com and GitHub Enterprise. | `OSPREY_RULES_REPO`, `OSPREY_GITHUB_TOKEN` (+ optionals) |
+| `gitlab` | Opens a merge request on a configured project. Works with gitlab.com and self-hosted GitLab. | `OSPREY_GITLAB_PROJECT`, `OSPREY_GITLAB_TOKEN` (+ optionals) |
 | `local` | Writes SML directly to a mounted directory. For self-hosted setups whose deploy pipeline already syncs a rules directory into the engine. | `OSPREY_RULES_LOCAL_PATH` |
 
 Env vars shared across every backend that targets a git host:
@@ -86,6 +87,14 @@ Env vars shared across every backend that targets a git host:
 | `OSPREY_GITHUB_TOKEN` | _required_ | Fine-grained PAT with `Contents: read/write` and `Pull requests: read/write` on the repo. |
 | `OSPREY_GITHUB_API_URL` | `https://api.github.com` | Set for GitHub Enterprise: e.g. `https://github.acme.example/api/v3`. |
 
+#### `gitlab`
+
+| Var | Default | Notes |
+|---|---|---|
+| `OSPREY_GITLAB_PROJECT` | _required_ | `namespace/project` of the project to MR against. |
+| `OSPREY_GITLAB_TOKEN` | _required_ | Project or personal access token with the `api` scope. |
+| `OSPREY_GITLAB_URL` | `https://gitlab.com` | Set for self-hosted GitLab: e.g. `https://gitlab.mycompany.example`. |
+
 #### `local`
 
 | Var | Default | Notes |
@@ -94,4 +103,4 @@ Env vars shared across every backend that targets a git host:
 
 ### Adding a rule submission backend
 
-Add a Python module next to `_rule_drafts_github.py` that implements the `RuleSubmissionBackend` Protocol defined in `_rule_drafts_backend.py`, then wire it into `load_backend()`. See the module docstring on `_rule_drafts_backend.py` for the contract; the existing HTTP-backed module (`_rule_drafts_github.py`) is a working template.
+Add a Python module next to `_rule_drafts_github.py` that implements the `RuleSubmissionBackend` Protocol defined in `_rule_drafts_backend.py`, then wire it into `load_backend()`. See the module docstring on `_rule_drafts_backend.py` for the contract; the existing HTTP-backed modules (`_rule_drafts_github.py`, `_rule_drafts_gitlab.py`) are working templates.
