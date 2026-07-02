@@ -1,5 +1,7 @@
 import * as React from 'react';
 import {
+  Alert,
+  Button,
   Card,
   Collapse,
   Descriptions,
@@ -14,11 +16,12 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { Link } from 'react-router-dom';
 
-import { getRulesList } from '../../actions/RulesActions';
-import usePromiseResult from '../../hooks/usePromiseResult';
-import { RuleInfo, RulesListResponse, SortKey } from '../../types/RulesTypes';
+import { getPendingRuleDrafts, getRulesList } from '../../actions/RulesActions';
+import usePromiseResult, { PromiseResultStatus } from '../../hooks/usePromiseResult';
+import { PendingDraft, PendingDraftsResponse, RuleInfo, RulesListResponse, SortKey } from '../../types/RulesTypes';
 import { renderFromPromiseResult } from '../../utils/PromiseResultUtils';
 
 import styles from './RulesPage.module.css';
@@ -73,13 +76,19 @@ export const RulesPage: React.FC = () => {
   const result = usePromiseResult(() => {
     return getRulesList();
   });
+  const pendingResult = usePromiseResult<PendingDraftsResponse>(() => {
+    return getPendingRuleDrafts();
+  });
 
   return renderFromPromiseResult(result, (data) => {
-    return <RulesPageContent data={data} />;
+    return <RulesPageContent data={data} pendingResult={pendingResult} />;
   });
 };
 
-const RulesPageContent: React.FC<{ data: RulesListResponse }> = ({ data }) => {
+const RulesPageContent: React.FC<{
+  data: RulesListResponse;
+  pendingResult: ReturnType<typeof usePromiseResult<PendingDraftsResponse>>;
+}> = ({ data, pendingResult }) => {
   const [filters, dispatch] = React.useReducer(filtersReducer, INITIAL_FILTERS);
   const { rules, total, when_rules_total, unused_total } = data;
   const { search, unusedOnly, sortKey, page, pageSize } = filters;
@@ -132,13 +141,32 @@ const RulesPageContent: React.FC<{ data: RulesListResponse }> = ({ data }) => {
   return (
     <div className={styles.viewContainer}>
       <div className={styles.scrollArea}>
-        <Title level={3} style={{ marginBottom: 4 }}>
-          Rules Registry
-        </Title>
-        <Paragraph type="secondary">
-          Named rule definitions across the engine — conditions, descriptions, the features each rule references, and
-          how many WhenRules blocks include it.
-        </Paragraph>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: 16,
+            marginBottom: 4,
+          }}
+        >
+          <div>
+            <Title level={3} style={{ marginBottom: 4 }}>
+              Rules Registry
+            </Title>
+            <Paragraph type="secondary">
+              Named rule definitions across the engine — conditions, descriptions, the features each rule references,
+              and how many WhenRules blocks include it.
+            </Paragraph>
+          </div>
+          <Link to="/rules/new">
+            <Button type="primary" icon={<PlusOutlined />}>
+              Add rule
+            </Button>
+          </Link>
+        </div>
+
+        <PendingDraftsBanner pendingResult={pendingResult} />
 
         <div className={styles.statsRow}>
           <Card size="small">
@@ -262,7 +290,61 @@ const RuleHeader: React.FC<{ rule: RuleInfo }> = ({ rule }) => {
             <strong>{rule.referenced_by_whenrules}</strong> when-rules
           </Text>
         )}
+        <Tooltip title="Open this rule's source file in the editor.">
+          <Link
+            to={{ pathname: '/rules/edit', search: `?path=${encodeURIComponent(rule.source_file)}` }}
+            onClick={(e) => {
+              // Prevent the surrounding Collapse panel from toggling open.
+              e.stopPropagation();
+            }}
+          >
+            <Button type="text" size="small" icon={<EditOutlined />}>
+              Edit
+            </Button>
+          </Link>
+        </Tooltip>
       </Space>
+    </div>
+  );
+};
+
+const PendingDraftsBanner: React.FC<{
+  pendingResult: ReturnType<typeof usePromiseResult<PendingDraftsResponse>>;
+}> = ({ pendingResult }) => {
+  if (pendingResult.status !== PromiseResultStatus.Resolved) return null;
+  const { pending, error } = pendingResult.value;
+  if (error && pending.length === 0) {
+    // GitHub backend not configured or unreachable; the rest of the page works without it.
+    return null;
+  }
+  if (pending.length === 0) return null;
+  return (
+    <Alert
+      type="info"
+      showIcon
+      style={{ marginBottom: 16 }}
+      message={`${pending.length} pending rule draft${pending.length === 1 ? '' : 's'} awaiting review`}
+      description={
+        <Space direction="vertical" size={4} style={{ width: '100%' }}>
+          {pending.slice(0, 8).map((p, i) => {
+            return <PendingDraftRow key={`${p.url}-${i}`} draft={p} />;
+          })}
+          {pending.length > 8 && <Text type="secondary">+{pending.length - 8} more in review.</Text>}
+        </Space>
+      }
+    />
+  );
+};
+
+const PendingDraftRow: React.FC<{ draft: PendingDraft }> = ({ draft }) => {
+  return (
+    <div>
+      <a href={draft.url} target="_blank" rel="noopener noreferrer">
+        {draft.title}
+      </a>{' '}
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        by {draft.author}, {draft.touched_files.join(', ')}
+      </Text>
     </div>
   );
 };
