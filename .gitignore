@@ -307,5 +307,8 @@ Cargo.lock
 
 .claude
 
+# Local docker compose overrides (env vars, port remaps, secrets)
+docker-compose.override.yaml
+
 # docs output
 book/
