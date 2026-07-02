@@ -535,6 +535,7 @@ CanBulkLabelWithNoLimit = register_ability('CAN_BULK_LABEL_WITH_NO_LIMIT')(make_
 CanViewSavedQueries = register_ability('CAN_VIEW_SAVED_QUERIES')(make_marker_ability())
 CanCreateAndEditSavedQueries = register_ability('CAN_CREATE_AND_EDIT_SAVED_QUERIES')(make_marker_ability())
 CanBulkAction = register_ability('CAN_BULK_ACTION')(make_marker_ability())
+CanEditRuleDrafts = register_ability('CAN_EDIT_RULE_DRAFTS')(make_marker_ability())
 
 
 def require_ability_with_request(request_model: ModelT, ability_class: Type[Ability[ModelT, ItemT]]) -> None:
