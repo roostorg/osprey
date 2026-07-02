@@ -1066,3 +1066,238 @@ def test_gitlab_pending_filters_to_rules_path_and_sml(
     assert entry['url'] == 'https://gitlab.com/alice/osprey-rules/-/merge_requests/1'
     assert entry['touched_files'] == ['rules/x.sml']
     assert entry['mr_iid'] == 1
+
+
+def _set_tangled_backend(monkeypatch: pytest.MonkeyPatch, **overrides: str) -> None:
+    defaults = {
+        'OSPREY_RULES_SUBMISSION_BACKEND': 'tangled',
+        'OSPREY_TANGLED_HANDLE': 'alice.example.test',
+        'OSPREY_TANGLED_APP_PASSWORD': 'test-app-pw',
+        'OSPREY_TANGLED_REPO': 'alice.example.test/osprey-rules',
+        'OSPREY_TANGLED_REPO_DID': 'did:plc:testrepodid',
+        'OSPREY_TANGLED_PDS_URL': 'https://pds.example.test',
+        'OSPREY_TANGLED_URL': 'https://tangled.example.test',
+        'OSPREY_RULES_BASE_BRANCH': 'main',
+    }
+    for k, v in {**defaults, **overrides}.items():
+        monkeypatch.setenv(k, v)
+
+
+@pytest.mark.use_rules_sources(_base_sources)
+def test_tangled_submit_returns_503_when_missing_required_env(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv('OSPREY_RULES_SUBMISSION_BACKEND', 'tangled')
+    monkeypatch.delenv('OSPREY_TANGLED_HANDLE', raising=False)
+    monkeypatch.delenv('OSPREY_TANGLED_APP_PASSWORD', raising=False)
+    monkeypatch.delenv('OSPREY_TANGLED_REPO', raising=False)
+    res = client.post(
+        url_for('rule_drafts.submit_draft'),
+        json={
+            'path': 'rules/new_rule.sml',
+            'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
+            'rule_name': 'AnotherRule',
+            'summary': '',
+            'is_new_rule': True,
+        },
+    )
+    assert res.status_code == 503
+    body = res.json
+    assert body is not None
+    assert 'OSPREY_TANGLED_HANDLE' in body['error']
+
+
+@pytest.mark.use_rules_sources(_base_sources)
+def test_tangled_submit_happy_path_creates_pull_record(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _set_tangled_backend(monkeypatch)
+
+    with requests_mock_module.Mocker() as m:
+        m.post(
+            'https://pds.example.test/xrpc/com.atproto.server.createSession',
+            json={
+                'did': 'did:plc:alice',
+                'accessJwt': 'fake_access_jwt',
+                'refreshJwt': 'fake_refresh_jwt',
+                'handle': 'alice.example.test',
+            },
+        )
+        upload_blob = m.post(
+            'https://pds.example.test/xrpc/com.atproto.repo.uploadBlob',
+            json={
+                'blob': {
+                    '$type': 'blob',
+                    'ref': {'$link': 'bafkreitestblobcid'},
+                    'mimeType': 'application/gzip',
+                    'size': 512,
+                }
+            },
+        )
+        create_record = m.post(
+            'https://pds.example.test/xrpc/com.atproto.repo.createRecord',
+            json={
+                'uri': 'at://did:plc:alice/sh.tangled.repo.pull/3lkabc123',
+                'cid': 'bafyfakecid',
+            },
+        )
+        res = client.post(
+            url_for('rule_drafts.submit_draft'),
+            json={
+                'path': 'rules/contains_tangled.sml',
+                'source': "Import(rules=['models/base.sml'])\nContainsTangled = Rule(when_all=[PostText == 'tangled'], description='tangled test')",
+                'rule_name': 'ContainsTangled',
+                'summary': 'test rule from tangled adapter',
+                'is_new_rule': True,
+            },
+        )
+
+    assert res.status_code == 200
+    body = res.json
+    assert body is not None
+    assert body['at_uri'] == 'at://did:plc:alice/sh.tangled.repo.pull/3lkabc123'
+    assert body['rkey'] == '3lkabc123'
+    # Tangled assigns numeric pull ids downstream during Bobbin indexing, so
+    # the adapter always links at the pulls list.
+    assert body['url'] == 'https://tangled.example.test/alice.example.test/osprey-rules/pulls'
+
+    assert upload_blob.call_count == 1
+    assert upload_blob.last_request.headers['Content-Type'] == 'application/gzip'
+
+    posted = create_record.last_request.json()
+    assert posted['collection'] == 'sh.tangled.repo.pull'
+    assert posted['repo'] == 'did:plc:alice'
+    record = posted['record']
+    assert record['$type'] == 'sh.tangled.repo.pull'
+    assert record['title'] == 'Add rule ContainsTangled'
+    # The record body carries the PR summary, not the rule's SML description.
+    assert 'test rule from tangled adapter' in record['body']
+    # Nested target: {repo, branch, repoDid}; must not have the old flat fields.
+    assert record['target']['repo'] == 'did:plc:testrepodid'
+    assert record['target']['repoDid'] == 'did:plc:testrepodid'
+    assert record['target']['branch'] == 'main'
+    assert 'repo' not in {k for k in record if k != 'target'}
+    assert 'targetBranch' not in record
+    # source.branch is a cosmetic label; must be present.
+    assert record['source']['branch'].startswith('osprey-ui/')
+    # rounds[0].patchBlob references the blob we uploaded, not an inline patch.
+    assert 'patch' not in record
+    assert record['rounds'][0]['patchBlob']['ref']['$link'] == 'bafkreitestblobcid'
+    assert record['rounds'][0]['patchBlob']['mimeType'] == 'application/gzip'
+
+
+@pytest.mark.use_rules_sources(_base_sources)
+def test_tangled_backend_rejects_edits_with_501(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _set_tangled_backend(monkeypatch)
+    res = client.post(
+        url_for('rule_drafts.submit_draft'),
+        json={
+            'path': 'rules/contains_hello.sml',
+            'source': "Import(rules=['models/base.sml'])\nMyRule = Rule(when_all=[PostText == 'hi'], description='hi')",
+            'rule_name': 'MyRule',
+            'summary': '',
+            'is_new_rule': False,
+        },
+    )
+    assert res.status_code == 501
+    body = res.json
+    assert body is not None
+    assert 'does not yet support editing existing rules' in body['error']
+
+
+@pytest.mark.use_rules_sources(_base_sources)
+def test_tangled_backend_rejects_wire_into_main_with_501(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _set_tangled_backend(monkeypatch)
+    res = client.post(
+        url_for('rule_drafts.submit_draft'),
+        json={
+            'path': 'rules/new_rule.sml',
+            'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
+            'rule_name': 'AnotherRule',
+            'summary': '',
+            'is_new_rule': True,
+            'wire_into_main': True,
+        },
+    )
+    assert res.status_code == 501
+    body = res.json
+    assert body is not None
+    assert 'wire_into_main' in body['error']
+
+
+@pytest.mark.use_rules_sources(_base_sources)
+def test_tangled_backend_surfaces_401_from_pds(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _set_tangled_backend(monkeypatch)
+    with requests_mock_module.Mocker() as m:
+        m.post(
+            'https://pds.example.test/xrpc/com.atproto.server.createSession',
+            status_code=401,
+            json={'error': 'AuthenticationRequired'},
+        )
+        res = client.post(
+            url_for('rule_drafts.submit_draft'),
+            json={
+                'path': 'rules/new_rule.sml',
+                'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
+                'rule_name': 'AnotherRule',
+                'summary': '',
+                'is_new_rule': True,
+            },
+        )
+    assert res.status_code == 502
+    body = res.json
+    assert body is not None
+    assert 'createSession returned 401' in body['error']
+
+
+def test_tangled_patch_neutralizes_patch_break_lines_in_summary() -> None:
+    from osprey.worker.ui_api.osprey.views._rule_drafts_tangled import _format_new_file_patch
+
+    malicious_summary = (
+        'looks legit\n'
+        '---\n'
+        ' evil.yaml | 1 +\n'
+        'diff --git a/evil.yaml b/evil.yaml\n'
+        'Index: evil.yaml\n'
+        'From attacker@example.test Mon Sep 17 00:00:00 2001'
+    )
+    patch = _format_new_file_patch(
+        path_in_repo='rules/x.sml',
+        contents='x = 1',
+        author_email='author@example.test',
+        subject='Add rule X',
+        body=malicious_summary,
+    )
+
+    diff_headers = [line for line in patch.split('\n') if line.startswith('diff --git')]
+    assert diff_headers == ['diff --git a/rules/x.sml b/rules/x.sml']
+    body_section = patch.split('\n---\n', 1)[0]
+    assert '\n> ---' in body_section
+    assert '\n> diff --git a/evil.yaml b/evil.yaml' in body_section
+    assert '\n> Index: evil.yaml' in body_section
+    assert '\n> From attacker@example.test' in body_section
+    assert '\nlooks legit\n' in body_section
+
+
+def test_tangled_patch_strips_newlines_from_headers() -> None:
+    from osprey.worker.ui_api.osprey.views._rule_drafts_tangled import _format_new_file_patch
+
+    patch = _format_new_file_patch(
+        path_in_repo='rules/x.sml',
+        contents='x = 1',
+        author_email='author@example.test>\nBcc: victim@example.test',
+        subject='Add rule X\nX-Injected: yes',
+        body='hi',
+    )
+
+    from_lines = [line for line in patch.split('\n') if line.startswith('From: ')]
+    assert from_lines == ['From: Osprey UI <author@example.testBcc: victim@example.test>']
+    subject_lines = [line for line in patch.split('\n') if line.startswith('Subject: ')]
+    assert subject_lines == ['Subject: [PATCH] Add rule X X-Injected: yes']
+    assert 'Bcc: victim' not in '\n'.join(line for line in patch.split('\n') if not line.startswith('From: '))
