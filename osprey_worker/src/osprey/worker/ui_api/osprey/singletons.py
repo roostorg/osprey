@@ -1,4 +1,4 @@
-from osprey.worker.lib.publisher import PubSubPublisher
+from osprey.worker.lib.publisher import KafkaPublisher, PubSubPublisher
 from osprey.worker.lib.singleton import Singleton
 from osprey.worker.lib.singletons import CONFIG
 
@@ -14,4 +14,19 @@ def _init_analytics_publisher() -> PubSubPublisher:
     return PubSubPublisher(project, topic)
 
 
-ANALYTICS_PUBLISHER: Singleton[PubSubPublisher] = Singleton(_init_analytics_publisher)
+def _init_kafka_analytics_publisher() -> KafkaPublisher:
+    config = CONFIG.instance()
+    bootstrap_servers = config.get_str_list('OSPREY_KAFKA_BOOTSTRAP_SERVERS', ['localhost'])
+    client_id = config.get_str('OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID', 'osprey-dev')
+    topic = config.get_str('OSPREY_KAFKA_ANALYTICS_TOPIC', 'osprey-analytics')
+    return KafkaPublisher(bootstrap_servers, client_id, topic)
+
+
+def get_analytics_publisher() -> Singleton[PubSubPublisher] | Singleton[KafkaPublisher]:
+    with open('/sys/class/dmi/id/product_name', 'r') as pn:
+        if 'Google' in pn:
+            ANALYTICS_PUBLISHER: Singleton[PubSubPublisher] = Singleton(_init_analytics_publisher)
+        else:
+            ANALYTICS_PUBLISHER: Singleton[KafkaPublisher] = Singleton(_init_kafka_analytics_publisher)  # type: ignore[no-redef]
+
+    return ANALYTICS_PUBLISHER
