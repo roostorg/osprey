@@ -46,7 +46,7 @@ common = [
     { name = "googleapis-common-protos", specifier = "==1.70.0" },
     { name = "graphviz", specifier = "==0.20" },
     { name = "greenlet", git = "https://github.com/discord/greenlet.git?rev=a75d78f1547c74a81134644a179467525a255466" },
-    { name = "grpc-google-iam-v1", specifier = "==0.14.2" },
+    { name = "grpc-google-iam-v1", specifier = "==0.14.4" },
     { name = "grpcio", marker = "platform_machine != 'x86_64'", specifier = "==1.53.*" },
     { name = "grpcio", marker = "platform_machine == 'x86_64'", specifier = "==1.49.1" },
     { name = "grpcio-health-checking", specifier = "==1.44.0" },
@@ -841,7 +841,7 @@ source = { git = "https://github.com/discord/greenlet.git?rev=a75d78f1547c74a811
 
 [[package]]
 name = "grpc-google-iam-v1"
-version = "0.14.2"
+version = "0.14.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "googleapis-common-protos", extra = ["grpc"] },
@@ -849,9 +849,9 @@ dependencies = [
     { name = "grpcio", version = "1.53.2", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64'" },
     { name = "protobuf" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b9/4e/8d0ca3b035e41fe0b3f31ebbb638356af720335e5a11154c330169b40777/grpc_google_iam_v1-0.14.2.tar.gz", hash = "sha256:b3e1fc387a1a329e41672197d0ace9de22c78dd7d215048c4c78712073f7bd20", size = 16259, upload-time = "2025-03-17T11:40:23.586Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/44/4f/d098419ad0bfc06c9ce440575f05aa22d8973b6c276e86ac7890093d3c37/grpc_google_iam_v1-0.14.4.tar.gz", hash = "sha256:392b3796947ed6334e61171d9ab06bf7eb357f554e5fc7556ad7aab6d0e17038", size = 23706, upload-time = "2026-04-01T01:57:49.813Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/66/6f/dd9b178aee7835b96c2e63715aba6516a9d50f6bebbd1cc1d32c82a2a6c3/grpc_google_iam_v1-0.14.2-py3-none-any.whl", hash = "sha256:a3171468459770907926d56a440b2bb643eec1d7ba215f48f3ecece42b4d8351", size = 19242, upload-time = "2025-03-17T11:40:22.648Z" },
+    { url = "https://files.pythonhosted.org/packages/89/22/c2dd50c09bf679bd38173656cd4402d2511e563b33bc88f90009cf50613c/grpc_google_iam_v1-0.14.4-py3-none-any.whl", hash = "sha256:412facc320fcbd94034b4df3d557662051d4d8adfa86e0ddb4dca70a3f739964", size = 32675, upload-time = "2026-04-01T01:57:47.69Z" },
 ]
 
 [[package]]
@@ -870,7 +870,6 @@ dependencies = [
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a3/1c/c42834d4fee45c5cf2d9546e97e879a1cbcdecfd16eb1a12144dcb91edae/grpcio-1.49.1.tar.gz", hash = "sha256:d4725fc9ec8e8822906ae26bb26f5546891aa7fbc3443de970cc556d43a5c99f", size = 22059239, upload-time = "2022-09-22T03:02:44.376Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2d/e2/aaccddb8b06637625d847dbb5fe76ec3d15a74d89d983f5202f3666706e3/grpcio-1.49.1-cp311-cp311-linux_armv7l.whl", hash = "sha256:9fb17ff8c0d56099ac6ebfa84f670c5a62228d6b5c695cf21c02160c2ac1446b", size = 73399185, upload-time = "2022-09-22T02:57:56.219Z" },
     { url = "https://files.pythonhosted.org/packages/90/0f/4d614d59f500835cbd27cb90743fb6b299098b0f22b8fd058d3586c933c0/grpcio-1.49.1-cp311-cp311-macosx_10_10_x86_64.whl", hash = "sha256:075f2d06e3db6b48a2157a1bcd52d6cbdca980dd18988fe6afdb41795d51625f", size = 4296299, upload-time = "2022-09-22T02:58:01.417Z" },
     { url = "https://files.pythonhosted.org/packages/4d/ea/359a98f8b3b4ff9a2f457a0d20ed81775a64149fbb7617177ed23d9d10c9/grpcio-1.49.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:dc79b2b37d779ac42341ddef40ad5bf0966a64af412c89fc2b062e3ddabb093f", size = 4656437, upload-time = "2022-09-22T02:58:06.23Z" },
     { url = "https://files.pythonhosted.org/packages/fc/89/4952d2dff95f5b95db5943b2d1b55c82a485830b992f52f212b33616b523/grpcio-1.49.1-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:49b301740cf5bc8fed4fee4c877570189ae3951432d79fa8e524b09353659811", size = 4888051, upload-time = "2022-09-22T02:58:11.411Z" },
@@ -989,7 +988,6 @@ dependencies = [
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/6c/e4/3416d25aebc4477141a491fae2c9494c5e0437a706c59103a936aac7d072/grpcio-tools-1.49.1.tar.gz", hash = "sha256:84cc64e5b46bad43d5d7bd2fd772b656eba0366961187a847e908e2cb735db91", size = 2252679, upload-time = "2022-09-22T03:03:00.279Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e4/c1/ba298fe650b67c9e31a7ad88b2fe1d8d22ff2c6a9e131604054835397dfc/grpcio_tools-1.49.1-cp311-cp311-linux_armv7l.whl", hash = "sha256:9e5c13809ab2f245398e8446c4c3b399a62d591db651e46806cccf52a700452e", size = 36912892, upload-time = "2022-09-22T03:00:51.237Z" },
     { url = "https://files.pythonhosted.org/packages/9c/8b/a45a39bf7d1c4956d48179831e4da88c3f6ee14dbdcb273e575bbeb7de20/grpcio_tools-1.49.1-cp311-cp311-macosx_10_10_x86_64.whl", hash = "sha256:ab3d0ee9623720ee585fdf3753b3755d3144a4a8ae35bca8e3655fa2f41056be", size = 2025040, upload-time = "2022-09-22T03:00:55.219Z" },
     { url = "https://files.pythonhosted.org/packages/6d/7f/89dc6036b91f8cbada98b06801ac2f5db60885000feaf88f9d7cabe665b7/grpcio_tools-1.49.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:13e13b3643e7577a3ec13b79689eb4d7548890b1e104c04b9ed6557a3c3dd452", size = 2370982, upload-time = "2022-09-22T03:00:59.807Z" },
     { url = "https://files.pythonhosted.org/packages/01/98/4730bfff6bcd3163db8c3d70689e19a1a5f419152316edfc1f13ff06a5d7/grpcio_tools-1.49.1-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:a64bab81b220c50033f584f57978ebbea575f09c1ccee765cd5c462177988098", size = 2731915, upload-time = "2022-09-22T03:01:05.44Z" },
