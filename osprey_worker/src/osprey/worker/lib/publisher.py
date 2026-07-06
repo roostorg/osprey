@@ -1,5 +1,6 @@
 import abc
 import logging
+import threading
 from typing import TypeVar
 
 import google.auth
@@ -73,7 +74,7 @@ class PubSubPublisher(BasePublisher):
         self._enabled = _check_gcp_credentials()
         if not self._enabled:
             logger.warning(
-                'GCP credentials not detected — PubSubPublisher running in noop mode (project=%s, topic=%s)',
+                'GCP credentials not detected, PubSubPublisher running in noop mode (project=%s, topic=%s)',
                 project_id,
                 topic_id,
             )
@@ -133,14 +134,18 @@ class StrPubSubPublisher(PubSubPublisher):
 
 
 _gcp_credentials_available: bool | None = None
+_gcp_credentials_lock = threading.Lock()
 
 
 def _check_gcp_credentials() -> bool:
     global _gcp_credentials_available
     if _gcp_credentials_available is None:
-        try:
-            google.auth.default()
-            _gcp_credentials_available = True
-        except DefaultCredentialsError:
-            _gcp_credentials_available = False
+        with _gcp_credentials_lock:
+            # Re-check under the lock so concurrent constructors probe google.auth.default() only once.
+            if _gcp_credentials_available is None:
+                try:
+                    google.auth.default()
+                    _gcp_credentials_available = True
+                except DefaultCredentialsError:
+                    _gcp_credentials_available = False
     return _gcp_credentials_available

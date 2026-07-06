@@ -63,8 +63,10 @@ def test_publish_short_circuits_and_emits_noop_metric_when_disabled() -> None:
     ):
         pub = PubSubPublisher('proj', 'topic')
         pub.publish(MagicMock())
-    metric_names = [call.args[0] for call in metrics_mock.increment.call_args_list]
-    assert metric_names == ['PubSubPublisher.publisher.noop']
+    metrics_mock.increment.assert_called_once_with(
+        'PubSubPublisher.publisher.noop',
+        tags=['project:proj', 'topic:projects/proj/topics/topic'],
+    )
 
 
 def test_stop_short_circuits_when_disabled() -> None:
