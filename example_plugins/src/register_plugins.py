@@ -1,4 +1,5 @@
-from typing import Any, Sequence, Type
+from collections.abc import Sequence
+from typing import Any, Type
 
 from osprey.engine.udf.base import UDFBase
 from osprey.worker.adaptor.plugin_manager import hookimpl_osprey

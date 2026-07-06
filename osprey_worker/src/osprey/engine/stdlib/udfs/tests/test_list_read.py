@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any
 
 import pytest
 from osprey.engine.conftest import ExecuteFunction
@@ -18,7 +18,7 @@ pytestmark = [pytest.mark.use_udf_registry(UDFRegistry.with_udfs(ListRead))]
         (['118', '2', '5', '30'], '2', 1),
     ],
 )
-def test_list_read(execute: ExecuteFunction, input: Optional[List[Any]], expected_str: str, index: int) -> None:
+def test_list_read(execute: ExecuteFunction, input: list[Any] | None, expected_str: str, index: int) -> None:
     data = execute(
         f"""
         Result = ListRead(list={input}, index={index})
@@ -34,7 +34,7 @@ def test_list_read(execute: ExecuteFunction, input: Optional[List[Any]], expecte
         ([], 3),
     ],
 )
-def test_list_read_failures(execute: ExecuteFunction, input_fail: Optional[List[Any]], index_fail: int) -> None:
+def test_list_read_failures(execute: ExecuteFunction, input_fail: list[Any] | None, index_fail: int) -> None:
     data = execute(
         f"""
         Result = ListRead(list={input_fail}, index={index_fail})

@@ -1,6 +1,6 @@
 import abc
 import logging
-from typing import Dict, Optional, TypeVar
+from typing import TypeVar
 
 import google.auth
 from google.auth.exceptions import DefaultCredentialsError
@@ -20,7 +20,7 @@ class BasePublisher(abc.ABC):
     """
 
     @abc.abstractmethod
-    def publish(self, data: _PydanticModelT, attributes: Optional[Dict[str, str]] = None) -> None:
+    def publish(self, data: _PydanticModelT, attributes: dict[str, str] | None = None) -> None:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -29,7 +29,7 @@ class BasePublisher(abc.ABC):
 
 
 class StdoutPublisher(BasePublisher):
-    def publish(self, data: _PydanticModelT, attributes: Optional[Dict[str, str]] = None) -> None:
+    def publish(self, data: _PydanticModelT, attributes: dict[str, str] | None = None) -> None:
         print(data)
 
     def stop(self) -> None:
@@ -37,7 +37,7 @@ class StdoutPublisher(BasePublisher):
 
 
 class NullPublisher(BasePublisher):
-    def publish(self, data: _PydanticModelT, attributes: Optional[Dict[str, str]] = None) -> None:
+    def publish(self, data: _PydanticModelT, attributes: dict[str, str] | None = None) -> None:
         return
 
     def stop(self) -> None:
@@ -93,7 +93,7 @@ class PubSubPublisher(BasePublisher):
         """
         return data.json(exclude_none=True).encode()
 
-    def publish(self, data: _PydanticModelT, attributes: Optional[Dict[str, str]] = None) -> None:
+    def publish(self, data: _PydanticModelT, attributes: dict[str, str] | None = None) -> None:
         if not self._enabled:
             metrics.increment(f'{self.__class__.__name__}.publisher.noop', tags=self._tags)
             return
@@ -125,14 +125,14 @@ class StrPubSubPublisher(PubSubPublisher):
     def prepare_data(self, data: str) -> bytes:  # type: ignore[override]
         return data.encode()
 
-    def publish(self, data: str, attributes: Optional[Dict[str, str]] = None) -> None:  # type: ignore[override]
+    def publish(self, data: str, attributes: dict[str, str] | None = None) -> None:  # type: ignore[override]
         if attributes is None:
             attributes = {}
 
         super().publish(data, attributes)  # type: ignore[type-var]
 
 
-_gcp_credentials_available: Optional[bool] = None
+_gcp_credentials_available: bool | None = None
 
 
 def _check_gcp_credentials() -> bool:

@@ -6,8 +6,9 @@ Uses asyncio.Future instead of gevent.event.AsyncResult for cache entries.
 
 import asyncio
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from datetime import datetime, timedelta
-from typing import Dict, Generic, Hashable, Optional, Sequence, Tuple, TypeVar, cast
+from typing import Generic, Hashable, TypeVar, cast
 
 from result import Err, Ok, Result
 
@@ -24,7 +25,7 @@ class AsyncExternalService(ABC, Generic[KeyT, ValueT]):
     async def batch_get_from_service(self, keys: Sequence[KeyT]) -> Sequence[Result[ValueT, Exception]]:
         raise NotImplementedError
 
-    def cache_ttl(self) -> Optional[timedelta]:
+    def cache_ttl(self) -> timedelta | None:
         """
         Returns a time to live for items in the cache. By default, KVs are cached indefinitely.
 
@@ -55,9 +56,9 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
     def __init__(self, service: AsyncExternalService[KeyT, ValueT]):
         self._service = service
         # Key -> Tuple[ Future[ValueT], Expiration datetime ]
-        self._cache: Dict[KeyT, Tuple[asyncio.Future[ValueT], Optional[datetime]]] = {}
+        self._cache: dict[KeyT, tuple[asyncio.Future[ValueT], datetime | None]] = {}
 
-    def _is_past_cache_expiration(self, cache_expiration: Optional[datetime]) -> bool:
+    def _is_past_cache_expiration(self, cache_expiration: datetime | None) -> bool:
         """
         Helper method to perform a time check on an optional datetime.
         """
@@ -65,7 +66,7 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
             return False
         return datetime.now() > cache_expiration
 
-    def _get_cache_expiration_datetime(self) -> Optional[datetime]:
+    def _get_cache_expiration_datetime(self) -> datetime | None:
         """
         Helper method to generate an optional cache expiration datetime based on the cache TTL.
         """
@@ -82,7 +83,7 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
         The new value is then used to update the cache entry for subsequent `get` calls.
         """
         future: asyncio.Future[ValueT] = self._make_future()
-        cache_entry: Tuple[asyncio.Future[ValueT], Optional[datetime]] = (
+        cache_entry: tuple[asyncio.Future[ValueT], datetime | None] = (
             future,
             self._get_cache_expiration_datetime(),
         )

@@ -1,5 +1,3 @@
-from typing import Optional
-
 from osprey.worker.adaptor.plugin_manager import bootstrap_execution_result_store
 from osprey.worker.lib.singletons import CONFIG
 from osprey.worker.lib.storage import ExecutionResultStorageBackendType
@@ -14,7 +12,7 @@ from osprey.worker.lib.storage.stored_execution_result import (
 
 def get_rules_execution_result_storage_backend(
     backend_type: ExecutionResultStorageBackendType,
-) -> Optional[ExecutionResultStore]:
+) -> ExecutionResultStore | None:
     """Based on the `backend_type` constructs a configured execution result store that can be used to store execution
     results. For more details, see `ExecutionResultStore`."""
 

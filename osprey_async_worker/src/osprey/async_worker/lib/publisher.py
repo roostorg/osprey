@@ -6,7 +6,6 @@ flushing. No threading locks, no gevent, no background threads.
 
 import asyncio
 import logging
-from typing import List, Optional
 
 from google.api_core.retry import Retry
 from google.cloud import pubsub_v1
@@ -46,7 +45,7 @@ class AsyncPubSubPublisher:
         self._queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._max_messages = max_messages
         self._max_latency = max_latency_seconds
-        self._flush_task: Optional[asyncio.Task[None]] = None
+        self._flush_task: asyncio.Task[None] | None = None
         self._started = False
         self._metric_tags = [f'project:{project_id}', f'topic:{topic_id}']
 
@@ -66,7 +65,7 @@ class AsyncPubSubPublisher:
         """Background task that flushes the buffer periodically."""
         while True:
             try:
-                batch: List[bytes] = []
+                batch: list[bytes] = []
 
                 # Wait for first message or timeout
                 try:
@@ -88,7 +87,7 @@ class AsyncPubSubPublisher:
 
             except asyncio.CancelledError:
                 # Flush remaining on shutdown
-                remaining: List[bytes] = []
+                remaining: list[bytes] = []
                 while not self._queue.empty():
                     try:
                         remaining.append(self._queue.get_nowait())
@@ -100,12 +99,12 @@ class AsyncPubSubPublisher:
             except Exception:
                 logger.exception('Error in flush loop')
 
-    async def _flush_batch(self, batch: List[bytes]) -> None:
+    async def _flush_batch(self, batch: list[bytes]) -> None:
         """Publish a batch of messages. Runs sync publishes in executor."""
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._sync_flush, batch)
 
-    def _sync_flush(self, batch: List[bytes]) -> None:
+    def _sync_flush(self, batch: list[bytes]) -> None:
         """Synchronous batch publish."""
         futures = []
         for data in batch:

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Self, cast
+from typing import Self, cast
 
 from osprey.engine.executor.custom_extracted_features import CustomExtractedFeature
 from osprey.engine.language_types.effects import EffectToCustomExtractedFeatureBase
@@ -10,7 +10,7 @@ from .rules import add_slots
 
 @add_slots
 @dataclass
-class VerdictEffect(EffectToCustomExtractedFeatureBase[List[str]]):
+class VerdictEffect(EffectToCustomExtractedFeatureBase[list[str]]):
     """Contains information about verdicts emitted during execution that will be sent
     back to synchronous callers of Osprey if the action was processed synchronously"""
 
@@ -21,14 +21,14 @@ class VerdictEffect(EffectToCustomExtractedFeatureBase[List[str]]):
         return self.verdict
 
     @classmethod
-    def build_custom_extracted_feature_from_list(cls, values: List[Self]) -> CustomExtractedFeature[List[str]]:
-        return VerdictEffectsExtractedFeature(effects=cast(List[VerdictEffect], values))
+    def build_custom_extracted_feature_from_list(cls, values: list[Self]) -> CustomExtractedFeature[list[str]]:
+        return VerdictEffectsExtractedFeature(effects=cast(list[VerdictEffect], values))
 
 
 @add_slots
 @dataclass
-class VerdictEffectsExtractedFeature(CustomExtractedFeature[List[str]]):
-    effects: List[VerdictEffect]
+class VerdictEffectsExtractedFeature(CustomExtractedFeature[list[str]]):
+    effects: list[VerdictEffect]
 
     @classmethod
     def feature_name(cls) -> str:
@@ -36,5 +36,5 @@ class VerdictEffectsExtractedFeature(CustomExtractedFeature[List[str]]):
             VERDICT_DIMENSION_NAME.lstrip('__') if VERDICT_DIMENSION_NAME.startswith('__') else VERDICT_DIMENSION_NAME
         )
 
-    def get_serializable_feature(self) -> List[str] | None:
+    def get_serializable_feature(self) -> list[str] | None:
         return [effect.to_str() for effect in self.effects]

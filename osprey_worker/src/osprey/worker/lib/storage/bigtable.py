@@ -4,7 +4,6 @@
 # import pytest
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict
 
 from google.cloud.bigtable import Client
 from google.cloud.bigtable.instance import Instance
@@ -14,7 +13,7 @@ from osprey.worker.lib.ddtrace_utils import pin_override
 from osprey.worker.lib.singletons import CONFIG
 from osprey.worker.lib.utils.bigtable import fix_bigtable_client_if_using_emulator
 
-OSPREY_TABLES_TO_COLUMN_FAMILIES: Dict[str, Dict[str, None]] = {
+OSPREY_TABLES_TO_COLUMN_FAMILIES: dict[str, dict[str, None]] = {
     'stored_execution_result': {'execution_result': None},
     'audit_log': {'audit_log': None},
 }

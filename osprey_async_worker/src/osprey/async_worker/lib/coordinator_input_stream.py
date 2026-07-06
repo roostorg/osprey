@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import random
 import time
-from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Dict, Optional, Tuple, Union
+from collections.abc import AsyncIterator, Callable
+from typing import TYPE_CHECKING, Any
 
 import grpc
 import grpc.aio
@@ -69,8 +72,8 @@ class GrpcConnectionDiscoveryPool:
     # (from_async_discovery), or None (from_static — no discovery). The async-only
     # methods (ensure_initialized) are only reached when _needs_async_init is True,
     # which is only set by from_async_discovery (AsyncServiceWatcher).
-    _service_watcher: Union['ServiceWatcher', AsyncServiceWatcher, None]
-    _handle_service_change_fn: Optional[Callable[[str, Service], None]]
+    _service_watcher: 'ServiceWatcher' | AsyncServiceWatcher | None
+    _handle_service_change_fn: Callable[[str, Service], None] | None
 
     def __init__(self, service_name: str) -> None:
         # Lazy import: Directory uses gevent-based service discovery. The async worker
@@ -81,7 +84,7 @@ class GrpcConnectionDiscoveryPool:
         self._needs_async_init = False
         directory = Directory.instance(secure=False)
 
-        self._grpc_channels: Dict[Service, Tuple[grpc.aio.Channel, Service]] = {
+        self._grpc_channels: dict[Service, tuple[grpc.aio.Channel, Service]] = {
             service: (self._create_async_channel(service), service)
             for service in directory.select_all(self._service_name)
         }
@@ -163,7 +166,7 @@ class GrpcConnectionDiscoveryPool:
             if self._grpc_channels.get(service):
                 del self._grpc_channels[service]
 
-    async def get_connection(self) -> Tuple[grpc.aio.Channel, Service]:
+    async def get_connection(self) -> tuple[grpc.aio.Channel, Service]:
         """Gets an async gRPC channel to a coordinator instance.
 
         If no services are registered, polls with exponential backoff until one becomes available.
@@ -204,10 +207,10 @@ class OspreyCoordinatorBiDirectionalStream:
 
     def __init__(self, client_id: str, channel: grpc.aio.Channel, service: Service) -> None:
         self._client_id = client_id
-        self._outgoing_queue: asyncio.Queue[Optional[Request]] = asyncio.Queue()
+        self._outgoing_queue: asyncio.Queue[Request | None] = asyncio.Queue()
         self._stub = OspreyCoordinatorServiceStub(channel=channel)
         self._tags = [f'coordinator_connection_address:{service.connection_address}']
-        self._connect_time: Optional[float] = None
+        self._connect_time: float | None = None
         self._last_action_request_time: float = 0.0
         self._stopped = False
 
@@ -228,9 +231,7 @@ class OspreyCoordinatorBiDirectionalStream:
     async def _enqueue_stop_signal(self) -> None:
         await self._outgoing_queue.put(None)
 
-    async def send_graceful_disconnect(
-        self, ack_id: int, ack: bool = True, verdicts: Optional[Verdicts] = None
-    ) -> None:
+    async def send_graceful_disconnect(self, ack_id: int, ack: bool = True, verdicts: Verdicts | None = None) -> None:
         ack_or_nack = (
             AckOrNack(ack_id=ack_id, ack=Ack(verdicts=verdicts if verdicts else None))
             if ack
@@ -241,7 +242,7 @@ class OspreyCoordinatorBiDirectionalStream:
         await self._outgoing_queue.put(Request(disconnect=Disconnect(ack_or_nack=ack_or_nack)))
         await self._enqueue_stop_signal()
 
-    def send_ack_or_nack(self, ack_id: int, ack: bool = True, verdicts: Optional[Verdicts] = None) -> None:
+    def send_ack_or_nack(self, ack_id: int, ack: bool = True, verdicts: Verdicts | None = None) -> None:
         """Fire-and-forget ack — uses put_nowait to match gevent's non-blocking Queue.put()."""
         ack_or_nack = (
             AckOrNack(ack_id=ack_id, ack=Ack(verdicts=verdicts if verdicts else None))
@@ -310,12 +311,12 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
         self,
         client_id: str,
         coordinator_service_name: str = 'osprey_coordinator',
-        input_stream_ready_signaler: Optional[AsyncInputStreamReadySignaler] = None,
+        input_stream_ready_signaler: AsyncInputStreamReadySignaler | None = None,
     ) -> None:
         self._client_id = client_id
         self._channel_pool = GrpcConnectionDiscoveryPool(coordinator_service_name)
         self._shutdown_event = asyncio.Event()
-        self._current_execution_result: Optional[ExecutionResult] = None
+        self._current_execution_result: ExecutionResult | None = None
         self._input_stream_ready_signaler = input_stream_ready_signaler
 
     @classmethod
@@ -324,7 +325,7 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
         client_id: str,
         address: str,
         service_name: str = 'osprey_coordinator',
-        input_stream_ready_signaler: Optional[AsyncInputStreamReadySignaler] = None,
+        input_stream_ready_signaler: AsyncInputStreamReadySignaler | None = None,
     ) -> 'OspreyCoordinatorInputStream':
         """Create an input stream connected directly to a coordinator address.
 
@@ -343,7 +344,7 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
         cls,
         client_id: str,
         service_name: str = 'osprey_coordinator',
-        input_stream_ready_signaler: Optional[AsyncInputStreamReadySignaler] = None,
+        input_stream_ready_signaler: AsyncInputStreamReadySignaler | None = None,
     ) -> 'OspreyCoordinatorInputStream':
         """Create an input stream using async etcd discovery (no gevent).
 
@@ -367,11 +368,11 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
 
     def _create_osprey_engine_action(
         self, osprey_coordinator_action: OspreyCoordinatorAction
-    ) -> Optional[OspreyEngineAction]:
+    ) -> OspreyEngineAction | None:
         try:
             tags = [f'action_name:{osprey_coordinator_action.action_name}']
 
-            secret_data: Dict[str, Any] = {}
+            secret_data: dict[str, Any] = {}
             which_of_action_data = osprey_coordinator_action.WhichOneof('action_data')
             if which_of_action_data == 'json_action_data':
                 info_log_osprey_action(

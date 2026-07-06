@@ -8,9 +8,9 @@ import asyncio
 import json
 import logging
 import signal
+from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import AsyncIterator, Optional, Tuple
 
 import click
 from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
@@ -46,7 +46,7 @@ def init_config() -> Config:
     return config
 
 
-def bootstrap_stdlib_engine(rules_path: str) -> Tuple[AsyncOspreyEngine, UDFHelpers]:
+def bootstrap_stdlib_engine(rules_path: str) -> tuple[AsyncOspreyEngine, UDFHelpers]:
     """Bootstrap engine with only stdlib UDFs — no external plugins, no Postgres, no labels.
 
     This avoids loading example_plugins or any third-party plugins that require database connections.
@@ -74,7 +74,7 @@ def bootstrap_stdlib_engine(rules_path: str) -> Tuple[AsyncOspreyEngine, UDFHelp
     return engine, udf_helpers
 
 
-def bootstrap_plugin_engine(rules_path: str) -> Tuple[AsyncOspreyEngine, UDFHelpers, AsyncBaseOutputSink]:
+def bootstrap_plugin_engine(rules_path: str) -> tuple[AsyncOspreyEngine, UDFHelpers, AsyncBaseOutputSink]:
     """Bootstrap the async engine with all async plugins loaded.
 
     Loads UDFs, AST validators, and output sinks from the ``osprey_async_plugin``
@@ -129,7 +129,7 @@ class AsyncFileInputStream(AsyncBaseInputStream[BaseAckingContext[Action]]):
 def build_kafka_input_stream(
     topic: str,
     bootstrap_servers: str,
-    group_id: Optional[str],
+    group_id: str | None,
     offset_reset: str,
 ) -> AsyncKafkaInputStream:
     """Build a Kafka-backed async input stream.
@@ -184,13 +184,13 @@ def cli() -> None:
 )
 def run(
     rules_path: str,
-    input_file: Optional[str],
+    input_file: str | None,
     max_concurrent: int,
     with_plugins: bool,
     input_source: str,
     kafka_topic: str,
     kafka_bootstrap_servers: str,
-    kafka_group_id: Optional[str],
+    kafka_group_id: str | None,
     kafka_offset_reset: str,
 ) -> None:
     """Run the async rules worker with a static rules file and optional input file."""
@@ -257,7 +257,7 @@ def run(
         if not stop_task.done():
             stop_task.cancel()
 
-        sink_error: Optional[BaseException] = None
+        sink_error: BaseException | None = None
         if sink_task.done():
             # The sink finished on its own rather than via a shutdown signal —
             # surface any fatal error instead of reporting a clean shutdown.

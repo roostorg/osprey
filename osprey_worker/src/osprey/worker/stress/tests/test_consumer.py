@@ -1,7 +1,8 @@
 import json
 import threading
 import time
-from typing import Any, Iterator, List
+from collections.abc import Iterator
+from typing import Any
 
 from osprey.worker.stress.consumer import Consumer, ConsumerConfig
 
@@ -27,7 +28,7 @@ class FakeKafkaConsumer:
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._lock = threading.Lock()
-        self._queue: List[FakeMessage] = []
+        self._queue: list[FakeMessage] = []
         self._has_message = threading.Event()
         self.kwargs = kwargs
         self.close_called = False

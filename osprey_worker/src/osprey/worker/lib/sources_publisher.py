@@ -1,7 +1,6 @@
 import abc
 import logging
 from datetime import datetime
-from typing import Dict, Optional, Set
 
 from google.cloud import bigquery
 from osprey.engine.ast.grammar import Assign, Call
@@ -34,7 +33,7 @@ class BaseSourcesPublisher(abc.ABC):
 class EtcdSourcesPublisher(BaseSourcesPublisher):
     """Publishes the sources to be consumed by the EtcdSourcesProvider"""
 
-    def __init__(self, etcd_key: str, etcd_client: Optional[EtcdClient] = None):
+    def __init__(self, etcd_key: str, etcd_client: EtcdClient | None = None):
         self._etcd_dict: EtcdDict[str, str] = EtcdDict(etcd_key=etcd_key, etcd_client=etcd_client)
 
     def publish_sources(self, sources: ValidatedSources) -> None:
@@ -85,7 +84,7 @@ def validate_and_push(
     return True
 
 
-def _dependency_chain_to_str_set(dependency_chain: DependencyChain) -> Set[str]:
+def _dependency_chain_to_str_set(dependency_chain: DependencyChain) -> set[str]:
     if dependency_chain.executor.node_type == Assign:
         output = set([dependency_chain.executor.node.target.identifier])  # type: ignore
     elif dependency_chain.executor.node_type == Call:
@@ -125,12 +124,12 @@ def upload_dependencies_mapping(
 
     execution_graph = compile_execution_graph(validated_sources)
 
-    dependencies: Dict[str, Set[str]] = {}
+    dependencies: dict[str, set[str]] = {}
     for var_name, dependency_chain in execution_graph._assignment_executor_mapping.items():
         dependencies[var_name] = _dependency_chain_to_str_set(dependency_chain)
 
     # compute reversed dependencies (what relies on this variable)
-    reversed_dependencies: Dict[str, Set[str]] = {}
+    reversed_dependencies: dict[str, set[str]] = {}
     for key, val in dependencies.items():
         for v in val:
             if v not in reversed_dependencies:

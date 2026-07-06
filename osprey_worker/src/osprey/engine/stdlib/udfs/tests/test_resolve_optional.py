@@ -1,4 +1,5 @@
-from typing import Any, Callable, List
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 from osprey.engine.ast_validator.validators.imports_must_not_have_cycles import ImportsMustNotHaveCycles
@@ -14,7 +15,7 @@ from osprey.engine.stdlib.udfs.json_data import JsonData
 from osprey.engine.stdlib.udfs.resolve_optional import ResolveOptional
 from osprey.engine.udf.registry import UDFRegistry
 
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_udf_registry(UDFRegistry.with_udfs(JsonData, ResolveOptional)),
     pytest.mark.use_validators(
         [
@@ -33,7 +34,7 @@ pytestmark: List[Callable[[Any], Any]] = [
 def test_resolve_optional_unwraps_value(execute: ExecuteFunction) -> None:
     data = execute(
         """
-        Foo: Optional[str] = JsonData(path='$.foo')
+        Foo: str | None = JsonData(path='$.foo')
         FooUnwrapped: str = ResolveOptional(optional_value=Foo)
         """,
         data={'foo': 'test'},
@@ -46,7 +47,7 @@ def test_resolve_optional_errors_on_none(execute: ExecuteFunction) -> None:
     with pytest.raises(ValueError):
         execute(
             """
-            Foo: Optional[str] = None
+            Foo: str | None = None
             FooUnwrapped: str = ResolveOptional(optional_value=Foo, should_report_error=True)
             """
         )
@@ -54,7 +55,7 @@ def test_resolve_optional_errors_on_none(execute: ExecuteFunction) -> None:
     # should_report_error=False by default so execution should not raise an exception
     execute(
         """
-        Foo: Optional[str] = None
+        Foo: str | None = None
         FooUnwrapped: str = ResolveOptional(optional_value=Foo)
         """
     )
@@ -63,7 +64,7 @@ def test_resolve_optional_errors_on_none(execute: ExecuteFunction) -> None:
 def test_resolve_optional_default_value_on_none(execute: ExecuteFunction) -> None:
     data = execute(
         """
-        Foo: Optional[str] = None
+        Foo: str | None = None
         FooUnwrapped: str = ResolveOptional(optional_value=Foo, default_value='test')
         """
     )
@@ -77,9 +78,9 @@ def test_resolve_optional_invalid_default_value_type(
     with check_failure():
         run_validation(
             """
-            Foo: Optional[str] = None
+            Foo: str | None = None
             FooUnwrapped: str = ResolveOptional(optional_value=Foo, default_value=1)
-            Bar: Optional[int] = 1
+            Bar: int | None = 1
             BarUnwrapper: int = ResolveOptional(optional_value=Bar, default_value='test')
             """
         )
@@ -91,7 +92,7 @@ def test_resolve_optional_invalid_optional_value_type(
     with check_failure():
         run_validation(
             """
-            Foo: Optional[int] = 1
+            Foo: int | None = 1
             FooUnwrapped: str = ResolveOptional(optional_value=Foo)
             """
         )

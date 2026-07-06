@@ -1,4 +1,4 @@
-from typing import Iterator, List
+from collections.abc import Iterator
 
 import gevent
 import gevent.event
@@ -6,7 +6,7 @@ from osprey.worker.sinks.sink.input_stream import BaseInputStream
 
 
 def test_does_not_lock_non_generator_iterator() -> None:
-    waiting_events: List[gevent.event.Event] = []
+    waiting_events: list[gevent.event.Event] = []
 
     class MyIterator(Iterator[int]):
         def __init__(self) -> None:
@@ -46,7 +46,7 @@ def test_does_not_lock_non_generator_iterator() -> None:
 
 
 def test_does_lock_generator_iterator() -> None:
-    waiting_events: List[gevent.event.Event] = []
+    waiting_events: list[gevent.event.Event] = []
 
     class GeneratorStream(BaseInputStream[int]):
         def _gen(self) -> Iterator[int]:

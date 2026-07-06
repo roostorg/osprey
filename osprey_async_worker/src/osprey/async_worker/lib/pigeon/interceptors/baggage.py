@@ -1,5 +1,4 @@
 import collections
-from typing import Dict, Optional
 
 import grpc
 from osprey.worker.lib.ddtrace_utils import (
@@ -31,7 +30,7 @@ class BaggageInterceptor(
     https://opentelemetry.io/docs/reference/specification/baggage/api/
     """
 
-    def __init__(self, baggage_header: Optional[str] = None, baggage: Optional[Dict[str, str]] = None):
+    def __init__(self, baggage_header: str | None = None, baggage: dict[str, str] | None = None):
         self._baggage_header = baggage_header or BAGGAGE_HEADER
         self._baggage = baggage or {}
 

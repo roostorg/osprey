@@ -1,8 +1,8 @@
 """Tests for the async external service cache."""
 
 import asyncio
+from collections.abc import Sequence
 from datetime import timedelta
-from typing import Optional, Sequence
 
 import pytest
 from osprey.async_worker.lib.external_service import AsyncExternalService, ExternalServiceAccessor
@@ -30,7 +30,7 @@ class FailingService(AsyncExternalService[str, str]):
         raise ValueError(f'service error for {key}')
 
 
-class FailOnceService(AsyncExternalService[str, Optional[str]]):
+class FailOnceService(AsyncExternalService[str, str | None]):
     """Raises on first call per key, succeeds after."""
 
     def __init__(self):
@@ -39,7 +39,7 @@ class FailOnceService(AsyncExternalService[str, Optional[str]]):
     def count_error_once(self) -> bool:
         return True
 
-    async def get_from_service(self, key: str) -> Optional[str]:
+    async def get_from_service(self, key: str) -> str | None:
         if key not in self.seen:
             self.seen.add(key)
             raise ValueError('first call fails')
@@ -51,7 +51,7 @@ class TTLService(AsyncExternalService[str, str]):
         self._ttl = ttl
         self.call_count = 0
 
-    def cache_ttl(self) -> Optional[timedelta]:
+    def cache_ttl(self) -> timedelta | None:
         return self._ttl
 
     async def get_from_service(self, key: str) -> str:

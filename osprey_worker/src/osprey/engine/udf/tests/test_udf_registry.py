@@ -1,4 +1,5 @@
-from typing import Any, Generic, List, Optional, Sequence, Tuple, Type, TypeVar, cast
+from collections.abc import Sequence
+from typing import Any, Generic, Type, TypeVar, cast
 
 import pytest
 from osprey.engine.conftest import CheckOutputFunction
@@ -84,14 +85,14 @@ def _get_invalid_types() -> Sequence[Type[UDFBase[Any, Any]]]:
     # Complex types
     class ComplexParamArguments(ArgumentsBase):
         # This is a type you can't write in the rules language
-        p: Tuple[str, ...]
+        p: tuple[str, ...]
 
     class ComplexParamUdf(UDFBase[ComplexParamArguments, str]):
         def execute(self, execution_context: ExecutionContext, arguments: ArgumentsBase) -> str:
             return ''
 
-    class ComplexReturnUdf(UDFBase[ArgumentsBase, Tuple[str, ...]]):
-        def execute(self, execution_context: ExecutionContext, arguments: ArgumentsBase) -> Tuple[str, ...]:
+    class ComplexReturnUdf(UDFBase[ArgumentsBase, tuple[str, ...]]):
+        def execute(self, execution_context: ExecutionContext, arguments: ArgumentsBase) -> tuple[str, ...]:
             return tuple()
 
     # Generics
@@ -181,8 +182,8 @@ def test_valid_generic_functions() -> None:
         ) -> A:
             pass
 
-    class ReturnsTypeVarIndirectlyUdf(OspreyInvariantGeneric[A], UDFBase[ArgumentsBase, Optional[A]]):
-        def execute(self, execution_context: ExecutionContext, arguments: ArgumentsBase) -> Optional[A]:
+    class ReturnsTypeVarIndirectlyUdf(OspreyInvariantGeneric[A], UDFBase[ArgumentsBase, A | None]):
+        def execute(self, execution_context: ExecutionContext, arguments: ArgumentsBase) -> A | None:
             pass
 
     class ArgumentsUseTypeVarsDirectlyArgs(OspreyInvariantGeneric[A], ArgumentsBase):
@@ -195,7 +196,7 @@ def test_valid_generic_functions() -> None:
             pass
 
     class ArgumentsUseTypeVarsOptionalArgs(OspreyInvariantGeneric[A], ArgumentsBase):
-        foo: Optional[A]
+        foo: A | None
 
     class ArgumentsUseTypeVarsOptionalUdf(OspreyInvariantGeneric[A], UDFBase[ArgumentsUseTypeVarsOptionalArgs[A], A]):
         def execute(  # type: ignore[empty-body]
@@ -204,7 +205,7 @@ def test_valid_generic_functions() -> None:
             pass
 
     class ArgumentsUseTypeVarsListArgs(OspreyInvariantGeneric[A], ArgumentsBase):
-        foo: List[A]
+        foo: list[A]
 
     class ArgumentsUseTypeVarsListUdf(OspreyInvariantGeneric[A], UDFBase[ArgumentsUseTypeVarsListArgs[A], A]):
         def execute(  # type: ignore[empty-body]
