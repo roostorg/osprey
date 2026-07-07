@@ -1,12 +1,9 @@
 import abc
 import logging
-import os
-import threading
 from typing import TypeVar
 
-import google.auth
-from google.auth.exceptions import DefaultCredentialsError
 from google.cloud import pubsub_v1
+from osprey.worker.lib.gcp_credentials import gcp_credentials_available, gcp_pubsub_disabled
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.pubsub.publisher_client import BatchPubsubPublisherClient
 from pydantic import BaseModel
@@ -72,7 +69,7 @@ class PubSubPublisher(BasePublisher):
         self._project = project_id
         self._raise_on_error = raise_on_error
         self._tags = [f'project:{self._project}', f'topic:{self._topic_name}']
-        if _gcp_pubsub_disabled():
+        if gcp_pubsub_disabled():
             self._enabled = False
             logger.warning(
                 'DISABLE_GCP_PUBSUB is set, PubSubPublisher disabled (project=%s, topic=%s)',
@@ -80,7 +77,7 @@ class PubSubPublisher(BasePublisher):
                 topic_id,
             )
             return
-        self._enabled = _check_gcp_credentials()
+        self._enabled = gcp_credentials_available()
         if not self._enabled:
             logger.warning(
                 'GCP credentials not detected, PubSubPublisher running in noop mode (project=%s, topic=%s)',
@@ -139,25 +136,3 @@ class StrPubSubPublisher(PubSubPublisher):
             attributes = {}
 
         super().publish(data, attributes)  # type: ignore[type-var]
-
-
-def _gcp_pubsub_disabled() -> bool:
-    return os.environ.get('DISABLE_GCP_PUBSUB', '').lower() == 'true'
-
-
-_gcp_credentials_available: bool | None = None
-_gcp_credentials_lock = threading.Lock()
-
-
-def _check_gcp_credentials() -> bool:
-    global _gcp_credentials_available
-    if _gcp_credentials_available is None:
-        with _gcp_credentials_lock:
-            # Re-check under the lock so concurrent constructors probe google.auth.default() only once.
-            if _gcp_credentials_available is None:
-                try:
-                    google.auth.default()
-                    _gcp_credentials_available = True
-                except DefaultCredentialsError:
-                    _gcp_credentials_available = False
-    return _gcp_credentials_available

@@ -1,40 +1,13 @@
-from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
-from google.auth.exceptions import DefaultCredentialsError
 from osprey.worker.lib import publisher
-from osprey.worker.lib.publisher import PubSubPublisher, _check_gcp_credentials
-
-
-@pytest.fixture(autouse=True)
-def reset_cred_cache() -> Iterator[None]:
-    publisher._gcp_credentials_available = None
-    yield
-    publisher._gcp_credentials_available = None
-
-
-def test_check_gcp_credentials_true_when_default_resolves() -> None:
-    with patch.object(publisher.google.auth, 'default', return_value=(MagicMock(), 'proj')):
-        assert _check_gcp_credentials() is True
-
-
-def test_check_gcp_credentials_false_when_default_raises() -> None:
-    with patch.object(publisher.google.auth, 'default', side_effect=DefaultCredentialsError()):
-        assert _check_gcp_credentials() is False
-
-
-def test_check_gcp_credentials_is_cached() -> None:
-    with patch.object(publisher.google.auth, 'default', return_value=(MagicMock(), 'proj')) as default_mock:
-        _check_gcp_credentials()
-        _check_gcp_credentials()
-        _check_gcp_credentials()
-    assert default_mock.call_count == 1
+from osprey.worker.lib.publisher import PubSubPublisher
 
 
 def test_pubsub_publisher_constructs_client_when_creds_present() -> None:
     with (
-        patch.object(publisher.google.auth, 'default', return_value=(MagicMock(), 'proj')),
+        patch.object(publisher, 'gcp_credentials_available', return_value=True),
         patch.object(publisher, 'BatchPubsubPublisherClient') as client_cls,
     ):
         pub = PubSubPublisher('proj', 'topic')
@@ -44,7 +17,7 @@ def test_pubsub_publisher_constructs_client_when_creds_present() -> None:
 
 def test_pubsub_publisher_noops_when_creds_absent(caplog: pytest.LogCaptureFixture) -> None:
     with (
-        patch.object(publisher.google.auth, 'default', side_effect=DefaultCredentialsError()),
+        patch.object(publisher, 'gcp_credentials_available', return_value=False),
         patch.object(publisher, 'BatchPubsubPublisherClient') as client_cls,
     ):
         with caplog.at_level('WARNING', logger=publisher.logger.name):
@@ -61,7 +34,7 @@ def test_pubsub_publisher_disabled_via_env(
 ) -> None:
     monkeypatch.setenv('DISABLE_GCP_PUBSUB', 'true')
     with (
-        patch.object(publisher, '_check_gcp_credentials') as cred_check,
+        patch.object(publisher, 'gcp_credentials_available') as cred_check,
         patch.object(publisher, 'BatchPubsubPublisherClient') as client_cls,
     ):
         with caplog.at_level('WARNING', logger=publisher.logger.name):
@@ -75,7 +48,7 @@ def test_pubsub_publisher_disabled_via_env(
 
 def test_publish_short_circuits_silently_when_disabled() -> None:
     with (
-        patch.object(publisher.google.auth, 'default', side_effect=DefaultCredentialsError()),
+        patch.object(publisher, 'gcp_credentials_available', return_value=False),
         patch.object(publisher, 'metrics') as metrics_mock,
     ):
         pub = PubSubPublisher('proj', 'topic')
@@ -84,7 +57,7 @@ def test_publish_short_circuits_silently_when_disabled() -> None:
 
 
 def test_stop_short_circuits_when_disabled() -> None:
-    with patch.object(publisher.google.auth, 'default', side_effect=DefaultCredentialsError()):
+    with patch.object(publisher, 'gcp_credentials_available', return_value=False):
         pub = PubSubPublisher('proj', 'topic')
         pub.stop()
     assert not hasattr(pub, '_publisher')

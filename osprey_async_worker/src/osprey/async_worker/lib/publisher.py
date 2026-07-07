@@ -9,6 +9,7 @@ import logging
 
 from google.api_core.retry import Retry
 from google.cloud import pubsub_v1
+from osprey.worker.lib.gcp_credentials import gcp_credentials_available
 from osprey.worker.lib.instruments import metrics
 from pydantic import BaseModel
 
@@ -29,6 +30,13 @@ class AsyncPubSubPublisher:
 
     Messages are buffered in an asyncio.Queue and flushed either when
     the batch reaches max_messages or after max_latency_seconds.
+
+    Degrades to noop mode when GCP credentials cannot be resolved at construction
+    time (e.g. local dev or adopter environments without GCP). In noop mode no
+    underlying client is built, publish paths return immediately, and an
+    `async_pubsub_publisher.publish.noop` metric is incremented per call so the
+    inert state is visible in dashboards. A one-time warning is logged at
+    construction.
     """
 
     def __init__(
@@ -39,15 +47,23 @@ class AsyncPubSubPublisher:
         max_latency_seconds: float = 1.0,
     ):
         self._topic_path = f'projects/{project_id}/topics/{topic_id}'
+        self._metric_tags = [f'project:{project_id}', f'topic:{topic_id}']
+        self._flush_task: asyncio.Task[None] | None = None
+        self._enabled = gcp_credentials_available()
+        if not self._enabled:
+            logger.warning(
+                'GCP credentials not detected, AsyncPubSubPublisher running in noop mode (project=%s, topic=%s)',
+                project_id,
+                topic_id,
+            )
+            return
         self._client = pubsub_v1.PublisherClient(
             batch_settings=pubsub_v1.types.BatchSettings(max_messages=1),
         )
         self._queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._max_messages = max_messages
         self._max_latency = max_latency_seconds
-        self._flush_task: asyncio.Task[None] | None = None
         self._started = False
-        self._metric_tags = [f'project:{project_id}', f'topic:{topic_id}']
 
     def _ensure_started(self) -> None:
         """Start the background flush task on first publish."""
@@ -129,6 +145,9 @@ class AsyncPubSubPublisher:
 
     def publish_bytes(self, data: bytes) -> None:
         """Queue raw bytes for async batched publishing."""
+        if not self._enabled:
+            metrics.increment('async_pubsub_publisher.publish.noop', tags=self._metric_tags)
+            return
         self._ensure_started()
         try:
             self._queue.put_nowait(data)
@@ -138,6 +157,8 @@ class AsyncPubSubPublisher:
 
     async def stop(self) -> None:
         """Flush remaining messages and stop."""
+        if not self._enabled:
+            return
         if self._flush_task is not None:
             self._flush_task.cancel()
             try:

@@ -2,13 +2,18 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from google.api_core.exceptions import NotFound
+from osprey.async_worker.lib import publisher as publisher_module
 from osprey.async_worker.lib.publisher import _PUBLISH_RETRY, AsyncPubSubPublisher
 
 
 def _make_publisher():
-    """Return an AsyncPubSubPublisher with a mocked PublisherClient."""
-    with patch('osprey.async_worker.lib.publisher.pubsub_v1.PublisherClient'):
+    """Return an enabled AsyncPubSubPublisher with a mocked PublisherClient."""
+    with (
+        patch('osprey.async_worker.lib.publisher.gcp_credentials_available', return_value=True),
+        patch('osprey.async_worker.lib.publisher.pubsub_v1.PublisherClient'),
+    ):
         publisher = AsyncPubSubPublisher(project_id='proj', topic_id='topic')
     publisher._client = MagicMock()
     return publisher
@@ -48,3 +53,38 @@ def test_permanent_failure_metric_fires(mock_metrics):
     assert len(failure_calls) == 1
     assert failure_calls[0][0][0] == 'async_pubsub_publisher.publish.failure'
     assert f'error:{exc.__class__.__name__}' in failure_calls[0][1]['tags']
+
+
+def test_noops_when_creds_absent(caplog: pytest.LogCaptureFixture) -> None:
+    with (
+        patch('osprey.async_worker.lib.publisher.gcp_credentials_available', return_value=False),
+        patch('osprey.async_worker.lib.publisher.pubsub_v1.PublisherClient') as client_cls,
+    ):
+        with caplog.at_level('WARNING', logger=publisher_module.logger.name):
+            publisher = AsyncPubSubPublisher(project_id='proj', topic_id='topic')
+    assert publisher._enabled is False
+    assert not client_cls.called
+    assert not hasattr(publisher, '_client')
+    assert 'noop mode' in caplog.text
+    assert 'project=proj' in caplog.text
+    assert 'topic=topic' in caplog.text
+
+
+@patch('osprey.async_worker.lib.publisher.metrics')
+def test_publish_bytes_short_circuits_and_emits_noop_metric_when_disabled(mock_metrics) -> None:
+    with patch('osprey.async_worker.lib.publisher.gcp_credentials_available', return_value=False):
+        publisher = AsyncPubSubPublisher(project_id='proj', topic_id='topic')
+        publisher.publish_bytes(b'data')
+
+    mock_metrics.increment.assert_called_once_with(
+        'async_pubsub_publisher.publish.noop',
+        tags=['project:proj', 'topic:topic'],
+    )
+
+
+async def test_stop_short_circuits_when_disabled() -> None:
+    with patch('osprey.async_worker.lib.publisher.gcp_credentials_available', return_value=False):
+        publisher = AsyncPubSubPublisher(project_id='proj', topic_id='topic')
+        await publisher.stop()
+
+    assert not hasattr(publisher, '_client')
