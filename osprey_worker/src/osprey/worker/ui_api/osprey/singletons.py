@@ -1,4 +1,6 @@
-from osprey.worker.lib.publisher import KafkaPublisher, PubSubPublisher
+from typing import cast
+
+from osprey.worker.lib.publisher import BasePublisher, KafkaPublisher, PubSubPublisher
 from osprey.worker.lib.singleton import Singleton
 from osprey.worker.lib.singletons import CONFIG
 
@@ -22,11 +24,11 @@ def _init_kafka_analytics_publisher() -> KafkaPublisher:
     return KafkaPublisher(bootstrap_servers, client_id, topic)
 
 
-def get_analytics_publisher() -> Singleton[PubSubPublisher] | Singleton[KafkaPublisher]:
+def get_analytics_publisher() -> Singleton[BasePublisher]:
     with open('/sys/class/dmi/id/product_name', 'r') as pn:
         if 'Google' in pn:
             ANALYTICS_PUBLISHER: Singleton[PubSubPublisher] = Singleton(_init_analytics_publisher)
         else:
             ANALYTICS_PUBLISHER: Singleton[KafkaPublisher] = Singleton(_init_kafka_analytics_publisher)  # type: ignore[no-redef]
 
-    return ANALYTICS_PUBLISHER
+    return cast(Singleton[BasePublisher], ANALYTICS_PUBLISHER)
