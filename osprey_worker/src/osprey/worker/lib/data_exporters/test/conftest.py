@@ -28,5 +28,5 @@ def pubsub_client_mock(monkeypatch_session, monkeypatch) -> MagicMock:
     # monkeypatch so it reverts after each test instead of leaking into later
     # modules (e.g. test_publisher.py, whose disabled-publisher tests would then
     # build a real client and hang on stop()).
-    monkeypatch.setattr(publisher, '_check_gcp_credentials', lambda: True)
+    monkeypatch.setattr(publisher, 'gcp_credentials_available', lambda: True)
     return pubsub_client_mock
