@@ -14,7 +14,7 @@ def monkeypatch_session(request):
 
 
 @pytest.fixture(scope='function', autouse=True)
-def pubsub_client_mock(monkeypatch_session) -> MagicMock:
+def pubsub_client_mock(monkeypatch_session, monkeypatch) -> MagicMock:
     # tagging as potential opensource item
     from google.cloud import pubsub_v1
     from osprey.worker.lib import publisher
@@ -24,6 +24,9 @@ def pubsub_client_mock(monkeypatch_session) -> MagicMock:
 
     monkeypatch_session.setattr(pubsub_v1, 'PublisherClient', publisher_class_mock)
     # PubSubPublisher degrades to noop without GCP credentials, which CI lacks;
-    # force detection so the mocked client is actually exercised.
-    monkeypatch_session.setattr(publisher, '_check_gcp_credentials', lambda: True)
+    # force detection so the mocked client is actually exercised. Function-scoped
+    # monkeypatch so it reverts after each test instead of leaking into later
+    # modules (e.g. test_publisher.py, whose disabled-publisher tests would then
+    # build a real client and hang on stop()).
+    monkeypatch.setattr(publisher, '_check_gcp_credentials', lambda: True)
     return pubsub_client_mock
