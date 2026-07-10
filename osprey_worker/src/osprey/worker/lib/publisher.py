@@ -2,10 +2,10 @@ import abc
 import logging
 from typing import TypeVar
 
+from google.auth.exceptions import DefaultCredentialsError
 from google.cloud import pubsub_v1
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.pubsub.publisher_client import BatchPubsubPublisherClient
-from osprey.worker.lib.utils.gcp_credentials import gcp_credentials_available
 from pydantic import BaseModel
 
 _PydanticModelT = TypeVar('_PydanticModelT', bound=BaseModel)
@@ -116,39 +116,26 @@ class StrPubSubPublisher(PubSubPublisher):
         super().publish(data, attributes)  # type: ignore[type-var]
 
 
-def make_publisher(
-    project_id: str,
-    topic_id: str,
-    raise_on_error: bool = False,
-    max_bytes: int = 2000000,
-    max_messages: int = 250,
-    max_latency: float = 1.0,
-) -> BasePublisher:
+def make_publisher(project_id: str, topic_id: str) -> BasePublisher:
     """Build a Pub/Sub publisher, or a NullPublisher when publishing is off.
 
-    Publishing is off when PUBSUB_ENABLED is false, or when GCP credentials cannot
-    be resolved (e.g. local dev or adopter environments without GCP). Missing
-    credentials are a misconfiguration, so they also emit a one-time
-    configuration.errors metric; the deliberate PUBSUB_ENABLED opt-out is silent.
+    Publishing is opt-in: unless OSPREY_PUBSUB_ENABLED is true, this returns a
+    NullPublisher (the default, no-GCP experience). When it is true but GCP
+    credentials cannot be resolved, PubSubPublisher construction raises; that is a
+    misconfiguration, so we log, emit a one-time configuration.errors metric, and
+    fall back to a NullPublisher rather than crash.
     """
     # Imported here to avoid pulling the config/singletons stack into this low-level module.
     from osprey.worker.lib.singletons import CONFIG
 
-    if not CONFIG.instance().get_bool('PUBSUB_ENABLED', True):
-        logger.warning('PUBSUB_ENABLED is false, publishing disabled (project=%s, topic=%s)', project_id, topic_id)
+    if not CONFIG.instance().get_bool('OSPREY_PUBSUB_ENABLED', False):
         return NullPublisher()
-    if not gcp_credentials_available():
+    try:
+        return PubSubPublisher(project_id, topic_id)
+    except DefaultCredentialsError:
         logger.warning('GCP credentials not detected, publishing disabled (project=%s, topic=%s)', project_id, topic_id)
         metrics.increment(
             'configuration.errors',
             tags=[f'project:{project_id}', f'topic:{topic_id}', 'reason:gcp_credentials_missing'],
         )
         return NullPublisher()
-    return PubSubPublisher(
-        project_id,
-        topic_id,
-        raise_on_error=raise_on_error,
-        max_bytes=max_bytes,
-        max_messages=max_messages,
-        max_latency=max_latency,
-    )
