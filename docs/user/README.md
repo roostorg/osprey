@@ -23,3 +23,5 @@ Osprey's tools are categorized into three primary functions:
 - [Bulk Job History](operate.md#bulk-job-history): review past bulk jobs and their results
 
 The sidebar can be collapsed to a narrow icon-only strip using the toggle at the bottom. Its state persists between sessions.
+
+The interface supports light and dark themes, see [Appearance](appearance.md) for details.
