@@ -50,7 +50,8 @@ class PubSubPublisher(BasePublisher):
     credentials cannot be resolved at construction time (e.g. local dev or adopter
     environments without GCP). In noop mode no underlying client is built and
     publish() and stop() return immediately. A one-time warning is logged at
-    construction so the inert state is visible.
+    construction so the inert state is visible, and missing credentials (unlike the
+    deliberate opt-out) also emit a startup `configuration.errors` metric.
     """
 
     def __init__(
@@ -84,6 +85,9 @@ class PubSubPublisher(BasePublisher):
                 project_id,
                 topic_id,
             )
+            # Startup-only signal: missing credentials is a misconfiguration, unlike the
+            # deliberate DISABLE_GCP_PUBSUB opt-out above, which is silent.
+            metrics.increment('configuration.errors', tags=self._tags + ['reason:gcp_credentials_missing'])
             return
         batch_settings = pubsub_v1.types.BatchSettings(
             max_bytes=max_bytes,  # default 1MB

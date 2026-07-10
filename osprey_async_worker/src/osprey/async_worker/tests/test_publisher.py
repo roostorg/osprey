@@ -59,6 +59,7 @@ def test_noops_when_creds_absent(caplog: pytest.LogCaptureFixture) -> None:
     with (
         patch('osprey.async_worker.lib.publisher.gcp_credentials_available', return_value=False),
         patch('osprey.async_worker.lib.publisher.pubsub_v1.PublisherClient') as client_cls,
+        patch('osprey.async_worker.lib.publisher.metrics') as mock_metrics,
     ):
         with caplog.at_level('WARNING', logger=publisher_module.logger.name):
             publisher = AsyncPubSubPublisher(project_id='proj', topic_id='topic')
@@ -68,6 +69,10 @@ def test_noops_when_creds_absent(caplog: pytest.LogCaptureFixture) -> None:
     assert 'noop mode' in caplog.text
     assert 'project=proj' in caplog.text
     assert 'topic=topic' in caplog.text
+    mock_metrics.increment.assert_called_once_with(
+        'configuration.errors',
+        tags=['project:proj', 'topic:topic', 'reason:gcp_credentials_missing'],
+    )
 
 
 def test_disabled_via_env(monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
@@ -75,6 +80,7 @@ def test_disabled_via_env(monkeypatch, caplog: pytest.LogCaptureFixture) -> None
     with (
         patch('osprey.async_worker.lib.publisher.gcp_credentials_available') as cred_check,
         patch('osprey.async_worker.lib.publisher.pubsub_v1.PublisherClient') as client_cls,
+        patch('osprey.async_worker.lib.publisher.metrics') as mock_metrics,
     ):
         with caplog.at_level('WARNING', logger=publisher_module.logger.name):
             publisher = AsyncPubSubPublisher(project_id='proj', topic_id='topic')
@@ -83,12 +89,15 @@ def test_disabled_via_env(monkeypatch, caplog: pytest.LogCaptureFixture) -> None
     # The opt-out short-circuits before probing credentials.
     assert not cred_check.called
     assert 'DISABLE_GCP_PUBSUB' in caplog.text
+    # A deliberate opt-out is not a misconfiguration, so no config-error metric.
+    mock_metrics.increment.assert_not_called()
 
 
 @patch('osprey.async_worker.lib.publisher.metrics')
 def test_publish_bytes_short_circuits_silently_when_disabled(mock_metrics) -> None:
     with patch('osprey.async_worker.lib.publisher.gcp_credentials_available', return_value=False):
         publisher = AsyncPubSubPublisher(project_id='proj', topic_id='topic')
+        mock_metrics.increment.reset_mock()  # ignore the startup configuration.errors metric
         publisher.publish_bytes(b'data')
 
     mock_metrics.increment.assert_not_called()

@@ -19,6 +19,7 @@ def test_pubsub_publisher_noops_when_creds_absent(caplog: pytest.LogCaptureFixtu
     with (
         patch.object(publisher, 'gcp_credentials_available', return_value=False),
         patch.object(publisher, 'BatchPubsubPublisherClient') as client_cls,
+        patch.object(publisher, 'metrics') as metrics_mock,
     ):
         with caplog.at_level('WARNING', logger=publisher.logger.name):
             pub = PubSubPublisher('proj', 'topic')
@@ -27,6 +28,10 @@ def test_pubsub_publisher_noops_when_creds_absent(caplog: pytest.LogCaptureFixtu
     assert 'noop mode' in caplog.text
     assert 'project=proj' in caplog.text
     assert 'topic=topic' in caplog.text
+    metrics_mock.increment.assert_called_once_with(
+        'configuration.errors',
+        tags=['project:proj', 'topic:projects/proj/topics/topic', 'reason:gcp_credentials_missing'],
+    )
 
 
 def test_pubsub_publisher_disabled_via_env(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
@@ -34,6 +39,7 @@ def test_pubsub_publisher_disabled_via_env(monkeypatch: pytest.MonkeyPatch, capl
     with (
         patch.object(publisher, 'gcp_credentials_available') as cred_check,
         patch.object(publisher, 'BatchPubsubPublisherClient') as client_cls,
+        patch.object(publisher, 'metrics') as metrics_mock,
     ):
         with caplog.at_level('WARNING', logger=publisher.logger.name):
             pub = PubSubPublisher('proj', 'topic')
@@ -42,6 +48,8 @@ def test_pubsub_publisher_disabled_via_env(monkeypatch: pytest.MonkeyPatch, capl
     # The opt-out short-circuits before probing credentials.
     assert not cred_check.called
     assert 'DISABLE_GCP_PUBSUB' in caplog.text
+    # A deliberate opt-out is not a misconfiguration, so no config-error metric.
+    metrics_mock.increment.assert_not_called()
 
 
 def test_publish_short_circuits_silently_when_disabled() -> None:
@@ -50,6 +58,7 @@ def test_publish_short_circuits_silently_when_disabled() -> None:
         patch.object(publisher, 'metrics') as metrics_mock,
     ):
         pub = PubSubPublisher('proj', 'topic')
+        metrics_mock.increment.reset_mock()  # ignore the startup configuration.errors metric
         pub.publish(MagicMock())
     metrics_mock.increment.assert_not_called()
 

@@ -35,7 +35,8 @@ class AsyncPubSubPublisher:
     credentials cannot be resolved at construction time (e.g. local dev or adopter
     environments without GCP). In noop mode no underlying client is built and the
     publish paths return immediately. A one-time warning is logged at construction
-    so the inert state is visible.
+    so the inert state is visible, and missing credentials (unlike the deliberate
+    opt-out) also emit a startup `configuration.errors` metric.
     """
 
     def __init__(
@@ -63,6 +64,9 @@ class AsyncPubSubPublisher:
                 project_id,
                 topic_id,
             )
+            # Startup-only signal: missing credentials is a misconfiguration, unlike the
+            # deliberate DISABLE_GCP_PUBSUB opt-out above, which is silent.
+            metrics.increment('configuration.errors', tags=self._metric_tags + ['reason:gcp_credentials_missing'])
             return
         self._client = pubsub_v1.PublisherClient(
             batch_settings=pubsub_v1.types.BatchSettings(max_messages=1),
