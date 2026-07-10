@@ -70,16 +70,28 @@ def test_noops_when_creds_absent(caplog: pytest.LogCaptureFixture) -> None:
     assert 'topic=topic' in caplog.text
 
 
+def test_disabled_via_env(monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
+    monkeypatch.setenv('DISABLE_GCP_PUBSUB', 'true')
+    with (
+        patch('osprey.async_worker.lib.publisher.gcp_credentials_available') as cred_check,
+        patch('osprey.async_worker.lib.publisher.pubsub_v1.PublisherClient') as client_cls,
+    ):
+        with caplog.at_level('WARNING', logger=publisher_module.logger.name):
+            publisher = AsyncPubSubPublisher(project_id='proj', topic_id='topic')
+    assert publisher._enabled is False
+    assert not client_cls.called
+    # The opt-out short-circuits before probing credentials.
+    assert not cred_check.called
+    assert 'DISABLE_GCP_PUBSUB' in caplog.text
+
+
 @patch('osprey.async_worker.lib.publisher.metrics')
-def test_publish_bytes_short_circuits_and_emits_noop_metric_when_disabled(mock_metrics) -> None:
+def test_publish_bytes_short_circuits_silently_when_disabled(mock_metrics) -> None:
     with patch('osprey.async_worker.lib.publisher.gcp_credentials_available', return_value=False):
         publisher = AsyncPubSubPublisher(project_id='proj', topic_id='topic')
         publisher.publish_bytes(b'data')
 
-    mock_metrics.increment.assert_called_once_with(
-        'async_pubsub_publisher.publish.noop',
-        tags=['project:proj', 'topic:topic'],
-    )
+    mock_metrics.increment.assert_not_called()
 
 
 async def test_stop_short_circuits_when_disabled() -> None:

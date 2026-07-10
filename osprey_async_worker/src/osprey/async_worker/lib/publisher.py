@@ -9,7 +9,7 @@ import logging
 
 from google.api_core.retry import Retry
 from google.cloud import pubsub_v1
-from osprey.worker.lib.gcp_credentials import gcp_credentials_available
+from osprey.worker.lib.gcp_credentials import gcp_credentials_available, gcp_pubsub_disabled
 from osprey.worker.lib.instruments import metrics
 from pydantic import BaseModel
 
@@ -31,12 +31,11 @@ class AsyncPubSubPublisher:
     Messages are buffered in an asyncio.Queue and flushed either when
     the batch reaches max_messages or after max_latency_seconds.
 
-    Degrades to noop mode when GCP credentials cannot be resolved at construction
-    time (e.g. local dev or adopter environments without GCP). In noop mode no
-    underlying client is built, publish paths return immediately, and an
-    `async_pubsub_publisher.publish.noop` metric is incremented per call so the
-    inert state is visible in dashboards. A one-time warning is logged at
-    construction.
+    Degrades to noop mode when the DISABLE_GCP_PUBSUB env var is set, or when GCP
+    credentials cannot be resolved at construction time (e.g. local dev or adopter
+    environments without GCP). In noop mode no underlying client is built and the
+    publish paths return immediately. A one-time warning is logged at construction
+    so the inert state is visible.
     """
 
     def __init__(
@@ -49,6 +48,14 @@ class AsyncPubSubPublisher:
         self._topic_path = f'projects/{project_id}/topics/{topic_id}'
         self._metric_tags = [f'project:{project_id}', f'topic:{topic_id}']
         self._flush_task: asyncio.Task[None] | None = None
+        if gcp_pubsub_disabled():
+            self._enabled = False
+            logger.warning(
+                'DISABLE_GCP_PUBSUB is set, AsyncPubSubPublisher disabled (project=%s, topic=%s)',
+                project_id,
+                topic_id,
+            )
+            return
         self._enabled = gcp_credentials_available()
         if not self._enabled:
             logger.warning(
@@ -146,7 +153,6 @@ class AsyncPubSubPublisher:
     def publish_bytes(self, data: bytes) -> None:
         """Queue raw bytes for async batched publishing."""
         if not self._enabled:
-            metrics.increment('async_pubsub_publisher.publish.noop', tags=self._metric_tags)
             return
         self._ensure_started()
         try:
