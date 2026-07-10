@@ -3,9 +3,9 @@ import logging
 from typing import TypeVar
 
 from google.cloud import pubsub_v1
-from osprey.worker.lib.gcp_credentials import gcp_credentials_available, gcp_pubsub_disabled
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.pubsub.publisher_client import BatchPubsubPublisherClient
+from osprey.worker.lib.utils.gcp_credentials import gcp_credentials_available
 from pydantic import BaseModel
 
 _PydanticModelT = TypeVar('_PydanticModelT', bound=BaseModel)
@@ -46,12 +46,9 @@ class NullPublisher(BasePublisher):
 class PubSubPublisher(BasePublisher):
     """Publishes Pydantic models to a Google Cloud Pub/Sub topic.
 
-    Degrades to noop mode when the DISABLE_GCP_PUBSUB env var is set, or when GCP
-    credentials cannot be resolved at construction time (e.g. local dev or adopter
-    environments without GCP). In noop mode no underlying client is built and
-    publish() and stop() return immediately. A one-time warning is logged at
-    construction so the inert state is visible, and missing credentials (unlike the
-    deliberate opt-out) also emit a startup `configuration.errors` metric.
+    This is a plain transport: it assumes GCP is configured and builds its client
+    eagerly. Callers that may run without GCP should build publishers via
+    make_publisher(), which hands back a NullPublisher when publishing is off.
     """
 
     def __init__(
@@ -68,27 +65,6 @@ class PubSubPublisher(BasePublisher):
             topic_id=topic_id,
         )
         self._project = project_id
-        self._raise_on_error = raise_on_error
-        self._tags = [f'project:{self._project}', f'topic:{self._topic_name}']
-        if gcp_pubsub_disabled():
-            self._enabled = False
-            logger.warning(
-                'DISABLE_GCP_PUBSUB is set, PubSubPublisher disabled (project=%s, topic=%s)',
-                project_id,
-                topic_id,
-            )
-            return
-        self._enabled = gcp_credentials_available()
-        if not self._enabled:
-            logger.warning(
-                'GCP credentials not detected, PubSubPublisher running in noop mode (project=%s, topic=%s)',
-                project_id,
-                topic_id,
-            )
-            # Startup-only signal: missing credentials is a misconfiguration, unlike the
-            # deliberate DISABLE_GCP_PUBSUB opt-out above, which is silent.
-            metrics.increment('configuration.errors', tags=self._tags + ['reason:gcp_credentials_missing'])
-            return
         batch_settings = pubsub_v1.types.BatchSettings(
             max_bytes=max_bytes,  # default 1MB
             max_messages=max_messages,  # default 100 messages
@@ -96,6 +72,8 @@ class PubSubPublisher(BasePublisher):
         )
         # self._publisher = pubsub_v1.PublisherClient(batch_settings=batch_settings)
         self._publisher = BatchPubsubPublisherClient(batch_settings=batch_settings)
+        self._raise_on_error = raise_on_error
+        self._tags = [f'project:{self._project}', f'topic:{self._topic_name}']
 
     def prepare_data(self, data: _PydanticModelT) -> bytes:
         """
@@ -105,8 +83,6 @@ class PubSubPublisher(BasePublisher):
         return data.json(exclude_none=True).encode()
 
     def publish(self, data: _PydanticModelT, attributes: dict[str, str] | None = None) -> None:
-        if not self._enabled:
-            return
         if attributes is None:
             attributes = {}
 
@@ -124,8 +100,6 @@ class PubSubPublisher(BasePublisher):
         metrics.increment(f'{self.__class__.__name__}.publisher.success', tags=self._tags)
 
     def stop(self) -> None:
-        if not self._enabled:
-            return
         self._publisher.stop()
 
 
@@ -140,3 +114,41 @@ class StrPubSubPublisher(PubSubPublisher):
             attributes = {}
 
         super().publish(data, attributes)  # type: ignore[type-var]
+
+
+def make_publisher(
+    project_id: str,
+    topic_id: str,
+    raise_on_error: bool = False,
+    max_bytes: int = 2000000,
+    max_messages: int = 250,
+    max_latency: float = 1.0,
+) -> BasePublisher:
+    """Build a Pub/Sub publisher, or a NullPublisher when publishing is off.
+
+    Publishing is off when PUBSUB_ENABLED is false, or when GCP credentials cannot
+    be resolved (e.g. local dev or adopter environments without GCP). Missing
+    credentials are a misconfiguration, so they also emit a one-time
+    configuration.errors metric; the deliberate PUBSUB_ENABLED opt-out is silent.
+    """
+    # Imported here to avoid pulling the config/singletons stack into this low-level module.
+    from osprey.worker.lib.singletons import CONFIG
+
+    if not CONFIG.instance().get_bool('PUBSUB_ENABLED', True):
+        logger.warning('PUBSUB_ENABLED is false, publishing disabled (project=%s, topic=%s)', project_id, topic_id)
+        return NullPublisher()
+    if not gcp_credentials_available():
+        logger.warning('GCP credentials not detected, publishing disabled (project=%s, topic=%s)', project_id, topic_id)
+        metrics.increment(
+            'configuration.errors',
+            tags=[f'project:{project_id}', f'topic:{topic_id}', 'reason:gcp_credentials_missing'],
+        )
+        return NullPublisher()
+    return PubSubPublisher(
+        project_id,
+        topic_id,
+        raise_on_error=raise_on_error,
+        max_bytes=max_bytes,
+        max_messages=max_messages,
+        max_latency=max_latency,
+    )

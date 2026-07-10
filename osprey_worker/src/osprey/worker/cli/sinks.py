@@ -37,7 +37,7 @@ from osprey.worker.lib.bulk_label import TaskStatus
 from osprey.worker.lib.config import Config
 from osprey.worker.lib.osprey_engine import bootstrap_engine, bootstrap_engine_with_helpers, get_sources_provider
 from osprey.worker.lib.osprey_shared.logging import get_logger
-from osprey.worker.lib.publisher import PubSubPublisher
+from osprey.worker.lib.publisher import make_publisher
 from osprey.worker.lib.singletons import CONFIG, LABELS_PROVIDER
 from osprey.worker.lib.storage import postgres
 from osprey.worker.lib.storage.bigtable import osprey_bigtable
@@ -263,7 +263,7 @@ def run_bulk_label_sink(pooled: bool) -> None:
 
     analytics_pubsub_project_id = config.get_str('PUBSUB_DATA_PROJECT_ID', 'osprey-dev')
     analytics_pubsub_topic_id = config.get_str('PUBSUB_ANALYTICS_EVENT_TOPIC_ID', 'osprey-analytics')
-    analytics_publisher = PubSubPublisher(analytics_pubsub_project_id, analytics_pubsub_topic_id)
+    analytics_publisher = make_publisher(analytics_pubsub_project_id, analytics_pubsub_topic_id)
 
     def factory() -> BulkLabelSink:
         # NOTE: It's very important the input stream is created per-webhook sink
@@ -304,11 +304,11 @@ def rollback_bulk_label_effects(ctx: click.Context, task_id: int, include_ids_fr
 
     analytics_pubsub_project_id = config.get_str('PUBSUB_DATA_PROJECT_ID', 'osprey-dev')
     analytics_pubsub_topic_id = config.get_str('PUBSUB_ANALYTICS_EVENT_TOPIC_ID', 'osprey-analytics')
-    analytics_publisher = PubSubPublisher(analytics_pubsub_project_id, analytics_pubsub_topic_id)
+    analytics_publisher = make_publisher(analytics_pubsub_project_id, analytics_pubsub_topic_id)
 
     osprey_webhook_pubsub_project = config.get_str('PUBSUB_OSPREY_WEBHOOKS_PROJECT_ID', 'osprey-dev')
     osprey_webhook_pubsub_topic = config.get_str('PUBSUB_OSPREY_WEBHOOKS_TOPIC_ID', 'osprey-webhooks')
-    webhooks_publisher = PubSubPublisher(osprey_webhook_pubsub_project, osprey_webhook_pubsub_topic)
+    webhooks_publisher = make_publisher(osprey_webhook_pubsub_project, osprey_webhook_pubsub_topic)
 
     task = BulkLabelTask.get_one(task_id)
     if task is None:

@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from google.auth.exceptions import DefaultCredentialsError
-from osprey.worker.lib import gcp_credentials
-from osprey.worker.lib.gcp_credentials import gcp_credentials_available, gcp_pubsub_disabled
+from osprey.worker.lib.utils import gcp_credentials
+from osprey.worker.lib.utils.gcp_credentials import gcp_credentials_available
 
 
 @pytest.fixture(autouse=True)
@@ -30,12 +30,3 @@ def test_result_is_cached() -> None:
         gcp_credentials_available()
         gcp_credentials_available()
     assert default_mock.call_count == 1
-
-
-def test_pubsub_disabled_reads_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv('DISABLE_GCP_PUBSUB', raising=False)
-    assert gcp_pubsub_disabled() is False
-    monkeypatch.setenv('DISABLE_GCP_PUBSUB', 'true')
-    assert gcp_pubsub_disabled() is True
-    monkeypatch.setenv('DISABLE_GCP_PUBSUB', 'false')
-    assert gcp_pubsub_disabled() is False

@@ -2,69 +2,52 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from osprey.worker.lib import publisher
-from osprey.worker.lib.publisher import PubSubPublisher
+from osprey.worker.lib.publisher import NullPublisher, PubSubPublisher, make_publisher
 
 
-def test_pubsub_publisher_constructs_client_when_creds_present() -> None:
+def _mock_config(pubsub_enabled: bool) -> MagicMock:
+    config = MagicMock()
+    config.instance.return_value.get_bool.return_value = pubsub_enabled
+    return config
+
+
+def test_make_publisher_returns_null_when_pubsub_disabled(caplog: pytest.LogCaptureFixture) -> None:
     with (
-        patch.object(publisher, 'gcp_credentials_available', return_value=True),
-        patch.object(publisher, 'BatchPubsubPublisherClient') as client_cls,
-    ):
-        pub = PubSubPublisher('proj', 'topic')
-    assert pub._enabled is True
-    assert client_cls.called
-
-
-def test_pubsub_publisher_noops_when_creds_absent(caplog: pytest.LogCaptureFixture) -> None:
-    with (
-        patch.object(publisher, 'gcp_credentials_available', return_value=False),
-        patch.object(publisher, 'BatchPubsubPublisherClient') as client_cls,
+        patch('osprey.worker.lib.singletons.CONFIG', _mock_config(pubsub_enabled=False)),
+        patch.object(publisher, 'gcp_credentials_available') as creds,
         patch.object(publisher, 'metrics') as metrics_mock,
     ):
         with caplog.at_level('WARNING', logger=publisher.logger.name):
-            pub = PubSubPublisher('proj', 'topic')
-    assert pub._enabled is False
-    assert not client_cls.called
-    assert 'noop mode' in caplog.text
-    assert 'project=proj' in caplog.text
-    assert 'topic=topic' in caplog.text
+            pub = make_publisher('proj', 'topic')
+    assert isinstance(pub, NullPublisher)
+    # The opt-out short-circuits before probing credentials, and is not a misconfiguration.
+    assert not creds.called
+    metrics_mock.increment.assert_not_called()
+    assert 'PUBSUB_ENABLED is false' in caplog.text
+
+
+def test_make_publisher_returns_null_and_metric_when_creds_absent(caplog: pytest.LogCaptureFixture) -> None:
+    with (
+        patch('osprey.worker.lib.singletons.CONFIG', _mock_config(pubsub_enabled=True)),
+        patch.object(publisher, 'gcp_credentials_available', return_value=False),
+        patch.object(publisher, 'metrics') as metrics_mock,
+    ):
+        with caplog.at_level('WARNING', logger=publisher.logger.name):
+            pub = make_publisher('proj', 'topic')
+    assert isinstance(pub, NullPublisher)
+    assert 'credentials not detected' in caplog.text
     metrics_mock.increment.assert_called_once_with(
         'configuration.errors',
-        tags=['project:proj', 'topic:projects/proj/topics/topic', 'reason:gcp_credentials_missing'],
+        tags=['project:proj', 'topic:topic', 'reason:gcp_credentials_missing'],
     )
 
 
-def test_pubsub_publisher_disabled_via_env(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
-    monkeypatch.setenv('DISABLE_GCP_PUBSUB', 'true')
+def test_make_publisher_returns_pubsub_when_enabled_and_creds_present() -> None:
     with (
-        patch.object(publisher, 'gcp_credentials_available') as cred_check,
+        patch('osprey.worker.lib.singletons.CONFIG', _mock_config(pubsub_enabled=True)),
+        patch.object(publisher, 'gcp_credentials_available', return_value=True),
         patch.object(publisher, 'BatchPubsubPublisherClient') as client_cls,
-        patch.object(publisher, 'metrics') as metrics_mock,
     ):
-        with caplog.at_level('WARNING', logger=publisher.logger.name):
-            pub = PubSubPublisher('proj', 'topic')
-    assert pub._enabled is False
-    assert not client_cls.called
-    # The opt-out short-circuits before probing credentials.
-    assert not cred_check.called
-    assert 'DISABLE_GCP_PUBSUB' in caplog.text
-    # A deliberate opt-out is not a misconfiguration, so no config-error metric.
-    metrics_mock.increment.assert_not_called()
-
-
-def test_publish_short_circuits_silently_when_disabled() -> None:
-    with (
-        patch.object(publisher, 'gcp_credentials_available', return_value=False),
-        patch.object(publisher, 'metrics') as metrics_mock,
-    ):
-        pub = PubSubPublisher('proj', 'topic')
-        metrics_mock.increment.reset_mock()  # ignore the startup configuration.errors metric
-        pub.publish(MagicMock())
-    metrics_mock.increment.assert_not_called()
-
-
-def test_stop_short_circuits_when_disabled() -> None:
-    with patch.object(publisher, 'gcp_credentials_available', return_value=False):
-        pub = PubSubPublisher('proj', 'topic')
-        pub.stop()
-    assert not hasattr(pub, '_publisher')
+        pub = make_publisher('proj', 'topic')
+    assert isinstance(pub, PubSubPublisher)
+    assert client_cls.called
