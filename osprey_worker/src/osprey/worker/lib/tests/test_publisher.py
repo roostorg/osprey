@@ -29,9 +29,7 @@ def test_pubsub_publisher_noops_when_creds_absent(caplog: pytest.LogCaptureFixtu
     assert 'topic=topic' in caplog.text
 
 
-def test_pubsub_publisher_disabled_via_env(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
+def test_pubsub_publisher_disabled_via_env(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
     monkeypatch.setenv('DISABLE_GCP_PUBSUB', 'true')
     with (
         patch.object(publisher, 'gcp_credentials_available') as cred_check,
