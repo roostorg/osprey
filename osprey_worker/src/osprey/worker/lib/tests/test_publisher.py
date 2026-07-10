@@ -56,17 +56,31 @@ def test_pubsub_publisher_noops_when_creds_absent(caplog: pytest.LogCaptureFixtu
     assert 'topic=topic' in caplog.text
 
 
-def test_publish_short_circuits_and_emits_noop_metric_when_disabled() -> None:
+def test_pubsub_publisher_disabled_via_env(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setenv('DISABLE_GCP_PUBSUB', 'true')
+    with (
+        patch.object(publisher, '_check_gcp_credentials') as cred_check,
+        patch.object(publisher, 'BatchPubsubPublisherClient') as client_cls,
+    ):
+        with caplog.at_level('WARNING', logger=publisher.logger.name):
+            pub = PubSubPublisher('proj', 'topic')
+    assert pub._enabled is False
+    assert not client_cls.called
+    # The opt-out short-circuits before probing credentials.
+    assert not cred_check.called
+    assert 'DISABLE_GCP_PUBSUB' in caplog.text
+
+
+def test_publish_short_circuits_silently_when_disabled() -> None:
     with (
         patch.object(publisher.google.auth, 'default', side_effect=DefaultCredentialsError()),
         patch.object(publisher, 'metrics') as metrics_mock,
     ):
         pub = PubSubPublisher('proj', 'topic')
         pub.publish(MagicMock())
-    metrics_mock.increment.assert_called_once_with(
-        'PubSubPublisher.publisher.noop',
-        tags=['project:proj', 'topic:projects/proj/topics/topic'],
-    )
+    metrics_mock.increment.assert_not_called()
 
 
 def test_stop_short_circuits_when_disabled() -> None:

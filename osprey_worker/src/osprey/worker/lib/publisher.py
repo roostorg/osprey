@@ -1,5 +1,6 @@
 import abc
 import logging
+import os
 import threading
 from typing import TypeVar
 
@@ -48,11 +49,11 @@ class NullPublisher(BasePublisher):
 class PubSubPublisher(BasePublisher):
     """Publishes Pydantic models to a Google Cloud Pub/Sub topic.
 
-    Degrades to noop mode when GCP credentials cannot be resolved at construction
-    time (e.g. local dev or adopter environments without GCP). In noop mode no
-    underlying client is built, publish() and stop() return immediately, and a
-    `PubSubPublisher.publisher.noop` metric is incremented per call so the inert
-    state is visible in dashboards. A one-time warning is logged at construction.
+    Degrades to noop mode when the DISABLE_GCP_PUBSUB env var is set, or when GCP
+    credentials cannot be resolved at construction time (e.g. local dev or adopter
+    environments without GCP). In noop mode no underlying client is built and
+    publish() and stop() return immediately. A one-time warning is logged at
+    construction so the inert state is visible.
     """
 
     def __init__(
@@ -71,6 +72,14 @@ class PubSubPublisher(BasePublisher):
         self._project = project_id
         self._raise_on_error = raise_on_error
         self._tags = [f'project:{self._project}', f'topic:{self._topic_name}']
+        if _gcp_pubsub_disabled():
+            self._enabled = False
+            logger.warning(
+                'DISABLE_GCP_PUBSUB is set, PubSubPublisher disabled (project=%s, topic=%s)',
+                project_id,
+                topic_id,
+            )
+            return
         self._enabled = _check_gcp_credentials()
         if not self._enabled:
             logger.warning(
@@ -96,7 +105,6 @@ class PubSubPublisher(BasePublisher):
 
     def publish(self, data: _PydanticModelT, attributes: dict[str, str] | None = None) -> None:
         if not self._enabled:
-            metrics.increment(f'{self.__class__.__name__}.publisher.noop', tags=self._tags)
             return
         if attributes is None:
             attributes = {}
@@ -131,6 +139,10 @@ class StrPubSubPublisher(PubSubPublisher):
             attributes = {}
 
         super().publish(data, attributes)  # type: ignore[type-var]
+
+
+def _gcp_pubsub_disabled() -> bool:
+    return os.environ.get('DISABLE_GCP_PUBSUB', '').lower() == 'true'
 
 
 _gcp_credentials_available: bool | None = None
