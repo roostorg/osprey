@@ -8,7 +8,7 @@ src = "."
 build-dir = "./book"
 
 [output.html]
-site-url = "/osprey/latest/"
+site-url = "/osprey/"
 edit-url-template = "https://github.com/roostorg/osprey/edit/main/docs/{path}"
 git-repository-url = "https://github.com/roostorg/osprey"
 
