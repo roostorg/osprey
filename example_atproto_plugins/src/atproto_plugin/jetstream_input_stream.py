@@ -114,9 +114,7 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
             on_close=on_close,
             on_error=on_error,
         )
-        runner = gevent.spawn(
-            app.run_forever, ping_interval=PING_INTERVAL_SECONDS, ping_timeout=PING_TIMEOUT_SECONDS
-        )
+        runner = gevent.spawn(app.run_forever, ping_interval=PING_INTERVAL_SECONDS, ping_timeout=PING_TIMEOUT_SECONDS)
         runner.link(lambda _g: queue.put(('done', None)))
 
         try:
@@ -130,15 +128,11 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
                     event = json.loads(raw)
                 except json.JSONDecodeError as e:
                     raw_bytes = raw if isinstance(raw, bytes) else str(raw).encode('utf-8', errors='replace')
-                    logger.warning(
-                        f'JetStream payload was not valid JSON ({e}); '
-                        f'first 200 bytes: {raw_bytes[:200]!r}'
-                    )
+                    logger.warning(f'JetStream payload was not valid JSON ({e}); first 200 bytes: {raw_bytes[:200]!r}')
                     continue
                 if not isinstance(event, dict):
                     logger.warning(
-                        f'JetStream payload parsed to non-object JSON '
-                        f'(got {type(event).__name__}); skipping'
+                        f'JetStream payload parsed to non-object JSON (got {type(event).__name__}); skipping'
                     )
                     continue
                 try:
