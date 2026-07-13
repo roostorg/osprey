@@ -21,8 +21,8 @@ def test_make_publisher_returns_null_when_pubsub_not_enabled() -> None:
     ):
         pub = make_publisher('proj', 'topic')
     assert isinstance(pub, NullPublisher)
-    # Opt-in and default-off: no client is built and it is not a misconfiguration.
-    config.instance.return_value.get_bool.assert_called_once_with('OSPREY_PUBSUB_ENABLED', False)
+    # On by default; explicitly disabling is not a misconfiguration, so no client and no metric.
+    config.instance.return_value.get_bool.assert_called_once_with('OSPREY_PUBSUB_ENABLED', True)
     assert not client_cls.called
     metrics_mock.increment.assert_not_called()
 
@@ -46,7 +46,7 @@ def test_make_publisher_falls_back_to_null_and_metric_when_creds_absent(caplog: 
         with caplog.at_level('WARNING', logger=publisher.logger.name):
             pub = make_publisher('proj', 'topic')
     assert isinstance(pub, NullPublisher)
-    assert 'credentials not detected' in caplog.text
+    assert 'credentials errored' in caplog.text
     metrics_mock.increment.assert_called_once_with(
         'configuration.errors',
         tags=['project:proj', 'topic:topic', 'reason:gcp_credentials_missing'],
