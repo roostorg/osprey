@@ -1,15 +1,10 @@
 from random import random
-from typing import Dict
 
 from pydantic import BaseModel, validator
 
 from .._registry import register_config_subkey
 
 FEATURE_FLAGS_CONFIG_SUBKEY = 'feature_flags'
-
-
-### Feature Flags ###
-WEBHOOKS_USE_PUBSUB = 'WEBHOOKS_USE_PUBSUB'
 
 
 class PercentageFlagInfo(BaseModel):
@@ -25,7 +20,7 @@ class PercentageFlagInfo(BaseModel):
 
 @register_config_subkey(FEATURE_FLAGS_CONFIG_SUBKEY)
 class FeatureFlagsConfig(BaseModel):
-    percentage_flags: Dict[str, PercentageFlagInfo] = {}
+    percentage_flags: dict[str, PercentageFlagInfo] = {}
 
     def is_percentage_enabled(self, flag: str) -> bool:
         if flag not in self.percentage_flags:

@@ -9,24 +9,17 @@ common = [
     "datadog==0.51.0",
     "ddtrace==2.21.11",
     "deepmerge==0.3.0",
-    "dnspython==2.0.0",
-    "erlpack",
+    "dnspython==2.6.1",
     "faker==4.18.0",
     "flask==1.1.4",
     "gevent==24.2.1",
     "google-api-core==2.19.2",
-    "google-api-python-client==2.105.0",
     "google-auth==2.40.3",
-    "google-auth-httplib2==0.2.0",
-    "google-cloud-appengine-logging==1.6.2",
-    "google-cloud-audit-log==0.3.2",
     "google-cloud-bigquery==3.27.0",
     "google-cloud-bigtable==2.10.0",
-    "google-cloud-core==2.4.3",
+    "google-cloud-core==2.6.0",
     "google-cloud-kms==3.5.1",
-    "google-cloud-logging==3.4.0",
     "google-cloud-pubsub==2.15.2",
-    "google-cloud-secret-manager==2.24.0",
     "google-cloud-storage==2.10.0",
     "google-resumable-media==2.7.2",
     "googleapis-common-protos==1.70.0",
@@ -42,42 +35,42 @@ common = [
     "grpcio-tools==1.49.1; platform_machine == 'x86_64'",
     "grpcio-tools==1.53.*; platform_machine != 'x86_64'",
     "gunicorn",
-    "hash-ring",
     "intervals==0.9.2",
-    "jslog4kube==1.0.6",
     "jsonpath-rw",
     "kafka-python==1.4.7",
+    # Flask 1.1.4 / Jinja2 2.11 import `markupsafe.soft_unicode`, which was removed in
+    # markupsafe 2.1.0. Pin to <2.1 until the Flask 1.x stack is upgraded.
+    "markupsafe<2.1",
     "minio>=7.2.16",
     "mmh3==3.0.0",
-    "msgpack==1.0.8",
-    "nostril",
+    "msgpack==1.2.1",
     "phone-iso3166==0.3.8",
     "pluggy==1.5.0",
     "protobuf==4.25.8",
     "psycogreen==1.0.2",
     "psycopg2-binary==2.9.10",
     "pycryptodome==3.21.0",
-    "pydantic==1.10.19",
+    "pydantic==1.10.26",
     "pydruid==0.6.9",
-    "pytest==8.3.5",
+    "pytest==9.0.3",
     "pytest-mock==3.14.1",
     "python-dateutil==2.8.0",
     "python-json-logger==0.1.10",
-    "python-levenshtein==0.12.2",
     "pytz==2022.1",
     "pyyaml==6.0.1",
-    "requests==2.32.4",
+    "rapidfuzz==3.14.5",
+    "requests==2.33.0",
     "result==0.5.0",
-    "sentry-sdk==1.5.12",
+    "sentry-sdk==2.61.1",
     "simplejson==3.20.2",
     "six==1.16.0",
-    "sqlalchemy==1.4.31",
+    "sqlalchemy==1.4.54",
     "sqlalchemy-utils==0.41.1",
     "tenacity==8.1.0",
     "tink==1.9.0",
     "tld==0.12.7",
     "traitlets==5.14.3",
-    "typing-extensions==4.6.3",
+    "typing-extensions==4.12.2",
     "typing-inspect==0.9.0",
     "unidecode==1.3.8",
     "werkzeug==1.0.1",
@@ -91,7 +84,7 @@ common = [
     "types-maxminddb==1.5.0",
     "types-protobuf==4.24.0.1",
     "types-psycopg2>=2.9.21.20250809",
-    "types-python-dateutil==2.9.0.20250708",
+    "types-python-dateutil==2.9.0.20260518",
     "types-pytz==2025.2.0.20250516",
     "types-pyyaml==6.0.12.20250516",
     "types-requests==2.27.7",
@@ -102,10 +95,11 @@ common = [
 ]
 dev = [
     "ipdb==0.13.13",
+    "pytest-asyncio",
     "ipython==9.4.0",
-    "memray==1.17.2",
+    "memray==1.19.2",
     "mypy>=1.13.0",
-    "mypy-extensions==1.0.0",
+    "mypy-extensions==1.1.0",
     "mypy-protobuf==3.6.0",
     "pre-commit>=4.3.0",
     "pytest-flask==1.3.0",
@@ -124,14 +118,12 @@ override-dependencies = ["ddtrace>=2.17.2,<3.0.0"]
 default-groups = ["common", "dev"]
 
 [tool.uv.sources]
-erlpack = { git = "https://github.com/discord/erlpack.git", rev = "b25ebd51ae4c097bd7f756fd4e1c841b61bfe50b" }
 greenlet = { git = "https://github.com/discord/greenlet.git", rev = "a75d78f1547c74a81134644a179467525a255466" }
 gunicorn = { git = "https://github.com/discord/gunicorn.git", rev = "979efdcb918daa536d8923668241c6e6bf1edb58" }
-hash-ring = { url = "https://storage.googleapis.com/discord-devops/hash_ring-src-b4b56bc93053881b68b829ee9d1a4871b4aee592.zip" }
 jsonpath-rw = { url = "https://github.com/kennknowles/python-jsonpath-rw/archive/6f5647bb3ad2395c20f0191fef07a1df51c9fed8.tar.gz" }
-nostril = { url = "https://github.com/casics/nostril/archive/v1.2.0.tar.gz" }
 osprey_rpc = { workspace = true }
 osprey_worker = { workspace = true }
+osprey_async_worker = { workspace = true }
 example_plugins = { workspace = true }
 example_atproto_plugins = { workspace = true }
 
@@ -139,6 +131,7 @@ example_atproto_plugins = { workspace = true }
 members = [
     "osprey_rpc",
     "osprey_worker",
+    "osprey_async_worker",
     "example_plugins",
     "example_atproto_plugins",
 ]
@@ -173,10 +166,10 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["osprey_worker", "osprey_rpc", "example_plugins", "example_atproto_plugins"]
+known-first-party = ["osprey_worker", "osprey_async_worker", "osprey_rpc", "example_plugins", "example_atproto_plugins"]
 
 [tool.fawltydeps]
-code = ["osprey_worker/src", "osprey_rpc/src", "example_plugins/src", "example_atproto_plugins/src"]
+code = ["osprey_worker/src", "osprey_async_worker/src", "osprey_rpc/src", "example_plugins/src", "example_atproto_plugins/src"]
 deps = ["pyproject.toml"]
 ignore_unused = [
     # Type stubs: used by mypy, never imported directly
@@ -208,6 +201,7 @@ ignore_unused = [
     "mypy-extensions",
     "mypy-protobuf",
     "pre-commit",
+    "pytest-asyncio",
     "pytest-flask",
     "pytest-order",
     "requests-mock",
@@ -215,20 +209,23 @@ ignore_unused = [
     "setuptools",
     # Runtime CLI: started via command line, not imported in source
     "gunicorn",
-    # Gunicorn logger class: loaded via --logger-class flag, not imported in source
-    "jslog4kube",
     # Optional runtime dep of sentry-sdk for FlaskIntegration
     "blinker",
+    # Transitive of Flask 1.x / Jinja2 2.11; pinned <2.1 here so soft_unicode
+    # is still exported. Not imported by our source directly.
+    "markupsafe",
     # gRPC server extensions: registered at startup, not imported directly
     "grpcio-health-checking",
     "grpcio-reflection",
     "grpcio-status",
-    # Needs investigation: may be unused, verify before removing
-    "erlpack",
-    "google-api-python-client",
-    "google-auth-httplib2",
-    "nostril",
+    # Required at module load by tink.integration.gcpkms (imported in
+    # osprey.worker.lib.encryption.base). Not imported directly by our code.
+    "google-cloud-kms",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["osprey_worker", "example_plugins"]
+asyncio_mode = "auto"
 
 [tool.mypy]
 plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
@@ -240,6 +237,7 @@ disable_error_code = ["annotation-unchecked"]
 mypy_path = [
     "osprey_rpc/src",
     "osprey_worker/src",
+    "osprey_async_worker/src",
     "example_plugins/src",
     "example_atproto_plugins/src",
 ]
@@ -289,7 +287,6 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = [
     "stubs.*",
-    "pigeon.*",
     "google.*",
     "perf_tools.*",
     "gevent.*",
@@ -301,10 +298,8 @@ module = [
     "sqlalchemy_utils.*",
     "graphviz.*",
     "psycogreen.*",
-    "hash_ring.*",
     "deepmerge.*",
     "greenlet.*",
-    "Levenshtein.*",
     "kafka.*",
     "pythonjsonlogger.*",
     "msgpack.*",

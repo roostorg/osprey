@@ -1,5 +1,0 @@
-error: expected simple type in `List`
---> main.sml:1:10
-     |
-   1 | Foo: List[wut] = JsonData(path='$.foo')
-     |           ^ got unknown non-generic type `wut`

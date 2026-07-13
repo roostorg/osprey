@@ -197,8 +197,23 @@ impl PriorityQueueReceiver {
     }
 
     pub fn nack_all_async(&self) {
+        Self::nack_all(&self.async_receiver);
+    }
+
+    /// Drain the sync queue and nack each pending action. Surfaces to the sync
+    /// RPC handler as `AckOrNack::Nack`, which it maps to
+    /// `tonic::Status::aborted("action nacked")` — retryable by the client on a
+    /// different coordinator pod. Called on shutdown so queued-but-undispatched
+    /// sync requests don't hang to the per-request timeout and then return
+    /// `internal("acking onshot dropped")` when the oneshot is finally torn
+    /// down.
+    pub fn nack_all_sync(&self) {
+        Self::nack_all(&self.sync_receiver);
+    }
+
+    fn nack_all(receiver: &async_channel::Receiver<AckableAction>) {
         loop {
-            match self.async_receiver.try_recv() {
+            match receiver.try_recv() {
                 Ok(action) => match action.acking_oneshot_sender.send(AckOrNack::Nack) {
                     Ok(_) => (),
                     Err(_) => println!(

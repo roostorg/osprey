@@ -31,9 +31,14 @@ ADD pyproject.toml /osprey/pyproject.toml
 ADD README.md /osprey/README.md
 ADD LICENSE.md /osprey/LICENSE.md
 
-# Create workspace structure with pyproject.toml files for uv sync to work
+# Create workspace structure with pyproject.toml files for uv sync to work.
+# osprey_async_worker is a uv workspace member, so its pyproject must be present
+# for `uv sync --locked` to validate the lockfile. This (stable, gevent) image
+# does NOT install it — see --no-install-package below. The experimental asyncio
+# worker ships in its own image: osprey_async_worker/Dockerfile.
 ADD osprey_rpc/pyproject.toml /osprey/osprey_rpc/pyproject.toml
 ADD osprey_worker/pyproject.toml /osprey/osprey_worker/pyproject.toml
+ADD osprey_async_worker/pyproject.toml /osprey/osprey_async_worker/pyproject.toml
 ADD example_plugins/pyproject.toml /osprey/example_plugins/pyproject.toml
 ADD example_atproto_plugins/pyproject.toml /osprey/example_atproto_plugins/pyproject.toml
 
@@ -41,15 +46,19 @@ ADD example_atproto_plugins/pyproject.toml /osprey/example_atproto_plugins/pypro
 RUN mkdir -p /osprey/osprey_worker /osprey/osprey_rpc /osprey/example_plugins/src /osprey/example_atproto_plugins/src/atproto_plugin && \
     touch /osprey/osprey_worker/__init__.py /osprey/osprey_rpc/__init__.py /osprey/example_plugins/src/__init__.py /osprey/example_atproto_plugins/src/atproto_plugin/__init__.py
 
-# Install dependencies first (this layer will be cached when only source code changes)
+# Install dependencies first (this layer will be cached when only source code changes).
+# Exclude osprey_async_worker: the asyncio worker is experimental and lives in its own
+# image, so the gevent worker stays free of it (osprey.async_worker is not importable
+# here, so execution_context's optional async import cleanly falls back to None).
 RUN pip install --upgrade pip uv && \
-    uv sync --locked --python=$(which python3.11) && \
+    uv sync --frozen --no-install-package osprey-async-worker --python=$(which python3.11) && \
     pip cache purge && uv cache clean
 
 # https://tld.readthedocs.io/en/latest/#update-the-list-of-tld-names
 RUN . .venv/bin/activate && update-tld-names
 
-# Add source code after dependencies are installed
+# Add source code after dependencies are installed (osprey_async_worker is
+# intentionally omitted — it is not installed in this image).
 ADD example_rules /osprey/example_rules
 ADD example_atproto_rules /osprey/example_atproto_rules
 ADD osprey_worker /osprey/osprey_worker

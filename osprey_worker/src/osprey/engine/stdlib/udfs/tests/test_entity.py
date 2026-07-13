@@ -1,4 +1,5 @@
-from typing import Any, Callable, List
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
@@ -14,7 +15,7 @@ from osprey.engine.stdlib.udfs.entity import Entity, EntityJson
 from osprey.engine.stdlib.udfs.import_ import Import
 from osprey.engine.udf.registry import UDFRegistry
 
-pytestmark: List[Callable[[Any], Any]] = [
+pytestmark: list[Callable[[Any], Any]] = [
     pytest.mark.use_validators([ValidateCallKwargs, UniqueStoredNames]),
     pytest.mark.use_udf_registry(UDFRegistry.with_udfs(EmailDomain, Entity, EntityJson, Import)),
 ]
@@ -105,8 +106,8 @@ def test_entity_literal_arguments_can_be_names_from_other_source(
 def test_entity_checks_json_value_type(execute_with_result: ExecuteWithResultFunction) -> None:
     result = execute_with_result(
         """
-        A: Entity[str] = EntityJson(type='A', path='$.my_int')
-        B: Entity[int] = EntityJson(type='B', path='$.my_str')
+        A: Entity[str] = EntityJson(type='A', path='$.my_int', coerce_type=False)
+        B: Entity[int] = EntityJson(type='B', path='$.my_str', coerce_type=False)
         """,
         data={'my_int': 123, 'my_str': 'abc'},
     )

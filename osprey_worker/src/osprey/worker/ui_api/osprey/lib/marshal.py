@@ -1,7 +1,8 @@
 from abc import ABC
+from collections.abc import Callable
 from functools import wraps
 from http import HTTPStatus
-from typing import Any, Callable, Type, TypeVar
+from typing import Any, Type, TypeVar
 
 from flask import Request, abort, jsonify, request
 from pydantic import ValidationError

@@ -3,8 +3,9 @@ from __future__ import annotations
 import re
 import string
 import unicodedata
+from collections.abc import Iterator
 from itertools import chain
-from typing import Dict, Iterator, List, Literal, Optional, Set, cast
+from typing import Literal, Set, cast
 from urllib.parse import ParseResult, urlparse, urlunparse
 
 from osprey.engine.stdlib.udfs._prelude import (
@@ -24,6 +25,8 @@ class StringArguments(ArgumentsBase):
 
 
 class StringLength(UDFBase[StringArguments, int]):
+    """Returns the length of the string."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> int:
@@ -31,6 +34,8 @@ class StringLength(UDFBase[StringArguments, int]):
 
 
 class StringToLower(UDFBase[StringArguments, str]):
+    """Converts the string to lowercase."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> str:
@@ -38,6 +43,8 @@ class StringToLower(UDFBase[StringArguments, str]):
 
 
 class StringToUpper(UDFBase[StringArguments, str]):
+    """Converts the string to uppercase."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> str:
@@ -50,6 +57,8 @@ class StringStartsWithArgument(StringArguments):
 
 
 class StringStartsWith(UDFBase[StringStartsWithArgument, bool]):
+    """Returns true if the string starts with the given prefix."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringStartsWithArgument) -> bool:
@@ -61,6 +70,8 @@ class StringEndsWithArgument(StringArguments):
 
 
 class StringEndsWith(UDFBase[StringEndsWithArgument, bool]):
+    """Returns true if the string ends with the given suffix."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringEndsWithArgument) -> bool:
@@ -68,10 +79,12 @@ class StringEndsWith(UDFBase[StringEndsWithArgument, bool]):
 
 
 class StringStripArguments(StringArguments):
-    chars: Optional[str] = None
+    chars: str | None = None
 
 
 class StringStrip(UDFBase[StringStripArguments, str]):
+    """Strips whitespace (or specified characters) from both ends of the string."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringStripArguments) -> str:
@@ -79,6 +92,8 @@ class StringStrip(UDFBase[StringStripArguments, str]):
 
 
 class StringRStrip(UDFBase[StringStripArguments, str]):
+    """Strips whitespace (or specified characters) from the right side of the string."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringStripArguments) -> str:
@@ -86,6 +101,8 @@ class StringRStrip(UDFBase[StringStripArguments, str]):
 
 
 class StringLStrip(UDFBase[StringStripArguments, str]):
+    """Strips whitespace (or specified characters) from the left side of the string."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringStripArguments) -> str:
@@ -98,6 +115,8 @@ class StringReplaceArguments(StringArguments):
 
 
 class StringReplace(UDFBase[StringReplaceArguments, str]):
+    """Replaces all occurrences of a substring with another string."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringReplaceArguments) -> str:
@@ -105,10 +124,12 @@ class StringReplace(UDFBase[StringReplaceArguments, str]):
 
 
 class StringJoinArguments(StringArguments):
-    iterable: List[str]
+    iterable: list[str]
 
 
 class StringJoin(UDFBase[StringJoinArguments, str]):
+    """Joins a list of strings using the given separator."""
+
     category = UdfCategories.STRING
 
     def execute(self, execution_context: ExecutionContext, arguments: StringJoinArguments) -> str:
@@ -116,14 +137,16 @@ class StringJoin(UDFBase[StringJoinArguments, str]):
 
 
 class StringSplitArguments(StringArguments):
-    sep: Optional[str] = None
+    sep: str | None = None
     maxsplit: int = -1
 
 
-class StringSplit(UDFBase[StringSplitArguments, List[str]]):
+class StringSplit(UDFBase[StringSplitArguments, list[str]]):
+    """Splits the string by a delimiter into a list of strings."""
+
     category = UdfCategories.STRING
 
-    def execute(self, execution_context: ExecutionContext, arguments: StringSplitArguments) -> List[str]:
+    def execute(self, execution_context: ExecutionContext, arguments: StringSplitArguments) -> list[str]:
         return arguments.s.split(arguments.sep, arguments.maxsplit)
 
 
@@ -133,6 +156,8 @@ class StringSliceArguments(StringArguments):
 
 
 class StringSlice(UDFBase[StringSliceArguments, str]):
+    """Returns a substring from start index to end index."""
+
     category = UdfCategories.STRING
 
     def __init__(self, validation_context: ValidationContext, arguments: StringSliceArguments):
@@ -194,7 +219,7 @@ class StringCleaningArguments(StringArguments):
     remove_punctuation: bool = False
 
 
-TranslationT = Dict[int, Optional[int]]
+TranslationT = dict[int, int | None]
 
 
 _SPACE_PATTERN: re.Pattern[str] = re.compile(r'\s+')
@@ -388,7 +413,7 @@ class StringClean(UDFBase[StringCleaningArguments, str]):
         return s
 
 
-def _safe_urlparse(url: str) -> Optional[ParseResult]:
+def _safe_urlparse(url: str) -> ParseResult | None:
     """Safely parse a URL, returning None for malformed URLs (e.g., invalid IPv6)."""
     try:
         return urlparse(url)
@@ -397,7 +422,7 @@ def _safe_urlparse(url: str) -> Optional[ParseResult]:
         return None
 
 
-class StringExtractDomains(UDFBase[StringArguments, List[str]]):
+class StringExtractDomains(UDFBase[StringArguments, list[str]]):
     """
     Used to extract a list of potential URL domains from a string of tokens. Returns a list
     of candidate domains encountered in the input string. Should be used in conjunction with
@@ -406,11 +431,11 @@ class StringExtractDomains(UDFBase[StringArguments, List[str]]):
 
     category = UdfCategories.STRING
 
-    def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> List[str]:
+    def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> list[str]:
         # split the message into individual tokens as based on a modified URL regex from messages_common.
         # should capture space based links and markdown based links without duplication.
-        potential_urls: Iterator[Optional[ParseResult]] = (
-            _safe_urlparse(token) for token in re.findall('(https?:\/\/[^\/\s][^\s\)>]+)', arguments.s)
+        potential_urls: Iterator[ParseResult | None] = (
+            _safe_urlparse(token) for token in re.findall(r'(https?:\/\/[^\/\s][^\s\)>]+)', arguments.s)
         )
 
         # filter out any tokens that do not have a scheme or a domain (or failed to parse)
@@ -431,7 +456,7 @@ class StringExtractDomains(UDFBase[StringArguments, List[str]]):
         return list(valid_domains)
 
 
-class StringExtractURLs(UDFBase[StringArguments, List[str]]):
+class StringExtractURLs(UDFBase[StringArguments, list[str]]):
     """
     Used to extract a list of potential URLs from a string of tokens. Returns a list
     of candidate URLs encountered in the input string. Should be used in conjunction with
@@ -440,11 +465,11 @@ class StringExtractURLs(UDFBase[StringArguments, List[str]]):
 
     category = UdfCategories.STRING
 
-    def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> List[str]:
+    def execute(self, execution_context: ExecutionContext, arguments: StringArguments) -> list[str]:
         # split the message into individual tokens as based on a modified URL regex from messages_common.
         # should capture space based links and markdown based links without duplication.
-        potential_urls: Iterator[Optional[ParseResult]] = (
-            _safe_urlparse(token) for token in re.findall('(https?:\/\/[^\/\s][^\s\)>]+)', arguments.s)
+        potential_urls: Iterator[ParseResult | None] = (
+            _safe_urlparse(token) for token in re.findall(r'(https?:\/\/[^\/\s][^\s\)>]+)', arguments.s)
         )
 
         # filter out any tokens that do not have a scheme or a domain (or failed to parse)

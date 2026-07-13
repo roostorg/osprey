@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any
 
 from osprey.engine.ast.grammar import Assign, ASTNode
 
@@ -24,5 +24,5 @@ class AssignExecutor(BaseNodeExecutor[Assign, Any]):
         resolved_not_error = execution_context.resolved(self._node.value, return_none_for_failed_values=False)
         return resolved_not_error
 
-    def get_dependent_nodes(self) -> List[ASTNode]:
+    def get_dependent_nodes(self) -> list[ASTNode]:
         return [self._node.value]

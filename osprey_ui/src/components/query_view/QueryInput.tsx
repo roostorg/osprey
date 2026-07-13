@@ -68,16 +68,23 @@ const QueryInput = ({
     setSelectedInterval(value);
   };
 
-  React.useEffect(() => {
-    const options = [...knownFeatureNames, ...knownActionNames].map((option: string) => ({
-      value: option,
-      label: <OptionLabelWithInfo option={option} optionInfoMapping={ruleInfoMapping} />,
-    }));
-    setSearchOptions(options);
-    setFilteredOptions(options);
-  }, [knownFeatureNames, knownActionNames]);
+  const options = React.useMemo(
+    () =>
+      [...knownFeatureNames, ...knownActionNames].map((option: string) => ({
+        value: option,
+        label: <OptionLabelWithInfo option={option} optionInfoMapping={ruleInfoMapping} />,
+      })),
+    [knownFeatureNames, knownActionNames, ruleInfoMapping]
+  );
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync autocomplete options with config changes
+    setSearchOptions(options);
+    setFilteredOptions(options);
+  }, [options]);
+
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync input with executed query changes
     setQueryFilter(executedQuery.queryFilter);
     // if the user has selected a new query to execute from the saved queries list, make sure that
     // we update the selected interval to reflect the correct one

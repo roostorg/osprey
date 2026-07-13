@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from enum import Enum
 from math import floor
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Type, cast
 
 import mmh3  # type: ignore
 from osprey.engine.ast import grammar
@@ -25,8 +25,8 @@ HASH_SEED = 42
 
 class ExperimentArguments(ArgumentsBase):
     entity: EntityT[Any]
-    buckets: ConstExpr[List[str]]
-    bucket_sizes: ConstExpr[List[float]]
+    buckets: ConstExpr[list[str]]
+    bucket_sizes: ConstExpr[list[float]]
     version: ConstExpr[int]
     revision: ConstExpr[int]
 
@@ -135,7 +135,7 @@ class Experiment(UDFBase[ExperimentArguments, ExperimentT]):
         self._register_experiment(validation_context=validation_context, experiment_call_node=call_node)
 
     def _register_experiment(self, validation_context: ValidationContext, experiment_call_node: grammar.Call) -> None:
-        cur_experiment_nodes: Dict[str, grammar.Call] = validation_context.get_validator_input(ValidateExperiments, {})
+        cur_experiment_nodes: dict[str, grammar.Call] = validation_context.get_validator_input(ValidateExperiments, {})
         if not cur_experiment_nodes:
             validation_context.set_validator_input(ValidateExperiments, cur_experiment_nodes)
         cur_experiment_nodes.update({self._feature_name: experiment_call_node})
@@ -214,10 +214,10 @@ class Experiment(UDFBase[ExperimentArguments, ExperimentT]):
 
 class ExperimentWhenArguments(ArgumentsBase):
     experiment: ExperimentT
-    extra_arguments: Dict[str, List[bool]]
+    extra_arguments: dict[str, list[bool]]
 
 
-class ExperimentWhen(UDFBase[ExperimentWhenArguments, List[bool]]):
+class ExperimentWhen(UDFBase[ExperimentWhenArguments, list[bool]]):
     """
     Takes in an experiment and returns the List of bools for the specific bucket
     """
@@ -243,7 +243,7 @@ class ExperimentWhen(UDFBase[ExperimentWhenArguments, List[bool]]):
 
         experiment_buckets = self._get_buckets_for_experiment(experiment_call)
 
-        expected_buckets = {str(_.value) for _ in experiment_buckets.items}
+        expected_buckets = {str(cast(Any, _).value) for _ in experiment_buckets.items}
         provided_buckets = set(arguments.get_extra_arguments_ast())
 
         # check for missing buckets
@@ -265,12 +265,12 @@ class ExperimentWhen(UDFBase[ExperimentWhenArguments, List[bool]]):
                 additional_spans=[experiment_buckets.span],
             )
 
-    def _get_experiments(self, validation_context: 'ValidationContext') -> Dict[str, grammar.Call]:
+    def _get_experiments(self, validation_context: 'ValidationContext') -> dict[str, grammar.Call]:
         return validation_context.get_validator_input(ValidateExperiments, dict())
 
     def _get_valid_experiment(
         self, validation_context: 'ValidationContext', arguments: ExperimentWhenArguments
-    ) -> Tuple[str, Optional[grammar.Call]]:
+    ) -> tuple[str, grammar.Call | None]:
         experiment_arg = arguments.get_argument_ast('experiment')
 
         assert isinstance(experiment_arg, grammar.Name), 'this should be a Name'
@@ -292,27 +292,12 @@ class ExperimentWhen(UDFBase[ExperimentWhenArguments, List[bool]]):
         assert isinstance(experiment_buckets, grammar.List), 'buckets should be a List node'
         return experiment_buckets
 
-    def execute(self, execution_context: ExecutionContext, arguments: ExperimentWhenArguments) -> List[bool]:
+    def execute(self, execution_context: ExecutionContext, arguments: ExperimentWhenArguments) -> list[bool]:
         resolved_bucket = arguments.experiment.resolved_bucket
         bucket = CONTROL_BUCKET if resolved_bucket is NOT_IN_EXPERIMENT_BUCKET else resolved_bucket
         # validation that the bucket_name is a valid key in extra_arguments should already be done
         return arguments.extra_arguments[bucket]
 
 
-class InExperimentArguments(ArgumentsBase):
-    experiment: ExperimentT
-
-
-class InExperiment(UDFBase[InExperimentArguments, bool]):
-    """
-    Returns True if the entity was assigned to any bucket in the experiment,
-    False if the entity fell outside all bucket ranges
-    """
-
-    category = UdfCategories.ENGINE
-
-    def execute(self, execution_context: ExecutionContext, arguments: InExperimentArguments) -> bool:
-        return arguments.experiment.resolved_bucket is not NOT_IN_EXPERIMENT_BUCKET
-
-
 ExperimentsBucketAssignment = Experiment.build_cls('experiment_bucket_assignment')
+ExperimentsBucketAssignment.__doc__ = 'Returns the experiment bucket assignment for the entity, used for A/B testing.'

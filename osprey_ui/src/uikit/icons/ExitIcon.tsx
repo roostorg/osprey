@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 interface ExitIconProps {
   width?: number;
   height?: number;

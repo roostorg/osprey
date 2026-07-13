@@ -35,7 +35,7 @@ const StatusIcons = {
   [LabelStatus.REMOVED]: <ManuallyRemovedIcon width={16} />,
 };
 
-function sortReasonsChronologically([_a, reasonA]: [string, Reason], [_b, reasonB]: [string, Reason]) {
+function sortReasonsChronologically([, reasonA]: [string, Reason], [, reasonB]: [string, Reason]) {
   return Date.parse(reasonB.created_at) - Date.parse(reasonA.created_at);
 }
 

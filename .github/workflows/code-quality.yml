@@ -11,20 +11,25 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   python-quality:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version-file: ".python-version"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
         with:
           version: "latest"
           enable-cache: true
@@ -34,14 +39,14 @@ jobs:
 
       - name: Set PY
         run: echo "PY=$(python -VV | sha256sum | cut -d' ' -f1)" >> $GITHUB_ENV
-      - uses: actions/cache@v4
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: ~/.cache/pre-commit
           key: pre-commit|${{ env.PY }}|${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Run pre-commit python checks (ruff, mypy, etc.)
         env:
-          SKIP: prettier-osprey-ui
+          SKIP: prettier-osprey-ui,eslint-osprey-ui
         run: |
           uv run pre-commit install --install-hooks
           uv run pre-commit run --show-diff-on-failure --color=always --all-files
@@ -53,38 +58,54 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
         with:
-          node-version: "18"
-          cache: "npm"
-          cache-dependency-path: osprey_ui/package-lock.json
+          node-version: "22.22"
+
+      - name: Enable Corepack
+        run: npm install -g corepack@0.33.0 && corepack enable
 
       - name: Install UI dependencies
-        run: npm ci
+        run: corepack pnpm install --frozen-lockfile
         working-directory: osprey_ui
 
       - name: Run prettier check
-        run: npm run format:check
+        run: corepack pnpm run format:check
+        working-directory: osprey_ui
+
+      - name: Run eslint check
+        run: corepack pnpm run lint
+        working-directory: osprey_ui
+
+      - name: Typecheck
+        run: corepack pnpm run typecheck
+        working-directory: osprey_ui
+
+      - name: Build
+        run: corepack pnpm run build
         working-directory: osprey_ui
 
   rust-quality:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537  # master
         with:
           toolchain: stable
           components: rustfmt, clippy
-          override: true
 
       - name: Cache Rust dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: |
             ~/.cargo/bin/

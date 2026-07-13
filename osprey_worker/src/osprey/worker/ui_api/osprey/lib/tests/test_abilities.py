@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Dict, Optional
+from typing import Any
 
 from osprey.worker.ui_api.osprey.lib.abilities import (
     CENSOR_TEXT,
@@ -28,7 +28,7 @@ class TestAbility(Ability[FakeRequest, str]):
 
 @_ability_registry.register('TEST_QUERY_FILTER_ABILITY')
 class TestQueryFilterAbility(QueryFilterAbility[FakeRequest, str]):
-    def _get_query_filter(self) -> Optional[Dict[str, Any]]:
+    def _get_query_filter(self) -> dict[str, Any] | None:
         if self.allow_all:
             return None
 

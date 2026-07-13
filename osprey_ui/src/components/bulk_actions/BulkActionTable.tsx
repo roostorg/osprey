@@ -3,7 +3,6 @@ import React from 'react';
 import type { BulkActionJob } from '../../types/BulkActionTypes';
 
 import styles from './BulkActionTable.module.css';
-import CopyLinkButton from '../common/CopyLinkButton';
 import { Spin } from 'antd';
 
 interface JobTableProps {

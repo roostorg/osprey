@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { GithubOutlined } from '@ant-design/icons';
 
 import { parsePathString, getSourcesUrl } from '../../utils/SourceUtils';

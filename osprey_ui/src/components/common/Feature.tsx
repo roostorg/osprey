@@ -40,6 +40,7 @@ const SelectableFeature = ({
 
   React.useEffect(() => {
     if (isSelected && queuedQueryFilters.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- deselect when query filters cleared externally
       setIsSelected(false);
     }
   }, [isSelected, queuedQueryFilters.length]);

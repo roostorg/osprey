@@ -69,7 +69,7 @@ const useQueryStore = create<QueryStore>((set, get) => ({
     const queryString = new URLSearchParams(history.location.search);
 
     queryString.delete('topn');
-    topNTables.forEach((table, __) => queryString.append('topn', table.asQueryParam()));
+    topNTables.forEach((table) => queryString.append('topn', table.asQueryParam()));
 
     history.push({ search: `?${queryString.toString()}` });
   },

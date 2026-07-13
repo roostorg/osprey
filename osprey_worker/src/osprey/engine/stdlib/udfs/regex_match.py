@@ -1,5 +1,4 @@
 import re
-from typing import List
 
 from ._prelude import ArgumentsBase, ConstExpr, ExecutionContext, UDFBase, ValidationContext
 from .categories import UdfCategories
@@ -41,7 +40,7 @@ class RegexMatch(RegexUDFBase, UDFBase[RegexMatchArguments, bool]):
 
 
 class RegexMatchMapArguments(RegexArgumentsBase):
-    target: List[str]
+    target: list[str]
     """A target string to evaluate the regex pattern on."""
 
     mode: ConstExpr[str] = ConstExpr.for_default('mode', 'any')
@@ -64,5 +63,4 @@ class RegexMatchMap(RegexUDFBase, UDFBase[RegexMatchMapArguments, bool]):
         self._op = all if mode == 'all' else any
 
     def execute(self, execution_context: ExecutionContext, arguments: RegexMatchMapArguments) -> bool:
-        print(self._op, list(self._compiled.search(target) is not None for target in arguments.target))
         return self._op(self._compiled.search(target) is not None for target in arguments.target)

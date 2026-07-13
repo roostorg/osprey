@@ -1,5 +1,5 @@
+from collections.abc import Collection
 from enum import Enum
-from typing import Collection
 
 
 class TaskStatus(Enum):

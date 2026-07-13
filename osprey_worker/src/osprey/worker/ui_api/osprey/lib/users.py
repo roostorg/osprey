@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Dict, List, Mapping, Optional, Type
+from collections.abc import Mapping
+from typing import Any, Type
 
 from osprey.worker.lib.singletons import ENGINE
 from osprey.worker.lib.sources_config.subkeys.acl_config import AclConfig
@@ -24,23 +25,23 @@ class User:
         # consuming a `TemporaryAbilityToken`
         self.is_unregistered_user = acl_config.users.get(email) is None
 
-        self._abilities: List[Ability[BaseModel, Any]] = acl_config.get_abilities_for_user(self.email)
+        self._abilities: list[Ability[BaseModel, Any]] = acl_config.get_abilities_for_user(self.email)
 
-    def get_ability(self, ability_class: Type[AbilityT]) -> Optional[AbilityT]:
+    def get_ability(self, ability_class: Type[AbilityT]) -> AbilityT | None:
         """
         Returns a single instance of `ability_class` that has all of the user's `ability_class` properties merged
 
         If the user does not have any `ability_class`, this returns `None`
         """
-        abilities: List[AbilityT] = [ability for ability in self._abilities if isinstance(ability, ability_class)]
+        abilities: list[AbilityT] = [ability for ability in self._abilities if isinstance(ability, ability_class)]
         return self._merge_abilities(ability_class, abilities) if abilities else None
 
     def get_all_abilities(self) -> Mapping[str, Ability[Any, Any]]:
         """
-        Returns a Dict mapping `ability_name` to a single `Ability` that has all of the user's `Ability` allowances
+        Returns a dict mapping `ability_name` to a single `Ability` that has all of the user's `Ability` allowances
         merged
         """
-        ability_name_to_ability_list: Dict[str, List[Ability[Any, Any]]] = defaultdict(list)
+        ability_name_to_ability_list: dict[str, list[Ability[Any, Any]]] = defaultdict(list)
         for ability in self._abilities:
             ability_name_to_ability_list[ability.name].append(ability)
 
@@ -52,7 +53,7 @@ class User:
 
         return ability_name_to_merged_ability
 
-    def _merge_abilities(self, ability_class: Type[AbilityT], ability_list: List[AbilityT]) -> AbilityT:
+    def _merge_abilities(self, ability_class: Type[AbilityT], ability_list: list[AbilityT]) -> AbilityT:
         """
         Returns a single instance of Ability that has all of the user's Abilities (of the same type) merged.
 

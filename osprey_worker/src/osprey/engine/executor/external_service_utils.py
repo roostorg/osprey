@@ -1,46 +1,27 @@
-from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
-from typing import Dict, Generic, Hashable, Optional, Sequence, Tuple, TypeVar, cast
+from collections.abc import Sequence
+from datetime import datetime
+from typing import Generic, cast
 
 from gevent.event import AsyncResult
+
+# Re-export base classes for backward compatibility
+from osprey.engine.executor.external_service_utils_base import (  # noqa: F811
+    ExternalService,
+    KeyT,
+    PlainExternalServiceAccessor,
+    ValueT,
+    _CacheEntry,
+)
 from result import Err, Ok, Result
 
-KeyT = TypeVar('KeyT', bound=Hashable)
-ValueT = TypeVar('ValueT')
-
-
-class ExternalService(ABC, Generic[KeyT, ValueT]):
-    @abstractmethod
-    def get_from_service(self, key: KeyT) -> ValueT:
-        raise NotImplementedError
-
-    # Not abstract because not all services support batching multiple keys
-    def batch_get_from_service(self, keys: Sequence[KeyT]) -> Sequence[Result[ValueT, Exception]]:
-        raise NotImplementedError
-
-    def cache_ttl(self) -> Optional[timedelta]:
-        """
-        Returns a time to live for items in the cache. By default, KVs are cached indefinitely.
-
-        To have cache entries auto-expire, override this method in your external service definition.
-
-        Note that timedeltas can accept negative values to represent the past, but only on the days field.
-        You *can* use timedelta(seconds=0) to disable caching, but a negative time delta *ensures* that even
-        if a time shift occurs (such as daylight savings), the cache_ttl will still be immediate.
-
-        Therefore, to disable the read cache, it is recommended to set this to `timedelta(days=-1)`
-        """
-        return None
-
-    def count_error_once(self) -> bool:
-        """
-        When True, only the caller that initiated the external service call
-        receives the exception. Subsequent callers that would hit the cached
-        error receive None instead.
-
-        Only enable this when ValueT is Optional and None is a safe fallback.
-        """
-        return False
+__all__ = [
+    'ExternalService',
+    'ExternalServiceAccessor',
+    'PlainExternalServiceAccessor',
+    '_CacheEntry',
+    'KeyT',
+    'ValueT',
+]
 
 
 class ExternalServiceAccessor(Generic[KeyT, ValueT]):
@@ -48,10 +29,10 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
 
     def __init__(self, service: ExternalService[KeyT, ValueT]):
         self._service = service
-        # Key -> Tuple[ AsyncResult[ValueT], Expiration datetime ]
-        self._cache: Dict[KeyT, Tuple[AsyncResult[ValueT], Optional[datetime]]] = {}
+        # Key -> tuple[ AsyncResult[ValueT], Expiration datetime ]
+        self._cache: dict[KeyT, tuple[AsyncResult[ValueT], datetime | None]] = {}
 
-    def _is_past_cache_expiration(self, cache_expiration: Optional[datetime]) -> bool:
+    def _is_past_cache_expiration(self, cache_expiration: datetime | None) -> bool:
         """
         Helper method to perform a time check on an optional datetime.
         """
@@ -59,7 +40,7 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
             return False
         return datetime.now() > cache_expiration
 
-    def _get_cache_expiration_datetime(self) -> Optional[datetime]:
+    def _get_cache_expiration_datetime(self) -> datetime | None:
         """
         Helper method to generate an optional cache expiration datetime based on the cache TTL.
         """
@@ -72,7 +53,7 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
         The new value is then used to update the cache entry for subsequent `get` calls.
         """
         # Provide an explicit type annotation for cache_entry.
-        cache_entry: Tuple[AsyncResult[ValueT], Optional[datetime]] = (
+        cache_entry: tuple[AsyncResult[ValueT], datetime | None] = (
             AsyncResult(),
             self._get_cache_expiration_datetime(),
         )

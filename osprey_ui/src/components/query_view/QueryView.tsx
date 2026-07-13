@@ -26,6 +26,7 @@ const QueryView: React.FC = () => {
   const [dateRange, setDateRange] = React.useState({ start: executedQuery.start, end: executedQuery.end });
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync local interval and dateRange with query changes
     setQueryInterval(executedQuery.interval);
     setDateRange({ start: executedQuery.start, end: executedQuery.end });
   }, [executedQuery]);

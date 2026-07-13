@@ -10,6 +10,8 @@ import {
   SearchOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  DatabaseOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -50,6 +52,8 @@ const NAV_GROUPS: NavGroup[] = [
     children: [
       { key: Routes.RULES_VISUALIZER, icon: <ApartmentOutlined />, label: 'Rules Visualizer' },
       { key: Routes.DOCS_UDFS, icon: <FunctionOutlined />, label: 'UDF Registry' },
+      { key: Routes.FEATURES, icon: <DatabaseOutlined />, label: 'Features' },
+      { key: Routes.RULES, icon: <FileTextOutlined />, label: 'Rules' },
     ],
   },
   {

@@ -32,7 +32,6 @@ use tower::util::BoxCloneService;
 use tower::{Layer, Service as TowerService, ServiceExt};
 use tracing::{debug, info, warn};
 
-pub mod grpc_client;
 mod grpc_timeout;
 mod health;
 mod instrumented_connection;
@@ -51,7 +50,7 @@ pub use tonic::server::NamedService;
 
 pub async fn serve<GS>(
     grpc_service: GS,
-    service_name: &'static str,
+    service_name: &str,
     service_port: u16,
     announce_delay: Duration,
 ) -> Result<()>

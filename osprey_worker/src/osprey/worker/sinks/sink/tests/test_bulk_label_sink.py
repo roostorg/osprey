@@ -1,6 +1,6 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional, Sequence
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -25,7 +25,7 @@ from pytest_mock import MockFixture
 from ..input_stream import StaticInputStream
 
 # Druid might also return null/empty values, we need to make sure we handle those in our sink.
-_TASK_NULLISH_ENTITIES: List[Dict[str, Optional[str]]] = [{'UserId': None}, {'UserId': ''}]
+_TASK_NULLISH_ENTITIES: list[dict[str, str | None]] = [{'UserId': None}, {'UserId': ''}]
 _TASK_TOTAL_VALID_ENTITIES = 10
 _TASK_TOTAL_ENTITIES_RETURNED = _TASK_TOTAL_VALID_ENTITIES + len(_TASK_NULLISH_ENTITIES)
 
@@ -33,7 +33,7 @@ _TASK_TOTAL_ENTITIES_RETURNED = _TASK_TOTAL_VALID_ENTITIES + len(_TASK_NULLISH_E
 @pytest.fixture(autouse=True)
 def mock_top_n_druid_query(mocker: MockFixture) -> None:
     execute = mocker.patch('osprey.worker.sinks.sink.bulk_label_sink.TopNDruidQuery.execute')
-    fake_result: List[Dict[str, Optional[str]]] = [{'UserId': str(x)} for x in range(_TASK_TOTAL_VALID_ENTITIES)]
+    fake_result: list[dict[str, str | None]] = [{'UserId': str(x)} for x in range(_TASK_TOTAL_VALID_ENTITIES)]
     fake_result += _TASK_NULLISH_ENTITIES
 
     execute.return_value = ({'result': fake_result},)

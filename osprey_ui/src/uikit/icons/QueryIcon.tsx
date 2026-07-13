@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 interface QueryIconProps {
   width?: number;
   height?: number;

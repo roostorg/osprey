@@ -23,6 +23,7 @@ export default function usePromiseResult<T>(resolver: Resolver<T>, deps: React.D
       let isCurrent = true;
       // Regardless of what the state when we start running the effect, we need to transition back
       // to the resolving state.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- transition to resolving state at effect start
       setState({ status: PromiseResultStatus.Resolving });
 
       const resolveData = async () => {
@@ -31,8 +32,7 @@ export default function usePromiseResult<T>(resolver: Resolver<T>, deps: React.D
           if (isCurrent) {
             setState({ status: PromiseResultStatus.Resolved, value });
           }
-        } catch (error: any) {
-          // eslint-disable-next-line no-console
+        } catch (error: unknown) {
           console.error('Error while resolving promise', error);
           if (isCurrent) {
             const retry = () => {
@@ -44,7 +44,7 @@ export default function usePromiseResult<T>(resolver: Resolver<T>, deps: React.D
                 setRetryCounter((x) => x + 1);
               }
             };
-            setState({ status: PromiseResultStatus.Rejected, error, retry });
+            setState({ status: PromiseResultStatus.Rejected, error: error as Error, retry });
           }
         }
       };

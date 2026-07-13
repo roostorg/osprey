@@ -138,14 +138,17 @@ class EtcdWatcherdWatcher(BaseWatcher):
         except MemoryError as e:
             raise e
 
-        except Exception:
+        except Exception as e:
             if self._stream:
                 self._stream.cancel()
                 self._stream = None
             self._set_state(EtcdWatcherState.RESET)
             delay = self._backoff.fail()
-            log.exception(
-                '%r: etcd-watcherd stream raised an error. sleeping for %.2f sec before retrying', self, delay
+            log.warning(
+                '%r: etcd-watcherd stream raised an error (%r). sleeping for %.2f sec before retrying',
+                self,
+                e,
+                delay,
             )
             time.sleep(delay)
 
@@ -161,9 +164,9 @@ class EtcdWatcherdWatcher(BaseWatcher):
         except MemoryError as e:
             raise e
 
-        except Exception:
+        except Exception as e:
             delay = self._backoff.fail()
-            log.exception('%r: etcd raised an error. sleeping for %.2f sec before retrying', self, delay)
+            log.warning('%r: etcd raised an error (%r). sleeping for %.2f sec before retrying', self, e, delay)
             time.sleep(delay)
 
     def _translate_event(self, event):

@@ -1,0 +1,59 @@
+name: License Check (Python)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'osprey_rpc/pyproject.toml'
+      - 'osprey_worker/pyproject.toml'
+      - 'example_plugins/pyproject.toml'
+      - '.github/allowed-licenses.txt'
+      - '.github/pip-licenses-classifiers.txt'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version-file: .python-version
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+
+      - name: Format license list
+        run: |
+          # pip-licenses reports PyPI classifier names rather than SPDX IDs for some packages.
+          # allowed-licenses.txt is the policy (SPDX); pip-licenses-classifiers.txt is the translation layer.
+          SPDX=$(tr '\n' ';' < .github/allowed-licenses.txt | sed 's/;$//')
+          CLASSIFIERS=$(tr '\n' ';' < .github/pip-licenses-classifiers.txt | sed 's/;$//')
+          echo "ALLOWED_LICENSES=${SPDX};${CLASSIFIERS}" >> "$GITHUB_ENV"
+
+      - name: Install production dependencies
+        run: uv sync --only-group common
+
+      - name: Install pip-licenses
+        run: uv pip install pip-licenses==5.5.5
+
+      - name: Check licenses
+        run: |
+          # Packages ignored due to broken/missing PyPI metadata (license is known and approved):
+          #   google-crc32c: Apache-2.0; no metadata in 1.8.0 (googleapis/google-cloud-python#16515)
+          #   ddtrace: Apache-2.0 OR BSD-3-Clause; sets License field to a filename ("LICENSE.BSD3")
+          # First-party packages (no license metadata needed):
+          #   osprey-rpc, osprey-worker, example_plugins
+          # Packages pending license policy review:
+          #   unidecode: GPL v2+ (#354)
+          #   tld: GPL v2 / LGPL / MPL 1.1 (#355)
+          #   psycopg2-binary: LGPL (#357)
+          #   simplejson: Academic Free License + MIT (#358)
+          #   text-unidecode: Artistic + GPL (transitive via faker) (#359)
+          uv run pip-licenses --allow-only "$ALLOWED_LICENSES" \
+            --ignore-packages \
+              google-crc32c \
+              ddtrace \
+              osprey-rpc osprey-worker example_plugins \
+              unidecode tld psycopg2-binary simplejson text-unidecode

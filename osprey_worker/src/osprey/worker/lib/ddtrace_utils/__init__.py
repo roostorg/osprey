@@ -1,6 +1,7 @@
 import functools
 import sys
-from typing import Any, Callable, Dict, Optional, TypeVar, Union
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 import ddtrace
 from ddtrace.span import Span
@@ -39,10 +40,10 @@ def after_flask_request(response):
 
 def trace(
     name: str,
-    service: Optional[str] = None,
-    resource: Optional[str] = None,
-    span_type: Optional[str] = None,
-    tags: Optional[Dict[Union[str, bytes], str]] = None,
+    service: str | None = None,
+    resource: str | None = None,
+    span_type: str | None = None,
+    tags: dict[str | bytes, str] | None = None,
 ) -> Span:
     span = ddtrace.tracer.trace(name, service, resource, span_type) or _noop_span()
     if tags:
@@ -58,7 +59,7 @@ def current_span() -> Span:
     return ddtrace.tracer.current_span() or _noop_span()
 
 
-def pin_override(cluster: Any, service: Optional[str], tags: Optional[Dict[str, str]] = None) -> None:
+def pin_override(cluster: Any, service: str | None, tags: dict[str, str] | None = None) -> None:
     ddtrace.Pin.override(cluster, service, tags=tags)
 
 

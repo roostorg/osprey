@@ -39,12 +39,6 @@ handlers:
     stream: ext://sys.stderr
 
 loggers:
-  # There is a warning spam that happens that isn't useful from this library
-  # related to file_cache being unavailable.
-  # https://github.com/googleapis/google-api-python-client/issues/299
-  googleapiclient.discovery_cache:
-    level: WARN
-
   pandas_gbq:
     level: WARN
 

@@ -4,5 +4,24 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
+    labels:
+      - "dependencies"
+      - "dependabot"
     ignore:
       - dependency-name: "grpcio"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    labels:
+      - "dependencies"
+      - "dependabot"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

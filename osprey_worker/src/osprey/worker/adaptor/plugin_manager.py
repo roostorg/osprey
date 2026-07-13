@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, List, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Type, TypeVar
 
 import pluggy
 from osprey.engine.ast_validator import ValidatorRegistry
@@ -20,6 +20,7 @@ from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
+    from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter
 
 hookimpl_osprey: pluggy.HookimplMarker = pluggy.HookimplMarker(OSPREY_ADAPTOR)
 
@@ -36,7 +37,7 @@ def load_all_osprey_plugins():
 T = TypeVar('T')
 
 
-def flatten(seq: List[List[T]]) -> List[T]:
+def flatten(seq: list[list[T]]) -> list[T]:
     return sum(seq, [])
 
 
@@ -48,7 +49,7 @@ def bootstrap_udfs() -> tuple[UDFRegistry, UDFHelpers]:
     load_all_osprey_plugins()
     udf_helpers = UDFHelpers()
 
-    udfs: List[Type[UDFBase[Any, Any]]] = flatten(plugin_manager.hook.register_udfs())
+    udfs: list[Type[UDFBase[Any, Any]]] = flatten(plugin_manager.hook.register_udfs())
 
     for udf in udfs:
         if issubclass(udf, HasHelper):
@@ -86,6 +87,17 @@ def bootstrap_output_sinks(config: Config) -> BaseOutputSink:
             sinks.append(LabelOutputSink(labels_provider))
 
     return MultiOutputSink(sinks)
+
+
+def bootstrap_validation_exporter(config: Config) -> 'BaseValidationResultExporter':
+    from osprey.worker.lib.data_exporters.validation_result_exporter import (
+        BaseValidationResultExporter,
+        NullValidationResultExporter,
+    )
+
+    load_all_osprey_plugins()
+    exporter = plugin_manager.hook.register_validation_exporter(config=config)
+    return exporter if isinstance(exporter, BaseValidationResultExporter) else NullValidationResultExporter()
 
 
 def bootstrap_labels_provider(config: Config) -> LabelsProvider:

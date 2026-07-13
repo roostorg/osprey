@@ -1,96 +1,31 @@
-import abc
 from datetime import datetime
 from types import TracebackType
-from typing import Dict, Generic, List, Optional, Type, TypeVar, Union
+from typing import Type, TypeVar
 
 import gevent
 from google.api_core.exceptions import DeadlineExceeded
 from google.cloud.pubsub_v1 import SubscriberClient
 from google.cloud.pubsub_v1.subscriber.message import Message
-from osprey.rpc.common.v1.verdicts_pb2 import Verdicts
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
+from osprey.worker.sinks.utils.acking_contexts_base import (
+    BaseAckingContext,
+    NoopAckingContext,
+    VerdictsAckingContext,
+)
+
+# Re-export base classes for backward compatibility
+__all__ = [
+    'BaseAckingContext',
+    'NoopAckingContext',
+    'VerdictsAckingContext',
+    'PubSubMessageAckingContext',
+    'PullPubSubMessageContext',
+]
 
 logger = get_logger()
 
 _T = TypeVar('_T')
-
-
-# TODO: support NACK
-class BaseAckingContext(abc.ABC, Generic[_T]):
-    """An acking context for handling single actions from input streams."""
-
-    def __init__(self, item: _T) -> None:
-        super().__init__()
-        self._item: _T = item
-        self._should_nack = False
-        self._publish_time = datetime.now()
-        self._attributes: Optional[Dict[str, str]] = None
-
-    @abc.abstractmethod
-    def _ack(self) -> None:
-        """Acknowledges the message or item that this Acking Context holds."""
-
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def _nack(self) -> None:
-        """NACKs the message or item that this Acking Context holds."""
-
-        raise NotImplementedError
-
-    @property
-    def attributes(self) -> Optional[Dict[str, str]]:
-        return self._attributes
-
-    def mark_as_nack(self) -> None:
-        self._should_nack = True
-
-    def __enter__(self) -> _T:
-        return self._item
-
-    def __exit__(
-        self,
-        exc_type: Union[Type[BaseException], None],
-        exc_value: Union[BaseException, None],
-        exc_traceback: Union[TracebackType, None],
-    ) -> None:
-        if self._should_nack:
-            self._nack()
-        else:
-            self._ack()
-
-    @property
-    def publish_time(self) -> datetime:
-        return self._publish_time
-
-
-class NoopAckingContext(BaseAckingContext[_T]):
-    """A context manager for handling single actions require no acking operations from input streams."""
-
-    def _ack(self) -> None:
-        return
-
-    def _nack(self) -> None:
-        return
-
-
-class VerdictsAckingContext(NoopAckingContext[_T]):
-    """
-    A context manager for storing verdicts from the rules sink inside of a NoopAckingContext :3
-
-    This is used to send verdicts back to the Osprey Coordinator, if any were captured~
-    """
-
-    def __init__(self, item: _T) -> None:
-        super().__init__(item)
-        self._verdicts: Optional[Verdicts] = None
-
-    def set_verdicts(self, verdicts: Verdicts) -> None:
-        self._verdicts = verdicts
-
-    def get_verdicts(self) -> Optional[Verdicts]:
-        return self._verdicts
 
 
 class PubSubMessageAckingContext(BaseAckingContext[_T]):
@@ -117,22 +52,22 @@ class PullPubSubMessageContext(BaseAckingContext[_T]):
         item: _T,
         subscriber: SubscriberClient,
         subscription_path: str,
-        ack_ids: List[str],
-        publish_time: Optional[datetime] = None,
-        attributes: Optional[Dict[str, str]] = None,
+        ack_ids: list[str],
+        publish_time: datetime | None = None,
+        attributes: dict[str, str] | None = None,
     ):
         super().__init__(item)
         self._subscriber = subscriber
         self._subscription_path = subscription_path
         self._original_ack_ids = ack_ids
         # True to ACK, False to NACK. Defaults to ACK all.
-        self._ack_statuses: Dict[str, bool] = {ack_id: True for ack_id in ack_ids}
+        self._ack_statuses: dict[str, bool] = {ack_id: True for ack_id in ack_ids}
         self._timeout = 1.5
         self._publish_time = publish_time if publish_time else datetime.now()
         self._attributes = attributes
 
     @property
-    def original_ack_ids(self) -> List[str]:
+    def original_ack_ids(self) -> list[str]:
         return self._original_ack_ids
 
     def mark_ack_id_for_nack(self, ack_id_to_nack: str) -> None:
@@ -145,9 +80,9 @@ class PullPubSubMessageContext(BaseAckingContext[_T]):
 
     def __exit__(
         self,
-        exc_type: Union[Type[BaseException], None],
-        exc_value: Union[BaseException, None],
-        exc_traceback: Union[TracebackType, None],
+        exc_type: Type[BaseException] | None,
+        exc_value: BaseException | None,
+        exc_traceback: TracebackType | None,
     ) -> None:
         # if exc_type is not None:
         #     logger.error(f'Exception in PullPubSubMessageContext, NACKing all messages: {exc_value}')

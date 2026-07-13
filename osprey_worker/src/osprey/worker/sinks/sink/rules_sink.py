@@ -2,7 +2,6 @@ import logging
 import os
 from dataclasses import dataclass
 from random import randint
-from typing import Optional
 
 import gevent
 import sentry_sdk
@@ -85,8 +84,8 @@ class RulesRunner:
         self._udf_helpers = udf_helpers
 
     def classify_one(
-        self, action: Action, tag: str, parent_tracer_span: Optional[TracerSpan] = None
-    ) -> Optional[ExecutionResult]:
+        self, action: Action, tag: str, parent_tracer_span: TracerSpan | None = None
+    ) -> ExecutionResult | None:
         sample_config = self._sampler.sample(action)
         tags = [
             tag,
@@ -99,7 +98,7 @@ class RulesRunner:
         if sample_config.drop:
             metrics.increment('dropped_message', tags=tags)
             return None
-        result: Optional[ExecutionResult] = None
+        result: ExecutionResult | None = None
         # noinspection PyBroadException
         try:
             with metrics.timed('handled_message', tags=tags, use_ms=True):
@@ -140,9 +139,11 @@ class RulesSink(BaseSink):
         for message_context in self._input_stream:
             try:
                 with message_context as action:
-                    if action.data.get('osprey_v2_skip_async_classification', False) or action.data.get(
-                        'osprey_skip_async', False
-                    ):
+                    action_tags = [f'action:{action.action_name}']
+                    metrics.increment('rules_sink.input_action_received', tags=action_tags)
+
+                    if action.data.get('osprey_skip_async', False):
+                        metrics.increment('rules_sink.skipped', tags=action_tags)
                         continue
 
                     with tracer.start_span('osprey.classify_one', child_of=None) as span:
