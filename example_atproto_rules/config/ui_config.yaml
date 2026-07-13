@@ -1,7 +1,7 @@
 ui_config:
   default_summary_features:
     - actions: ['*']
-      features: [UserId, Handle, DisplayName]
+      features: [UserId]
     - actions: ['create_post', 'update_post']
       features: [PostText, Rkey]
     - actions: ['delete_post']
