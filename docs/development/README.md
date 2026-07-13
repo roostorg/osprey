@@ -138,6 +138,8 @@ Implement any subset of these in your plugin's `register_plugins.py`:
 | `register_input_stream` | `BaseInputStream` | Single-provider (`firstresult`). |
 | `register_execution_result_store` | `ExecutionResultStore` | Single-provider (`firstresult`). |
 | `register_labels_service_or_provider` | `LabelsServiceBase \| LabelsProvider` | Single-provider (`firstresult`). |
+| `register_validation_exporter` | `BaseValidationResultExporter \| None` | Optional; publishes experiment/bucket metadata after validation. Single-provider (`firstresult`). |
+| `register_label_output_sink` | `BaseOutputSink \| None` | Optional; custom label-mutation sink, replacing the default `LabelOutputSink`. Single-provider (`firstresult`). |
 
 ## Rules
 
