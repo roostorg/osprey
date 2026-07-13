@@ -14,8 +14,8 @@ Osprey's tools are categorized into three primary functions:
 
 - [Rules Visualizer](manage.md#rules-visualizer): graph view of label/rule relationships
 - [UDF Registry](manage.md#udf-registry): API reference for all available functions
-- [Features](manage.md#features): inventory of all features in the system
-- [Rules](manage.md#rules): inventory of all rules in the system
+- [Features Registry](manage.md#features-registry): inventory of all features in the system
+- [Rules Registry](manage.md#rules-registry): inventory of all rules in the system
 
 **Operate**: run and review bulk operations
 

@@ -31,9 +31,9 @@ UDFs are organized by category and are searchable. Each entry shows:
 
 Use this page as your reference when writing queries or rules: especially to confirm a function's exact name and parameter order before using it. (Querying a UDF that doesn't exist causes a silent 500 error.)
 
-## Features
+## Features Registry
 
-The Features page lists every feature defined in your Osprey deployment. Features are named variables extracted from events; they're what you query against and what rules operate on.
+The Features Registry lists every feature defined in your Osprey deployment. Features are named variables extracted from events; they're what you query against and what rules operate on.
 
 The list is paginated (50 per page) and can be filtered and sorted:
 
@@ -45,9 +45,9 @@ The list is paginated (50 per page) and can be filtered and sorted:
 
 Each row shows the feature's name, category, extraction function(s), reference count (how many rules use it), description, owner, and last modified date.
 
-## Rules
+## Rules Registry
 
-The Rules page lists every rule loaded in your Osprey deployment.
+The Rules Registry lists every rule loaded in your Osprey deployment.
 
 The list is paginated (50 per page) and can be filtered and sorted:
 
