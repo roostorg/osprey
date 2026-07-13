@@ -8,9 +8,12 @@ src = "."
 build-dir = "./book"
 
 [output.html]
-site-url = "/osprey/"
+default-theme = "roost"
+preferred-dark-theme = "roost"
+additional-css = ["theme/css/roost.css", "theme/css/roost-hljs.css", "theme/css/content.css"]
 edit-url-template = "https://github.com/roostorg/osprey/edit/main/docs/{path}"
 git-repository-url = "https://github.com/roostorg/osprey"
+site-url = "/osprey/"
 
 [output.html.print]
 enable = false

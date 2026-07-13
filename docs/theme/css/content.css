@@ -1,0 +1,46 @@
+/* Content styling overrides */
+
+.content img {
+  border: 0.5em solid color-mix(var(--bg) 80%, white);
+  box-shadow: 0 0.25em 0.5em 0.25em rgba(0 0 0 / 0.1 );
+  box-sizing: border-box;
+  margin-block: 0.5em;
+}
+
+.blockquote-tag {
+  background: var(--quote-bg);
+  border-radius: 0.25em;
+  padding: 1em;
+}
+
+.menu-title {
+  font-weight: 600;
+}
+
+table {
+  width: 100%;
+}
+
+table td,
+table thead th {
+  padding: 0.25em 0.5em;
+}
+
+table td {
+  text-wrap: balance;
+}
+
+dt {
+  margin-block: 1.5em 0;
+}
+
+dd {
+  margin-inline-start: 1em;
+  margin-block: 0.25em;
+}
+
+hr {
+  margin-block: 2em;
+  opacity: 0.25;
+}
+
