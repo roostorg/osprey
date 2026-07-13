@@ -9,7 +9,7 @@ services:
   osprey-worker:
     environment:
       OSPREY_INPUT_STREAM_SOURCE: plugin
-      OSPREY_RULES_PATH: ./example_atproto_rules
+      OSPREY_RULES_PATH: /osprey/example_atproto_rules
     volumes:
       - ./example_atproto_rules:/osprey/example_atproto_rules
       - ./example_atproto_plugins:/osprey/example_atproto_plugins

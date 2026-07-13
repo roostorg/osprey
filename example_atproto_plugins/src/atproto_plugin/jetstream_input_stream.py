@@ -138,8 +138,12 @@ class JetStreamInputStream(BaseInputStream[BaseAckingContext[Action]]):
                 try:
                     action_id = self._next_action_id()
                 except Exception:
-                    logger.exception('failed to mint action_id from snowflake-id-worker; skipping event')
-                    continue
+                    # Drop the connection rather than re-minting per message: _gen()'s reconnect
+                    # backoff then throttles retries during a snowflake-id-worker outage.
+                    logger.exception(
+                        'failed to mint action_id from snowflake-id-worker; dropping connection to back off'
+                    )
+                    return
                 action = _event_to_action(event, action_id=action_id)
                 if action is None:
                     continue
@@ -164,6 +168,11 @@ def _event_to_action(event: Dict[str, Any], action_id: int) -> Optional[Action]:
     time_us = event.get('time_us')
     if not isinstance(time_us, int) or time_us <= 0:
         return None
+    try:
+        timestamp = datetime.fromtimestamp(time_us / 1_000_000, tz=timezone.utc)
+    except (OverflowError, OSError, ValueError):
+        # A single out-of-range time_us should skip that event, not tear down the connection.
+        return None
     if kind == 'commit':
         commit = event.get('commit') or {}
         operation = commit.get('operation')
@@ -177,5 +186,5 @@ def _event_to_action(event: Dict[str, Any], action_id: int) -> Optional[Action]:
         action_id=action_id,
         action_name=action_name,
         data=event,
-        timestamp=datetime.fromtimestamp(time_us / 1_000_000, tz=timezone.utc),
+        timestamp=timestamp,
     )

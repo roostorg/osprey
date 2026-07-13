@@ -110,6 +110,11 @@ def test_event_with_negative_time_us_is_skipped():
     assert _event_to_action(neg_time, action_id=5) is None
 
 
+def test_event_with_out_of_range_time_us_is_skipped():
+    out_of_range = {**SAMPLE_POST_COMMIT, 'time_us': 10**30}
+    assert _event_to_action(out_of_range, action_id=5) is None
+
+
 def test_unknown_kind_is_skipped():
     weird = {'did': 'did:plc:xyz', 'time_us': 1, 'kind': 'something-new'}
     assert _event_to_action(weird, action_id=6) is None
