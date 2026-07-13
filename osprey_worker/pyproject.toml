@@ -14,6 +14,7 @@ dependencies = [
 ]
 [project.scripts]
 osprey-cli = "osprey.worker.lib.cli:cli"
+osprey-stress = "osprey.worker.stress.cli:main"
 
 [project.entry-points."osprey_plugin"]
 stdlib = "osprey.worker._stdlibplugin"
