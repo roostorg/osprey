@@ -108,7 +108,7 @@ The UI will automatically connect to the backend services running in Docker cont
 
 ## Plugins
 
-In Osprey, UDFs and output sinks are designed to be easily portable. This is done through a plugin system based on pluggy. An example plugin package has been provided for reference, see `example_plugins/register_plugins.py`:
+In Osprey, UDFs and output sinks are designed to be easily portable. This is done through a plugin system based on pluggy. An example plugin package has been provided for reference, see `example_plugins/register_plugins.py`. For a full walkthrough with examples (UDFs, sinks, hash-based lookups, ML models, labels service), see [Integrations & Plugins](integrations.md).
 
 ```python
 @hookimpl_osprey

@@ -18,6 +18,7 @@
   - [Workflow](development/workflow.md)
   - [Tools Overview](development/tools.md)
   - [CLI Reference](development/cli-reference.md)
+  - [Integrations & Plugins](development/integrations.md)
   - [Troubleshooting](development/troubleshooting.md)
   - [IDE Setup](development/ide.md)
   - [Release Process](development/releases.md)
