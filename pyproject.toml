@@ -168,7 +168,24 @@ known-first-party = ["osprey_worker", "osprey_async_worker", "osprey_rpc", "exam
 
 [tool.fawltydeps]
 code = ["osprey_worker/src", "osprey_async_worker/src", "osprey_rpc/src", "example_plugins/src"]
-deps = ["pyproject.toml"]
+# Include the workspace members so member-declared runtime deps (e.g. flask-cors on
+# osprey_worker, aiodns/pycares on osprey_async_worker) aren't reported as undeclared.
+deps = [
+    "pyproject.toml",
+    "osprey_rpc/pyproject.toml",
+    "osprey_worker/pyproject.toml",
+    "osprey_async_worker/pyproject.toml",
+    "example_plugins/pyproject.toml",
+]
+ignore_undeclared = [
+    # First-party: example_plugins uses a flat src layout, so these are its own
+    # top-level packages, not external dependencies.
+    "async_sinks",
+    "register_async_plugins",
+    "udfs",
+    # Typing-only import guarded by TYPE_CHECKING.
+    "_typeshed",
+]
 ignore_unused = [
     # Type stubs: used by mypy, never imported directly
     "types-cachetools",
