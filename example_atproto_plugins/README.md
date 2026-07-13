@@ -55,20 +55,28 @@ The JetStream JSON event is passed through unchanged as the Action's `data` dict
   "did": "did:plc:...",
   "time_us": ...,
   "kind": "identity",
-  "identity": {"did": "...", "handle": "...", "seq": ..., "time": "..."}
+  "identity": {"did": "...", "seq": ..., "time": "..."}
 }
 ```
 
+JetStream identity events carry only `did` / `seq` / `time` — not the handle. Resolve the handle from the DID via the enrichment UDFs below.
+
 Account events, commits for collections not in `COLLECTION_NAMES`, and commits with operations other than `create` / `update` / `delete` are skipped.
+
+### Profile enrichment (handle and display name)
+
+JetStream events identify the actor only by DID, which isn't searchable the way a handle or display name is. The plugin ships two UDFs, `AtprotoHandle` and `AtprotoDisplayName`, that resolve a DID to those fields via Bluesky's public, unauthenticated AppView (`app.bsky.actor.getProfile`). `example_atproto_rules/models/base.sml` wires them up as the `Handle` and `DisplayName` features on every action, and `ui_config.yaml` surfaces them in the event stream.
+
+Results are cached per DID so the same account isn't re-fetched on every event. This is sample-quality enrichment: at full firehose volume the public API will rate-limit, and when it does the UDF fails soft (the feature is simply absent for that event) rather than erroring. For a smoother demo, narrow `OSPREY_JETSTREAM_WANTED_COLLECTIONS` to lower the unique-DID rate.
 
 ### UI default features
 
-`example_atproto_rules/config/ui_config.yaml` declares the per-action default features the Osprey UI surfaces in the event stream — e.g. `PostText` for `create_post`, `IdentityHandle` for `identity`, `Subject` for like / repost / follow events. Add new entries there to expose more fields without touching rule code.
+`example_atproto_rules/config/ui_config.yaml` declares the per-action default features the Osprey UI surfaces in the event stream — e.g. `UserId` / `Handle` / `DisplayName` for every action, `PostText` for `create_post`, `Subject` for like / repost / follow events. Add new entries there to expose more fields without touching rule code.
 
 `action_id` is minted from `snowflake-id-worker` in batches of 250. The plugin therefore needs `SNOWFLAKE_API_ENDPOINT` to be set (the local docker-compose stack provides it).
 
 ## Caveats
 
 - **Not production-ready.** No durable cursor on process restart, no zstd compression, no DID-level filtering. Good for sample / load-testing purposes; not a drop-in for a real ATProto deployment.
-- **No event enrichment.** JetStream only carries what's in the commit itself; rulesets that depend on handle / profile / account age (such as much of [atproto-ruleset](https://github.com/haileyok/atproto-ruleset)) are fed by a separate enrichment pipeline, not JetStream directly. This plugin emits JetStream-native paths ($.did, $.commit.collection, etc.); enrichment-fed rulesets would need an enrichment service in front of this one or a different plugin.
+- **Enrichment is best-effort.** The `Handle` / `DisplayName` UDFs resolve a DID against the public AppView on demand (cached, fail-soft), which is enough for demos but will rate-limit at full firehose volume. JetStream itself carries no handle/profile/account-age data, so rulesets that need reliable, complete enrichment (such as much of [atproto-ruleset](https://github.com/haileyok/atproto-ruleset)) still want a dedicated enrichment pipeline in front of this one rather than per-event API lookups.
 - **Connection health.** WebSocket-level PING/PONG keepalive runs every 20s with a 10s pong timeout (`websocket-client`'s `WebSocketApp.run_forever(ping_interval, ping_timeout)`). A stalled or dead connection is detected within ~30s and triggers a reconnect from the last seen `time_us` cursor.
