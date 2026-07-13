@@ -6,6 +6,8 @@ A sample Osprey plugin that consumes ATProto's [JetStream](https://docs.bsky.app
 - realistic per-second event volume from the live Bluesky network, which is useful for load and soak testing changes that the synthetic 1-event/second producer doesn't exercise,
 - a companion `example_atproto_rules/` tree showing how to organize rules against ATProto event shapes, with file structure modeled on [haileyok/atproto-ruleset](https://github.com/haileyok/atproto-ruleset).
 
+This package registers **only the input stream**. The sample rules also use a UDF (`TextContains`), a labels service, and an output sink that are provided by the sibling `example_plugins/` package, so the two run together: the worker image installs both, and Osprey loads every registered plugin, so `example_plugins` supplies those pieces automatically in the docker stack. If you lift this sample into a setup without `example_plugins`, provide those yourself (a labels provider and output sink) or restrict the rules to stdlib UDFs.
+
 ## Running
 
 From the repo root:
