@@ -224,7 +224,7 @@ ignore_unused = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["osprey_worker", "example_plugins"]
+testpaths = ["osprey_worker", "example_plugins", "example_atproto_plugins"]
 asyncio_mode = "auto"
 
 [tool.mypy]
