@@ -2,26 +2,20 @@
 
 Osprey is a web-based investigation and management console for safety teams. Query event data in real time, visualize trends, label entities, manage rules and features, and run bulk operations.
 
-Osprey's tools are categorized into three primary functions:
+[![The Osprey UI during an investigation: a query filtering events where SuspiciousDisplayName is True, timeseries charts of matching event volume, and the live event stream with one entity's label popup open showing a negative spam_display_name label](../images/osprey-suspicious-display-name.png)](../images/osprey-suspicious-display-name.png)
 
-**Investigate**: query events and examine entity behavior
+The sidebar groups Osprey's tools by task, and this guide follows the same sections:
 
-- [Query](investigate/#query): the main investigation page
-- [Query History](investigate/#query-history): browse and re-run past queries
-- [Saved Queries](investigate/#saved-queries): manage frequently used queries
+- **[Investigate](investigate/)**: query events in real time, chart the results, and drill into individual events and entities. Query history and saved queries let you revisit and share past investigations.
 
-**Manage**: understand and navigate your rule and feature configuration
+  [![Two Top N tables for a query, grouping matching events by event type and by post text](../images/multiple-top-charts.png)](../images/multiple-top-charts.png)
 
-- [Rules Visualizer](manage.md#rules-visualizer): graph view of label/rule relationships
-- [UDF Registry](manage.md#udf-registry): API reference for all available functions
-- [Features Registry](manage.md#features-registry): inventory of all features in the system
-- [Rules Registry](manage.md#rules-registry): inventory of all rules in the system
+- **[Manage](manage.md)**: browse the rules, features, and UDFs configured in your deployment, and visualize how rules and labels relate.
 
-**Operate**: run and review bulk operations
+  [![The UDF Registry listing available functions with type signatures and descriptions, grouped by category](../images/udf-documentation.png)](../images/udf-documentation.png)
 
-- [Bulk Actions](operate.md#bulk-actions): start and monitor bulk labeling jobs
-- [Bulk Job History](operate.md#bulk-job-history): review past bulk jobs and their results
+- **[Operate](operate.md)**: run bulk labeling jobs over query results and review past jobs.
 
-The sidebar can be collapsed to a narrow icon-only strip using the toggle at the bottom. Its state persists between sessions.
+  [![The Bulk Edit Labels form for roughly 9,800 entities matching a query, with label name, status, reason, and expiration fields](../images/bulk-label.png)](../images/bulk-label.png)
 
-The interface supports light and dark themes, see [Appearance](appearance.md) for details.
+The sidebar can be collapsed to an icon-only strip with the toggle at the bottom, and its state persists between sessions. The interface supports light and dark themes; see [Appearance](appearance.md) for details.
