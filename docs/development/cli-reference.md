@@ -20,7 +20,7 @@ Validates the rules at `RULES_PATH` and pushes them. Use `--dry-run` to validate
 osprey-cli compute_and_upload_dependencies_mapping RULES_PATH [--suppress-warnings]
 ```
 
-Computes the dependency graph for the rules at `RULES_PATH` and uploads it — this is what powers the [Rules Visualizer](../user/manage.md#rules-visualizer).
+Computes the dependency graph for the rules at `RULES_PATH` and uploads it; this is what powers the [Rules Visualizer](../user/manage.md#rules-visualizer).
 
 ### shell
 
@@ -39,7 +39,7 @@ osprey-cli apply_label ENTITY_TYPE ENTITY_ID LABEL_NAME LABEL_STATUS \
 
 Manually applies a label to a single entity. Mainly intended for debugging or importing individual labels from an external source. `--reason` defaults to `CliLabelMutationWithoutEffects`; `--description` defaults to `"Manually changed from the command line for debugging."`. `--expire-instantly` makes the label expire almost immediately rather than persisting.
 
-This requires a labels provider to be configured for the Osprey instance — it fails with an assertion error otherwise.
+This requires a labels provider to be configured for the Osprey instance; it fails with an assertion error otherwise.
 
 ### bulk_apply_label
 
@@ -48,7 +48,7 @@ osprey-cli bulk_apply_label ENTITY_TYPE ENTITY_IDS_FILE_PATH LABEL_NAME LABEL_ST
   [--reason REASON] [--description DESCRIPTION] [--expire-instantly]
 ```
 
-Same as `apply_label`, but reads entity IDs (one per line) from `ENTITY_IDS_FILE_PATH` and applies the label to all of them, printing progress as it goes. This is the CLI path for importing bulk label lists from external sources — see also the UI-driven [Bulk Actions](../user/operate.md#bulk-actions) workflow.
+Same as `apply_label`, but reads entity IDs (one per line) from `ENTITY_IDS_FILE_PATH` and applies the label to all of them, printing progress as it goes. This is the CLI path for importing bulk label lists from external sources; see also the UI-driven [Bulk Actions](../user/operate.md#bulk-actions) workflow.
 
 ## osprey-stress
 
@@ -66,10 +66,10 @@ osprey-stress run \
 Produces `--events` synthetic events (default `1000`) at `--rate` events/second (default `100.0`) to the input topic, then waits up to `--drain-seconds` (default `30.0`) for the worker to finish processing before reporting.
 
 Common flags:
-- `--report {human,json}` — output format (default `human`)
-- `--verbose` — emit periodic progress lines to stderr, with `--verbose-interval-seconds` (default `2.0`) controlling frequency
+- `--report {human,json}`: output format (default `human`)
+- `--verbose`: emit periodic progress lines to stderr, with `--verbose-interval-seconds` (default `2.0`) controlling frequency
 - `--bootstrap-servers` (default `localhost:9092`), `--input-topic` (default `osprey.actions_input`), `--output-topic` (default `osprey.execution_results`)
-- `--threshold-drop-rate` and `--threshold-p95-ms` — if set, the command exits non-zero when the observed drop rate or p95 latency breaches the threshold, so it can gate a CI job
+- `--threshold-drop-rate` and `--threshold-p95-ms`: if set, the command exits non-zero when the observed drop rate or p95 latency breaches the threshold, so it can gate a CI job
 
 ### measure
 
@@ -77,11 +77,11 @@ Common flags:
 osprey-stress measure [--duration SECONDS] [--report {human,json}]
 ```
 
-Reserved for open-loop measurement against externally-produced events, once the jetstream input stream plugin (#236) lands. Today it prints a stub message and exits non-zero — use `run` for closed-loop synthetic testing in the meantime.
+Reserved for open-loop measurement against externally-produced events, once the jetstream input stream plugin (#236) lands. Today it prints a stub message and exits non-zero; use `run` for closed-loop synthetic testing in the meantime.
 
 ## osprey-async-cli
 
-Installed by `osprey_async_worker` (`osprey.async_worker.cli.main:cli`). **Experimental** — this is the asyncio-native worker prototype (no gevent, no monkey-patching), for validating whether an asyncio-based executor can replace the gevent one. Not intended for production use yet.
+Installed by `osprey_async_worker` (`osprey.async_worker.cli.main:cli`). **Experimental**: the asyncio-native worker prototype (no gevent, no monkey-patching), for validating whether an asyncio-based executor can replace the gevent one. Not intended for production use yet.
 
 ### run
 
@@ -95,8 +95,8 @@ osprey-async-cli run --rules-path PATH [--input-file PATH] [--max-concurrent 12]
 Runs the async worker against a static rules directory (`--rules-path`, required). By default it uses stdlib UDFs only and prints results to stdout; `--with-plugins` loads the full async plugin system (UDFs, validators, and output sinks registered via the `osprey_async_plugin` entry-point group), which requires external services to be available.
 
 Input source is controlled by `--input-source`:
-- `file` (default) — reads JSONL actions from `--input-file`, or runs with no input if omitted (useful for just validating the worker boots)
-- `kafka` — consumes from `--kafka-topic` (default `osprey.actions_input`) via `--kafka-bootstrap-servers` (default `localhost:9092`)
+- `file` (default): reads JSONL actions from `--input-file`, or runs with no input if omitted (useful for just validating the worker boots)
+- `kafka`: consumes from `--kafka-topic` (default `osprey.actions_input`) via `--kafka-bootstrap-servers` (default `localhost:9092`)
 
 ### benchmark
 
@@ -108,4 +108,4 @@ osprey-async-cli benchmark --rules-path PATH --input-file PATH \
 Benchmarks the async executor against the gevent executor (if `gevent` is importable) using the same rules and input data, running `--warmup` iterations first, then `--iterations` timed iterations, and prints a throughput/latency comparison.
 
 > [!NOTE]
-> Verify the exact `--help` output for each command against a running dev environment (e.g. via `docker compose` or `uv run <command> --help`) before relying on it — the flags documented here come directly from the current source, but are worth a final sanity check since these are actively evolving tools.
+> Verify the exact `--help` output for each command against a running dev environment (e.g. via `docker compose` or `uv run <command> --help`) before relying on it. The flags documented here come directly from the current source, but are worth a final sanity check since these are actively evolving tools.
