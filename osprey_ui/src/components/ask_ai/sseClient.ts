@@ -78,7 +78,7 @@ export interface StreamOptions {
 export async function* streamAsk(
   endpoint: AskEndpointConfig,
   req: AskRequest,
-  opts: StreamOptions = {},
+  opts: StreamOptions = {}
 ): AsyncGenerator<AskEvent> {
   const res = await fetch(endpoint.url, {
     method: 'POST',

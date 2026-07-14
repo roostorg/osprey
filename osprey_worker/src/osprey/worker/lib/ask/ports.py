@@ -2,7 +2,8 @@
 
 The host supplies concrete implementations of these Protocols; the generic package
 defines only the interfaces (and test fakes). See README section 3.4 for the invariant
-each port must uphold. Nothing here imports Discord/Smite/SML/Druid or a vendor SDK.
+each port must uphold. Nothing here imports host identity, product stores, product
+query types, or a concrete vendor SDK.
 """
 
 from __future__ import annotations

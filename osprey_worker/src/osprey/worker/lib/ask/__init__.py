@@ -4,8 +4,8 @@ This package drives a validated user turn through an LLM provider, a principal-s
 tool registry, host persistence/locking, redaction, audit, and evidence adapters,
 emitting a deterministic, bounded stream of versioned events. All product- and
 vendor-specific behavior is supplied by the host through the Protocols in
-:mod:`osprey.worker.lib.ask.ports`; nothing here imports Discord/Smite/SML/Druid or a
-concrete vendor SDK.
+:mod:`osprey.worker.lib.ask.ports`; nothing here imports host identity, product stores,
+product query types, or a concrete vendor SDK.
 """
 
 from osprey.worker.lib.ask.contracts import (

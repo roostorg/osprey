@@ -5,8 +5,8 @@ Host-configurable: the host supplies a ``service_factory`` (which builds an
 derives the server-authenticated principal -- never from the request body), and
 chooses the URL. All pre-flight work runs inside a safe boundary so an unexpected
 host-adapter failure becomes a safe JSON 500 rather than a raw stack trace. Once
-streaming begins, exactly one terminal event is emitted. Nothing here imports
-Discord/Smite/SML/Druid.
+streaming begins, exactly one terminal event is emitted. Nothing here imports host
+identity or product-specific types.
 """
 
 from __future__ import annotations
