@@ -2,7 +2,8 @@
 
 None of these import product or vendor code; they are built from the generic Ask +
 LLM types alone, which is itself the demonstration that a host can wire the service
-without importing Discord/Smite/SML/Druid or a concrete vendor SDK (AC2.1/AC2.2).
+without importing any host identity, product stores, product query types, or a concrete
+vendor SDK (AC2.1/AC2.2).
 """
 
 from __future__ import annotations
