@@ -27,6 +27,7 @@
 
 - [Writing Rules](rules.md)
 - [Integrations & Plugins](integrations.md)
+- [Ask AI](ask-ai.md)
 - [User Research & Personas](research-personas.md)
 
 ---
