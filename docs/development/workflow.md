@@ -29,7 +29,7 @@ uv run ruff check
 uv run ruff format
 
 # Type checking (on specific files/modules)
-uv run mypy osprey_worker/src/osprey_worker/lib
+uv run mypy osprey_worker/src/osprey/worker/lib
 # Or you can type check every module (this will happen in CI)
 uv run mypy .
 

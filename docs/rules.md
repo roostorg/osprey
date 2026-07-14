@@ -140,7 +140,8 @@ EmbedLink: Optional[str] = JsonData(
 	required=False,
 )
 
-ReplyId: Entity[str] = JsonData(
+ReplyId: Entity[str] = EntityJson(
+	type='PostId',
 	path='$.replyId',
 	required=False,
 )
@@ -254,7 +255,7 @@ User Defined Functions (UDFs) are plugins written in Python that enable users of
 as a plugin. They extend the `UDFBase` abstract base class with a set of arguments and an output. These will be executed whenever called in SML.
 
 ```python
-# example_plugins/text_contains.py
+# example_plugins/src/udfs/text_contains.py
 class TextContainsArguments(ArgumentsBase):
     text: str
     phrase: str
@@ -268,7 +269,7 @@ class TextContains(UDFBase[TextContainsArguments, bool]):
         regex = re.compile(pattern, flags)
         return bool(regex.search(arguments.text))
 
-# example_plugins/register_plugins.py
+# example_plugins/src/register_plugins.py
 @hookimpl_osprey
 def register_udfs():
     return [TextContains]
@@ -277,7 +278,7 @@ def register_udfs():
 Usage in SML:
 
 ```python
-# example_rules/post_contains_hello.sml
+# example_rules/rules/post_contains_hello.sml
 ContainsHello = Rule(
   when_all=[
     EventType == 'create_post',
@@ -293,7 +294,7 @@ Plugins may also define external effects, which are useful for performing functi
 These UDFs have an output that extends `EffectBase`, and can be called as a result of a `WhenRules`.
 
 ```python
-# example_plugins/src/ban_user.py
+# example_plugins/src/udfs/ban_user.py
 class BanUser(UDFBase[BanUserArguments, BanUserEffect]):
     category = UdfCategories.ENGINE
 
@@ -303,7 +304,7 @@ class BanUser(UDFBase[BanUserArguments, BanUserEffect]):
             comment=arguments.comment,
         )
 
-# example_rules/post_contains_hello.sml
+# example_rules/rules/post_contains_hello.sml
 WhenRules(
   rules_any=[ContainsHello],
   then=[BanUser(entity=UserId, comment='User said "hello"')],

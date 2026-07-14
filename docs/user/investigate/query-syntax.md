@@ -10,7 +10,7 @@ Osprey uses SML (“Some Madeup Language,” a subset of Python with additional 
 
 ```py
 UserId: Entity[int] = EntityJson(type='User', path='$.user.id', coerce_type=True)
-UserEmail: str = JsonData(type='Email', path='$.user.email', required=False)
+UserEmail: str = JsonData(path='$.user.email', required=False)
 ```
 
 Both `UserId` and `UserEmail` above are features.
