@@ -26,6 +26,7 @@
 # Concepts & More
 
 - [Writing Rules](rules.md)
+- [Integrations & Plugins](integrations.md)
 - [User Research & Personas](research-personas.md)
 
 ---
