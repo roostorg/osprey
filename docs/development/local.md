@@ -1,6 +1,6 @@
 # Local Development
 
-Set up a full local development environment for Osprey. To just get up and running quickly with sample data, see [Getting Started](README.md) instead.
+Set up a full local development environment for Osprey. To just get up and running quickly with sample data, see [Getting Started](./) instead.
 
 ## Prerequisites
 
@@ -26,14 +26,7 @@ cd osprey
 uv sync
 ```
 
-This command will:
-
-- Create a virtual environment automatically
-- Install all production dependencies
-- Install development dependencies (ruff, mypy, pre-commit) automatically
-- Use the locked versions from `uv.lock` for reproducible builds
-
-**Note**: `uv sync` includes development dependencies by default. Use `uv sync --no-dev` if you only want production dependencies.
+This creates a virtual environment and installs production and development dependencies (ruff, mypy, pre-commit) at the locked versions from `uv.lock`. Use `uv sync --no-dev` if you only want production dependencies.
 
 ### 3. Set Up Pre-commit Hooks
 
@@ -61,32 +54,31 @@ uv run mypy .
 uv run pre-commit run --all-files
 ```
 
-**Expected Results:**
-
-- Ruff should report "All checks passed!" or show specific issues to fix
-- MyPy should run without errors
-- Pre-commit should run all hooks successfully
+Ruff reports "All checks passed!" (or the specific issues to fix), and mypy and the pre-commit hooks run without errors.
 
 ### 5. Start the Services
 
 ```bash
-docker compose up -d
+docker compose --profile test_data up -d
 ```
 
 or using the wrapper script
 
 ```bash
-./start.sh
+./start.sh --profile test_data up -d
 ```
+
+The `test_data` profile includes a producer that generates sample events; without it the stack still runs, but the UI shows no data until you send events yourself. [Getting Started](./) covers the one-command demo that wraps all of this.
 
 This starts up many services, including:
 - **Osprey Worker**: The main engine that processes input events given the rules and UDFs
-  - **Test Data Producer**: Optional with `--profile test_data`
+  - **Test Data Producer**: The `--profile test_data` sample event generator
 - **Osprey UI**: Frontend service that hosts the react code for the web interface and communicates to the UI API
 - **Osprey UI API**: Backend service that provides data and functionality to the web interface
 - **Kafka** (KRaft mode): Message streaming for user generated events
 - **Postgres**: A database that the Worker, UI API, and Druid use for various reasons, such as the Postgres-backed Labels Service (in the example plugins)
 - **Druid**: A database that consumes Osprey Worker outputs to power the UI API for real-time querying
+- **MinIO**: S3-compatible object storage; the default execution result store in this stack (`OSPREY_EXECUTION_RESULT_STORAGE_BACKEND=minio`)
 
 Alternatively, you can start Osprey with `osprey-coordinator`, refer to the [Coordinator README](https://github.com/roostorg/osprey/tree/main/example_docker_compose/run_osprey_with_coordinator) for more information
 
