@@ -24,6 +24,7 @@ For more information about each release including git tags and artifacts, see [R
 - Per-action health metrics in the executor ([#191](https://github.com/roostorg/osprey/pull/191) by [@cmttt](https://github.com/cmttt))
 - Option to suppress cached errors to reduce metric bloat ([#180](https://github.com/roostorg/osprey/pull/180) by [@lithium-powered](https://github.com/lithium-powered))
 - Experimental asyncio-native worker with metrics and engine/coordinator improvements ([#341](https://github.com/roostorg/osprey/pull/341) by [@cmttt](https://github.com/cmttt))
+- Experimental in-app rule authoring: draft SML rules validate against the live engine, save to a `rule_drafts` table, and deploy into the configured rules directory ([#402](https://github.com/roostorg/osprey/pull/402) by [@julietshen](https://github.com/julietshen))
 
 ### Changed
 

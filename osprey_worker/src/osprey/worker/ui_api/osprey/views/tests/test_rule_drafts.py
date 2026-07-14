@@ -1,12 +1,7 @@
-import base64
 import json
-import tempfile
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-import requests
-import requests_mock as requests_mock_module
 from flask import Response, url_for
 from flask.testing import FlaskClient
 from osprey.worker.lib.snowflake import Snowflake
@@ -15,24 +10,11 @@ from osprey.worker.lib.snowflake import Snowflake
 @pytest.fixture(autouse=True)
 def _mock_audit_snowflake():
     # The after_request audit hook mints a snowflake id, which normally means an
-    # HTTP call to the snowflake-id-worker service. Tests that wrap a request in
-    # a requests_mock.Mocker would otherwise trip NoMockAddress on that call, so
-    # neutralize it here (the audit log's persist() is already mocked in the
-    # shared conftest).
+    # HTTP call to the snowflake-id-worker service. Neutralize it here so tests
+    # don't reach for that service (the audit log's persist() is already mocked
+    # in the shared conftest).
     with patch('osprey.worker.ui_api.osprey.lib.audit.generate_snowflake', return_value=Snowflake(1)):
         yield
-
-
-def _set_github_backend(monkeypatch: pytest.MonkeyPatch, **overrides: str) -> None:
-    """Configure the github backend with sensible defaults for tests; overrides win."""
-    defaults = {
-        'OSPREY_RULES_SUBMISSION_BACKEND': 'github',
-        'OSPREY_RULES_REPO': 'roostorg/osprey-rules',
-        'OSPREY_GITHUB_TOKEN': 'gh_fake_token',
-        'OSPREY_RULES_BASE_BRANCH': 'main',
-    }
-    for k, v in {**defaults, **overrides}.items():
-        monkeypatch.setenv(k, v)
 
 
 _acl_with_draft_ability = json.dumps(
@@ -128,7 +110,11 @@ def test_endpoints_require_can_edit_rule_drafts(client: 'FlaskClient[Response]')
     assert res.status_code == 401
     res = client.get(url_for('rule_drafts.vocabulary'))
     assert res.status_code == 401
-    res = client.get(url_for('rule_drafts.pending_drafts'))
+    res = client.get(url_for('rule_drafts.list_drafts'))
+    assert res.status_code == 401
+    res = client.post(url_for('rule_drafts.create_draft'), json={})
+    assert res.status_code == 401
+    res = client.post(url_for('rule_drafts.deploy_draft', draft_id=1), json={})
     assert res.status_code == 401
 
 
@@ -232,669 +218,209 @@ def test_vocabulary_returns_features_udfs_effects(client: 'FlaskClient[Response]
     assert 'main.sml' in body['source_files']
 
 
+# --- Draft table: create / list / get -------------------------------------
+
+_VALID_DRAFT = "Import(rules=['models/base.sml'])\nSomeRule = Rule(when_all=[PostText == 'bye'], description='bye')"
+
+
 @pytest.mark.use_rules_sources(_base_sources)
-def test_submit_returns_503_when_no_backend_configured(
-    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.delenv('OSPREY_RULES_SUBMISSION_BACKEND', raising=False)
+def test_create_draft_persists_and_lists(client: 'FlaskClient[Response]') -> None:
     res = client.post(
-        url_for('rule_drafts.submit_draft'),
-        json={
-            'path': 'rules/new_rule.sml',
-            'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
-            'rule_name': 'AnotherRule',
-            'summary': 'demo',
-            'is_new_rule': True,
-        },
+        url_for('rule_drafts.create_draft'),
+        json={'path': 'rules/spam.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': 'catch spam'},
     )
-    assert res.status_code == 503
-    body = res.json
-    assert body is not None
-    assert 'No rule-submission backend is configured' in body['error']
+    assert res.status_code == 200
+    draft = res.json
+    assert draft is not None
+    assert draft['path'] == 'rules/spam.sml'
+    assert draft['rule_name'] == 'SomeRule'
+    assert draft['summary'] == 'catch spam'
+    assert draft['status'] == 'draft'
+    assert draft['id'] is not None
+
+    res = client.get(url_for('rule_drafts.list_drafts'))
+    assert res.status_code == 200
+    assert res.json is not None
+    assert any(d['path'] == 'rules/spam.sml' for d in res.json['drafts'])
 
 
 @pytest.mark.use_rules_sources(_base_sources)
-def test_submit_returns_503_when_github_missing_required_env(
-    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv('OSPREY_RULES_SUBMISSION_BACKEND', 'github')
-    monkeypatch.delenv('OSPREY_RULES_REPO', raising=False)
-    monkeypatch.delenv('OSPREY_GITHUB_TOKEN', raising=False)
-    res = client.post(
-        url_for('rule_drafts.submit_draft'),
-        json={
-            'path': 'rules/new_rule.sml',
-            'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
-            'rule_name': 'AnotherRule',
-            'summary': 'demo',
-            'is_new_rule': True,
-        },
+def test_create_draft_upserts_same_path_in_place(client: 'FlaskClient[Response]') -> None:
+    first = client.post(
+        url_for('rule_drafts.create_draft'),
+        json={'path': 'rules/dupe.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': 'v1'},
     )
-    assert res.status_code == 503
-    body = res.json
-    assert body is not None
-    assert 'OSPREY_RULES_REPO' in body['error']
+    assert first.status_code == 200
+    assert first.json is not None
+    original_id = first.json['id']
+
+    second = client.post(
+        url_for('rule_drafts.create_draft'),
+        json={'path': 'rules/dupe.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': 'v2'},
+    )
+    assert second.status_code == 200
+    assert second.json is not None
+    assert second.json['id'] == original_id
+    assert second.json['summary'] == 'v2'
+
+    res = client.get(url_for('rule_drafts.list_drafts'))
+    assert res.json is not None
+    assert len([d for d in res.json['drafts'] if d['path'] == 'rules/dupe.sml']) == 1
 
 
 @pytest.mark.use_rules_sources(_base_sources)
-def test_submit_blocks_invalid_sml_before_calling_github(
-    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _set_github_backend(monkeypatch)
-
-    with requests_mock_module.Mocker() as m:
-        res = client.post(
-            url_for('rule_drafts.submit_draft'),
-            json={
-                'path': 'rules/bad.sml',
-                'source': 'this is not valid SML !!!',
-                'rule_name': 'BadRule',
-                'summary': 'should not submit',
-                'is_new_rule': True,
-            },
-        )
-
-    assert res.status_code == 400
-    assert m.call_count == 0
-    body = res.json
-    assert body is not None
-    assert body['error'].startswith('Validation failed')
-
-
-@pytest.mark.use_rules_sources(_base_sources)
-def test_submit_rejects_bad_rule_name(client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_github_backend(monkeypatch)
+def test_create_draft_rejects_invalid_sml(client: 'FlaskClient[Response]') -> None:
     res = client.post(
-        url_for('rule_drafts.submit_draft'),
+        url_for('rule_drafts.create_draft'),
         json={
-            'path': 'rules/new.sml',
-            'source': "X = Rule(when_all=[PostText == 'x'], description='x')",
-            'rule_name': '1-not-an-identifier',
+            'path': 'rules/broken.sml',
+            'rule_name': 'Broken',
+            'source': "AnotherRule = Rule(when_all=[NonexistentFeature == 'x'], description='x')",
             'summary': '',
-            'is_new_rule': True,
         },
     )
     assert res.status_code == 400
+    assert res.json is not None
+    assert 'error' in res.json
 
 
-def test_submission_result_extras_cannot_shadow_canonical_fields() -> None:
-    from osprey.worker.ui_api.osprey.views._rule_drafts_backend import SubmissionResult
-
-    result = SubmissionResult(
-        title='real title',
-        url='https://real.example/pr/1',
-        extras={'title': 'spoofed', 'url': 'https://evil.example', 'pr_number': 7},
+@pytest.mark.use_rules_sources(_base_sources)
+def test_create_draft_rejects_main_sml(client: 'FlaskClient[Response]') -> None:
+    res = client.post(
+        url_for('rule_drafts.create_draft'),
+        json={'path': 'main.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': ''},
     )
-    out = result.to_json()
-    assert out['title'] == 'real title'
-    assert out['url'] == 'https://real.example/pr/1'
-    assert out['main_sml_updated'] is False
-    # Non-colliding extras still pass through for adopters that want them.
-    assert out['pr_number'] == 7
-
-
-@pytest.mark.use_rules_sources(_base_sources)
-def test_submit_rejects_main_sml_as_draft_path(
-    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _set_github_backend(monkeypatch)
-    with requests_mock_module.Mocker() as m:
-        res = client.post(
-            url_for('rule_drafts.submit_draft'),
-            json={
-                'path': 'main.sml',
-                'source': 'Import(rules=[])',
-                'rule_name': 'Whatever',
-                'summary': '',
-                'is_new_rule': False,
-            },
-        )
-        # Guard fires before any network call: the entry point is never a draft.
-        assert m.call_count == 0
     assert res.status_code == 400
-    body = res.json
-    assert body is not None
-    assert 'main.sml' in body['error']
 
 
 @pytest.mark.use_rules_sources(_base_sources)
-def test_submit_surfaces_github_connection_error_as_502(
-    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _set_github_backend(monkeypatch)
-    repo_url = 'https://api.github.com/repos/roostorg/osprey-rules'
-    with requests_mock_module.Mocker() as m:
-        m.get(f'{repo_url}/git/ref/heads/main', exc=requests.exceptions.ConnectTimeout)
-        res = client.post(
-            url_for('rule_drafts.submit_draft'),
-            json={
-                'path': 'rules/new_rule.sml',
-                'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
-                'rule_name': 'AnotherRule',
-                'summary': '',
-                'is_new_rule': True,
-            },
-        )
-    # A forge outage is a structured 502, not an unhandled 500.
-    assert res.status_code == 502
-    body = res.json
-    assert body is not None
-    assert 'Could not reach the git host' in body['error']
+def test_create_draft_rejects_bad_rule_name(client: 'FlaskClient[Response]') -> None:
+    res = client.post(
+        url_for('rule_drafts.create_draft'),
+        json={'path': 'rules/x.sml', 'rule_name': '9 not valid', 'source': _VALID_DRAFT, 'summary': ''},
+    )
+    assert res.status_code == 400
 
 
 @pytest.mark.use_rules_sources(_base_sources)
-def test_submit_happy_path_creates_branch_commits_and_opens_pr(
-    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _set_github_backend(monkeypatch, OSPREY_RULES_PATH_IN_REPO='rules')
+def test_get_draft_returns_one_and_404s(client: 'FlaskClient[Response]') -> None:
+    created = client.post(
+        url_for('rule_drafts.create_draft'),
+        json={'path': 'rules/getme.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': ''},
+    )
+    assert created.json is not None
+    draft_id = created.json['id']
 
-    repo_url = 'https://api.github.com/repos/roostorg/osprey-rules'
-
-    with requests_mock_module.Mocker() as m:
-        m.get(f'{repo_url}/git/ref/heads/main', json={'object': {'sha': 'BASE_SHA'}})
-        m.get(f'{repo_url}/contents/rules/new_rule.sml', status_code=404)
-        m.post(f'{repo_url}/git/refs', status_code=201, json={})
-        m.put(f'{repo_url}/contents/rules/new_rule.sml', status_code=201, json={})
-        m.post(
-            f'{repo_url}/pulls',
-            status_code=201,
-            json={'number': 42, 'html_url': 'https://github.com/roostorg/osprey-rules/pull/42'},
-        )
-
-        res = client.post(
-            url_for('rule_drafts.submit_draft'),
-            json={
-                # Bare filename: OSPREY_RULES_PATH_IN_REPO='rules' prepends the
-                # subdirectory, so the file lands at rules/new_rule.sml.
-                'path': 'new_rule.sml',
-                'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
-                'rule_name': 'AnotherRule',
-                'summary': 'add bye rule',
-                'is_new_rule': True,
-            },
-        )
-
+    res = client.get(url_for('rule_drafts.get_draft', draft_id=draft_id))
     assert res.status_code == 200
-    body = res.json
-    assert body is not None
-    assert body['title'] == 'Pull request #42 opened'
-    assert body['url'] == 'https://github.com/roostorg/osprey-rules/pull/42'
-    assert body['main_sml_updated'] is False
-    # GitHub-specific extras are surfaced for adopters that want them.
-    assert body['pr_number'] == 42
-    assert body['pr_url'] == 'https://github.com/roostorg/osprey-rules/pull/42'
-    assert body['path_in_repo'] == 'rules/new_rule.sml'
-    assert body['branch'].startswith('rule-draft/local-dev/AnotherRule-')
+    assert res.json is not None
+    assert res.json['path'] == 'rules/getme.sml'
+
+    res = client.get(url_for('rule_drafts.get_draft', draft_id=999999))
+    assert res.status_code == 404
+
+
+# --- Draft table: deploy --------------------------------------------------
 
 
 @pytest.mark.use_rules_sources(_base_sources)
-def test_submit_wire_into_main_appends_require_line(
-    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
+def test_deploy_writes_sml_and_marks_deployed(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
-    _set_github_backend(monkeypatch)
+    monkeypatch.setenv('OSPREY_RULES_LOCAL_PATH', str(tmp_path))
+    created = client.post(
+        url_for('rule_drafts.create_draft'),
+        json={'path': 'rules/deploy.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': ''},
+    )
+    assert created.json is not None
+    draft_id = created.json['id']
 
-    repo_url = 'https://api.github.com/repos/roostorg/osprey-rules'
-    existing_main = "Import(rules=['models/post.sml'])\n\nRequire(rule='rules/post_contains_hello.sml')\n"
-    encoded_main = base64.b64encode(existing_main.encode('utf-8')).decode('ascii')
-
-    with requests_mock_module.Mocker() as m:
-        m.get(f'{repo_url}/git/ref/heads/main', json={'object': {'sha': 'BASE_SHA'}})
-        m.get(f'{repo_url}/contents/rules/new_rule.sml', status_code=404)
-        m.post(f'{repo_url}/git/refs', status_code=201, json={})
-        m.put(f'{repo_url}/contents/rules/new_rule.sml', status_code=201, json={})
-        m.get(f'{repo_url}/contents/main.sml', json={'sha': 'MAIN_SHA', 'content': encoded_main, 'type': 'file'})
-        main_put = m.put(f'{repo_url}/contents/main.sml', status_code=200, json={})
-        m.post(
-            f'{repo_url}/pulls',
-            status_code=201,
-            json={'number': 99, 'html_url': 'https://github.com/roostorg/osprey-rules/pull/99'},
-        )
-
-        res = client.post(
-            url_for('rule_drafts.submit_draft'),
-            json={
-                'path': 'rules/new_rule.sml',
-                'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
-                'rule_name': 'AnotherRule',
-                'summary': 'add bye rule and wire it in',
-                'is_new_rule': True,
-                'wire_into_main': True,
-            },
-        )
-
+    res = client.post(url_for('rule_drafts.deploy_draft', draft_id=draft_id), json={})
     assert res.status_code == 200
-    body = res.json
-    assert body is not None
-    assert body['main_sml_updated'] is True
+    assert res.json is not None
+    assert res.json['status'] == 'deployed'
+    assert res.json['deployed_at'] is not None
+    assert res.json['main_sml_updated'] is False
 
-    main_put_request = main_put.last_request
-    assert main_put_request is not None
-    posted = main_put_request.json()
-    decoded_new_main = base64.b64decode(posted['content']).decode('utf-8')
-    assert "Require(rule='rules/new_rule.sml')" in decoded_new_main
-    # The existing Require for post_contains_hello.sml should still be present untouched.
-    assert "Require(rule='rules/post_contains_hello.sml')" in decoded_new_main
+    written = tmp_path / 'rules' / 'deploy.sml'
+    assert written.exists()
+    assert written.read_text() == _VALID_DRAFT
 
 
 @pytest.mark.use_rules_sources(_base_sources)
-def test_submit_wire_into_main_skips_when_require_already_present(
-    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
+def test_deploy_wire_into_main_appends_require(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
-    _set_github_backend(monkeypatch)
+    (tmp_path / 'main.sml').write_text("Import(rules=['models/base.sml'])\n")
+    monkeypatch.setenv('OSPREY_RULES_LOCAL_PATH', str(tmp_path))
+    created = client.post(
+        url_for('rule_drafts.create_draft'),
+        json={'path': 'rules/wired.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': ''},
+    )
+    assert created.json is not None
+    draft_id = created.json['id']
 
-    repo_url = 'https://api.github.com/repos/roostorg/osprey-rules'
-    existing_main = "Require(rule='rules/already_here.sml')\n"
-    encoded_main = base64.b64encode(existing_main.encode('utf-8')).decode('ascii')
-
-    with requests_mock_module.Mocker() as m:
-        m.get(f'{repo_url}/git/ref/heads/main', json={'object': {'sha': 'BASE_SHA'}})
-        m.get(f'{repo_url}/contents/rules/already_here.sml', status_code=404)
-        m.post(f'{repo_url}/git/refs', status_code=201, json={})
-        m.put(f'{repo_url}/contents/rules/already_here.sml', status_code=201, json={})
-        m.get(f'{repo_url}/contents/main.sml', json={'sha': 'MAIN_SHA', 'content': encoded_main, 'type': 'file'})
-        main_put = m.put(f'{repo_url}/contents/main.sml', status_code=200, json={})
-        m.post(
-            f'{repo_url}/pulls',
-            status_code=201,
-            json={'number': 100, 'html_url': 'https://github.com/roostorg/osprey-rules/pull/100'},
-        )
-
-        res = client.post(
-            url_for('rule_drafts.submit_draft'),
-            json={
-                'path': 'rules/already_here.sml',
-                'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
-                'rule_name': 'AnotherRule',
-                'summary': '',
-                'is_new_rule': True,
-                'wire_into_main': True,
-            },
-        )
-
+    res = client.post(url_for('rule_drafts.deploy_draft', draft_id=draft_id), json={'wire_into_main': True})
     assert res.status_code == 200
-    body = res.json
-    assert body is not None
-    assert body['main_sml_updated'] is False
-    # main.sml fetch happens but the PUT to update it must not.
-    assert main_put.call_count == 0
+    assert res.json is not None
+    assert res.json['main_sml_updated'] is True
+    assert "Require(rule='rules/wired.sml')" in (tmp_path / 'main.sml').read_text()
 
 
 @pytest.mark.use_rules_sources(_base_sources)
-def test_submit_409_if_new_rule_file_already_exists(
-    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
+def test_deploy_wire_into_main_is_idempotent(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
-    _set_github_backend(monkeypatch)
+    (tmp_path / 'main.sml').write_text("Import(rules=['models/base.sml'])\nRequire(rule='rules/already.sml')\n")
+    monkeypatch.setenv('OSPREY_RULES_LOCAL_PATH', str(tmp_path))
+    created = client.post(
+        url_for('rule_drafts.create_draft'),
+        json={'path': 'rules/already.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': ''},
+    )
+    assert created.json is not None
+    draft_id = created.json['id']
 
-    repo_url = 'https://api.github.com/repos/roostorg/osprey-rules'
+    res = client.post(url_for('rule_drafts.deploy_draft', draft_id=draft_id), json={'wire_into_main': True})
+    assert res.status_code == 200
+    assert res.json is not None
+    assert res.json['main_sml_updated'] is False
+    assert (tmp_path / 'main.sml').read_text().count("Require(rule='rules/already.sml')") == 1
 
-    with requests_mock_module.Mocker() as m:
-        m.get(f'{repo_url}/git/ref/heads/main', json={'object': {'sha': 'BASE_SHA'}})
-        m.get(
-            f'{repo_url}/contents/new_rule.sml',
-            json={'sha': 'EXISTING_BLOB_SHA', 'type': 'file'},
-        )
 
-        res = client.post(
-            url_for('rule_drafts.submit_draft'),
-            json={
-                'path': 'new_rule.sml',
-                'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
-                'rule_name': 'AnotherRule',
-                'summary': '',
-                'is_new_rule': True,
-            },
-        )
+@pytest.mark.use_rules_sources(_base_sources)
+def test_deploy_wire_into_main_409_when_main_missing(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    monkeypatch.setenv('OSPREY_RULES_LOCAL_PATH', str(tmp_path))
+    created = client.post(
+        url_for('rule_drafts.create_draft'),
+        json={'path': 'rules/nomain.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': ''},
+    )
+    assert created.json is not None
+    draft_id = created.json['id']
 
+    res = client.post(url_for('rule_drafts.deploy_draft', draft_id=draft_id), json={'wire_into_main': True})
     assert res.status_code == 409
 
 
 @pytest.mark.use_rules_sources(_base_sources)
-def test_pending_filters_to_rules_path_and_sml(
-    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _set_github_backend(monkeypatch, OSPREY_RULES_PATH_IN_REPO='rules')
-
-    repo_url = 'https://api.github.com/repos/roostorg/osprey-rules'
-
-    with requests_mock_module.Mocker() as m:
-        m.get(
-            f'{repo_url}/pulls',
-            json=[
-                {
-                    'number': 1,
-                    'title': 'Add rule X',
-                    'html_url': 'https://github.com/roostorg/osprey-rules/pull/1',
-                    'head': {'ref': 'rule-draft/local-dev/X-1'},
-                    'user': {'login': 'someone'},
-                    'created_at': '2026-06-30T12:00:00Z',
-                },
-                {
-                    'number': 2,
-                    'title': 'Update README',
-                    'html_url': 'https://github.com/roostorg/osprey-rules/pull/2',
-                    'head': {'ref': 'docs/readme'},
-                    'user': {'login': 'someone'},
-                    'created_at': '2026-06-30T13:00:00Z',
-                },
-            ],
-        )
-        m.get(
-            f'{repo_url}/pulls/1/files',
-            json=[{'filename': 'rules/x.sml'}],
-        )
-        m.get(
-            f'{repo_url}/pulls/2/files',
-            json=[{'filename': 'README.md'}],
-        )
-
-        res = client.get(url_for('rule_drafts.pending_drafts'))
-
-    assert res.status_code == 200
-    body = res.json
-    assert body is not None
-    assert len(body['pending']) == 1
-    entry = body['pending'][0]
-    assert entry['title'] == 'Add rule X'
-    assert entry['url'] == 'https://github.com/roostorg/osprey-rules/pull/1'
-    assert entry['touched_files'] == ['rules/x.sml']
-    # GitHub-specific extras carried through for adopters that want them.
-    assert entry['pr_number'] == 1
-
-
-@pytest.mark.use_rules_sources(_base_sources)
-def test_parse_into_builder_round_trips_a_builder_shaped_rule(client: 'FlaskClient[Response]') -> None:
-    source = """
-Import(rules=['models/post.sml'])
-
-ContainsCat = Rule(
-  when_all=[
-    TextContains(text=PostText, phrase='cat'),
-    EventType == 'create_post',
-  ],
-  description='looks for cat',
-)
-
-WhenRules(
-  rules_any=[ContainsCat],
-  then=[
-    LabelAdd(entity=UserId, label='meow'),
-  ],
-)
-"""
-    res = client.post(
-        url_for('rule_drafts.parse_into_builder'),
-        json={'path': 'rules/contains_cat.sml', 'source': source},
+def test_deploy_503_when_rules_dir_unset(client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv('OSPREY_RULES_LOCAL_PATH', raising=False)
+    created = client.post(
+        url_for('rule_drafts.create_draft'),
+        json={'path': 'rules/nodir.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': ''},
     )
-    assert res.status_code == 200
-    body = res.json
-    assert body is not None
-    assert body['supported'] is True
-    model = body['model']
-    assert model['ruleName'] == 'ContainsCat'
-    assert model['description'] == 'looks for cat'
-    assert model['conditions'] == [
-        {'feature': 'PostText', 'operator': 'includes', 'rhs': 'cat', 'rhsIsFeature': False},
-        {'feature': 'EventType', 'operator': '==', 'rhs': 'create_post', 'rhsIsFeature': False},
-    ]
-    assert model['outcomes'] == [
-        {
-            'effect': 'LabelAdd',
-            'args': [
-                {'name': 'entity', 'value': 'UserId', 'isFeature': True},
-                {'name': 'label', 'value': 'meow', 'isFeature': False},
-            ],
-        }
-    ]
+    assert created.json is not None
+    draft_id = created.json['id']
 
-
-@pytest.mark.use_rules_sources(_base_sources)
-def test_parse_into_builder_handles_excludes(client: 'FlaskClient[Response]') -> None:
-    source = "BlocksCat = Rule(when_all=[not TextContains(text=PostText, phrase='cat')], description='no cat')\n"
-    res = client.post(
-        url_for('rule_drafts.parse_into_builder'),
-        json={'path': 'rules/blocks_cat.sml', 'source': source},
-    )
-    assert res.status_code == 200
-    body = res.json
-    assert body is not None
-    assert body['supported'] is True
-    assert body['model']['conditions'] == [
-        {'feature': 'PostText', 'operator': 'excludes', 'rhs': 'cat', 'rhsIsFeature': False},
-    ]
-
-
-@pytest.mark.use_rules_sources(_base_sources)
-def test_parse_into_builder_rejects_multiple_rules(client: 'FlaskClient[Response]') -> None:
-    source = (
-        "A = Rule(when_all=[PostText == 'a'], description='a')\nB = Rule(when_all=[PostText == 'b'], description='b')\n"
-    )
-    res = client.post(
-        url_for('rule_drafts.parse_into_builder'),
-        json={'path': 'rules/multi.sml', 'source': source},
-    )
-    assert res.status_code == 200
-    body = res.json
-    assert body is not None
-    assert body['supported'] is False
-    assert 'multiple Rule definitions' in body['reason']
-
-
-@pytest.mark.use_rules_sources(_base_sources)
-def test_parse_into_builder_rejects_helper_assigns(client: 'FlaskClient[Response]') -> None:
-    source = "Helper = 'cat'\nA = Rule(when_all=[PostText == Helper], description='a')\n"
-    res = client.post(
-        url_for('rule_drafts.parse_into_builder'),
-        json={'path': 'rules/helper.sml', 'source': source},
-    )
-    assert res.status_code == 200
-    body = res.json
-    assert body is not None
-    assert body['supported'] is False
-    assert 'helper assignment' in body['reason']
-
-
-@pytest.mark.use_rules_sources(_base_sources)
-def test_parse_into_builder_rejects_complex_condition(client: 'FlaskClient[Response]') -> None:
-    # A boolean operator inside `when_all` would need Code Editor; the builder is AND-only via row repetition.
-    source = "A = Rule(when_all=[PostText == 'a' and EventType == 'create_post'], description='a')\n"
-    res = client.post(
-        url_for('rule_drafts.parse_into_builder'),
-        json={'path': 'rules/complex.sml', 'source': source},
-    )
-    assert res.status_code == 200
-    body = res.json
-    assert body is not None
-    assert body['supported'] is False
-    assert 'Rule Builder cannot represent' in body['reason']
-
-
-@pytest.mark.use_rules_sources(_base_sources)
-def test_parse_into_builder_rejects_file_with_no_rule(client: 'FlaskClient[Response]') -> None:
-    source = "Import(rules=['models/post.sml'])\n"
-    res = client.post(
-        url_for('rule_drafts.parse_into_builder'),
-        json={'path': 'rules/empty.sml', 'source': source},
-    )
-    assert res.status_code == 200
-    body = res.json
-    assert body is not None
-    assert body['supported'] is False
-    assert 'no Rule(...)' in body['reason']
-
-
-@pytest.mark.use_rules_sources(_base_sources)
-def test_parse_into_builder_rejects_syntax_error(client: 'FlaskClient[Response]') -> None:
-    res = client.post(
-        url_for('rule_drafts.parse_into_builder'),
-        json={'path': 'rules/broken.sml', 'source': 'this is not valid SML at all !!!'},
-    )
-    assert res.status_code == 200
-    body = res.json
-    assert body is not None
-    assert body['supported'] is False
-    assert 'could not parse SML' in body['reason']
-
-
-@pytest.mark.use_rules_sources(_base_sources)
-def test_unknown_backend_value_returns_500(client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('OSPREY_RULES_SUBMISSION_BACKEND', 'gerrit')
-    res = client.post(
-        url_for('rule_drafts.submit_draft'),
-        json={
-            'path': 'rules/new_rule.sml',
-            'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
-            'rule_name': 'AnotherRule',
-            'summary': '',
-            'is_new_rule': True,
-        },
-    )
-    assert res.status_code == 500
-    body = res.json
-    assert body is not None
-    assert "Unknown OSPREY_RULES_SUBMISSION_BACKEND 'gerrit'" in body['error']
-
-
-@pytest.mark.use_rules_sources(_base_sources)
-def test_pending_returns_empty_list_for_null_backend(
-    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.delenv('OSPREY_RULES_SUBMISSION_BACKEND', raising=False)
-    res = client.get(url_for('rule_drafts.pending_drafts'))
+    res = client.post(url_for('rule_drafts.deploy_draft', draft_id=draft_id), json={})
     assert res.status_code == 503
-    body = res.json
-    assert body is not None
-    assert body['pending'] == []
 
 
 @pytest.mark.use_rules_sources(_base_sources)
-def test_submit_github_enterprise_url_is_threaded_into_requests(
-    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
+def test_deploy_404_for_unknown_draft(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
-    """GitHub Enterprise customers point OSPREY_GITHUB_API_URL at their own host; every API call must use it."""
-    _set_github_backend(
-        monkeypatch,
-        OSPREY_GITHUB_API_URL='https://github.acme.test/api/v3',
-        OSPREY_RULES_REPO='acme/rules',
-    )
-
-    repo_url = 'https://github.acme.test/api/v3/repos/acme/rules'
-
-    with requests_mock_module.Mocker() as m:
-        m.get(f'{repo_url}/git/ref/heads/main', json={'object': {'sha': 'BASE_SHA'}})
-        m.get(f'{repo_url}/contents/rules/new_rule.sml', status_code=404)
-        m.post(f'{repo_url}/git/refs', status_code=201, json={})
-        m.put(f'{repo_url}/contents/rules/new_rule.sml', status_code=201, json={})
-        m.post(
-            f'{repo_url}/pulls',
-            status_code=201,
-            json={'number': 5, 'html_url': 'https://github.acme.test/acme/rules/pull/5'},
-        )
-
-        res = client.post(
-            url_for('rule_drafts.submit_draft'),
-            json={
-                'path': 'rules/new_rule.sml',
-                'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
-                'rule_name': 'AnotherRule',
-                'summary': '',
-                'is_new_rule': True,
-            },
-        )
-
-    assert res.status_code == 200
-    body = res.json
-    assert body is not None
-    assert body['url'] == 'https://github.acme.test/acme/rules/pull/5'
-    # If any call had hit api.github.com instead, the Mocker would have raised NoMockAddress.
-
-
-@pytest.mark.use_rules_sources(_base_sources)
-def test_local_backend_writes_file_and_returns_no_url(
-    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
-) -> None:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        rules_dir = Path(tmpdir)
-        (rules_dir / 'main.sml').write_text("Import(rules=['models/post.sml'])\n", encoding='utf-8')
-
-        monkeypatch.setenv('OSPREY_RULES_SUBMISSION_BACKEND', 'local')
-        monkeypatch.setenv('OSPREY_RULES_LOCAL_PATH', str(rules_dir))
-
-        res = client.post(
-            url_for('rule_drafts.submit_draft'),
-            json={
-                'path': 'rules/new_rule.sml',
-                'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
-                'rule_name': 'AnotherRule',
-                'summary': 'add bye rule',
-                'is_new_rule': True,
-                'wire_into_main': False,
-            },
-        )
-
-        assert res.status_code == 200
-        body = res.json
-        assert body is not None
-        assert body['url'] is None
-        assert 'rules/new_rule.sml' in body['title']
-        assert body['main_sml_updated'] is False
-
-        written = (rules_dir / 'rules' / 'new_rule.sml').read_text(encoding='utf-8')
-        assert 'AnotherRule' in written
-
-
-@pytest.mark.use_rules_sources(_base_sources)
-def test_local_backend_wires_into_main_when_requested(
-    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
-) -> None:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        rules_dir = Path(tmpdir)
-        (rules_dir / 'main.sml').write_text("Import(rules=['models/post.sml'])\n", encoding='utf-8')
-
-        monkeypatch.setenv('OSPREY_RULES_SUBMISSION_BACKEND', 'local')
-        monkeypatch.setenv('OSPREY_RULES_LOCAL_PATH', str(rules_dir))
-
-        res = client.post(
-            url_for('rule_drafts.submit_draft'),
-            json={
-                'path': 'rules/new_rule.sml',
-                'source': "Import(rules=['models/base.sml'])\nAnotherRule = Rule(when_all=[PostText == 'bye'], description='bye')",
-                'rule_name': 'AnotherRule',
-                'summary': '',
-                'is_new_rule': True,
-                'wire_into_main': True,
-            },
-        )
-
-        assert res.status_code == 200
-        body = res.json
-        assert body is not None
-        assert body['main_sml_updated'] is True
-        updated_main = (rules_dir / 'main.sml').read_text(encoding='utf-8')
-        assert "Require(rule='rules/new_rule.sml')" in updated_main
-
-
-@pytest.mark.use_rules_sources(_base_sources)
-def test_local_backend_rejects_path_traversal(client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch) -> None:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        rules_dir = Path(tmpdir)
-        monkeypatch.setenv('OSPREY_RULES_SUBMISSION_BACKEND', 'local')
-        monkeypatch.setenv('OSPREY_RULES_LOCAL_PATH', str(rules_dir))
-
-        # The view layer already rejects '..' in the path, so to actually exercise the
-        # local backend's own guard we bypass the view-level check by going around the
-        # API: instantiate the backend and call submit_draft directly with a traversal path.
-        from osprey.worker.ui_api.osprey.views._rule_drafts_backend import RuleDraftBackendError
-        from osprey.worker.ui_api.osprey.views._rule_drafts_local import LocalBackend, LocalConfig
-
-        backend = LocalBackend(LocalConfig(rules_dir=rules_dir))
-        with pytest.raises(RuleDraftBackendError) as exc_info:
-            backend.submit_draft(
-                draft_path='../escape.sml',
-                sml_source='x = 1',
-                rule_name='X',
-                summary='',
-                author_email='test@local',
-                is_new_rule=True,
-                wire_into_main=False,
-            )
-        assert 'escapes the configured rules directory' in exc_info.value.message
+    monkeypatch.setenv('OSPREY_RULES_LOCAL_PATH', str(tmp_path))
+    res = client.post(url_for('rule_drafts.deploy_draft', draft_id=999999), json={})
+    assert res.status_code == 404
