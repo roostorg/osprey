@@ -94,4 +94,4 @@ Separately, `ExecutionResultStore` backends persist full execution results for l
 
 ### How results become queryable in the UI
 
-Druid consumes the worker's Kafka output and powers the UI API's real-time querying; this is what backs the [Investigate](user/investigate/README.md) query interface and the [Rules](user/manage.md#rules-registry)/[Features Registries](user/manage.md#features-registry). If you're running without Kafka output enabled, Druid has nothing to index and the query UI will be empty even though rules are still evaluating correctly.
+Druid consumes the worker's Kafka output and powers the UI API's real-time querying; this is what backs the [Investigate](user/investigate/) query interface and the [Rules](user/manage.md#rules-registry)/[Features Registries](user/manage.md#features-registry). If you're running without Kafka output enabled, Druid has nothing to index and the query UI will be empty even though rules are still evaluating correctly.
