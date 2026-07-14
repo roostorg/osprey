@@ -1,6 +1,6 @@
 # User Research & Personas
 
-Osprey is designed for users who need to investigate and take automated action on events in real-time. By interviewing prospective Osprey users, ROOST has drafted the following user personas for developers to better understand who might be interested in using this tool. We hope this research helps the open source community prioritize features to build moving forward!
+Osprey is designed for users who need to investigate and take automated action on events in real-time. By interviewing prospective Osprey users, ROOST has drafted the following user personas for developers to better understand who might be interested in using this tool. We hope this research helps the open source community prioritize features to build moving forward.
 
 ## T&S Engineers
 
