@@ -80,7 +80,7 @@ describe('streamAsk', () => {
         frame('assistant_message', { text: 'hi' }),
         frame('done'),
         frame('assistant_message', { text: 'should be ignored after done' }),
-      ]),
+      ])
     );
     const events = await collect(streamAsk(ENDPOINT, REQ));
     expect(events.map((e) => e.type)).toEqual(['conversation_started', 'assistant_message', 'done']);
@@ -92,7 +92,9 @@ describe('streamAsk', () => {
   });
 
   it('maps a pre-flight HTTP error to the server code', async () => {
-    setFetch(async () => new Response(JSON.stringify({ error: { code: 'invalid_model', message: 'nope' } }), { status: 400 }));
+    setFetch(
+      async () => new Response(JSON.stringify({ error: { code: 'invalid_model', message: 'nope' } }), { status: 400 })
+    );
     await expect(collect(streamAsk(ENDPOINT, REQ))).rejects.toMatchObject({ code: 'invalid_model' });
   });
 

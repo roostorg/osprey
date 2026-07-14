@@ -98,7 +98,7 @@ export function createAskStore(deps: AskDeps = { stream: streamAsk }) {
             messages: s.messages.map((m) =>
               m.id === assistantId
                 ? { ...m, evidence: [...m.evidence, evidenceFromPayload(event.payload as QueryResultPayload)] }
-                : m,
+                : m
             ),
           }));
           break;

@@ -13,15 +13,15 @@ function ev(type: AskEvent['type'], payload: Record<string, unknown> = {}, extra
 }
 
 function streamOf(events: AskEvent[]): StreamFn {
-  return (async function* () {
+  return async function* () {
     for (const event of events) {
       yield event;
     }
-  }) as unknown as StreamFn;
+  } as unknown as StreamFn;
 }
 
 function gatedStream(before: AskEvent[], gate: Promise<void>, after: AskEvent[]): StreamFn {
-  return (async function* () {
+  return async function* () {
     for (const event of before) {
       yield event;
     }
@@ -29,16 +29,16 @@ function gatedStream(before: AskEvent[], gate: Promise<void>, after: AskEvent[])
     for (const event of after) {
       yield event;
     }
-  }) as unknown as StreamFn;
+  } as unknown as StreamFn;
 }
 
 function throwingStream(before: AskEvent[], error: unknown): StreamFn {
-  return (async function* () {
+  return async function* () {
     for (const event of before) {
       yield event;
     }
     throw error;
-  }) as unknown as StreamFn;
+  } as unknown as StreamFn;
 }
 
 describe('AskStore', () => {
@@ -70,11 +70,10 @@ describe('AskStore', () => {
       release = resolve;
     });
     const useStore = createAskStore({
-      stream: gatedStream(
-        [ev('conversation_started', {}, { conversation_id: 'old' })],
-        gate,
-        [ev('assistant_message', { text: 'late answer' }), ev('done')],
-      ),
+      stream: gatedStream([ev('conversation_started', {}, { conversation_id: 'old' })], gate, [
+        ev('assistant_message', { text: 'late answer' }),
+        ev('done'),
+      ]),
     });
     useStore.getState().configure(ENDPOINT);
     const pending = useStore.getState().sendMessage('first');
@@ -93,11 +92,10 @@ describe('AskStore', () => {
       release = resolve;
     });
     const useStore = createAskStore({
-      stream: gatedStream(
-        [ev('conversation_started', {}, { conversation_id: 'c1' })],
-        gate,
-        [ev('assistant_message', { text: 'late' }), ev('done')],
-      ),
+      stream: gatedStream([ev('conversation_started', {}, { conversation_id: 'c1' })], gate, [
+        ev('assistant_message', { text: 'late' }),
+        ev('done'),
+      ]),
     });
     useStore.getState().configure(ENDPOINT);
     const pending = useStore.getState().sendMessage('hi');
@@ -113,7 +111,10 @@ describe('AskStore', () => {
 
   it('maps an AskStreamError to a safe error state', async () => {
     const useStore = createAskStore({
-      stream: throwingStream([ev('conversation_started', {}, { conversation_id: 'c1' })], new AskStreamError('provider_error', 'Provider unavailable.')),
+      stream: throwingStream(
+        [ev('conversation_started', {}, { conversation_id: 'c1' })],
+        new AskStreamError('provider_error', 'Provider unavailable.')
+      ),
     });
     useStore.getState().configure(ENDPOINT);
     await useStore.getState().sendMessage('hi');
