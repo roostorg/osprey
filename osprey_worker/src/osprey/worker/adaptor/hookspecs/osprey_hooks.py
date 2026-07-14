@@ -15,6 +15,7 @@ from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
     from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter
+    from osprey.worker.lib.llm.base import BaseLLMProvider
     from osprey.worker.lib.storage.stored_execution_result import ExecutionResultStore
     from osprey.worker.sinks.sink.input_stream import BaseInputStream
     from osprey.worker.sinks.sink.output_sink import BaseOutputSink
@@ -63,6 +64,16 @@ def register_labels_service_or_provider(config: Config) -> LabelsServiceBase | L
     service base and utilizing the provided labels provider, or by overriding the labels provider to
     fit your needs"""
     raise NotImplementedError('register_labels_service_or_provider must be implemented by the plugin')
+
+
+@hookspec(firstresult=True)
+def register_llm_provider(config: Config) -> BaseLLMProvider:
+    """Register an LLM API provider used by AI-assisted features.
+
+    Only the first registered provider is used (``firstresult=True``). Return a
+    concrete :class:`BaseLLMProvider`.
+    """
+    raise NotImplementedError('register_llm_provider must be implemented by the plugin')
 
 
 @hookspec(firstresult=True)
