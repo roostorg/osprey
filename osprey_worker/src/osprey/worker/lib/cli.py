@@ -209,7 +209,7 @@ def get_lines_from_file_as_set(file_path: str) -> set[str]:
     '--reason',
     help=(
         'If specified, the reason the label is being applied.'
-        ' Should be camel case, without spaces. Defaults to "CliLabelMutation".'
+        ' Should be camel case, without spaces. Defaults to "CliLabelMutationWithoutEffects".'
     ),
 )
 @click.option(
