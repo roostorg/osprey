@@ -6,6 +6,7 @@ src = "."
 
 [build]
 build-dir = "./book"
+create-missing = false
 
 [output.html]
 default-theme = "roost"
@@ -17,3 +18,6 @@ site-url = "/osprey/"
 
 [output.html.print]
 enable = false
+
+[output.html.redirect]
+"/integrations.html" = "development/integrations.html"

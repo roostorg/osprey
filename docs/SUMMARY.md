@@ -29,7 +29,6 @@
 # Concepts & More
 
 - [Writing Rules](rules.md)
-- [Integrations & Plugins](integrations.md)
 - [Data Flow: Getting Data In and Out](data-flow.md)
 - [User Research & Personas](research-personas.md)
 
