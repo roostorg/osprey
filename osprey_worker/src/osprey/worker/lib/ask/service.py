@@ -10,7 +10,7 @@ The conversation lock is released on every terminal path, including client disco
 from __future__ import annotations
 
 import uuid
-from typing import Any, Callable, Dict, Iterator, List, Optional
+from typing import Any, Callable, Dict, Generator, List, Optional
 
 from osprey.worker.lib.ask.contracts import (
     AskEvent,
@@ -67,7 +67,7 @@ class AskService:
         principal: Principal,
         *,
         cancel: Optional[Callable[[], bool]] = None,
-    ) -> Iterator[AskEvent]:
+    ) -> Generator[AskEvent, None, None]:
         cfg = self._cfg
 
         # ---- PRE-FLIGHT: raises before any yield; the transport maps to HTTP ----
