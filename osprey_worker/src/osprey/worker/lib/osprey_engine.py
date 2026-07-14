@@ -158,6 +158,14 @@ class OspreyEngine:
         return self._execution_graph
 
     @property
+    def udf_registry(self) -> UDFRegistry:
+        return self._udf_registry
+
+    @property
+    def validator_registry(self) -> ValidatorRegistry:
+        return self._validator_registry
+
+    @property
     def config(self) -> SourcesConfig:
         return self._execution_graph.validated_sources.sources.config
 

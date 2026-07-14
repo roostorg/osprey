@@ -56,3 +56,28 @@ The list is paginated (50 per page) and can be filtered and sorted:
 - **Sort**: by name, most referenced, or least referenced
 
 Each row shows the rule's name, source file, description, reference count, and line number within the source file.
+
+## Rule Authoring (Experimental feature)
+
+Users can draft SML rules directly in the UI. Drafts are saved to a `rule_drafts` table so the people who operate Osprey can reference, edit, and deploy them without any external code host.
+
+The editor validates every keystroke against the same AST validator the running engine uses, so compile-time errors surface before a draft is saved. The Rule Builder view expresses the common shape (name, conditions, outcomes) as a form and generates SML; the Code Editor view accepts arbitrary SML for anything the builder can't represent.
+
+### The draft rules table
+
+Drafts live in a Postgres table (`rule_drafts`), one row per rule file path. The API (all gated by the `CAN_EDIT_RULE_DRAFTS` ability, granted to `super_user`):
+
+- `POST /rule-drafts` — re-validates the SML server-side, then upserts the draft.
+- `GET /rule-drafts` — lists every draft (the table operators work from).
+- `GET /rule-drafts/<id>` — fetches a single draft.
+- `POST /rule-drafts/<id>/deploy` — re-validates, writes the SML into the rules directory, and marks the draft `deployed`. Pass `wire_into_main: true` to also append a `Require(rule=...)` line to `main.sml` so the rule takes effect (a rule file is inert until something requires it).
+
+### Deploying
+
+Deploy writes the draft's SML into a rules directory that the engine's sources provider already loads (a filesystem hand-off: whatever pipeline syncs that directory activates the rule).
+
+| Var | Default | Notes |
+|---|---|---|
+| `OSPREY_RULES_LOCAL_PATH` | _required for deploy_ | Absolute path to the rules directory the engine loads. Deploy writes SML here; must already exist. If unset, `POST /deploy` returns 503 (drafting and validation still work). |
+
+> **Future direction:** a DB-backed `SourcesProvider` could let the engine load deployed drafts straight from the `rule_drafts` table, removing the filesystem hand-off and making rule management work with zero external infrastructure. This PR keeps the filesystem deploy; the table is already the source of truth for drafts.
