@@ -1,3 +1,4 @@
+import time
 from types import SimpleNamespace
 from typing import Iterator
 from unittest.mock import MagicMock, patch
@@ -15,8 +16,10 @@ SAMPLE_PROFILE = {'did': PLACEHOLDER_DID, 'handle': 'alice.bsky.social', 'displa
 @pytest.fixture(autouse=True)
 def clear_cache() -> Iterator[None]:
     enrichment_udfs._profile_cache.clear()
+    enrichment_udfs._inflight.clear()
     yield
     enrichment_udfs._profile_cache.clear()
+    enrichment_udfs._inflight.clear()
 
 
 def _mock_response(payload: object) -> MagicMock:
@@ -41,6 +44,47 @@ def test_fetch_profile_propagates_http_error() -> None:
     with patch.object(enrichment_udfs._session, 'get', return_value=response):
         with pytest.raises(requests.HTTPError):
             enrichment_udfs._fetch_profile(PLACEHOLDER_DID)
+    # A failed fetch leaves nothing behind, so the next lookup retries.
+    assert PLACEHOLDER_DID not in enrichment_udfs._inflight
+
+
+def test_fetch_rides_on_in_progress_request() -> None:
+    # Simulate another greenlet already fetching this DID: the entry is present in
+    # _inflight with its result set. A second caller must ride on it, not re-request.
+    inflight = enrichment_udfs._InflightFetch()
+    inflight.profile = SAMPLE_PROFILE
+    inflight.done.set()
+    enrichment_udfs._inflight[PLACEHOLDER_DID] = inflight
+
+    with patch.object(enrichment_udfs._session, 'get') as get:
+        result = enrichment_udfs._fetch_profile(PLACEHOLDER_DID)
+
+    assert result == SAMPLE_PROFILE
+    get.assert_not_called()
+
+
+def test_fetch_reraises_in_progress_error() -> None:
+    inflight = enrichment_udfs._InflightFetch()
+    inflight.error = requests.ConnectionError()
+    inflight.done.set()
+    enrichment_udfs._inflight[PLACEHOLDER_DID] = inflight
+
+    with patch.object(enrichment_udfs._session, 'get') as get:
+        with pytest.raises(requests.ConnectionError):
+            enrichment_udfs._fetch_profile(PLACEHOLDER_DID)
+    get.assert_not_called()
+
+
+def test_expired_entry_triggers_refetch() -> None:
+    with patch.object(enrichment_udfs._session, 'get', return_value=_mock_response(SAMPLE_PROFILE)) as get:
+        enrichment_udfs._fetch_profile(PLACEHOLDER_DID)
+        assert get.call_count == 1
+
+        # Jump past the TTL so the cached entry is considered stale and refetched.
+        stale = time.monotonic() + enrichment_udfs._CACHE_TTL_SECONDS + 1
+        with patch.object(enrichment_udfs.time, 'monotonic', return_value=stale):
+            enrichment_udfs._fetch_profile(PLACEHOLDER_DID)
+        assert get.call_count == 2
 
 
 def test_atproto_handle_returns_handle() -> None:

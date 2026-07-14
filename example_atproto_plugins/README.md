@@ -65,7 +65,7 @@ Account events, commits for collections not in `COLLECTION_NAMES`, and commits w
 
 ### Profile enrichment (opt-in)
 
-JetStream events identify the actor only by DID, which isn't searchable the way a handle or display name is. The plugin ships two UDFs, `AtprotoHandle` and `AtprotoDisplayName`, that resolve a DID to those fields via Bluesky's public, unauthenticated AppView (`app.bsky.actor.getProfile`). Results are cached per DID, and lookups fail soft (the feature is simply absent) when the API errors or rate-limits.
+JetStream events identify the actor only by DID, which isn't searchable the way a handle or display name is. The plugin ships two UDFs, `AtprotoHandle` and `AtprotoDisplayName`, that resolve a DID to those fields via Bluesky's public, unauthenticated AppView (`app.bsky.actor.getProfile`). Results are cached per DID and lookups fail soft (the feature is simply absent) when the API errors or rate-limits. The whole profile is fetched once per DID: because async UDFs run concurrently, a rule that reads both fields would otherwise fire two `getProfile` calls at once, so a fetch already in progress for a DID is shared rather than duplicated. Cached entries expire after an hour since handles and display names change; the fuller approach is to bust a DID's entry when an identity or profile-update event comes through JetStream, left out here to keep the example focused.
 
 **It is off by default.** Each unique DID costs an external API call, which is fine for a demo but is exactly the kind of dependency you don't want in a load test — so the default rules run against the raw firehose with no outbound calls. To turn enrichment on:
 
