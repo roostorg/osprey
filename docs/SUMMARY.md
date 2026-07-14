@@ -16,7 +16,7 @@
 
 - [Development Guide](development/README.md)
   - [Workflow](development/workflow.md)
-  - [Tools Overview](development/tools.md)
+  - [Development Tools](development/tools.md)
   - [CLI Reference](development/cli-reference.md)
   - [Integrations & Plugins](development/integrations.md)
   - [Troubleshooting](development/troubleshooting.md)
