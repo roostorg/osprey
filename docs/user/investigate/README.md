@@ -59,7 +59,7 @@ The right panel is Osprey's live feed. It shows individual events matching the c
 
 ![Event Stream](../../images/event-stream.png)
 
-The stream can be displayed in card format or list format. You can customize which fields appear per event by selecting **Summary Features**, helpful when different team members care about different metadata.
+The stream can be displayed in card format or list format. On first load, each event card shows all of its extracted features (or the summary features configured for that action type, if any), so the stream is useful before you've set anything up. You can customize which fields appear per event with **Select Summary Features**, helpful when different team members care about different metadata.
 
 ![Summary Features](../../images/summary-features.png)
 
