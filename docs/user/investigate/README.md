@@ -38,7 +38,7 @@ The center panels show two types of visualizations:
 
 ![Time Series Hover](../../images/hover-time-series.png)
 
-You can add additional timeseries charts to compare different time granularities side-by-side. Charts you no longer need can be removed ("yeeted").
+You can add additional timeseries charts to compare different time granularities side-by-side. Charts you no longer need can be removed with the **Yeet** button.
 
 ![Multiple Time Series](../../images/multiple-time-series.png)
 
@@ -47,6 +47,7 @@ You can add additional timeseries charts to compare different time granularities
 - Adjust the number of results shown (precision)
 - Enable **Period over Period (PoP)** to compare current results against a past time window and see the delta
 - Export the table as a CSV
+- Remove the table with the **Yeet Table** button
 
 ![Top N Charts](../../images/top-n-charts.png)
 
