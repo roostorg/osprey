@@ -2,7 +2,7 @@
 
 # Osprey
 
-**Automate the obvious and investigate the ambiguous.** High-performance safety rules engine for real-time event processing at scale. 
+**Automate the obvious and investigate the ambiguous.** Osprey is a safety rules engine for real-time event processing at scale. 
 
 - take action based on user behavior
 - combine actions with human written rules
@@ -17,6 +17,22 @@ Osprey is a library for processing actions through human-written rules and outpu
 
 Osprey is built for engineers and Trust & Safety teams who want to explore, test, and integrate its core capabilities into their platform for incident response and Trust & Safety investigation. [Read more about user research and personas](docs/research-personas.md).
 
+## Try it
+
+If you have Docker with Compose v2, one command brings up the full stack with sample data and opens the UI on a pre-filled query:
+
+```sh
+./demo.sh
+```
+
+Or, without cloning the repo first:
+
+```sh
+curl -sSL https://raw.githubusercontent.com/roostorg/osprey/main/demo.sh | bash
+```
+
+The [Getting Started guide](https://roostorg.github.io/osprey/latest/getting-started.html) explains what the demo starts, what to try in the UI, and how to shut it all down. The rest of the documentation lives at [roostorg.github.io/osprey/latest](https://roostorg.github.io/osprey/latest/).
+
 ## Adopters
 
 Osprey is used by:
@@ -28,7 +44,7 @@ Using Osprey and want to add your project/organization to this list? [Open a pul
 
 ## Development
 
-- See the [development guide](./docs/development/) for comprehensive development setup and workflow documentation
+- See the [development guide](./docs/development/) for development setup and workflow documentation
 - All code changes should pass linting (Ruff) and type checking (MyPy)
 - Pre-commit hooks automatically run on each commit to maintain code quality
 
@@ -55,4 +71,4 @@ Your experimentation feedback will directly shape future priorities and help us 
 
 ## Recognition
 
-Discord uses Osprey to quickly detect and remove new types of harm that put users at risk. Rather than leaving other platforms to build similar tools from scratch, ROOST and Discord have open-sourced this powerful rule engine in collaboration with [internet.dev](https://internet.dev/) to make it available for anyone who needs it.
+Discord uses Osprey to quickly detect and remove new types of harm that put users at risk. Rather than leaving other platforms to build similar tools from scratch, ROOST and Discord have open-sourced Osprey in collaboration with [internet.dev](https://internet.dev/) to make it available for anyone who needs it.
