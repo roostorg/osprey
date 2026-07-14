@@ -1,0 +1,9 @@
+blank_issues_enabled: false # maintainers can still file blank issues for convenience
+contact_links:
+  - name: Discuss Osprey
+    about: 'See previously-asked questions and existing discussions about Osprey, or start your own'
+    url: https://github.com/roostorg/osprey/discussions
+
+  - name: Chat with contributors
+    about: 'Join the ROOST Discord server'
+    url: https://discord.gg/5Csqnw2FSQ
