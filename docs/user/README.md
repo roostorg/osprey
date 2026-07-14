@@ -1,6 +1,6 @@
 # User Guide
 
-Osprey is a web-based investigation and management console for safety teams. Query event data in real time, visualize trends, label entities, manage rules and features, and run bulk operations.
+Osprey is a web-based investigation and management console for safety teams. Query event data in real time, visualize trends, label entities, manage rules and features, and run bulk operations. If terms like actions, features, and labels are new to you, start with [Concepts](concepts.md).
 
 [![The Osprey UI during an investigation: a query filtering events where SuspiciousDisplayName is True, timeseries charts of matching event volume, and the live event stream with one entity's label popup open showing a negative spam_display_name label](../images/osprey-suspicious-display-name.png)](../images/osprey-suspicious-display-name.png)
 

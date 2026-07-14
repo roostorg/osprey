@@ -5,6 +5,7 @@
 ---
 
 - [User Guide](user/README.md)
+  - [Concepts](user/concepts.md)
   - [Investigate](user/investigate/README.md)
     - [Labels](user/investigate/labels.md)
     - [Query Syntax](user/investigate/query-syntax.md)
