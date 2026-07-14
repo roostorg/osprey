@@ -4,14 +4,7 @@ Familiarize yourself with these development tools to better understand how to wo
 
 ## Ruff
 
-Linting and formatting. Replaces Black, isort, Flake8, and other tools. Configuration in `pyproject.toml` under `[tool.ruff]`.
-
-Key rules enabled:
-
-- `E`: pycodestyle errors
-- `F`: pyflakes
-- `I`: isort (import sorting)
-- `B006`: flake8-bugbear (mutable default arguments)
+Linting and formatting. Replaces Black, isort, Flake8, and other tools. Configuration lives in `pyproject.toml` under `[tool.ruff]`; the enabled rules are pycodestyle errors (`E`), pyflakes (`F`), import sorting (`I`), and flake8-bugbear's mutable-default-arguments check (`B006`).
 
 Commands:
 
@@ -31,14 +24,7 @@ uv run ruff check path/to/file.py
 
 ## MyPy
 
-Static type checking for Python. Configuration in `pyproject.toml` under `[tool.mypy]`.
-
-Key features:
-
-- Pydantic plugin support
-- SQLAlchemy plugin support
-- Relaxed strict mode (matching legacy codebase)
-- Ignores protobuf generated files
+Static type checking for Python. Configuration in `pyproject.toml` under `[tool.mypy]` loads the Pydantic and SQLAlchemy plugins, relaxes strict mode to match the older parts of the codebase, and skips generated protobuf files.
 
 Commands:
 
