@@ -33,10 +33,13 @@ For more information about each release including git tags and artifacts, see [R
 - Replace `react-scripts` with `rsbuild`/`rspack` for UI builds ([#235](https://github.com/roostorg/osprey/pull/235) by [@chimosky](https://github.com/chimosky))
 - Migrate from npm to pnpm via Corepack ([#252](https://github.com/roostorg/osprey/pull/252) by [@haileyok](https://github.com/haileyok))
 - Upgrade `grpcio` from 1.49.1/1.53.x to 1.82.1, and `typing-extensions` from 4.6.3 to 4.12.2 (required by the grpcio upgrade) ([#415](https://github.com/roostorg/osprey/pull/415) by [@reitblatt](https://github.com/reitblatt))
-- Upgrade `protobuf` from 4.25.8 to 5.29.6 ([#317](https://github.com/roostorg/osprey/issues/317), [#349](https://github.com/roostorg/osprey/pull/349) by [@reitblatt](https://github.com/reitblatt)); as a downstream consequence, also upgrade
-  - `grpcio-tools` from 1.49.1/1.53.x to 1.71.2
+- Upgrade `protobuf` from 4.25.8 to 7.35.1 ([#317](https://github.com/roostorg/osprey/issues/317), [#349](https://github.com/roostorg/osprey/pull/349) by [@reitblatt](https://github.com/reitblatt)); as a downstream consequence, also upgrade
+  - `grpcio-tools` from 1.49.1/1.53.x to 1.82.1 (to match the `grpcio` version, and required by `grpcio-tools` for protobuf 7.x support)
   - `google-cloud-pubsub` from 2.15.2 to 2.38.0
   - `tink` from 1.9.0 to 1.15.0
+  - `google-api-core` from 2.19.2 to 2.31.0 (older versions cap protobuf below 6.0)
+  - `googleapis-common-protos` from 1.70.0 to 1.75.0 and `grpc-google-iam-v1` from 0.14.2 to 0.14.4 (older versions cap protobuf below 7.0)
+  - `types-protobuf` from 4.24.0.1 to 7.34.1.20260518 to match the protobuf major version
   - relax `google-cloud-kms`, `grpcio-health-checking`, `grpcio-reflection`, and `grpcio-status` from exact pins to floor constraints
   - regenerate all gRPC bindings
 

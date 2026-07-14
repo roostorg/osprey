@@ -5,7 +5,7 @@ import warnings
 
 from osprey.rpc.etcd_watcherd.v1 import etcd_watcherd_pb2 as osprey_dot_rpc_dot_etcd__watcherd_dot_v1_dot_etcd__watcherd__pb2
 
-GRPC_GENERATED_VERSION = '1.71.2'
+GRPC_GENERATED_VERSION = '1.82.1'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -18,14 +18,14 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in osprey/rpc/etcd_watcherd/v1/etcd_watcherd_pb2_grpc.py depends on'
+        + ' but the generated code in osprey/rpc/etcd_watcherd/v1/etcd_watcherd_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
 
 
-class EtcdWatcherdServiceStub(object):
+class EtcdWatcherdServiceStub:
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -46,7 +46,7 @@ class EtcdWatcherdServiceStub(object):
                 _registered_method=True)
 
 
-class EtcdWatcherdServiceServicer(object):
+class EtcdWatcherdServiceServicer:
     """Missing associated documentation comment in .proto file."""
 
     def WatchKey(self, request, context):
@@ -82,7 +82,7 @@ def add_EtcdWatcherdServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class EtcdWatcherdService(object):
+class EtcdWatcherdService:
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
