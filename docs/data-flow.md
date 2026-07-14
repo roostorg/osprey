@@ -26,7 +26,7 @@ At its core, Osprey is a pipeline: events come in, get evaluated against your SM
         Druid + UI API → Osprey UI
 ```
 
-For the worker's own rule-evaluation architecture (how a single event is scored against your rules), see the diagram at the top of [Writing Rules](rules.md). For the coordinator's internals (priority queues, bidirectional streaming vs. synchronous API), see the [Coordinator README](../example_docker_compose/run_osprey_with_coordinator/README.md), which has a more detailed component diagram and a working example.
+For the worker's own rule-evaluation architecture (how a single event is scored against your rules), see the diagram at the top of [Writing Rules](rules.md). For the coordinator's internals (priority queues, bidirectional streaming vs. synchronous API), see the [Coordinator README](https://github.com/roostorg/osprey/tree/main/example_docker_compose/run_osprey_with_coordinator), which has a more detailed component diagram and a working example.
 
 ## Getting data in
 
@@ -55,7 +55,7 @@ An alternate input source, selected via `InputStreamSource.PUBSUB` (`osprey_work
 
 ### 3. The Coordinator's synchronous gRPC API
 
-If you run Osprey with the optional Rust coordinator (`osprey_coordinator/`), external services can submit a single action directly and get an immediate response, without going through Kafka at all, which is useful when a caller needs a synchronous verdict rather than firing into a queue. This is the Sync Action API on port `19951` (bidirectional streaming for workers is a separate port, `19950`). See the [Coordinator README](../example_docker_compose/run_osprey_with_coordinator/README.md) for a working `grpcurl` example and full setup.
+If you run Osprey with the optional Rust coordinator (`osprey_coordinator/`), external services can submit a single action directly and get an immediate response, without going through Kafka at all, which is useful when a caller needs a synchronous verdict rather than firing into a queue. This is the Sync Action API on port `19951` (bidirectional streaming for workers is a separate port, `19950`). See the [Coordinator README](https://github.com/roostorg/osprey/tree/main/example_docker_compose/run_osprey_with_coordinator) for a working `grpcurl` example and full setup.
 
 ### Running against your own platform, without forking
 
