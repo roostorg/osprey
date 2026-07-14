@@ -1,6 +1,6 @@
 # Integrations & Plugins
 
-Osprey is designed to be extended without modifying the core codebase; you can wire up your own logic such as detection functions, output destinations, entity state storage, and ML models through plugin packages that Osprey discovers at startup. A plugin package implements any subset of the hooks in the [Available hooks](README.md#available-hooks) table; this page walks through the integration points adopters ask about most.
+Osprey is designed to be extended without modifying the core codebase; you can wire up your own logic such as detection functions, output destinations, entity state storage, and ML models through plugin packages that Osprey discovers at startup. A plugin package implements any subset of the hooks in the [Available hooks](local.md#available-hooks) table; this page walks through the integration points adopters ask about most.
 
 See the [`example_plugins/` directory](https://github.com/roostorg/osprey/tree/main/example_plugins) for a working reference package.
 
@@ -168,7 +168,7 @@ An output sink receives every `ExecutionResult` after rule evaluation and decide
 
 ### Sync output sink
 
-Subclass `BaseOutputSink` and implement three methods; for example:
+Subclass `BaseOutputSink` and implement its methods; for example:
 
 ```python
 from osprey.worker.sinks.sink.output_sink import BaseOutputSink

@@ -31,7 +31,7 @@ Or, without cloning the repo first:
 curl -sSL https://raw.githubusercontent.com/roostorg/osprey/main/demo.sh | bash
 ```
 
-The [Getting Started guide](https://roostorg.github.io/osprey/latest/getting-started.html) explains what the demo starts, what to try in the UI, and how to shut it all down. The rest of the documentation lives at [roostorg.github.io/osprey/latest](https://roostorg.github.io/osprey/latest/).
+The [Getting Started guide](https://roostorg.github.io/osprey/latest/development/) explains what the demo starts, what to try in the UI, and how to shut it all down. The rest of the documentation lives at [roostorg.github.io/osprey/latest](https://roostorg.github.io/osprey/latest/).
 
 ## Adopters
 
