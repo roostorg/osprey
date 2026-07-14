@@ -1,0 +1,35 @@
+{
+  "name": "Osprey TrustCon Demo",
+  "image": "mcr.microsoft.com/devcontainers/base:bookworm",
+  "features": {
+    // The whole Osprey stack (Kafka, Postgres, Druid, MinIO, worker, UI, UI API)
+    // runs via `docker compose`, so the Codespace needs a Docker daemon inside it.
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    // Python 3.11 (matches .python-version) + Node 22 (matches CI) are only used
+    // for local tooling: uv rule validation and pnpm/corepack for the UI. The demo
+    // itself is fully containerized and does not need these on the host.
+    "ghcr.io/devcontainers/features/python:1": { "version": "3.11" },
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" }
+  },
+  // HEADS UP (machine size): the integration stack documents ~8 GB RAM just for the
+  // app, and this brings up Kafka + Zookeeper + Postgres + a full Druid cluster
+  // (coordinator/broker/historical/middlemanager/router) + MinIO + the worker + UI
+  // + UI API all at once. A 2-core / 8 GB Codespace WILL thrash or OOM. Request the
+  // 4-core / 16 GB machine when creating the Codespace; storage is generous for the
+  // Docker images (Druid + Kafka images are large and pulled on first run).
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "64gb"
+  },
+  "forwardPorts": [5002, 5004, 5001, 8888, 9001],
+  "portsAttributes": {
+    "5002": { "label": "Osprey UI", "onAutoForward": "openBrowser" },
+    "5004": { "label": "Osprey UI API" },
+    "5001": { "label": "Osprey Worker" },
+    "8888": { "label": "Druid Console" },
+    "9001": { "label": "MinIO Console" }
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "remoteUser": "vscode"
+}
