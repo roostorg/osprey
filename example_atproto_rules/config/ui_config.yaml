@@ -8,5 +8,3 @@ ui_config:
       features: [Rkey]
     - actions: ['create_like', 'delete_like', 'create_repost', 'delete_repost', 'create_follow', 'delete_follow']
       features: [Subject, Rkey]
-    - actions: ['identity']
-      features: [IdentityHandle]
