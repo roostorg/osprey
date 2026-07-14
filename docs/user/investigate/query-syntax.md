@@ -2,22 +2,7 @@
 
 Osprey uses SML (“Some Madeup Language,” a subset of Python with additional restrictions) for queries. Queries filter events by matching against features, actions, and labels.
 
-## Core concepts
-
-**Actions** are events that happen in your system, like a user creating a post or sending a message. Your query filters which action types to look at.
-
-**Features** are named variables extracted from events. All features are in a global namespace; any feature exported by Osprey rules is queryable. Prefixing a variable with `_` keeps it local to a rule file and excludes it from querying.
-
-```py
-UserId: Entity[int] = EntityJson(type='User', path='$.user.id', coerce_type=True)
-UserEmail: str = JsonData(path='$.user.email', required=False)
-```
-
-Both `UserId` and `UserEmail` above are features.
-
-**Entities** are a special kind of feature. They can have effects applied to them: labels, classifications, signals. Clicking an entity in the UI navigates to its [Entity Details](labels.md#entity-details) view.
-
-**Effects** are outcomes triggered when one or more rules evaluate to true; for example, applying a `spammer` label to a `UserId` entity.
+Queries match against **features**—the named values your rules extract from each action—including **entities** and **labels**. If those terms are new, read [Concepts](../concepts.md) first.
 
 ## Basic comparisons
 
