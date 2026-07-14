@@ -267,7 +267,7 @@ def register_labels_service_or_provider(config):
 
 ## Connecting to a review tool
 
-Osprey doesn't currently support direct integration with a review tool ([a known unmet need](../research-personas.md)); however, these extension points can help you integrate:
+Osprey doesn't currently support direct integration with a review tool; however, these extension points can help you integrate:
 
 - `register_output_sinks` — push execution results into a review queue as they're produced.
 - `register_label_output_sink` — a sink specifically for label mutations, replacing the default `LabelOutputSink`.
