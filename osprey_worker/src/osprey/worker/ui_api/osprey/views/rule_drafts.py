@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 from collections.abc import Iterable
+from pathlib import Path
 from typing import Any
 
 from flask import Blueprint, jsonify, request
@@ -30,10 +32,10 @@ from osprey.engine.ast_validator.validation_context import (
     ValidationWarning,
 )
 from osprey.worker.lib.singletons import ENGINE
+from osprey.worker.lib.storage.rule_drafts import RuleDraft
 from osprey.worker.ui_api.osprey.lib.abilities import CanEditRuleDrafts, require_ability
 from osprey.worker.ui_api.osprey.lib.auth import get_current_user_email
 
-from . import _rule_drafts_backend as backends
 from ._engine_ast_utils import get_func_identifier
 
 logger = logging.getLogger(__name__)
@@ -307,37 +309,9 @@ def vocabulary() -> Any:
     )
 
 
-@blueprint.route('/rule-drafts/submit', methods=['POST'])
-@require_ability(CanEditRuleDrafts)
-def submit_draft() -> Any:
-    payload = request.get_json(silent=True) or {}
-    path = (payload.get('path') or '').strip()
-    source_text = payload.get('source', '')
-    rule_name = (payload.get('rule_name') or '').strip()
-    summary = (payload.get('summary') or '').strip()
-    is_new_rule = bool(payload.get('is_new_rule', False))
-    wire_into_main = bool(payload.get('wire_into_main', False))
-
-    path_err = _validate_path(path)
-    if path_err:
-        return jsonify({'error': path_err}), 400
-    if path == 'main.sml':
-        # main.sml is the engine entry point. Submitting a draft *as* main.sml
-        # would wholesale-replace it (immediate live effect on the local
-        # backend). Wiring a rule in is a controlled one-line append handled by
-        # the wire_into_main option, not a draft submission.
-        return jsonify(
-            {
-                'error': 'main.sml is the engine entry point and cannot be submitted as a draft. '
-                'Use "turn this rule on" to add a Require line instead.'
-            }
-        ), 400
-    if not isinstance(source_text, str) or not source_text.strip():
-        return jsonify({'error': 'source must be a non-empty string.'}), 400
-    if not _VALID_RULE_NAME.match(rule_name):
-        return jsonify({'error': 'rule_name must be a valid SML identifier ([A-Za-z_][A-Za-z0-9_]*).'}), 400
-
-    # Re-validate server-side so a client that skips the validate step still cannot push uncompilable SML.
+def _revalidate(path: str, source_text: str) -> tuple[Any, int] | None:
+    """Re-run the engine's AST validation with the draft spliced into the loaded
+    sources. Returns a Flask error tuple on failure, or None if it validates."""
     spliced = _current_sources_dict()
     spliced[path] = source_text
     try:
@@ -356,33 +330,161 @@ def submit_draft() -> Any:
         ), 400
     except Exception as exc:
         return jsonify({'error': f'Could not assemble sources: {exc}'}), 400
-
-    try:
-        backend = backends.load_backend()
-        result = backend.submit_draft(
-            draft_path=path,
-            sml_source=source_text,
-            rule_name=rule_name,
-            summary=summary,
-            author_email=get_current_user_email(),
-            is_new_rule=is_new_rule,
-            wire_into_main=wire_into_main,
-        )
-    except backends.RuleDraftBackendError as exc:
-        return jsonify({'error': exc.message}), exc.status_code
-
-    return jsonify(result.to_json())
+    return None
 
 
-@blueprint.route('/rule-drafts/pending', methods=['GET'])
+@blueprint.route('/rule-drafts', methods=['POST'])
 @require_ability(CanEditRuleDrafts)
-def pending_drafts() -> Any:
+def create_draft() -> Any:
+    """Validate a draft and upsert it into the rule_drafts table (one row per path)."""
+    payload = request.get_json(silent=True) or {}
+    path = (payload.get('path') or '').strip()
+    source_text = payload.get('source', '')
+    rule_name = (payload.get('rule_name') or '').strip()
+    summary = (payload.get('summary') or '').strip()
+
+    path_err = _validate_path(path)
+    if path_err:
+        return jsonify({'error': path_err}), 400
+    if path == 'main.sml':
+        # main.sml is the engine entry point; a draft never replaces it wholesale.
+        # Deploying a draft optionally wires it into main.sml with a single Require line.
+        return jsonify(
+            {
+                'error': 'main.sml is the engine entry point and cannot be saved as a draft. '
+                'Deploy a rule with wire_into_main to add a Require line instead.'
+            }
+        ), 400
+    if not isinstance(source_text, str) or not source_text.strip():
+        return jsonify({'error': 'source must be a non-empty string.'}), 400
+    if not _VALID_RULE_NAME.match(rule_name):
+        return jsonify({'error': 'rule_name must be a valid SML identifier ([A-Za-z_][A-Za-z0-9_]*).'}), 400
+
+    # Re-validate server-side so a client that skips the validate step still cannot store uncompilable SML.
+    error = _revalidate(path, source_text)
+    if error is not None:
+        return error
+
+    draft = RuleDraft.upsert(
+        path=path,
+        rule_name=rule_name,
+        sml_source=source_text,
+        summary=summary,
+        author_email=get_current_user_email(),
+    )
+    return jsonify(draft.to_json())
+
+
+@blueprint.route('/rule-drafts', methods=['GET'])
+@require_ability(CanEditRuleDrafts)
+def list_drafts() -> Any:
+    """The draft rules table: every staged draft, newest-edited first."""
+    return jsonify({'drafts': [d.to_json() for d in RuleDraft.list_all()]})
+
+
+@blueprint.route('/rule-drafts/<int:draft_id>', methods=['GET'])
+@require_ability(CanEditRuleDrafts)
+def get_draft(draft_id: int) -> Any:
+    draft = RuleDraft.get_one(draft_id)
+    if draft is None:
+        return jsonify({'error': f'No draft with id {draft_id}.'}), 404
+    return jsonify(draft.to_json())
+
+
+def _rules_dir_or_error() -> tuple[Path | None, tuple[Any, int] | None]:
+    """The directory deploy writes into (OSPREY_RULES_LOCAL_PATH), or an error tuple.
+
+    Deploying into the engine's own rules source is a filesystem hand-off, the same
+    contract the retired `local` backend used: whatever pipeline already syncs that
+    directory (etcd push, file watcher) activates the rule. A DB-backed
+    SourcesProvider that lets the engine read deployed drafts straight from this
+    table would remove that dependency entirely; see the PR notes.
+    """
+    raw = os.environ.get('OSPREY_RULES_LOCAL_PATH', '').strip()
+    if not raw:
+        return None, (
+            jsonify(
+                {
+                    'error': 'Deploy is not configured. Set OSPREY_RULES_LOCAL_PATH to the rules '
+                    'directory the engine loads so deployed drafts are written there.'
+                }
+            ),
+            503,
+        )
+    rules_dir = Path(raw)
+    if not rules_dir.is_dir():
+        return None, (jsonify({'error': f'OSPREY_RULES_LOCAL_PATH {raw!r} is not a directory.'}), 503)
+    return rules_dir, None
+
+
+def _resolve_within(rules_dir: Path, draft_path: str) -> Path | None:
+    """Resolve draft_path inside rules_dir, or None if it would escape via `..`/symlink."""
+    candidate = (rules_dir / draft_path).resolve()
     try:
-        backend = backends.load_backend()
-        drafts = backend.list_pending_drafts()
-    except backends.RuleDraftBackendError as exc:
-        return jsonify({'error': exc.message, 'pending': []}), exc.status_code
-    return jsonify({'pending': [d.to_json() for d in drafts]})
+        candidate.relative_to(rules_dir.resolve())
+    except ValueError:
+        return None
+    return candidate
+
+
+def _main_requires(main_sml: str, draft_path: str) -> bool:
+    pattern = re.compile(r"Require\s*\(\s*rule\s*=\s*['\"]" + re.escape(draft_path) + r"['\"]\s*\)", re.MULTILINE)
+    return bool(pattern.search(main_sml))
+
+
+def _append_require(main_sml: str, draft_path: str) -> str:
+    suffix = f"\nRequire(rule='{draft_path}')\n"
+    if main_sml and not main_sml.endswith('\n'):
+        suffix = '\n' + suffix
+    return main_sml + suffix
+
+
+@blueprint.route('/rule-drafts/<int:draft_id>/deploy', methods=['POST'])
+@require_ability(CanEditRuleDrafts)
+def deploy_draft(draft_id: int) -> Any:
+    """Write a draft's SML into the configured rules directory and mark it deployed.
+
+    With `wire_into_main`, also append a `Require(rule=...)` line to main.sml so the
+    rule takes effect (the file on its own is inert until something requires it).
+    """
+    draft = RuleDraft.get_one(draft_id)
+    if draft is None:
+        return jsonify({'error': f'No draft with id {draft_id}.'}), 404
+
+    payload = request.get_json(silent=True) or {}
+    wire_into_main = bool(payload.get('wire_into_main', False))
+
+    # Re-validate at deploy time: the loaded sources may have changed since the draft was saved.
+    error = _revalidate(draft.path, draft.sml_source)
+    if error is not None:
+        return error
+
+    rules_dir, dir_error = _rules_dir_or_error()
+    if dir_error is not None:
+        return dir_error
+    assert rules_dir is not None
+
+    target = _resolve_within(rules_dir, draft.path)
+    if target is None:
+        return jsonify({'error': f'Draft path {draft.path!r} escapes the rules directory.'}), 400
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(draft.sml_source, encoding='utf-8')
+
+    main_sml_updated = False
+    if wire_into_main:
+        main_path = rules_dir / 'main.sml'
+        if not main_path.exists():
+            return jsonify({'error': f'wire_into_main requested but main.sml does not exist at {main_path}.'}), 409
+        main_contents = main_path.read_text(encoding='utf-8')
+        if not _main_requires(main_contents, draft.path):
+            main_path.write_text(_append_require(main_contents, draft.path), encoding='utf-8')
+            main_sml_updated = True
+
+    deployed = RuleDraft.mark_deployed(draft_id)
+    result = deployed.to_json() if deployed is not None else draft.to_json()
+    result['main_sml_updated'] = main_sml_updated
+    result['path_on_disk'] = str(target)
+    return jsonify(result)
 
 
 # The set of comparator strings the Rule Builder UI can render.

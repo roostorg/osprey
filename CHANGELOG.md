@@ -32,6 +32,7 @@ For more information about each release including git tags and artifacts, see [R
 - Experimental asyncio-native worker with metrics and engine/coordinator improvements ([#341](https://github.com/roostorg/osprey/pull/341) by [@cmttt](https://github.com/cmttt))
 - ATProto JetStream example plugins and rules ([#236](https://github.com/roostorg/osprey/pull/236) by [@haileyok](https://github.com/haileyok))
 - `osprey-stress` CLI: closed-loop stress harness that produces synthetic events at a configurable rate, observes their `ExecutionResult`s on the output topic, and reports drop rate and p50/p95/p99 latency, exiting non-zero on threshold breach so it can gate CI on pipeline health ([#367](https://github.com/roostorg/osprey/pull/367) by [@julietshen](https://github.com/julietshen), closes [#324](https://github.com/roostorg/osprey/issues/324))
+- Experimental in-app rule authoring: draft SML rules validate against the live engine, save to a `rule_drafts` table, and deploy into the configured rules directory ([#402](https://github.com/roostorg/osprey/pull/402) by [@julietshen](https://github.com/julietshen))
 
 ### Changed
 

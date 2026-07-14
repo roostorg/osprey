@@ -59,39 +59,25 @@ Each row shows the rule's name, source file, description, reference count, and l
 
 ## Rule Authoring (Experimental feature)
 
-Users can draft SML rules directly in the UI. Submit opens a review unit against a configured git remote so authoring, review, and merge use the same tools users already have.
+Users can draft SML rules directly in the UI. Drafts are saved to a `rule_drafts` table so the people who operate Osprey can reference, edit, and deploy them without any external code host.
 
-The editor validates every keystroke against the same AST validator the running engine uses, so compile-time errors surface before the pull request opens. The Rule Builder view expresses the common shape (name, conditions, outcomes) as a form and generates SML; the Code Editor view accepts arbitrary SML for anything the builder can't represent.
+The editor validates every keystroke against the same AST validator the running engine uses, so compile-time errors surface before a draft is saved. The Rule Builder view expresses the common shape (name, conditions, outcomes) as a form and generates SML; the Code Editor view accepts arbitrary SML for anything the builder can't represent.
 
-### Rule submission backends
+### The draft rules table
 
-The Submit button routes drafts through a pluggable backend. Pick one for your deployment by setting `OSPREY_RULES_SUBMISSION_BACKEND` on the `osprey-ui-api` process:
+Drafts live in a Postgres table (`rule_drafts`), one row per rule file path. The API (all gated by the `CAN_EDIT_RULE_DRAFTS` ability, granted to `super_user`):
 
-| Value | What it does | Required env vars |
-|---|---|---|
-| `null` (default) | Returns 503 on any submit or list call. Ships as the default so an unconfigured install never writes anything. | none |
-| `github` | Opens a pull request on a configured repo. Works with github.com and GitHub Enterprise. | `OSPREY_RULES_REPO`, `OSPREY_GITHUB_TOKEN` (+ optionals) |
-| `local` | Writes SML directly to a mounted directory. For self-hosted setups whose deploy pipeline already syncs a rules directory into the engine. | `OSPREY_RULES_LOCAL_PATH` |
+- `POST /rule-drafts` — re-validates the SML server-side, then upserts the draft.
+- `GET /rule-drafts` — lists every draft (the table operators work from).
+- `GET /rule-drafts/<id>` — fetches a single draft.
+- `POST /rule-drafts/<id>/deploy` — re-validates, writes the SML into the rules directory, and marks the draft `deployed`. Pass `wire_into_main: true` to also append a `Require(rule=...)` line to `main.sml` so the rule takes effect (a rule file is inert until something requires it).
 
-Env vars shared across every backend that targets a git host:
+### Deploying
 
-- `OSPREY_RULES_BASE_BRANCH` (default `main`) — the branch the review targets.
-- `OSPREY_RULES_PATH_IN_REPO` (default empty) — subdirectory inside the target repo where rule files live, e.g. `example_rules`. Leave empty if rules sit at the repo root.
-
-#### `github`
+Deploy writes the draft's SML into a rules directory that the engine's sources provider already loads (a filesystem hand-off: whatever pipeline syncs that directory activates the rule).
 
 | Var | Default | Notes |
 |---|---|---|
-| `OSPREY_RULES_REPO` | _required_ | `owner/name` of the repo to PR against. |
-| `OSPREY_GITHUB_TOKEN` | _required_ | Fine-grained PAT with `Contents: read/write` and `Pull requests: read/write` on the repo. |
-| `OSPREY_GITHUB_API_URL` | `https://api.github.com` | Set for GitHub Enterprise: e.g. `https://github.acme.example/api/v3`. |
+| `OSPREY_RULES_LOCAL_PATH` | _required for deploy_ | Absolute path to the rules directory the engine loads. Deploy writes SML here; must already exist. If unset, `POST /deploy` returns 503 (drafting and validation still work). |
 
-#### `local`
-
-| Var | Default | Notes |
-|---|---|---|
-| `OSPREY_RULES_LOCAL_PATH` | _required_ | Absolute path to the directory the backend writes SML into. Must already exist. Submissions take effect immediately; there's no review queue. |
-
-### Adding a rule submission backend
-
-Add a Python module next to `_rule_drafts_github.py` that implements the `RuleSubmissionBackend` Protocol defined in `_rule_drafts_backend.py`, then wire it into `load_backend()`. See the module docstring on `_rule_drafts_backend.py` for the contract; the existing HTTP-backed module (`_rule_drafts_github.py`) is a working template.
+> **Future direction:** a DB-backed `SourcesProvider` could let the engine load deployed drafts straight from the `rule_drafts` table, removing the filesystem hand-off and making rule management work with zero external infrastructure. This PR keeps the filesystem deploy; the table is already the source of truth for drafts.
