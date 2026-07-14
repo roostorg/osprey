@@ -73,7 +73,7 @@ uv run pre-commit run --all-files
 uv run pre-commit run ruff
 
 # Update hook versions
-uv run pre-commit autoupgrade
+uv run pre-commit autoupdate
 
 # Bypass hooks (emergency only)
 git commit --no-verify
