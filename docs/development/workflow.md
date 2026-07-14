@@ -29,7 +29,7 @@ uv run mypy osprey_worker/src/osprey/worker/lib
 
 ## Commit messages
 
-Follow the [Conventional Commits](https://www.conventionalcommits.org/) format. Two real examples from this repo's history:
+Follow the [Conventional Commits](https://www.conventionalcommits.org/) format. Real examples from this repo's history:
 
 ```
 fix(ui): show the event-stream timezone once, not twice
