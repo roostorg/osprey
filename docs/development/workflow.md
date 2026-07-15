@@ -6,7 +6,7 @@ Branch from `main` and name your branch `github_username/short-description` (e.g
 
 Pre-commit hooks run automatically when you commit; the config is `.pre-commit-config.yaml` at the repo root. The hooks check for filename case conflicts, leftover merge-conflict markers, and forgotten Python debugger calls; validate JSON and TOML; normalize line endings to LF; lint and format Python with Ruff; and type-check with mypy. Changes under `osprey_ui/` also go through Prettier and ESLint.
 
-Hooks stop at the first failure, and several fix files in place — if a hook modifies a file, re-stage it and commit again.
+Hooks stop at the first failure, and several fix files in place—if a hook modifies a file, re-stage it and commit again.
 
 ## Checking your work before you push
 

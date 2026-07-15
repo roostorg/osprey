@@ -73,14 +73,14 @@ The `test_data` profile includes a producer that generates sample events; withou
 This starts up many services, including:
 - **Osprey Worker**: The main engine that processes input events given the rules and UDFs
   - **Test Data Producer**: The `--profile test_data` sample event generator
-- **Osprey UI**: Frontend service that hosts the react code for the web interface and communicates to the UI API
+- **Osprey UI**: Frontend service that hosts the React code for the web interface and communicates with the UI API
 - **Osprey UI API**: Backend service that provides data and functionality to the web interface
-- **Kafka** (KRaft mode): Message streaming for user generated events
+- **Kafka** (KRaft mode): Message streaming for user-generated events
 - **Postgres**: A database that the Worker, UI API, and Druid use for various reasons, such as the Postgres-backed Labels Service (in the example plugins)
 - **Druid**: A database that consumes Osprey Worker outputs to power the UI API for real-time querying
 - **MinIO**: S3-compatible object storage; the default execution result store in this stack (`OSPREY_EXECUTION_RESULT_STORAGE_BACKEND=minio`)
 
-Alternatively, you can start Osprey with `osprey-coordinator`, refer to the [Coordinator README](https://github.com/roostorg/osprey/tree/main/example_docker_compose/run_osprey_with_coordinator) for more information
+Alternatively, you can start Osprey with `osprey-coordinator`; see the [Coordinator README](https://github.com/roostorg/osprey/tree/main/example_docker_compose/run_osprey_with_coordinator) for more information.
 
 ### 6. (Optional) Open ports for the UI/UI API
 
@@ -100,7 +100,7 @@ The UI will automatically connect to the backend services running in Docker cont
 
 ## Plugins
 
-In Osprey, UDFs and output sinks are designed to be easily portable. This is done through a plugin system based on pluggy. An example plugin package has been provided for reference, see `example_plugins/src/register_plugins.py`. For a full walkthrough with examples (UDFs, sinks, hash-based lookups, ML models, labels service), see [Integrations & Plugins](../integration/integrations.md).
+In Osprey, UDFs and output sinks are designed to be easily portable through a plugin system based on pluggy. An example plugin package is provided for reference; see `example_plugins/src/register_plugins.py`. For a full walkthrough with examples (UDFs, sinks, hash-based lookups, ML models, labels service), see [Integrations & Plugins](../integration/integrations.md).
 
 ```python
 @hookimpl_osprey
@@ -135,7 +135,7 @@ Implement any subset of these in your plugin's `register_plugins.py`:
 
 ## Rules
 
-Rules are written in SML, some examples are provided in `example_rules/` with YAML config, the rules are mounted to the worker processes when the containers start via environment variables. ex:
+Rules are written in SML; examples with YAML config are provided in `example_rules/`. Rules are mounted into the worker processes when the containers start, controlled via environment variables; for example:
 
 ```bash
 OSPREY_RULES_PATH=./example_rules uv run python3.11 osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink
@@ -150,4 +150,4 @@ Generate sample JSON actions:
 docker compose --profile test_data up osprey-kafka-test-data-producer -d
 ```
 
-Produces user login events with timestamps, user IDs, and IP addresses to `osprey.actions_input` topic.
+This produces synthetic post-creation events with timestamps, user IDs, and IP addresses to the `osprey.actions_input` topic; it's the same producer the `test_data` profile starts.

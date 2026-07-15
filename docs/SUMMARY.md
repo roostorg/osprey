@@ -15,7 +15,7 @@
 
 - [Development Guide](development/README.md)
   - [Local Development](development/local.md)
-  - [Workflow](development/workflow.md)
+  - [Development Workflow](development/workflow.md)
   - [Development Tools](development/tools.md)
   - [CLI Reference](development/cli-reference.md)
   - [Troubleshooting](development/troubleshooting.md)

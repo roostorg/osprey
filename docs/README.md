@@ -12,7 +12,7 @@ These docs are split into a few guides, depending on who you are and what you're
 
 - [Concepts](concepts.md): learn about the basic concepts and terminology used in Osprey and these docs.
 
-Note that the docs are versioned; other versions can be found at the [documentation site index](https://roostorg.github.io/osprey/).
+The docs are versioned; other versions are available at the [documentation site index](https://roostorg.github.io/osprey/).
 
 [![The Query page with an SML filter for post-creation events and its history of past queries, beside a timeseries chart showing matching event volume in fifteen-minute buckets](images/query-and-charts.png)](images/query-and-charts.png)
 

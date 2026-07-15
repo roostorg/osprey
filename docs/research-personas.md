@@ -1,10 +1,10 @@
 # User Research & Personas
 
-Osprey is designed for users who need to investigate and take automated action on events in real-time. By interviewing prospective Osprey users, ROOST has drafted the following user personas for developers to better understand who might be interested in using this tool. We hope this research helps the open source community prioritize features to build moving forward.
+Osprey is designed for users who need to investigate and take automated action on events in real time. By interviewing prospective Osprey users, ROOST has drafted the following user personas for developers to better understand who might be interested in using this tool. We hope this research helps the open source community prioritize features to build moving forward.
 
 ## T&S Engineers
 
-Most engineers who are interested in potentially using Osprey are like Alice – they do not currently have a viable rules engine due to cost, lack of flexibility, or limited available options. However, they need a tool for real-time event processing to handle adverse events at scale. They also want to optimize how Osprey works with the rest of their tech stack.
+Most engineers who are interested in potentially using Osprey are like Alice—they do not currently have a viable rules engine due to cost, lack of flexibility, or limited available options. However, they need a tool for real-time event processing to handle adverse events at scale. They also want to optimize how Osprey works with the rest of their tech stack.
 
 ![user_persona_engineer](images/user_persona_engineer.png)
 
@@ -12,7 +12,7 @@ Most engineers who are interested in potentially using Osprey are like Alice –
 
 - When I manage rules, I want a flexible and intuitive developer experience (including intuitive logic and easy to learn programming syntax) so that I can make changes quickly and without being reliant on third party tools
 
-- When I assess new tools, I clear info on ease of deployment and integration with common tools (e.g., Splunk), so that I know if the tool will work within our stack
+- When I assess new tools, I want clear info on ease of deployment and integration with common tools (e.g., Splunk), so that I know if the tool will work within our stack
 
 - When I deploy changes, I want to ensure they will be as effective as possible, to avoid future duplication of work
 
