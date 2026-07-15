@@ -2,7 +2,7 @@
 
 Osprey uses SML (“Some Madeup Language,” a subset of Python with additional restrictions) for queries. Queries filter events by matching against features, actions, and labels.
 
-Queries match against **features**—the named values your rules extract from each action—including **entities** and **labels**. If those terms are new, read [Concepts](../concepts.md) first.
+Queries match against **features**—the named values your rules extract from each event—including **entities** and **labels**. If those terms are new, read [Concepts](../concepts.md) first.
 
 ## Basic comparisons
 
@@ -43,7 +43,7 @@ ListLength(list=UserConnections) > 10
 
 ## Label queries
 
-The query UI searches across actions (events), not entity state, so `HasLabel()` won't work here. Use `DidAddLabel()` instead, which matches events where a label was added:
+The query UI searches across events, not entity state, so `HasLabel()` won't work here. Use `DidAddLabel()` instead, which matches events where a label was added:
 
 ```py
 # Find events that added a specific label
