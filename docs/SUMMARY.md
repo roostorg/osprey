@@ -10,7 +10,6 @@
     - [Query Syntax](user/investigate/query-syntax.md)
   - [Manage](user/manage.md)
   - [Operate](user/operate.md)
-  - [Appearance](user/appearance.md)
 
 ---
 
