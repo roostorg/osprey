@@ -20,23 +20,21 @@ Rules currently support the following concepts through the `Rule(...)` function 
 
   `Rule_Name = Rule(...)`
 
-  The name of the rule also functions as a conventional "RuleId" and the name of the bool that can be used to query individual rule hits in the Osprey Query UI. As a result, changing the name of a rule after activation may affect historical query results in the UI if not logged externally.
+  The rule's name doubles as its identifier and as the boolean feature you can query in the Osprey UI to see individual rule hits. Renaming a rule after it's active disconnects it from its historical query results, so name carefully.
 
 - **Logic**
 
   `when_all=[]`
 
-  The actual logic that will be used to evaluate Osprey rules is all encompassed as single comma-delimited list of signals within the `when_all` parameter of the `Rule(...)` function and supports the use of Labels, Plugins, UDFs and other values to help enrich heuristics.
+  The rule's logic is the list of signals in the `when_all` parameter; a signal can be a comparison over features, a label check, a UDF call, or another rule.
 
-    At present, when evaluating UDFs or abstracted variables, any `NULL` evaluations in the series will cause the entire rule function to evaluate as `NULL`, which may be undesirable.
+    If any signal in the list evaluates to `Null`, the whole rule evaluates to `Null`; see [Nulls](#nulls) below.
 
 - **Description**
 
   `description=f''`
 
-  There is an additional string description field that is able to be emitted alongside the rule itself to external systems such as logging and ticketing systems to help enrich work-streams that may benefit from plain-language context on what the rule criteria is and what the rule may intend to do.
-
-    It may be helpful to include dynamic variables as well to help enrich operational workflows that may need to identify specific values related to the trigger criteria.
+  A plain-language description of what the rule looks for, emitted alongside the rule to external systems like logging and ticketing. It's an f-string, so you can interpolate feature values to show responders exactly what triggered the rule.
 
 
 Here's an example of a simple rule using various signal evaluations and out-of-the-box UDFs:
@@ -145,7 +143,7 @@ ReplyId: Entity[str] = EntityJson(
 
 The [`JsonData` UDF](#user-defined-functions-udfs) lets us take the event's JSON and define features based on the contents of that JSON. These features can then be referenced in other rules that we import the `models/record/post.sml` model into. If you have any values inside your JSON object that may not always be present, you can set `required` to `False`, and these features will be `None` whenever the feature is not present.
 
-Note that we did not actually create any features for things like `userId` or `handle`. That is because these values will be present in *any* event. It wouldn't be very nice to have to copy these features into each event type's model. Therefore, we will actually create a `base.sml` model that defines these features which are always present. Inside of `models/base.sml`, let's define these.
+We did not create features for values like `userId` or `handle` because they're present in *any* event; copying them into every event type's model would get tedious. Instead, let's define them once in a `base.sml` model. Inside of `models/base.sml`:
 
 ```python
 EventType = JsonData(
@@ -171,7 +169,7 @@ AccountAgeSeconds: int = JsonData(
 )
 ```
 
-Here, instead of simply using `JsonData`, we instead use the `EntityJson` UDF for the `UserID`. This is covered in the [UDFs section](#user-defined-functions-udfs), but as a rule of thumb, you likely will want to have values for things like a user's ID set to be entities. This will help more later, such as when doing data explorations within the Osprey UI.
+Here we use the `EntityJson` UDF for `UserId` rather than plain `JsonData`. UDFs are covered [below](#user-defined-functions-udfs), but as a rule of thumb, identifiers like user IDs should be entities; it pays off later when exploring data in the Osprey UI.
 
 ### Model Hierarchy
 
@@ -184,9 +182,9 @@ This type of hierarchy prevents duplication (which Osprey does not allow) and en
 
 ## Effects with WhenRules
 
-The `WhenRules()` function allows for creating effects that trigger external services, create declarations, or modify internal labels by listing `Rule` objects in sequence within the `rules_any` parameter of `WhenRules()`. By default, operators and designers may utilize UDFs with predefined effects such as `DeclareVerdict()`, `LabelAdd()`, or `LabelRemove()` upon positive rule evaluation.
+`WhenRules()` wires rules to effects: list `Rule` objects in its `rules_any` parameter, and when any of them evaluates true, the effects in `then=` fire. Osprey ships effect UDFs like `DeclareVerdict()`, `LabelAdd()`, and `LabelRemove()`; effects can also trigger external services through your output sinks.
 
-Below is an example of the use of a WhenRules() block to verify and email and reject a request.
+Below is an example of a `WhenRules()` block that rejects the request and labels the user, email, and domain for verification follow-up:
 
 ```python
 WhenRules(
@@ -207,7 +205,7 @@ WhenRules(
 )
 ```
 
-`WhenRules()` must be placed after rule declaration within a file, and it may become difficult to interpret outcomes of rules that are too distributed. Therefore, it may be beneficial to place any effects toward the bottom of workflows.
+`WhenRules()` must appear after the rules it references. Effects scattered throughout a file are hard to trace, so keep them together toward the bottom.
 
 After evaluation, effects and the rest of the execution result are handed to your deployment's output sinks. [Data Flow](../integration/data-flow.md) covers where results go from there, and [Integrations & Plugins](../integration/integrations.md#configuring-output-sinks) covers adding output sinks of your own.
 
@@ -250,7 +248,7 @@ Labels are a standard plugin that enable stateful rules, and touch many parts of
 
 ### Creating Entities
 
-Labels are applied to Entities, which are dynamically interpreted from outputs of the UDF `EntityJson`, usually applied to pieces of data that are generally consistent across events such as User ID or email.
+Labels are applied to entities: features created with the `EntityJson` UDF, usually for values that stay consistent across events, like a user ID or email address.
 
 ```python
 # user.sml
@@ -260,13 +258,13 @@ UserId: Entity[str] = EntityJson(
 )
 ```
 
-It is possible to create new UDFs that also create entities by having the output of UDF set to `EntityT`.
+A custom UDF can also create entities by declaring `EntityT` as its output type.
 
 ## Notable Gotchas
 
 ### Nulls
 
-Nulls are the case where a rule or variable in SML does not exist. This can occur for many reasons - either a piece of data is missing or a rule didn't run. Unlike many programming languages, generally rules with null valued variables will not evaluate that rule (and thus, downstream rules will not evaluate either). The exception cases are when nulls are explicitly checked in a rule. For example:
+A rule or variable in SML is `Null` when it doesn't exist; a piece of data was missing, or a rule didn't run. Unlike in many programming languages, a rule with a `Null` signal is skipped entirely (and so are rules downstream of it) unless the rule checks for `Null` explicitly. For example:
 
 ```python
 Thing: int = JsonData(path='$.property_that_doesnt_exist')
@@ -289,7 +287,7 @@ MyThirdRule = Rule(when_all=[
 
 ### Workflow Structure and File Placement
 
-SML files can be composed to make your rules easier to understand. The `Import` statement allows you to include rules and variables found in other files.
+SML files can be composed to make your rules easier to understand. The `Import` statement includes rules and variables from other files.
 
 ```python
 # models/action_name.sml
@@ -306,7 +304,7 @@ Import(
 MyRule = Rule(when_all=[ActionName == "foo"])
 ```
 
-`Require` allows you to selectively run other SML scripts. Requires supports templating and conditionals, allowing scripts to be filtered out if necessary. This is important in situations where some rules or UDFs are particularly expensive to run (such as making a call to an AI service, for example).
+`Require` selectively runs other SML scripts. It supports templating and conditionals, so scripts can be skipped entirely; that matters when a rule or UDF is expensive to run, like a call to an AI service.
 
 ```python
 # main.sml
