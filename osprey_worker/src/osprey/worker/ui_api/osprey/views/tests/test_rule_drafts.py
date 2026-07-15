@@ -269,6 +269,32 @@ def test_create_draft_upserts_same_path_in_place(client: 'FlaskClient[Response]'
 
 
 @pytest.mark.use_rules_sources(_base_sources)
+def test_create_draft_rejects_duplicate_rule_name_across_drafts(client: 'FlaskClient[Response]') -> None:
+    first = client.post(
+        url_for('rule_drafts.create_draft'),
+        json={'path': 'rules/first.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': ''},
+    )
+    assert first.status_code == 200
+
+    # A different path reusing the same rule name collides: rule names are global in SML,
+    # and validation can't see the other draft (it only knows deployed rules).
+    second = client.post(
+        url_for('rule_drafts.create_draft'),
+        json={'path': 'rules/second.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': ''},
+    )
+    assert second.status_code == 409
+    assert second.json is not None
+    assert 'SomeRule' in second.json['error']
+
+    # Re-saving the same path with the same name is an update, not a collision.
+    again = client.post(
+        url_for('rule_drafts.create_draft'),
+        json={'path': 'rules/first.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': 'edit'},
+    )
+    assert again.status_code == 200
+
+
+@pytest.mark.use_rules_sources(_base_sources)
 def test_create_draft_rejects_invalid_sml(client: 'FlaskClient[Response]') -> None:
     res = client.post(
         url_for('rule_drafts.create_draft'),

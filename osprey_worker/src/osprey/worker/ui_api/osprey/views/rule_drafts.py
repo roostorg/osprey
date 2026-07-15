@@ -365,6 +365,16 @@ def create_draft() -> Any:
     if error is not None:
         return error
 
+    # Validation only sees deployed rules; guard the draft-vs-draft name collision it can't.
+    conflict = RuleDraft.other_with_rule_name(rule_name, exclude_path=path)
+    if conflict is not None:
+        return jsonify(
+            {
+                'error': f'Another draft ({conflict.path}) already uses the rule name {rule_name!r}. '
+                'Rename this rule, or edit that draft instead.'
+            }
+        ), 409
+
     draft = RuleDraft.upsert(
         path=path,
         rule_name=rule_name,
