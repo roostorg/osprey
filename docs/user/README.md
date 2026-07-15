@@ -1,6 +1,6 @@
 # User Guide
 
-Osprey is a web-based investigation and management console for safety teams. Query event data in real time, visualize trends, label entities, manage rules and features, and run bulk operations. If terms like actions, features, and labels are new to you, start with [Concepts](concepts.md).
+Osprey is a web-based investigation and management console for safety teams. Query event data in real time, visualize trends, label entities, manage rules and features, and run bulk operations. If terms like events, features, and labels are new to you, start with [Concepts](concepts.md).
 
 [![The Osprey UI during an investigation: a query filtering events where SuspiciousDisplayName is True, timeseries charts of matching event volume, and the live event stream with one entity's label popup open showing a negative spam_display_name label](../images/osprey-suspicious-display-name.png)](../images/osprey-suspicious-display-name.png)
 
@@ -18,4 +18,4 @@ The sidebar groups Osprey's tools by task, and this guide follows the same secti
 
   [![The Bulk Edit Labels form for roughly 9,800 entities matching a query, with label name, status, reason, and expiration fields](../images/bulk-label.png)](../images/bulk-label.png)
 
-The sidebar can be collapsed to an icon-only strip with the toggle at the bottom, and its state persists between sessions. The interface supports light and dark themes; see [Appearance](appearance.md) for details.
+The sidebar can be collapsed to an icon-only strip with the toggle at the bottom, and its state persists between sessions. The interface follows your OS or browser color scheme preference, or you can select a light or dark style using the toggle in the navigation bar.
