@@ -17,5 +17,8 @@ services:
   osprey-ui-api:
     environment:
       OSPREY_RULES_PATH: /osprey/example_atproto_rules
+      # Where the in-app rule editor's "deploy" writes SML (#402). Same mounted
+      # dir the worker loads, so a deployed draft is picked up on worker restart.
+      OSPREY_RULES_LOCAL_PATH: /osprey/example_atproto_rules
     volumes:
       - ./example_atproto_rules:/osprey/example_atproto_rules

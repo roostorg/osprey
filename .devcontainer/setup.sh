@@ -140,7 +140,17 @@ fi
 
 cat <<EOF
 
-EDIT A RULE AND SEE IT RELOAD
+CREATE A RULE IN THE BROWSER  (no coding needed)
+  In the dashboard, go to  Rules  ->  New rule.
+  1. Draft a rule in the builder or the code editor.
+  2. Click Validate  - the live engine checks your SML and shows any errors.
+  3. Save it as a draft.
+  Everyone here shares one super-user login, so all drafts land in one shared
+  list. Draft and validate freely; let the facilitator do the single Deploy
+  (deploy writes the rule to disk and can edit the shared main.sml, so
+  simultaneous deploys would collide).
+
+EDIT A RULE IN FILES AND SEE IT RELOAD  (for the code-comfortable)
   Rules are plain text under  ${RULES_DIR}/  (mounted into the worker).
   1. Open a rule file, e.g.  ${RULES_DIR}/rules/  and change a phrase.
   2. Restart the worker to load your change:
