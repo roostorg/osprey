@@ -98,6 +98,20 @@ class RuleDraft(Model):
             return draft
 
     @classmethod
+    def other_with_rule_name(cls, rule_name: str, *, exclude_path: str) -> 'RuleDraft | None':
+        """A draft at a different path that already uses `rule_name`, if one exists.
+
+        Rule names are global identifiers in SML, so two drafts sharing a name would
+        collide once both deploy. Validation only sees deployed rules, not other
+        drafts, so this catches the draft-vs-draft case that validation can't.
+        """
+        with scoped_session() as session:
+            draft = session.query(cls).filter(cls.rule_name == rule_name, cls.path != exclude_path).first()
+            if draft is not None:
+                session.expunge(draft)
+            return draft
+
+    @classmethod
     def mark_deployed(cls, draft_id: int) -> 'RuleDraft | None':
         with scoped_session(commit=True) as session:
             draft = session.query(cls).filter(cls.id == draft_id).first()
