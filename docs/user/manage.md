@@ -4,11 +4,11 @@ The Manage section provides visibility into your Osprey configuration: the rules
 
 ## Rules Visualizer
 
-The Rules Visualizer shows how labels, rules, and other labels relate to one another in a dependency graph. It's useful for understanding what will fire when a particular label is applied, or what conditions must be true for a label to be produced.
+The Rules Visualizer shows how rules and labels relate to one another in a dependency graph. It's useful for understanding what will fire when a particular label is applied, or what conditions must be true for a label to be produced.
 
-![Rules Visualizer](../images/rules-visualizer.png)
+![The Rules Visualizer page with its search box open, offering Actions and Labels categories, before anything is selected](../images/rules-visualizer.png)
 
-To use it, select a feature or label from the search interface. A graph appears showing the upstream and downstream relationships for your selection. You can toggle upstream and downstream visibility independently.
+To use it, search for an action or label in the search box. A graph appears showing the upstream and downstream relationships for your selection. You can toggle upstream and downstream visibility independently.
 
 Node types in the graph:
 - **Red ellipse**: a label that is upstream of a rule (an input condition)
@@ -21,7 +21,7 @@ Hovering over a node shows its source file path. The graph supports zoom and pan
 
 The UDF Registry is an auto-generated API reference for every user-defined function (UDF) available in Osprey. It updates dynamically as UDFs are added or modified in code, so it always reflects what's actually available.
 
-![UDF Documentation](../images/udf-documentation.png)
+![The UDF Registry listing available functions with type signatures and descriptions, grouped by category](../images/udf-documentation.png)
 
 UDFs are organized by category and are searchable. Each entry shows:
 - Function signature with syntax highlighting

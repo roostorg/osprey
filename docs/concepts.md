@@ -2,11 +2,11 @@
 
 Osprey watches a stream of events happening on your platform, runs each one through your rules in real time, and records what it found so analysts can query and act on it. This page defines the terms the rest of these docs (and the UI itself) use. They're listed in the order data flows through Osprey, and later concepts build on earlier ones, so it's worth a read from start to finish.
 
-Throughout the docs are examples of moderating a small social network where users create posts; remember that Osprey is useful for platforms of all kinds, and its concepts may be adapted for any online platform where people interact. 
+Throughout the docs are examples of moderating a small social network where users create posts; the same concepts adapt to any platform where people interact.
 
 ## Events (and actions)
 
-Anything that happens on your platform—e.g. someone registers an account, creates a post, sends a message, or reacts to content—can be sent to Osprey as it happens as an **event**. Each event arrives with a name, like `create_post`, and whatever JSON data your platform sent along, e.g. the author's user ID and the post text "hello world."
+Anything that happens on your platform—e.g. someone registers an account, creates a post, sends a message, or reacts to content—can be sent to Osprey as an **event**, as it happens. Each event arrives with a name, like `create_post`, and whatever JSON data your platform sent along, e.g. the author's user ID and the post text "hello world."
 
 > [!NOTE]
 > You may also come across the term **action**: Osprey's submission API and rules engine historically call each incoming event an action, which is why the query bar filters on `ActionName` even though the UI's live feed is the Event Stream. In this context, they're the same: one event in, one `ActionName` recorded.
@@ -41,7 +41,7 @@ When the demo's `ContainsHello` rule matches our "hello world" post, it fires tw
 
 A **label** is a tag on an entity that persists across events—Osprey's memory. Rules add and remove labels as an effect, and can also _check_ labels, so past decisions inform future ones: "flag this post if its author was previously labeled a spammer." You can also add or remove labels by hand from the UI, one entity at a time or in bulk.
 
-Labels have a name, the entity types they apply to, and a connotation (positive or negative). See [Labels](user/investigate/labels.md) for more information about how they're used for investigations.
+Labels have a name, the entity types they apply to, and a connotation (positive, negative, or neutral). See [Labels](user/investigate/labels.md) for more information about how they're used for investigations.
 
 ## Verdicts
 
