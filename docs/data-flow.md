@@ -1,6 +1,6 @@
-# Data Flow: Getting Data In and Out
+# Data Flow
 
-This page covers how events actually reach Osprey, how results come back out, and what to change (not fork) if your platform doesn't look like the default docker-compose setup.
+How events actually reach Osprey, how results come back out, and what to change (not fork) if your platform doesn't look like the default docker-compose setup.
 
 ## Architecture at a glance
 
@@ -26,11 +26,11 @@ At its core, Osprey is a pipeline: events come in, get evaluated against your SM
         Druid + UI API → Osprey UI
 ```
 
-For the worker's own rule-evaluation architecture (how a single event is scored against your rules), see the diagram at the top of [Writing Rules](rules.md). For the coordinator's internals (priority queues, bidirectional streaming vs. synchronous API), see the [Coordinator README](https://github.com/roostorg/osprey/tree/main/example_docker_compose/run_osprey_with_coordinator), which has a more detailed component diagram and a working example.
+For the worker's rule-evaluation architecture (how a single event is scored against your rules), see the diagram at the top of [Writing Rules](rules.md). For the coordinator's internals (priority queues, bidirectional streaming vs. synchronous API), see the [Coordinator README](https://github.com/roostorg/osprey/tree/main/example_docker_compose/run_osprey_with_coordinator), which has a more detailed component diagram and a working example.
 
 ## Getting data in
 
-There are three real ways to get an event into Osprey:
+There are three ways to get an event into Osprey:
 
 ### 1. Kafka (the default)
 
