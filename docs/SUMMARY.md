@@ -5,7 +5,6 @@
 ---
 
 - [User Guide](user/README.md)
-  - [Concepts](user/concepts.md)
   - [Investigate](user/investigate/README.md)
     - [Labels](user/investigate/labels.md)
     - [Query Syntax](user/investigate/query-syntax.md)
@@ -29,8 +28,9 @@
 
 # Concepts & More
 
+- [Concepts](concepts.md)
+- [Data Flow](data-flow.md)
 - [Writing Rules](rules.md)
-- [Data Flow: Getting Data In and Out](data-flow.md)
 - [User Research & Personas](research-personas.md)
 
 ---
