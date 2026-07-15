@@ -14,19 +14,21 @@ import {
   Typography,
   message,
 } from 'antd';
-import { DeleteOutlined, PlusOutlined, SaveOutlined } from '@ant-design/icons';
+import { CloudUploadOutlined, DeleteOutlined, PlusOutlined, SaveOutlined } from '@ant-design/icons';
 import { useHistory, useLocation } from 'react-router-dom';
 
 import {
+  createRuleDraft,
+  deployRuleDraft,
   getRuleDraftSource,
   getRuleDraftVocabulary,
   parseRuleDraftIntoBuilder,
-  submitRuleDraft,
   validateRuleDraft,
 } from '../../actions/RulesActions';
 import usePromiseResult from '../../hooks/usePromiseResult';
 import {
   ParseIntoBuilderResponse,
+  RuleDraft,
   RuleDraftValidationMessage,
   RuleDraftValidationResponse,
   RuleDraftVocabulary,
@@ -52,6 +54,16 @@ import styles from './RuleEditorPage.module.css';
 const { Title, Text, Paragraph } = Typography;
 
 type EditorMode = 'builder' | 'code';
+
+// Saving stages a draft in the rule_drafts table; deploying writes it into the
+// rules directory. The saved draft's id is what a subsequent deploy targets.
+type SubmitState =
+  | { kind: 'idle' }
+  | { kind: 'saving' }
+  | { kind: 'saved'; draft: RuleDraft }
+  | { kind: 'deploying'; draft: RuleDraft }
+  | { kind: 'deployed'; draft: RuleDraft; mainSmlUpdated: boolean; pathOnDisk: string }
+  | { kind: 'error'; message: string };
 
 const VALIDATE_DEBOUNCE_MS = 600;
 
@@ -118,17 +130,12 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
     return EMPTY_BUILDER_MODEL;
   });
   const [summary, setSummary] = React.useState<string>('');
-  // Off by default: turning a rule on is a deliberate opt-in, so a submit never
+  // Off by default: turning a rule on is a deliberate opt-in, so a deploy never
   // wires a new rule into the live ruleset unless the author checks the box.
   const [wireIntoMain, setWireIntoMain] = React.useState<boolean>(false);
   const [validation, setValidation] = React.useState<RuleDraftValidationResponse | null>(null);
   const [isValidating, setIsValidating] = React.useState<boolean>(false);
-  const [submitState, setSubmitState] = React.useState<
-    | { kind: 'idle' }
-    | { kind: 'submitting' }
-    | { kind: 'done'; title: string; prUrl: string | null }
-    | { kind: 'error'; message: string }
-  >({ kind: 'idle' });
+  const [submitState, setSubmitState] = React.useState<SubmitState>({ kind: 'idle' });
 
   const effectiveSource = mode === 'builder' ? generateSmlFromBuilder(builder, data.vocabulary.features) : codeSource;
 
@@ -174,11 +181,14 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
 
   const ruleNameForSubmit = mode === 'builder' ? builder.ruleName : guessRuleNameFromSource(codeSource);
 
-  const canSubmit =
-    !!validation?.ok &&
-    SML_IDENTIFIER_RE.test(ruleNameForSubmit) &&
-    submitState.kind !== 'submitting' &&
-    !!effectiveSource.trim();
+  const isBusy = submitState.kind === 'saving' || submitState.kind === 'deploying';
+  const canSave = !!validation?.ok && SML_IDENTIFIER_RE.test(ruleNameForSubmit) && !isBusy && !!effectiveSource.trim();
+  // A draft must exist (be saved) before it can be deployed; the deploy targets its id.
+  const savedDraft =
+    submitState.kind === 'saved' || submitState.kind === 'deployed' || submitState.kind === 'deploying'
+      ? submitState.draft
+      : null;
+  const canDeploy = savedDraft !== null && !isBusy;
 
   // The builder and code editor hold independent state, so a tab switch has to
   // carry content across: builder -> code dumps the generated SML into the
@@ -208,21 +218,37 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
     }
   };
 
-  const onSubmit = async () => {
-    if (!canSubmit) return;
-    setSubmitState({ kind: 'submitting' });
+  const onSave = async () => {
+    if (!canSave) return;
+    setSubmitState({ kind: 'saving' });
     try {
-      const res = await submitRuleDraft({
+      const draft = await createRuleDraft({
         path,
         source: effectiveSource,
         rule_name: ruleNameForSubmit,
         summary,
-        is_new_rule: data.isNewRule,
-        wire_into_main: wireIntoMain,
       });
-      setSubmitState({ kind: 'done', title: res.title, prUrl: res.url });
+      setSubmitState({ kind: 'saved', draft });
+      message.success('Draft saved.');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setSubmitState({ kind: 'error', message: msg });
+    }
+  };
+
+  const onDeploy = async () => {
+    if (savedDraft === null || isBusy) return;
+    setSubmitState({ kind: 'deploying', draft: savedDraft });
+    try {
+      const res = await deployRuleDraft(savedDraft.id, { wire_into_main: wireIntoMain });
+      setSubmitState({
+        kind: 'deployed',
+        draft: res,
+        mainSmlUpdated: res.main_sml_updated,
+        pathOnDisk: res.path_on_disk,
+      });
       const wiredMsg = res.main_sml_updated ? ' (main.sml updated)' : '';
-      message.success(`${res.title}${wiredMsg}.`);
+      message.success(`Deployed to ${res.path_on_disk}${wiredMsg}.`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setSubmitState({ kind: 'error', message: msg });
@@ -238,8 +264,8 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
               {data.isNewRule ? 'Add rule' : 'Edit rule'}
             </Title>
             <Text type="secondary">
-              Drafts open a pull request against the rules repo. Nothing applies until the PR is merged and the engine
-              reloads.
+              Save stages this rule in the drafts table. Deploy writes it into the rules directory; nothing applies
+              until the engine reloads.
             </Text>
           </div>
           <div className={styles.headerActions}>
@@ -262,9 +288,25 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
               />
             </Tooltip>
             <Button onClick={() => history.push('/rules')}>Cancel</Button>
-            <Button type="primary" icon={<SaveOutlined />} disabled={!canSubmit} onClick={onSubmit}>
-              Submit for review
+            <Button
+              icon={<SaveOutlined />}
+              disabled={!canSave}
+              onClick={onSave}
+              loading={submitState.kind === 'saving'}
+            >
+              Save draft
             </Button>
+            <Tooltip title={canDeploy ? '' : 'Save the draft first, then deploy it.'}>
+              <Button
+                type="primary"
+                icon={<CloudUploadOutlined />}
+                disabled={!canDeploy}
+                onClick={onDeploy}
+                loading={submitState.kind === 'deploying'}
+              >
+                Deploy
+              </Button>
+            </Tooltip>
           </div>
         </div>
 
@@ -274,12 +316,12 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
           <div>
             <Card size="small" style={{ marginBottom: 12 }}>
               <Form layout="vertical" size="small">
-                <Form.Item label="File path" tooltip="Path inside the rules repo where this file will live.">
+                <Form.Item label="File path" tooltip="Path inside the rules directory where this file will live.">
                   <Input value={path} onChange={(e) => setPath(e.target.value)} disabled={!data.isNewRule} />
                 </Form.Item>
                 <Form.Item
-                  label={data.isNewRule ? 'Why this rule? (for reviewers)' : "What's changing? (for reviewers)"}
-                  tooltip="Becomes the pull request description. Not saved into the rule file itself."
+                  label={data.isNewRule ? 'Why this rule?' : "What's changing?"}
+                  tooltip="Saved alongside the draft. Not written into the rule file itself."
                 >
                   <Input.TextArea
                     value={summary}
@@ -294,11 +336,11 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
                 </Form.Item>
                 <Form.Item style={{ marginBottom: 0 }}>
                   <Checkbox checked={wireIntoMain} onChange={(e) => setWireIntoMain(e.target.checked)}>
-                    Turn this rule on once the review is approved.
+                    Turn this rule on when I deploy it.
                   </Checkbox>
                   <div className={styles.footnote}>
-                    Adds your rule to the list Osprey runs, as part of the same review. If it&apos;s already on the
-                    list, nothing changes.
+                    Adds your rule to the list Osprey runs (a Require line in main.sml) as part of the deploy. If
+                    it&apos;s already on the list, nothing changes.
                   </div>
                 </Form.Item>
               </Form>
@@ -339,8 +381,7 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
               <Card size="small" title="Generated SML preview" style={{ marginTop: 12 }}>
                 <pre className={styles.previewBlock}>{effectiveSource}</pre>
                 <div className={styles.footnote}>
-                  This is the code that will be submitted in a pull request on Github. Make further changes in the Code
-                  Editor view.
+                  This is the code that will be saved as the draft. Make further changes in the Code Editor view.
                 </div>
               </Card>
             )}
@@ -356,42 +397,42 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
   );
 };
 
-const SubmitBanner: React.FC<{
-  submitState:
-    | { kind: 'idle' }
-    | { kind: 'submitting' }
-    | { kind: 'done'; title: string; prUrl: string | null }
-    | { kind: 'error'; message: string };
-}> = ({ submitState }) => {
+const SubmitBanner: React.FC<{ submitState: SubmitState }> = ({ submitState }) => {
   if (submitState.kind === 'idle') return null;
-  if (submitState.kind === 'submitting') {
-    return <Alert type="info" message="Submitting draft..." showIcon style={{ marginBottom: 12 }} />;
+  if (submitState.kind === 'saving') {
+    return <Alert type="info" message="Saving draft..." showIcon style={{ marginBottom: 12 }} />;
   }
-  if (submitState.kind === 'done') {
+  if (submitState.kind === 'deploying') {
+    return <Alert type="info" message="Deploying..." showIcon style={{ marginBottom: 12 }} />;
+  }
+  if (submitState.kind === 'saved') {
     return (
       <Alert
         type="success"
         showIcon
         style={{ marginBottom: 12 }}
-        message={submitState.title}
+        message="Draft saved"
+        description="Staged in the drafts table. Deploy it to write it into the rules directory."
+      />
+    );
+  }
+  if (submitState.kind === 'deployed') {
+    return (
+      <Alert
+        type="success"
+        showIcon
+        style={{ marginBottom: 12 }}
+        message={`Deployed to ${submitState.pathOnDisk}`}
         description={
-          submitState.prUrl ? (
-            <a href={submitState.prUrl} target="_blank" rel="noopener noreferrer">
-              {submitState.prUrl}
-            </a>
-          ) : null
+          submitState.mainSmlUpdated
+            ? 'Added to main.sml. Takes effect when the engine reloads.'
+            : 'Takes effect once something requires it and the engine reloads.'
         }
       />
     );
   }
   return (
-    <Alert
-      type="error"
-      showIcon
-      style={{ marginBottom: 12 }}
-      message="Submit failed"
-      description={submitState.message}
-    />
+    <Alert type="error" showIcon style={{ marginBottom: 12 }} message="Failed" description={submitState.message} />
   );
 };
 

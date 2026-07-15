@@ -67,14 +67,24 @@ export interface RuleDraftVocabulary {
   source_files: string[];
 }
 
-export interface RuleDraftSubmitResponse {
-  // Backend-neutral fields produced by every RuleSubmissionBackend.
-  title: string;
-  url: string | null;
+export type RuleDraftStatus = 'draft' | 'deployed';
+
+export interface RuleDraft {
+  id: number;
+  path: string;
+  rule_name: string;
+  source: string;
+  summary: string;
+  author: string;
+  status: RuleDraftStatus;
+  created_at: string | null;
+  updated_at: string | null;
+  deployed_at: string | null;
+}
+
+export interface DeployRuleDraftResponse extends RuleDraft {
   main_sml_updated: boolean;
-  // Backend-specific extras (e.g., pr_number, branch for the GitHub backend;
-  // path_on_disk for the local backend).
-  [extra: string]: unknown;
+  path_on_disk: string;
 }
 
 export type ConditionOperator = '==' | '!=' | '>' | '<' | '>=' | '<=' | 'includes' | 'excludes';
@@ -108,16 +118,6 @@ export type ParseIntoBuilderResponse =
   | { supported: true; model: RuleBuilderModel }
   | { supported: false; reason: string };
 
-export interface PendingDraft {
-  title: string;
-  url: string;
-  author: string;
-  created_at: string;
-  touched_files: string[];
-  [extra: string]: unknown;
-}
-
-export interface PendingDraftsResponse {
-  pending: PendingDraft[];
-  error?: string;
+export interface RuleDraftsListResponse {
+  drafts: RuleDraft[];
 }

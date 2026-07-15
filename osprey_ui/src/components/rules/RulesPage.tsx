@@ -19,9 +19,9 @@ import {
 import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 
-import { getPendingRuleDrafts, getRulesList } from '../../actions/RulesActions';
+import { getRuleDrafts, getRulesList } from '../../actions/RulesActions';
 import usePromiseResult, { PromiseResultStatus } from '../../hooks/usePromiseResult';
-import { PendingDraft, PendingDraftsResponse, RuleInfo, RulesListResponse, SortKey } from '../../types/RulesTypes';
+import { RuleDraft, RuleDraftsListResponse, RuleInfo, RulesListResponse, SortKey } from '../../types/RulesTypes';
 import { renderFromPromiseResult } from '../../utils/PromiseResultUtils';
 
 import styles from './RulesPage.module.css';
@@ -76,19 +76,19 @@ export const RulesPage: React.FC = () => {
   const result = usePromiseResult(() => {
     return getRulesList();
   });
-  const pendingResult = usePromiseResult<PendingDraftsResponse>(() => {
-    return getPendingRuleDrafts();
+  const draftsResult = usePromiseResult<RuleDraftsListResponse>(() => {
+    return getRuleDrafts();
   });
 
   return renderFromPromiseResult(result, (data) => {
-    return <RulesPageContent data={data} pendingResult={pendingResult} />;
+    return <RulesPageContent data={data} draftsResult={draftsResult} />;
   });
 };
 
 const RulesPageContent: React.FC<{
   data: RulesListResponse;
-  pendingResult: ReturnType<typeof usePromiseResult<PendingDraftsResponse>>;
-}> = ({ data, pendingResult }) => {
+  draftsResult: ReturnType<typeof usePromiseResult<RuleDraftsListResponse>>;
+}> = ({ data, draftsResult }) => {
   const [filters, dispatch] = React.useReducer(filtersReducer, INITIAL_FILTERS);
   const { rules, total, when_rules_total, unused_total } = data;
   const { search, unusedOnly, sortKey, page, pageSize } = filters;
@@ -166,7 +166,7 @@ const RulesPageContent: React.FC<{
           </Link>
         </div>
 
-        <PendingDraftsBanner pendingResult={pendingResult} />
+        <DraftsBanner draftsResult={draftsResult} />
 
         <div className={styles.statsRow}>
           <Card size="small">
@@ -308,42 +308,37 @@ const RuleHeader: React.FC<{ rule: RuleInfo }> = ({ rule }) => {
   );
 };
 
-const PendingDraftsBanner: React.FC<{
-  pendingResult: ReturnType<typeof usePromiseResult<PendingDraftsResponse>>;
-}> = ({ pendingResult }) => {
-  if (pendingResult.status !== PromiseResultStatus.Resolved) return null;
-  const { pending, error } = pendingResult.value;
-  if (error && pending.length === 0) {
-    // GitHub backend not configured or unreachable; the rest of the page works without it.
-    return null;
-  }
-  if (pending.length === 0) return null;
+const DraftsBanner: React.FC<{
+  draftsResult: ReturnType<typeof usePromiseResult<RuleDraftsListResponse>>;
+}> = ({ draftsResult }) => {
+  if (draftsResult.status !== PromiseResultStatus.Resolved) return null;
+  const { drafts } = draftsResult.value;
+  if (drafts.length === 0) return null;
   return (
     <Alert
       type="info"
       showIcon
       style={{ marginBottom: 16 }}
-      message={`${pending.length} pending rule draft${pending.length === 1 ? '' : 's'} awaiting review`}
+      message={`${drafts.length} rule draft${drafts.length === 1 ? '' : 's'} in progress`}
       description={
         <Space direction="vertical" size={4} style={{ width: '100%' }}>
-          {pending.slice(0, 8).map((p, i) => {
-            return <PendingDraftRow key={`${p.url}-${i}`} draft={p} />;
+          {drafts.slice(0, 8).map((draft) => {
+            return <DraftRow key={draft.id} draft={draft} />;
           })}
-          {pending.length > 8 && <Text type="secondary">+{pending.length - 8} more in review.</Text>}
+          {drafts.length > 8 && <Text type="secondary">+{drafts.length - 8} more.</Text>}
         </Space>
       }
     />
   );
 };
 
-const PendingDraftRow: React.FC<{ draft: PendingDraft }> = ({ draft }) => {
+const DraftRow: React.FC<{ draft: RuleDraft }> = ({ draft }) => {
   return (
     <div>
-      <a href={draft.url} target="_blank" rel="noopener noreferrer">
-        {draft.title}
-      </a>{' '}
+      <Link to={{ pathname: '/rules/edit', search: `?path=${encodeURIComponent(draft.path)}` }}>{draft.path}</Link>{' '}
+      <Tag color={draft.status === 'deployed' ? 'green' : 'gold'}>{draft.status}</Tag>{' '}
       <Text type="secondary" style={{ fontSize: 12 }}>
-        by {draft.author}, {draft.touched_files.join(', ')}
+        by {draft.author}
       </Text>
     </div>
   );

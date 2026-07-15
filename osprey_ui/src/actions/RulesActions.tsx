@@ -1,9 +1,10 @@
 import HTTPUtils, { HTTPResponse } from '../utils/HTTPUtils';
 import {
+  DeployRuleDraftResponse,
   ParseIntoBuilderResponse,
-  PendingDraftsResponse,
+  RuleDraft,
   RuleDraftSourceResponse,
-  RuleDraftSubmitResponse,
+  RuleDraftsListResponse,
   RuleDraftValidationResponse,
   RuleDraftVocabulary,
   RulesListResponse,
@@ -54,35 +55,48 @@ export async function getRuleDraftVocabulary(): Promise<RuleDraftVocabulary> {
   throw new Error(response.error.message ?? 'Failed to fetch rule vocabulary');
 }
 
-export interface SubmitRuleDraftBody {
+export interface CreateRuleDraftBody {
   path: string;
   source: string;
   rule_name: string;
   summary: string;
-  is_new_rule: boolean;
-  wire_into_main?: boolean;
-  branch?: string;
 }
 
-export async function submitRuleDraft(body: SubmitRuleDraftBody): Promise<RuleDraftSubmitResponse> {
-  const response: HTTPResponse = await HTTPUtils.post('rule-drafts/submit', body);
+// Saves a draft into the rule_drafts table (upserted by path). The draft is staged,
+// not live; deployRuleDraft writes it into the rules directory.
+export async function createRuleDraft(body: CreateRuleDraftBody): Promise<RuleDraft> {
+  const response: HTTPResponse = await HTTPUtils.post('rule-drafts', body);
   if (response.ok) {
     return response.data;
   }
   const errPayload = response.error.response?.data as { error?: string } | undefined;
-  throw new Error(errPayload?.error ?? response.error.message ?? 'Failed to submit rule draft');
+  throw new Error(errPayload?.error ?? response.error.message ?? 'Failed to save rule draft');
 }
 
-export async function getPendingRuleDrafts(): Promise<PendingDraftsResponse> {
-  // Returns an empty list rather than throwing on failure so the RulesPage still renders
-  // when GitHub isn't configured.
-  const response: HTTPResponse = await HTTPUtils.get('rule-drafts/pending');
+export interface DeployRuleDraftBody {
+  // Also append a Require line to main.sml so the rule takes effect.
+  wire_into_main?: boolean;
+}
+
+export async function deployRuleDraft(id: number, body: DeployRuleDraftBody = {}): Promise<DeployRuleDraftResponse> {
+  const response: HTTPResponse = await HTTPUtils.post(`rule-drafts/${id}/deploy`, body);
   if (response.ok) {
     return response.data;
   }
-  const errPayload = response.error.response?.data as PendingDraftsResponse | undefined;
-  if (errPayload && Array.isArray(errPayload.pending)) {
+  const errPayload = response.error.response?.data as { error?: string } | undefined;
+  throw new Error(errPayload?.error ?? response.error.message ?? 'Failed to deploy rule draft');
+}
+
+export async function getRuleDrafts(): Promise<RuleDraftsListResponse> {
+  // Returns an empty list rather than throwing on failure so the RulesPage still renders
+  // when the caller lacks the rule-drafts ability.
+  const response: HTTPResponse = await HTTPUtils.get('rule-drafts');
+  if (response.ok) {
+    return response.data;
+  }
+  const errPayload = response.error.response?.data as RuleDraftsListResponse | undefined;
+  if (errPayload && Array.isArray(errPayload.drafts)) {
     return errPayload;
   }
-  return { pending: [], error: response.error.message ?? 'Failed to fetch pending drafts' };
+  return { drafts: [] };
 }
