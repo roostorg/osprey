@@ -29,7 +29,9 @@
 
 - [Concepts](concepts.md)
 - [Data Flow](data-flow.md)
-- [Writing Rules](rules.md)
+- [Writing Rules](rules/README.md)
+  - [Examples](rules/examples.md)
+  - [Why a Bespoke Language?](rules/why-sml.md)
 - [User Research & Personas](research-personas.md)
 
 ---

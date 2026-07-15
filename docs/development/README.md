@@ -37,7 +37,7 @@ The demo ruleset has one rule, `ContainsHello`: any post containing the word "he
 - **Group with Top N.** The pre-filled query groups by `UserId`, showing which synthetic users have been banned the most.
 - **Open the Rules Visualizer** from the navigation bar to see the dependency graph between the demo's features and rule.
 
-The [User Guide](../user/) covers the full investigation workflow, and [Writing Rules](../rules.md) explains the SML behind `ContainsHello` and how to write your own rules.
+The [User Guide](../user/) covers the full investigation workflow, and [Writing Rules](../rules/) explains the SML behind `ContainsHello` and how to write your own rules.
 
 ## Stopping the demo
 

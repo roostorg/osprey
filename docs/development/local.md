@@ -141,7 +141,7 @@ Rules are written in SML, some examples are provided in `example_rules/` with YA
 OSPREY_RULES_PATH=./example_rules uv run python3.11 osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink
 ```
 
-For more about rules, see [Writing Rules](../rules.md).
+For more about rules, see [Writing Rules](../rules/).
 
 ## Test Data
 

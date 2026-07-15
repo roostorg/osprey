@@ -34,4 +34,4 @@ From the event stream, select any entity to open its label drawer.
 
 ![Complete Label](../../images/complete-label.png)
 
-For more about how labels are used, see [Writing Rules → Labels](../../rules.md#labels).
+For more about how labels are used, see [Writing Rules → Labels](../../rules/README.md#labels).

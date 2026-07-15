@@ -25,7 +25,7 @@ Each entry point resolves to a module that contains hook functions decorated wit
 
 ## Writing UDFs
 
-A user-defined function (UDF) is a Python class that can be called from your rules. UDFs encapsulate reusable detection logic such as text matching, DNS lookups, hash comparisons, or ML inference and make it available under a named function in the rules language. See [Writing Rules § User Defined Functions](../rules.md#user-defined-functions-udfs) for the language-level view.
+A user-defined function (UDF) is a Python class that can be called from your rules. UDFs encapsulate reusable detection logic such as text matching, DNS lookups, hash comparisons, or ML inference and make it available under a named function in the rules language. See [Writing Rules § User Defined Functions](../rules/README.md#user-defined-functions-udfs) for the language-level view.
 
 ### Anatomy of a UDF
 
@@ -298,7 +298,7 @@ MySpamClassifier(text=MessageContent) > 0.85
 
 Osprey constructs one UDF instance per call site when the rules are compiled, not per event, so the model isn't reloaded for every action processed. Keep in mind this means per _call site_, not per _class_: if you call the same UDF from multiple rules, each call site gets its own instance, and each one loads its own copy of the model. **For a large model, prefer calling the UDF from a single rule (or share the loaded weights via a module-level cache) rather than invoking it from many places.**
 
-For a model served remotely, the same pattern applies with `execute()` calling out over HTTP, gRPC, or your model server's SDK (you bring the client code). Because remote model calls are often slow or costly, gate them so they only run when relevant, using [Writing Rules' `Require(..., require_if=...)` pattern](../rules.md):
+For a model served remotely, the same pattern applies with `execute()` calling out over HTTP, gRPC, or your model server's SDK (you bring the client code). Because remote model calls are often slow or costly, gate them so they only run when relevant, using [Writing Rules' `Require(..., require_if=...)` pattern](../rules/README.md#workflow-structure-and-file-placement):
 
 ```python
 Require(rule='ai_services/my_ai_service.sml', require_if=ActionName == 'register')
@@ -327,4 +327,4 @@ register_plugins = "register_plugins"
 
 Install it into the same environment as Osprey and it will be discovered automatically on the next startup.
 
-See also: [Writing Rules](../rules.md)
+See also: [Writing Rules](../rules/)

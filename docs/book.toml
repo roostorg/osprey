@@ -21,3 +21,4 @@ enable = false
 
 [output.html.redirect]
 "/integrations.html" = "development/integrations.html"
+"/rules.html" = "rules/index.html"

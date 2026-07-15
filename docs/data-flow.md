@@ -26,7 +26,7 @@ At its core, Osprey is a pipeline: events come in, get evaluated against your SM
         Druid + UI API → Osprey UI
 ```
 
-For the worker's rule-evaluation architecture (how a single event is scored against your rules), see the diagram at the top of [Writing Rules](rules.md). For the coordinator's internals (priority queues, bidirectional streaming vs. synchronous API), see the [Coordinator README](https://github.com/roostorg/osprey/tree/main/example_docker_compose/run_osprey_with_coordinator), which has a more detailed component diagram and a working example.
+For the worker's rule-evaluation architecture (how a single event is scored against your rules), see the diagram at the top of [Writing Rules](rules/). For the coordinator's internals (priority queues, bidirectional streaming vs. synchronous API), see the [Coordinator README](https://github.com/roostorg/osprey/tree/main/example_docker_compose/run_osprey_with_coordinator), which has a more detailed component diagram and a working example.
 
 ## Getting data in
 
