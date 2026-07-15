@@ -26,7 +26,7 @@ At its core, Osprey is a pipeline: events come in, get evaluated against your SM
         Druid + UI API → Osprey UI
 ```
 
-For the worker's rule-evaluation architecture (how a single event is scored against your rules), see the diagram at the top of [Writing Rules](rules/). For the coordinator's internals (priority queues, bidirectional streaming vs. synchronous API), see the [Coordinator README](https://github.com/roostorg/osprey/tree/main/example_docker_compose/run_osprey_with_coordinator), which has a more detailed component diagram and a working example.
+For the worker's rule-evaluation architecture (how a single event is scored against your rules), see the diagram at the top of [Writing Rules](../rules/). For the coordinator's internals (priority queues, bidirectional streaming vs. synchronous API), see the [Coordinator README](https://github.com/roostorg/osprey/tree/main/example_docker_compose/run_osprey_with_coordinator), which has a more detailed component diagram and a working example.
 
 ## Getting data in
 
@@ -64,7 +64,7 @@ If your events don't come from Kafka/PubSub/the coordinator, or don't arrive as 
 - **`register_action_proto_deserializer`**: convert your own protobuf `Action` message into the JSON dict shape the engine expects.
 - **`register_input_stream`**: swap in an entirely custom input source (a different queue system, a database poller, whatever you have).
 
-Both are `pluggy` hooks, registered the same way as UDFs and output sinks. See [Integrations & Plugins](development/integrations.md) for the plugin mechanics and `example_plugins/src/register_plugins.py` for a working example.
+Both are `pluggy` hooks, registered the same way as UDFs and output sinks. See [Integrations & Plugins](integrations.md) for the plugin mechanics and `example_plugins/src/register_plugins.py` for a working example.
 
 ## Getting data out
 
@@ -94,4 +94,4 @@ Separately, `ExecutionResultStore` backends persist full execution results for l
 
 ### How results become queryable in the UI
 
-Druid consumes the worker's Kafka output and powers the UI API's real-time querying; this is what backs the [Investigate](user/investigate/) query interface and the [Rules](user/manage.md#rules-registry)/[Features Registries](user/manage.md#features-registry). If you're running without Kafka output enabled, Druid has nothing to index and the query UI will be empty even though rules are still evaluating correctly.
+Druid consumes the worker's Kafka output and powers the UI API's real-time querying; this is what backs the [Investigate](../user/investigate/) query interface and the [Rules](../user/manage.md#rules-registry)/[Features Registries](../user/manage.md#features-registry). If you're running without Kafka output enabled, Druid has nothing to index and the query UI will be empty even though rules are still evaluating correctly.

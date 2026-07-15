@@ -20,5 +20,5 @@ site-url = "/osprey/"
 enable = false
 
 [output.html.redirect]
-"/integrations.html" = "development/integrations.html"
+"/integrations.html" = "integration/integrations.html"
 "/rules.html" = "rules/index.html"

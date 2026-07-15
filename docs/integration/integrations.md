@@ -1,6 +1,6 @@
 # Integrations & Plugins
 
-Osprey is designed to be extended without modifying the core codebase; you can wire up your own logic such as detection functions, output destinations, entity state storage, and ML models through plugin packages that Osprey discovers at startup. A plugin package implements any subset of the hooks in the [Available hooks](local.md#available-hooks) table; this page walks through the integration points adopters ask about most.
+Osprey is designed to be extended without modifying the core codebase; you can wire up your own logic such as detection functions, output destinations, entity state storage, and ML models through plugin packages that Osprey discovers at startup. A plugin package implements any subset of the hooks in the [Available hooks](../development/local.md#available-hooks) table; this page walks through the integration points adopters ask about most.
 
 See the [`example_plugins/` directory](https://github.com/roostorg/osprey/tree/main/example_plugins) for a working reference package.
 
@@ -107,7 +107,7 @@ Inline sets suit small, stable lists. There's no bulk-import or lookup-table pri
 
 ## Configuring input sinks
 
-An input sink is where events _enter_ Osprey. Osprey ships with built-in sources (Kafka, Google Pub/Sub, the Osprey Coordinator, and a synthetic generator for local testing) selected via the `InputStreamSource` config value. If none of those fit your platform, you can register a custom input stream as a plugin. For the conceptual picture, see [Data Flow § Getting data in](../data-flow.md#getting-data-in).
+An input sink is where events _enter_ Osprey. Osprey ships with built-in sources (Kafka, Google Pub/Sub, the Osprey Coordinator, and a synthetic generator for local testing) selected via the `InputStreamSource` config value. If none of those fit your platform, you can register a custom input stream as a plugin. For the conceptual picture, see [Data Flow § Getting data in](data-flow.md#getting-data-in).
 
 ### Built-in sources
 
@@ -164,7 +164,7 @@ def register_input_stream(config):
 
 ## Configuring output sinks
 
-An output sink receives every `ExecutionResult` after rule evaluation and decides what to do with it, e.g. log it, forward it to a queue, call a webhook, or write to a database. For the conceptual picture, see [Data Flow § Getting data out](../data-flow.md#getting-data-out); if what you want is to persist results in a backend other than the built-in BigTable/GCS/MinIO/Postgres options, the `register_execution_result_store` hook covers that instead.
+An output sink receives every `ExecutionResult` after rule evaluation and decides what to do with it, e.g. log it, forward it to a queue, call a webhook, or write to a database. For the conceptual picture, see [Data Flow § Getting data out](data-flow.md#getting-data-out); if what you want is to persist results in a backend other than the built-in BigTable/GCS/MinIO/Postgres options, the `register_execution_result_store` hook covers that instead.
 
 ### Sync output sink
 

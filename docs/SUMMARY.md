@@ -18,17 +18,21 @@
   - [Workflow](development/workflow.md)
   - [Development Tools](development/tools.md)
   - [CLI Reference](development/cli-reference.md)
-  - [Integrations & Plugins](development/integrations.md)
   - [Troubleshooting](development/troubleshooting.md)
   - [IDE Setup](development/ide.md)
   - [Release Process](development/releases.md)
 
 ---
 
+- [Integration Guide](integration/README.md)
+  - [Data Flow](integration/data-flow.md)
+  - [Integrations & Plugins](integration/integrations.md)
+
+---
+
 # Concepts & More
 
 - [Concepts](concepts.md)
-- [Data Flow](data-flow.md)
 - [Writing Rules](rules/README.md)
   - [Examples](rules/examples.md)
   - [Why a Bespoke Language?](rules/why-sml.md)

@@ -6,11 +6,13 @@ These docs are split into a few guides, depending on who you are and what you're
 
 - [User Guide](user/): learn the investigation UI—querying events, labeling entities, and running bulk jobs.
 
-- [Development Guide](development/): run a local development environment, get data in and out of Osprey, and extend it with plugins.
+- [Development Guide](development/): run a local development environment and change Osprey itself.
+
+- [Integration Guide](integration/): connect Osprey to your platform—get data in and out, and extend it with plugins.
 
 - [Concepts](concepts.md): learn about the basic concepts and terminology used in Osprey and these docs.
 
-Note that the docs are versioned: `latest` tracks development on `main`, and other versions can be found at the [documentation site index](https://roostorg.github.io/osprey/).
+Note that the docs are versioned; other versions can be found at the [documentation site index](https://roostorg.github.io/osprey/).
 
 [![The Query page with an SML filter for post-creation events and its history of past queries, beside a timeseries chart showing matching event volume in fifteen-minute buckets](images/query-and-charts.png)](images/query-and-charts.png)
 

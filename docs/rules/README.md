@@ -209,11 +209,11 @@ WhenRules(
 
 `WhenRules()` must be placed after rule declaration within a file, and it may become difficult to interpret outcomes of rules that are too distributed. Therefore, it may be beneficial to place any effects toward the bottom of workflows.
 
-After evaluation, effects and the rest of the execution result are handed to your deployment's output sinks. [Data Flow](../data-flow.md) covers where results go from there, and [Integrations & Plugins](../development/integrations.md#configuring-output-sinks) covers adding output sinks of your own.
+After evaluation, effects and the rest of the execution result are handed to your deployment's output sinks. [Data Flow](../integration/data-flow.md) covers where results go from there, and [Integrations & Plugins](../integration/integrations.md#configuring-output-sinks) covers adding output sinks of your own.
 
 ## User Defined Functions (UDFs)
 
-Nearly every function on this page—`Rule`, `JsonData`, `EntityJson`—is a UDF: a function implemented in Python and made available to SML. Osprey ships a standard library of them, and your deployment's developers can register custom ones through plugins; writing a UDF in Python is covered in [Integrations & Plugins § Writing UDFs](../development/integrations.md#writing-udfs).
+Nearly every function on this page—`Rule`, `JsonData`, `EntityJson`—is a UDF: a function implemented in Python and made available to SML. Osprey ships a standard library of them, and your deployment's developers can register custom ones through plugins; writing a UDF in Python is covered in [Integrations & Plugins § Writing UDFs](../integration/integrations.md#writing-udfs).
 
 The authoritative list of what's callable in _your_ deployment—with signatures, descriptions, and categories—is the in-app [UDF Registry](../user/manage.md#udf-registry). The standard library includes general-purpose helpers like `RegexMatch`, `ListLength`, `ParseInt` (numeric string to integer), `StringSlice` (substring by index range), and the `Hash*` family, plus engine functions like `GetActionName()` and `GetActionId()` for the name and ID of the event being processed, and `Experiment`/`ExperimentWhen` for bucketing entities so a rule can roll out to a slice of traffic.
 
@@ -242,7 +242,7 @@ WhenRules(
 )
 ```
 
-Implementing an effect UDF (and the output sink that consumes it) is plugin work; see [Integrations & Plugins](../development/integrations.md#udfs-with-side-effects).
+Implementing an effect UDF (and the output sink that consumes it) is plugin work; see [Integrations & Plugins](../integration/integrations.md#udfs-with-side-effects).
 
 ## Labels
 

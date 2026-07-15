@@ -51,7 +51,7 @@ A **verdict** is Osprey's answer when a caller is waiting for one. Most deployme
 
 Every processed event produces an execution result: the extracted features, the rules that matched, and the effects that fired. Results are indexed for querying—that's what the whole [Investigate](user/investigate/) side of the UI reads. The query bar filters results by feature (`ContainsHello == True`), charts aggregate them over time, Top N groups them by any feature, and the Event Stream shows them one by one as they happen. Clicking any entity opens its details: current labels and its history on your platform.
 
-How results get from the engine to those views (and into your own systems) is plumbing your developers control; the [Data Flow](data-flow.md) page covers it.
+How results get from the engine to those views (and into your own systems) is plumbing your developers control; the [Data Flow](integration/data-flow.md) page covers it.
 
 ## Where to go from here
 

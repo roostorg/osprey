@@ -87,7 +87,7 @@ WhenRules(
 )
 ```
 
-`TextContains` and `BanUser` aren't stdlib—they're custom UDFs from [`example_plugins/`](https://github.com/roostorg/osprey/tree/main/example_plugins), which is the reference for [writing your own](../development/integrations.md#writing-udfs). `LabelAdd` is stdlib.
+`TextContains` and `BanUser` aren't stdlib—they're custom UDFs from [`example_plugins/`](https://github.com/roostorg/osprey/tree/main/example_plugins), which is the reference for [writing your own](../integration/integrations.md#writing-udfs). `LabelAdd` is stdlib.
 
 **`config/labels.yaml`** declares the label the rule applies: which entity types it's valid for, and its connotation.
 
@@ -215,4 +215,4 @@ Require(
 
 ---
 
-From here, try modifying the demo ruleset while it's running—add a phrase to `TextContains`, or a second rule over `PostText`—or head to [Integrations & Plugins](../development/integrations.md) when a pattern needs a UDF that doesn't exist yet.
+From here, try modifying the demo ruleset while it's running—add a phrase to `TextContains`, or a second rule over `PostText`—or head to [Integrations & Plugins](../integration/integrations.md) when a pattern needs a UDF that doesn't exist yet.
