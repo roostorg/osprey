@@ -33,6 +33,7 @@ For more information about each release including git tags and artifacts, see [R
 - Event stream shows sensible defaults so first-load isn't empty ([#297](https://github.com/roostorg/osprey/pull/297) by [@haileyok](https://github.com/haileyok))
 - Replace `react-scripts` with `rsbuild`/`rspack` for UI builds ([#235](https://github.com/roostorg/osprey/pull/235) by [@chimosky](https://github.com/chimosky))
 - Migrate from npm to pnpm via Corepack ([#252](https://github.com/roostorg/osprey/pull/252) by [@haileyok](https://github.com/haileyok))
+- Upgrade `grpcio` from 1.49.1/1.53.x to 1.82.1, and `typing-extensions` from 4.6.3 to 4.12.2 (required by the grpcio upgrade) ([#415](https://github.com/roostorg/osprey/pull/415) by [@reitblatt](https://github.com/reitblatt))
 
 ### Fixed
 
