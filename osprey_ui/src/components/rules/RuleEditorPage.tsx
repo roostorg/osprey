@@ -1,25 +1,12 @@
 import * as React from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  Checkbox,
-  Form,
-  Input,
-  Segmented,
-  Select,
-  Space,
-  Tag,
-  Tooltip,
-  Typography,
-  message,
-} from 'antd';
-import { CloudUploadOutlined, DeleteOutlined, PlusOutlined, SaveOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Form, Input, Segmented, Select, Space, Tag, Tooltip, Typography, message } from 'antd';
+import { DeleteOutlined, PlusOutlined, SaveOutlined } from '@ant-design/icons';
 import { useHistory, useLocation } from 'react-router-dom';
 
 import {
   createRuleDraft,
-  deployRuleDraft,
+  getRuleDraft,
+  getRuleDrafts,
   getRuleDraftSource,
   getRuleDraftVocabulary,
   parseRuleDraftIntoBuilder,
@@ -55,15 +42,9 @@ const { Title, Text, Paragraph } = Typography;
 
 type EditorMode = 'builder' | 'code';
 
-// Saving stages a draft in the rule_drafts table; deploying writes it into the
-// rules directory. The saved draft's id is what a subsequent deploy targets.
-type SubmitState =
-  | { kind: 'idle' }
-  | { kind: 'saving' }
-  | { kind: 'saved'; draft: RuleDraft }
-  | { kind: 'deploying'; draft: RuleDraft }
-  | { kind: 'deployed'; draft: RuleDraft; mainSmlUpdated: boolean; pathOnDisk: string }
-  | { kind: 'error'; message: string };
+// Saving stages the rule in the rule_drafts table for a developer to review and
+// deploy. Authoring never deploys, so there is no deploy state here.
+type SubmitState = { kind: 'idle' } | { kind: 'saving' } | { kind: 'saved' } | { kind: 'error'; message: string };
 
 const VALIDATE_DEBOUNCE_MS = 600;
 
@@ -72,6 +53,9 @@ interface BootstrapData {
   initialSource: string;
   initialPath: string;
   isNewRule: boolean;
+  // Every existing draft, used to warn about name/path collisions the server-side
+  // validator can't see (it only knows deployed rules, not other drafts).
+  existingDrafts: RuleDraft[];
   // For edit mode: the result of round-tripping the loaded source through the
   // backend parser. Determines whether the Rule Builder toggle is enabled and
   // what model the builder starts from.
@@ -79,35 +63,54 @@ interface BootstrapData {
 }
 
 export const RuleEditorPage: React.FC = () => {
-  // The edit path lives in `?path=` because react-router v5 has no clean
-  // repeating-segment param and rule paths contain slashes.
+  // Two edit entry points, both via query params because react-router v5 has no
+  // clean repeating-segment param and rule paths contain slashes:
+  //   ?draftId=N  -> edit a saved draft (its SML lives in the rule_drafts table)
+  //   ?path=X     -> edit an existing rule file loaded from the rules directory
   const location = useLocation();
   const isNewRule = location.pathname === '/rules/new';
-  const editPath = isNewRule ? undefined : (new URLSearchParams(location.search).get('path') ?? undefined);
+  const params = new URLSearchParams(location.search);
+  const draftId = isNewRule ? undefined : (params.get('draftId') ?? undefined);
+  const editPath = isNewRule ? undefined : (params.get('path') ?? undefined);
 
   const result = usePromiseResult<BootstrapData>(async () => {
-    const vocabulary = await getRuleDraftVocabulary();
+    const [vocabulary, { drafts: existingDrafts }] = await Promise.all([getRuleDraftVocabulary(), getRuleDrafts()]);
     if (isNewRule) {
       return {
         vocabulary,
+        existingDrafts,
         initialSource: '',
         initialPath: 'rules/new_rule.sml',
         isNewRule: true,
       };
     }
+    // A draft's SML is in the table, so load it from there rather than from disk.
+    if (draftId) {
+      const draft = await getRuleDraft(Number(draftId));
+      const initialBuilderParse = await parseRuleDraftIntoBuilder(draft.path, draft.source);
+      return {
+        vocabulary,
+        existingDrafts,
+        initialSource: draft.source,
+        initialPath: draft.path,
+        isNewRule: false,
+        initialBuilderParse,
+      };
+    }
     if (!editPath) {
-      throw new Error('Missing ?path= query parameter; navigate from the Rules page.');
+      throw new Error('Missing ?draftId= or ?path= query parameter; navigate from the Rules page.');
     }
     const source = await getRuleDraftSource(editPath);
     const initialBuilderParse = await parseRuleDraftIntoBuilder(source.path, source.contents);
     return {
       vocabulary,
+      existingDrafts,
       initialSource: source.contents,
       initialPath: source.path,
       isNewRule: false,
       initialBuilderParse,
     };
-  }, [editPath, isNewRule]);
+  }, [draftId, editPath, isNewRule]);
 
   return renderFromPromiseResult(result, (data) => {
     return <RuleEditorView data={data} />;
@@ -130,9 +133,6 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
     return EMPTY_BUILDER_MODEL;
   });
   const [summary, setSummary] = React.useState<string>('');
-  // Off by default: turning a rule on is a deliberate opt-in, so a deploy never
-  // wires a new rule into the live ruleset unless the author checks the box.
-  const [wireIntoMain, setWireIntoMain] = React.useState<boolean>(false);
   const [validation, setValidation] = React.useState<RuleDraftValidationResponse | null>(null);
   const [isValidating, setIsValidating] = React.useState<boolean>(false);
   const [submitState, setSubmitState] = React.useState<SubmitState>({ kind: 'idle' });
@@ -181,14 +181,21 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
 
   const ruleNameForSubmit = mode === 'builder' ? builder.ruleName : guessRuleNameFromSource(codeSource);
 
-  const isBusy = submitState.kind === 'saving' || submitState.kind === 'deploying';
-  const canSave = !!validation?.ok && SML_IDENTIFIER_RE.test(ruleNameForSubmit) && !isBusy && !!effectiveSource.trim();
-  // A draft must exist (be saved) before it can be deployed; the deploy targets its id.
-  const savedDraft =
-    submitState.kind === 'saved' || submitState.kind === 'deployed' || submitState.kind === 'deploying'
-      ? submitState.draft
-      : null;
-  const canDeploy = savedDraft !== null && !isBusy;
+  // Collisions the server-side validator can't see (it only knows deployed rules):
+  // a rule name already taken by another draft (a hard conflict — the server rejects
+  // it on save too), and — for a brand new rule — a path that would overwrite a live
+  // rule or another draft (a soft warning, since replacing can be intentional). Path
+  // is only editable for new rules, so path warnings are new-rule-only.
+  const nameConflictDraft = data.existingDrafts.find((d) => d.rule_name === ruleNameForSubmit && d.path !== path);
+  const pathOverwritesRule = data.isNewRule && data.vocabulary.source_files.includes(path);
+  const pathOverwritesDraft = data.isNewRule && data.existingDrafts.some((d) => d.path === path);
+
+  const canSave =
+    !!validation?.ok &&
+    SML_IDENTIFIER_RE.test(ruleNameForSubmit) &&
+    submitState.kind !== 'saving' &&
+    !!effectiveSource.trim() &&
+    !nameConflictDraft;
 
   // The builder and code editor hold independent state, so a tab switch has to
   // carry content across: builder -> code dumps the generated SML into the
@@ -222,33 +229,14 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
     if (!canSave) return;
     setSubmitState({ kind: 'saving' });
     try {
-      const draft = await createRuleDraft({
+      await createRuleDraft({
         path,
         source: effectiveSource,
         rule_name: ruleNameForSubmit,
         summary,
       });
-      setSubmitState({ kind: 'saved', draft });
+      setSubmitState({ kind: 'saved' });
       message.success('Draft saved.');
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setSubmitState({ kind: 'error', message: msg });
-    }
-  };
-
-  const onDeploy = async () => {
-    if (savedDraft === null || isBusy) return;
-    setSubmitState({ kind: 'deploying', draft: savedDraft });
-    try {
-      const res = await deployRuleDraft(savedDraft.id, { wire_into_main: wireIntoMain });
-      setSubmitState({
-        kind: 'deployed',
-        draft: res,
-        mainSmlUpdated: res.main_sml_updated,
-        pathOnDisk: res.path_on_disk,
-      });
-      const wiredMsg = res.main_sml_updated ? ' (main.sml updated)' : '';
-      message.success(`Deployed to ${res.path_on_disk}${wiredMsg}.`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setSubmitState({ kind: 'error', message: msg });
@@ -264,8 +252,8 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
               {data.isNewRule ? 'Add rule' : 'Edit rule'}
             </Title>
             <Text type="secondary">
-              Save stages this rule in the drafts table. Deploy writes it into the rules directory; nothing applies
-              until the engine reloads.
+              Saves the rule draft into <code>rule_drafts</code> for a developer to review and deploy. This does not
+              change any live rules.
             </Text>
           </div>
           <div className={styles.headerActions}>
@@ -289,6 +277,7 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
             </Tooltip>
             <Button onClick={() => history.push('/rules')}>Cancel</Button>
             <Button
+              type="primary"
               icon={<SaveOutlined />}
               disabled={!canSave}
               onClick={onSave}
@@ -296,21 +285,38 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
             >
               Save draft
             </Button>
-            <Tooltip title={canDeploy ? '' : 'Save the draft first, then deploy it.'}>
-              <Button
-                type="primary"
-                icon={<CloudUploadOutlined />}
-                disabled={!canDeploy}
-                onClick={onDeploy}
-                loading={submitState.kind === 'deploying'}
-              >
-                Deploy
-              </Button>
-            </Tooltip>
           </div>
         </div>
 
         <SubmitBanner submitState={submitState} />
+
+        {nameConflictDraft && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="Rule name already used by another draft"
+            description={`The draft at ${nameConflictDraft.path} already defines a rule named "${ruleNameForSubmit}". Rule names must be unique, so saving will be rejected until you rename this rule or edit that draft.`}
+          />
+        )}
+        {pathOverwritesRule && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="A live rule already exists at this path"
+            description={`Saving stages a draft that would replace ${path} when deployed. Pick a different path if you meant to add a new rule instead of changing that one.`}
+          />
+        )}
+        {pathOverwritesDraft && !pathOverwritesRule && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="A draft already exists at this path"
+            description={`Saving will overwrite the existing draft at ${path}. Pick a different path to keep both.`}
+          />
+        )}
 
         <div className={styles.editorGrid}>
           <div>
@@ -320,8 +326,9 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
                   <Input value={path} onChange={(e) => setPath(e.target.value)} disabled={!data.isNewRule} />
                 </Form.Item>
                 <Form.Item
-                  label={data.isNewRule ? 'Why this rule?' : "What's changing?"}
-                  tooltip="Saved alongside the draft. Not written into the rule file itself."
+                  label={data.isNewRule ? 'Why this rule? (for the developer)' : "What's changing? (for the developer)"}
+                  tooltip="Saved alongside the draft to give the developer who deploys it context. Not written into the rule file itself."
+                  style={{ marginBottom: 0 }}
                 >
                   <Input.TextArea
                     value={summary}
@@ -333,15 +340,6 @@ const RuleEditorView: React.FC<{ data: BootstrapData }> = ({ data }) => {
                     }
                     autoSize={{ minRows: 2, maxRows: 4 }}
                   />
-                </Form.Item>
-                <Form.Item style={{ marginBottom: 0 }}>
-                  <Checkbox checked={wireIntoMain} onChange={(e) => setWireIntoMain(e.target.checked)}>
-                    Turn this rule on when I deploy it.
-                  </Checkbox>
-                  <div className={styles.footnote}>
-                    Adds your rule to the list Osprey runs (a Require line in main.sml) as part of the deploy. If
-                    it&apos;s already on the list, nothing changes.
-                  </div>
                 </Form.Item>
               </Form>
             </Card>
@@ -402,9 +400,6 @@ const SubmitBanner: React.FC<{ submitState: SubmitState }> = ({ submitState }) =
   if (submitState.kind === 'saving') {
     return <Alert type="info" message="Saving draft..." showIcon style={{ marginBottom: 12 }} />;
   }
-  if (submitState.kind === 'deploying') {
-    return <Alert type="info" message="Deploying..." showIcon style={{ marginBottom: 12 }} />;
-  }
   if (submitState.kind === 'saved') {
     return (
       <Alert
@@ -412,22 +407,7 @@ const SubmitBanner: React.FC<{ submitState: SubmitState }> = ({ submitState }) =
         showIcon
         style={{ marginBottom: 12 }}
         message="Draft saved"
-        description="Staged in the drafts table. Deploy it to write it into the rules directory."
-      />
-    );
-  }
-  if (submitState.kind === 'deployed') {
-    return (
-      <Alert
-        type="success"
-        showIcon
-        style={{ marginBottom: 12 }}
-        message={`Deployed to ${submitState.pathOnDisk}`}
-        description={
-          submitState.mainSmlUpdated
-            ? 'Added to main.sml. Takes effect when the engine reloads.'
-            : 'Takes effect once something requires it and the engine reloads.'
-        }
+        description="Saved into rule_drafts for a developer to review and deploy. No live rules changed."
       />
     );
   }
@@ -715,7 +695,7 @@ const RuleBuilderEditor: React.FC<{
           Outcomes
         </Title>
         <Paragraph type="secondary" style={{ fontSize: 12 }}>
-          Wrapped in a <code>WhenRules(then=[…])</code> block that fires when the rule matches.
+          What Osprey does when the conditions above are met, like adding a label or banning the user.
         </Paragraph>
         {model.outcomes.map((outcome, oIdx) => {
           return (

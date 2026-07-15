@@ -335,7 +335,7 @@ const DraftsBanner: React.FC<{
 const DraftRow: React.FC<{ draft: RuleDraft }> = ({ draft }) => {
   return (
     <div>
-      <Link to={{ pathname: '/rules/edit', search: `?path=${encodeURIComponent(draft.path)}` }}>{draft.path}</Link>{' '}
+      <Link to={{ pathname: '/rules/edit', search: `?draftId=${draft.id}` }}>{draft.path}</Link>{' '}
       <Tag color={draft.status === 'deployed' ? 'green' : 'gold'}>{draft.status}</Tag>{' '}
       <Text type="secondary" style={{ fontSize: 12 }}>
         by {draft.author}

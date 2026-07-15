@@ -1,6 +1,5 @@
 import HTTPUtils, { HTTPResponse } from '../utils/HTTPUtils';
 import {
-  DeployRuleDraftResponse,
   ParseIntoBuilderResponse,
   RuleDraft,
   RuleDraftSourceResponse,
@@ -62,8 +61,8 @@ export interface CreateRuleDraftBody {
   summary: string;
 }
 
-// Saves a draft into the rule_drafts table (upserted by path). The draft is staged,
-// not live; deployRuleDraft writes it into the rules directory.
+// Saves a draft into the rule_drafts table (upserted by path). The draft is staged
+// for a developer to review and deploy; saving never changes any live rules.
 export async function createRuleDraft(body: CreateRuleDraftBody): Promise<RuleDraft> {
   const response: HTTPResponse = await HTTPUtils.post('rule-drafts', body);
   if (response.ok) {
@@ -73,18 +72,15 @@ export async function createRuleDraft(body: CreateRuleDraftBody): Promise<RuleDr
   throw new Error(errPayload?.error ?? response.error.message ?? 'Failed to save rule draft');
 }
 
-export interface DeployRuleDraftBody {
-  // Also append a Require line to main.sml so the rule takes effect.
-  wire_into_main?: boolean;
-}
-
-export async function deployRuleDraft(id: number, body: DeployRuleDraftBody = {}): Promise<DeployRuleDraftResponse> {
-  const response: HTTPResponse = await HTTPUtils.post(`rule-drafts/${id}/deploy`, body);
+// Loads a single draft (its SML lives in the table, not on disk, so editing a draft
+// reads it from here rather than from the rules directory).
+export async function getRuleDraft(id: number): Promise<RuleDraft> {
+  const response: HTTPResponse = await HTTPUtils.get(`rule-drafts/${id}`);
   if (response.ok) {
     return response.data;
   }
   const errPayload = response.error.response?.data as { error?: string } | undefined;
-  throw new Error(errPayload?.error ?? response.error.message ?? 'Failed to deploy rule draft');
+  throw new Error(errPayload?.error ?? response.error.message ?? 'Failed to load rule draft');
 }
 
 export async function getRuleDrafts(): Promise<RuleDraftsListResponse> {

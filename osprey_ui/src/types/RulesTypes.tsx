@@ -82,11 +82,6 @@ export interface RuleDraft {
   deployed_at: string | null;
 }
 
-export interface DeployRuleDraftResponse extends RuleDraft {
-  main_sml_updated: boolean;
-  path_on_disk: string;
-}
-
 export type ConditionOperator = '==' | '!=' | '>' | '<' | '>=' | '<=' | 'includes' | 'excludes';
 
 export interface RuleBuilderCondition {
