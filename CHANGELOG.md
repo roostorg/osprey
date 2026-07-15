@@ -36,6 +36,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
+- Serialize Postgres schema creation behind an advisory lock so the worker and UI API no longer race on `CREATE TYPE` for the `job_status` enum on a fresh volume, which could crash the worker on first boot ([#436](https://github.com/roostorg/osprey/pull/436) by [@vedarolap](https://github.com/vedarolap), closes [#432](https://github.com/roostorg/osprey/issues/432))
 - Escape literal braces when parsing f-strings in the engine ([#347](https://github.com/roostorg/osprey/pull/347) by [@haileyok](https://github.com/haileyok))
 - Tolerate malformed URI escapes in `EntityWithPopover` UI component ([#377](https://github.com/roostorg/osprey/pull/377) by [@julietshen](https://github.com/julietshen))
 - Add retention limits to Kafka topics to prevent unbounded disk growth ([#249](https://github.com/roostorg/osprey/pull/249) by [@VINODvoid](https://github.com/VINODvoid))
