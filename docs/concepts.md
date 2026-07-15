@@ -25,11 +25,11 @@ In our example, `UserId` would be declared as an entity: the same user posts man
 
 ## Rules
 
-A **rule** is a named condition over features, written in Osprey's rule language, SML. Rules are evaluated against every event as it arrives. On their own, rules just return a boolean true/false (which is itself queryable, like any feature). Rules can be wired to [effects](#effets).
+A **rule** is a named condition over features, written in Osprey's rule language, SML. Rules are evaluated against every event as it arrives. On their own, rules just return a boolean true/false (which is itself queryable, like any feature). Rules can be wired to [effects](#effects).
 
 In our example, a rule might cover "the event is a post creation and the post text contains 'hello'."
 
-Rules live as code in your Osprey deployment alongside the Osprey code itself. See [Writing Rules](../rules.md) for more detail.
+Rules live as code in your Osprey deployment alongside the Osprey code itself. See [Writing Rules](rules/) for more detail.
 
 ## Effects
 
@@ -41,7 +41,7 @@ When the demo's `ContainsHello` rule matches our "hello world" post, it fires tw
 
 A **label** is a tag on an entity that persists across events—Osprey's memory. Rules add and remove labels as an effect, and can also _check_ labels, so past decisions inform future ones: "flag this post if its author was previously labeled a spammer." You can also add or remove labels by hand from the UI, one entity at a time or in bulk.
 
-Labels have a name, the entity types they apply to, and a connotation (positive or negative). See [Labels](investigate/labels.md) for more information about how they're used for investigations.
+Labels have a name, the entity types they apply to, and a connotation (positive or negative). See [Labels](user/investigate/labels.md) for more information about how they're used for investigations.
 
 ## Verdicts
 
@@ -49,10 +49,10 @@ A **verdict** is Osprey's answer when a caller is waiting for one. Most deployme
 
 ## Results, and where they surface
 
-Every processed event produces an execution result: the extracted features, the rules that matched, and the effects that fired. Results are indexed for querying—that's what the whole [Investigate](investigate/) side of the UI reads. The query bar filters results by feature (`ContainsHello == True`), charts aggregate them over time, Top N groups them by any feature, and the Event Stream shows them one by one as they happen. Clicking any entity opens its details: current labels and its history on your platform.
+Every processed event produces an execution result: the extracted features, the rules that matched, and the effects that fired. Results are indexed for querying—that's what the whole [Investigate](user/investigate/) side of the UI reads. The query bar filters results by feature (`ContainsHello == True`), charts aggregate them over time, Top N groups them by any feature, and the Event Stream shows them one by one as they happen. Clicking any entity opens its details: current labels and its history on your platform.
 
-How results get from the engine to those views (and into your own systems) is plumbing your developers control; the [Data Flow](../data-flow.md) page covers it.
+How results get from the engine to those views (and into your own systems) is plumbing your developers control; the [Data Flow](data-flow.md) page covers it.
 
 ## Where to go from here
 
-Try these ideas out on live sample data by running the [demo](../development/), then head to [Investigate](investigate/) to learn the query workflow, or [Writing Rules](../rules.md) when you're ready to automate a decision of your own.
+Try these ideas out on live sample data by running the [demo](development/), then head to [Investigate](user/investigate/) to learn the query workflow, or [Writing Rules](rules/) when you're ready to automate a decision of your own.

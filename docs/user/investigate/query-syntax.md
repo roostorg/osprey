@@ -2,7 +2,7 @@
 
 Osprey uses SML (“Some Madeup Language,” a subset of Python with additional restrictions) for queries. Queries filter events by matching against features, actions, and labels.
 
-Queries match against **features**—the named values your rules extract from each event—including **entities** and **labels**. If those terms are new, read [Concepts](../concepts.md) first.
+Queries match against **features**—the named values your rules extract from each event—including **entities** and **labels**. If those terms are new, read [Concepts](../../concepts.md) first.
 
 ## Basic comparisons
 
