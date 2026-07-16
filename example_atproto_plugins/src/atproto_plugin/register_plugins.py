@@ -35,4 +35,5 @@ def register_label_output_sink(config: Config, labels_provider: LabelsProvider) 
     relay_url = config.get_optional_str('OZONE_RELAY_URL')
     if not relay_url:
         return None
-    return OzoneLabelOutputSink(labels_provider, relay_url)
+    relay_token = config.get_optional_str('OZONE_RELAY_TOKEN')
+    return OzoneLabelOutputSink(labels_provider, relay_url, relay_token)

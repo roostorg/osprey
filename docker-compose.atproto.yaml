@@ -13,6 +13,9 @@ services:
       # Opt-in: set to the workshop label relay to forward benign bleep/bloop
       # labels from rules to the real Ozone labeler. Unset = internal labels only.
       OZONE_RELAY_URL: ${OZONE_RELAY_URL:-}
+      # Bearer token for the relay (must match its RELAY_TOKEN); needed for a
+      # deployed/token-authed relay, unset for a local open one.
+      OZONE_RELAY_TOKEN: ${OZONE_RELAY_TOKEN:-}
     volumes:
       - ./example_atproto_rules:/osprey/example_atproto_rules
       - ./example_atproto_plugins:/osprey/example_atproto_plugins

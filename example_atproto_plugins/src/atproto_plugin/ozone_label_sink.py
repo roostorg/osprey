@@ -36,11 +36,13 @@ class OzoneLabelOutputSink(BaseOutputSink):
         self,
         labels_provider: LabelsProvider,
         relay_url: str,
+        relay_token: str | None = None,
         forwarded_labels: frozenset[str] = FORWARDED_LABELS,
     ) -> None:
         self._inner = LabelOutputSink(labels_provider)
         self._relay_url = relay_url.rstrip('/')
         self._forwarded = forwarded_labels
+        self._headers = {'Authorization': f'Bearer {relay_token}'} if relay_token else {}
 
     def set_monitored_labels(self, monitored_labels: set[str]) -> None:
         self._inner.set_monitored_labels(monitored_labels)
@@ -82,6 +84,7 @@ class OzoneLabelOutputSink(BaseOutputSink):
             resp = requests.post(
                 f'{self._relay_url}/label',
                 json={'item': {'id': uri}, 'custom': {'labelVal': val}, 'actorEmail': 'osprey-rule'},
+                headers=self._headers,
                 timeout=5,
             )
             if resp.status_code != 200:
