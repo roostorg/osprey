@@ -3,3 +3,11 @@ labels:
     valid_for: [UserId]
     connotation: neutral
     description: ATProto user who posted a record containing the word 'test'
+  bleep:
+    valid_for: [UserId]
+    connotation: neutral
+    description: Benign workshop label; forwarded to the Ozone labeler when set on a post.
+  bloop:
+    valid_for: [UserId]
+    connotation: neutral
+    description: Benign workshop label; forwarded to the Ozone labeler when set on a post.
