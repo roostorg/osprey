@@ -223,16 +223,24 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
   const axisDateFormat = getDateFormatForGranularity(granularity);
   const tooltipDateFormat = getDateFormatForGranularity('other');
 
+  // Only show ticks/labels at timestamps that actually have data, matching the
+  // previous Highcharts behaviour, while keeping a continuous time axis (so brush
+  // drag-to-select still maps directly to real timestamps).
+  const dataTimestamps = chartData.map(([timestamp]) => timestamp);
+
   const chartOptions = {
-    grid: { left: '3%', right: '4%', bottom: 70, containLabel: true },
+    grid: { left: '3%', right: '4%', bottom: 10, containLabel: true },
     xAxis: {
       type: 'time',
-      splitLine: { show: true },
+      splitLine: { show: true, customValues: dataTimestamps },
+      axisTick: { customValues: dataTimestamps },
       axisLabel: {
+        customValues: dataTimestamps,
         // ECharts time axis provides millisecond timestamps; dayjs renders them
         // in the browser's local timezone, matching the previous Highcharts behaviour.
         formatter: (value: number) => dayjs(value).format(axisDateFormat),
-        rotate: -45,
+        rotate: 45,
+        align: 'right',
       },
     },
     yAxis: {
