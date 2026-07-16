@@ -10,6 +10,9 @@ services:
     environment:
       OSPREY_INPUT_STREAM_SOURCE: plugin
       OSPREY_RULES_PATH: /osprey/example_atproto_rules
+      # Opt-in: set to the workshop label relay to forward benign bleep/bloop
+      # labels from rules to the real Ozone labeler. Unset = internal labels only.
+      OZONE_RELAY_URL: ${OZONE_RELAY_URL:-}
     volumes:
       - ./example_atproto_rules:/osprey/example_atproto_rules
       - ./example_atproto_plugins:/osprey/example_atproto_plugins
