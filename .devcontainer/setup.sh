@@ -86,6 +86,12 @@ if [ "$SOURCE_MODE" = "jetstream" ]; then
   log "Pulling images and starting the stack (first run takes several minutes)"
   # run-atproto.sh stacks docker-compose.atproto.yaml on the main compose file.
   # Pass 'up -d --build' so postCreate returns instead of blocking in the foreground.
+  # In a Codespace the browser can't reach the API at localhost:5004; point the UI
+  # at the forwarded port URL (set 5002 + 5004 to Public on the shared Codespace).
+  if [ -n "${CODESPACE_NAME:-}" ]; then
+    export REACT_APP_API_BASE_URL="https://${CODESPACE_NAME}-5004.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}"
+    log "Codespace detected -> UI API base = $REACT_APP_API_BASE_URL"
+  fi
   bash run-atproto.sh up -d --build
   wait_for "Druid Broker" "http://localhost:8082/status" 180 || true
   wait_for "Osprey UI API" "http://localhost:5004/config" 120 || true

@@ -148,6 +148,9 @@ services:
     environment:
       - PYTHONPATH=/osprey
       - PORT=5004
+      # Multiple gunicorn workers so ~37 concurrent users don't serialize on one.
+      - WEB_CONCURRENCY=4
+      - GUNICORN_CMD_ARGS=--timeout 60
       - DEBUG=true
       - FLASK_DEBUG=1
       - FLASK_ENV=development
@@ -182,7 +185,8 @@ services:
       - "127.0.0.1:5002:5002"
     environment:
       - NODE_ENV=development
-      - REACT_APP_API_BASE_URL=http://localhost:5004
+      # Overridable so a Codespace can point the browser at the forwarded API URL.
+      - REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL:-http://localhost:5004}
     volumes:
       - ./osprey_ui:/app
       - /app/node_modules
