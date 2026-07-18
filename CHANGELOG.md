@@ -33,6 +33,7 @@ For more information about each release including git tags and artifacts, see [R
 - Event stream shows sensible defaults so first-load isn't empty ([#297](https://github.com/roostorg/osprey/pull/297) by [@haileyok](https://github.com/haileyok))
 - Replace `react-scripts` with `rsbuild`/`rspack` for UI builds ([#235](https://github.com/roostorg/osprey/pull/235) by [@chimosky](https://github.com/chimosky))
 - Migrate from npm to pnpm via Corepack ([#252](https://github.com/roostorg/osprey/pull/252) by [@haileyok](https://github.com/haileyok))
+- Osprey starts without GCP credentials instead of crashing: Pub/Sub publishing degrades to a noop (via a `make_publisher` factory that emits a `configuration.errors` metric) when credentials are absent, and can be disabled with `OSPREY_PUBSUB_ENABLED=false`. The GCP-backed telemetry itself (analytics, webhooks, rules-visualizer experiment metadata) stays inert until GCP or a replacement is configured ([#388](https://github.com/roostorg/osprey/pull/388) by [@julietshen](https://github.com/julietshen))
 
 ### Fixed
 
