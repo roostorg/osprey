@@ -112,6 +112,11 @@ def _current_sources_dict() -> dict[str, str]:
 @blueprint.route('/rule-drafts/source', methods=['GET'])
 @require_ability(CanEditRuleDrafts)
 def get_source() -> Any:
+    """Return the source of a rule already loaded by the engine (i.e. on disk).
+
+    This is for editing an existing rule; it does not read the rule_drafts table.
+    A draft's own SML is loaded from the table via `GET /rule-drafts/<id>`.
+    """
     path = request.args.get('path', '').strip()
     err = _validate_path(path)
     if err:
@@ -120,7 +125,7 @@ def get_source() -> Any:
     engine = ENGINE.instance()
     source: Source | None = engine.execution_graph.validated_sources.sources.get_by_path(path)
     if source is None:
-        return jsonify({'error': f'No source found at {path!r}.'}), 404
+        return jsonify({'error': f'No rule found at {path!r}.'}), 404
     return jsonify({'path': source.path, 'contents': source.contents})
 
 
