@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from enum import StrEnum
 
 from sqlalchemy import BigInteger, Column, DateTime, Enum, Text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from .postgres import Model, scoped_session
 
@@ -36,6 +37,8 @@ class RuleDraft(Model):
     rule_name: str = Column(Text, nullable=False)
     sml_source: str = Column(Text, nullable=False)
     summary: str = Column(Text, nullable=False, default='')
+    # Osprey has no users table; identity is just an email with ACLs applied, so
+    # this stores the author's email rather than a foreign key.
     author_email: str = Column(Text, nullable=False)
     status: RuleDraftStatus = Column(
         Enum(RuleDraftStatus, native_enum=False, length=32),
@@ -64,20 +67,29 @@ class RuleDraft(Model):
     def upsert(cls, *, path: str, rule_name: str, sml_source: str, summary: str, author_email: str) -> 'RuleDraft':
         """Create the draft for `path`, or update it in place if one already exists.
 
-        Editing a deployed draft moves it back to `DRAFT` so the table reflects
-        that the in-flight SML no longer matches what was last deployed.
+        Uses a single `INSERT ... ON CONFLICT DO UPDATE` so two concurrent saves of
+        the same path can't both see "no row" and then race the unique constraint.
+        Editing a deployed draft moves it back to `DRAFT` so the table reflects that
+        the in-flight SML no longer matches what was last deployed.
         """
+        now = _now()
+        mutable = {
+            'rule_name': rule_name,
+            'sml_source': sml_source,
+            'summary': summary,
+            'author_email': author_email,
+            'status': RuleDraftStatus.DRAFT,
+            'updated_at': now,
+        }
+        statement = (
+            pg_insert(cls.__table__)
+            .values(path=path, created_at=now, **mutable)
+            .on_conflict_do_update(index_elements=[cls.path], set_=mutable)
+        )
         with scoped_session(commit=True) as session:
-            draft = session.query(cls).filter(cls.path == path).first()
-            if draft is None:
-                draft = cls(path=path)
-                session.add(draft)
-            draft.rule_name = rule_name
-            draft.sml_source = sml_source
-            draft.summary = summary
-            draft.author_email = author_email
-            draft.status = RuleDraftStatus.DRAFT
+            session.execute(statement)
             session.flush()
+            draft = session.query(cls).filter(cls.path == path).one()
             session.expunge(draft)
             return draft
 
@@ -85,8 +97,7 @@ class RuleDraft(Model):
     def list_all(cls) -> list['RuleDraft']:
         with scoped_session() as session:
             drafts = session.query(cls).order_by(cls.updated_at.desc()).all()
-            for draft in drafts:
-                session.expunge(draft)
+            session.expunge_all()
             return drafts
 
     @classmethod
