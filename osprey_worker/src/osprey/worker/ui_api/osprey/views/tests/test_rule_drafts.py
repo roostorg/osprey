@@ -5,6 +5,17 @@ import pytest
 from flask import Response, url_for
 from flask.testing import FlaskClient
 from osprey.worker.lib.snowflake import Snowflake
+from osprey.worker.lib.storage.postgres import scoped_session
+from osprey.worker.lib.storage.rule_drafts import RuleDraft
+
+
+@pytest.fixture(autouse=True)
+def _clear_rule_drafts():
+    # The test database is session-scoped, so drafts persist across tests. Start each
+    # test with an empty table, or leaked rows trip the rule-name uniqueness check.
+    with scoped_session(commit=True) as session:
+        session.query(RuleDraft).delete()
+    yield
 
 
 @pytest.fixture(autouse=True)
@@ -427,6 +438,8 @@ def test_deploy_wire_into_main_409_when_main_missing(
 
     res = client.post(url_for('rule_drafts.deploy_draft', draft_id=draft_id), json={'wire_into_main': True})
     assert res.status_code == 409
+    # The rule file must not be written when the deploy 409s on a missing main.sml.
+    assert not (tmp_path / 'rules' / 'nomain.sml').exists()
 
 
 @pytest.mark.use_rules_sources(_base_sources)
