@@ -4,6 +4,7 @@ import logging
 import os
 import re
 from collections.abc import Iterable
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -42,18 +43,19 @@ logger = logging.getLogger(__name__)
 
 blueprint = Blueprint('rule_drafts', __name__)
 
-_VALID_PATH = re.compile(r'^[A-Za-z0-9_./-]+\.sml$')
+_VALID_PATH = re.compile(r'^[A-Za-z0-9_/-]+\.sml$')
 _VALID_RULE_NAME = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
 
 def _format_validation_message(msg: ValidationError | ValidationWarning) -> dict[str, Any]:
     identifier: str | None = None
     try:
+        # `ast_node` is a property that raises RuntimeError when the span has no node.
         node = msg.span.ast_node
-        if isinstance(node, Name):
-            identifier = node.identifier
-    except Exception:
-        pass
+    except (RuntimeError, AttributeError):
+        node = None
+    if isinstance(node, Name):
+        identifier = node.identifier
 
     defined_in: list[str] = []
     for additional in msg.additional_spans:
@@ -92,7 +94,11 @@ def _suggest_imports_from_errors(
 
 def _validate_path(path: str) -> str | None:
     if not _VALID_PATH.match(path):
-        return f'Path {path!r} is not a valid SML source path (must end .sml and contain only [A-Za-z0-9_./-]).'
+        return f'Path {path!r} is not a valid SML source path (must end .sml and contain only [A-Za-z0-9_/-]).'
+    if path.startswith('/'):
+        # Rule paths are relative to the rules directory; an absolute path would
+        # escape it. Deploy also guards this with _resolve_within, but reject early.
+        return f'Path {path!r} must be relative to the rules directory, not absolute.'
     if '..' in path.split('/'):
         return f'Path {path!r} contains a parent-directory segment.'
     return None
@@ -118,6 +124,57 @@ def get_source() -> Any:
     return jsonify({'path': source.path, 'contents': source.contents})
 
 
+@dataclass
+class _DraftValidation:
+    """The outcome of validating a draft spliced into the loaded sources."""
+
+    ok: bool
+    errors: list[dict[str, Any]] = field(default_factory=list)
+    warnings: list[dict[str, Any]] = field(default_factory=list)
+    suggested_imports: list[str] = field(default_factory=list)
+    # Set when the sources couldn't even be assembled (e.g. broken main.sml),
+    # which is distinct from the SML compiling but failing validation.
+    assemble_error: str | None = None
+
+
+def _validate_draft_source(path: str, source_text: str) -> _DraftValidation:
+    """Splice the draft into the loaded sources and run AST validation.
+
+    Shared by POST /rule-drafts/validate (which reports the result) and the
+    server-side re-validation on create/deploy (which rejects on failure), so the
+    two paths can't drift apart.
+    """
+    spliced = _current_sources_dict()
+    spliced[path] = source_text
+    try:
+        sources = Sources.from_dict(spliced)
+    except Exception:
+        # Don't echo the raw exception to the client (it can leak internals).
+        logger.exception('failed to assemble sources for draft at %r', path)
+        return _DraftValidation(ok=False, assemble_error='Could not assemble the rule sources for validation.')
+
+    engine = ENGINE.instance()
+    try:
+        validated = validate_sources(
+            sources,
+            udf_registry=engine.udf_registry,
+            validator_registry=engine.validator_registry,
+        )
+    except ValidationFailed as exc:
+        errors = [_format_validation_message(e) for e in exc.errors]
+        return _DraftValidation(
+            ok=False,
+            errors=errors,
+            warnings=[_format_validation_message(w) for w in exc.warnings],
+            suggested_imports=_suggest_imports_from_errors(path, errors),
+        )
+
+    return _DraftValidation(
+        ok=True,
+        warnings=[_format_validation_message(w) for w in validated.warnings],
+    )
+
+
 @blueprint.route('/rule-drafts/validate', methods=['POST'])
 @require_ability(CanEditRuleDrafts)
 def validate_draft() -> Any:
@@ -137,46 +194,23 @@ def validate_draft() -> Any:
     if not isinstance(source_text, str):
         return jsonify({'error': 'source must be a string.'}), 400
 
-    spliced = _current_sources_dict()
-    spliced[path] = source_text
-
-    try:
-        sources = Sources.from_dict(spliced)
-    except Exception as exc:
-        # Sources.from_dict asserts on shape (e.g., missing main.sml). Surface as a structured error
-        # so the editor can show "you broke main.sml" without crashing.
+    result = _validate_draft_source(path, source_text)
+    if result.assemble_error is not None:
+        # main.sml (or another source) is broken; surface it so the editor can show it.
         return jsonify(
             {
                 'ok': False,
-                'errors': [{'message': str(exc), 'hint': '', 'source_path': path, 'line': 0, 'column': 0}],
+                'errors': [{'message': result.assemble_error, 'hint': '', 'source_path': path, 'line': 0, 'column': 0}],
                 'warnings': [],
             }
         ), 400
 
-    engine = ENGINE.instance()
-    try:
-        validated = validate_sources(
-            sources,
-            udf_registry=engine.udf_registry,
-            validator_registry=engine.validator_registry,
-        )
-    except ValidationFailed as exc:
-        formatted_errors = [_format_validation_message(e) for e in exc.errors]
-        return jsonify(
-            {
-                'ok': False,
-                'errors': formatted_errors,
-                'warnings': [_format_validation_message(w) for w in exc.warnings],
-                'suggested_imports': _suggest_imports_from_errors(path, formatted_errors),
-            }
-        )
-
     return jsonify(
         {
-            'ok': True,
-            'errors': [],
-            'warnings': [_format_validation_message(w) for w in validated.warnings],
-            'suggested_imports': [],
+            'ok': result.ok,
+            'errors': result.errors,
+            'warnings': result.warnings,
+            'suggested_imports': result.suggested_imports,
         }
     )
 
@@ -310,26 +344,14 @@ def vocabulary() -> Any:
 
 
 def _revalidate(path: str, source_text: str) -> tuple[Any, int] | None:
-    """Re-run the engine's AST validation with the draft spliced into the loaded
-    sources. Returns a Flask error tuple on failure, or None if it validates."""
-    spliced = _current_sources_dict()
-    spliced[path] = source_text
-    try:
-        sources = Sources.from_dict(spliced)
-        validate_sources(
-            sources,
-            udf_registry=ENGINE.instance().udf_registry,
-            validator_registry=ENGINE.instance().validator_registry,
-        )
-    except ValidationFailed as exc:
-        return jsonify(
-            {
-                'error': 'Validation failed; fix errors before submitting.',
-                'errors': [_format_validation_message(e) for e in exc.errors],
-            }
-        ), 400
-    except Exception as exc:
-        return jsonify({'error': f'Could not assemble sources: {exc}'}), 400
+    """Re-run validation server-side, rejecting on failure. Returns a Flask error
+    tuple to return, or None if the draft validates. Shares `_validate_draft_source`
+    with the /validate endpoint so create/deploy can't accept SML the editor rejected."""
+    result = _validate_draft_source(path, source_text)
+    if result.assemble_error is not None:
+        return jsonify({'error': result.assemble_error}), 400
+    if not result.ok:
+        return jsonify({'error': 'Validation failed; fix errors before submitting.', 'errors': result.errors}), 400
     return None
 
 
@@ -477,14 +499,18 @@ def deploy_draft(draft_id: int) -> Any:
     target = _resolve_within(rules_dir, draft.path)
     if target is None:
         return jsonify({'error': f'Draft path {draft.path!r} escapes the rules directory.'}), 400
+
+    # If wiring is requested, verify main.sml exists before writing anything, so a
+    # missing main.sml doesn't leave the rule file written while the deploy 409s.
+    main_path = rules_dir / 'main.sml'
+    if wire_into_main and not main_path.exists():
+        return jsonify({'error': 'wire_into_main requested but main.sml does not exist in the rules directory.'}), 409
+
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(draft.sml_source, encoding='utf-8')
 
     main_sml_updated = False
     if wire_into_main:
-        main_path = rules_dir / 'main.sml'
-        if not main_path.exists():
-            return jsonify({'error': f'wire_into_main requested but main.sml does not exist at {main_path}.'}), 409
         main_contents = main_path.read_text(encoding='utf-8')
         if not _main_requires(main_contents, draft.path):
             main_path.write_text(_append_require(main_contents, draft.path), encoding='utf-8')
@@ -493,7 +519,9 @@ def deploy_draft(draft_id: int) -> Any:
     deployed = RuleDraft.mark_deployed(draft_id)
     result = deployed.to_json() if deployed is not None else draft.to_json()
     result['main_sml_updated'] = main_sml_updated
-    result['path_on_disk'] = str(target)
+    # Report the path relative to the rules directory, not the absolute server path
+    # (which would leak the deployment's directory layout to the client).
+    result['path_on_disk'] = str(target.relative_to(rules_dir.resolve()))
     return jsonify(result)
 
 
