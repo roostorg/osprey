@@ -25,6 +25,7 @@ For more information about each release including git tags and artifacts, see [R
 - Option to suppress cached errors to reduce metric bloat ([#180](https://github.com/roostorg/osprey/pull/180) by [@lithium-powered](https://github.com/lithium-powered))
 - Experimental asyncio-native worker with metrics and engine/coordinator improvements ([#341](https://github.com/roostorg/osprey/pull/341) by [@cmttt](https://github.com/cmttt))
 - Experimental in-app rule authoring with a `rule_drafts` table and deployment hooks ([#402](https://github.com/roostorg/osprey/pull/402) by [@julietshen](https://github.com/julietshen))
+- ATProto JetStream example plugins and rules ([#236](https://github.com/roostorg/osprey/pull/236) by [@haileyok](https://github.com/haileyok))
 - `osprey-stress` CLI: closed-loop stress harness that produces synthetic events at a configurable rate, observes their `ExecutionResult`s on the output topic, and reports drop rate and p50/p95/p99 latency, exiting non-zero on threshold breach so it can gate CI on pipeline health ([#367](https://github.com/roostorg/osprey/pull/367) by [@julietshen](https://github.com/julietshen), closes [#324](https://github.com/roostorg/osprey/issues/324))
 
 ### Changed
@@ -41,6 +42,7 @@ For more information about each release including git tags and artifacts, see [R
 - Add retention limits to Kafka topics to prevent unbounded disk growth ([#249](https://github.com/roostorg/osprey/pull/249) by [@VINODvoid](https://github.com/VINODvoid))
 - Fix failed UDF query ([#233](https://github.com/roostorg/osprey/pull/233) by [@chimosky](https://github.com/chimosky))
 - Force a visible scrollbar on the event-stream virtualized list, which was relying on the OS auto-hide default and was easy to miss ([#367](https://github.com/roostorg/osprey/pull/367) by [@julietshen](https://github.com/julietshen))
+- Show the event-stream timezone once instead of twice; `zz` rendered a doubled abbreviation (e.g. `EDTEDT`) after the moment-to-dayjs migration ([#419](https://github.com/roostorg/osprey/pull/419) by [@julietshen](https://github.com/julietshen))
 
 ## [1.0.1] - 2026-02-27
 
