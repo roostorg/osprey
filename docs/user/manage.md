@@ -29,7 +29,7 @@ UDFs are organized by category and are searchable. Each entry shows:
 - Parameter names, types, and descriptions
 - Return type
 
-Use this page as your reference when writing queries or rules: especially to confirm a function's exact name and parameter order before using it. (Querying a UDF that doesn't exist causes a silent 500 error.)
+Use this page as your reference when writing rules, to confirm a function's exact name and parameter order. Note that most UDFs are for rules only: the query box supports just four functions (`RegexMatch`, `DidAddLabel`, `DidRemoveLabel`, `DidDeclareVerdict`), so using any other UDF in a query currently fails with a silent 500 error.
 
 ## Features Registry
 

@@ -6,18 +6,18 @@ Osprey includes the following command-line tools installed as console scripts; r
 
 General-purpose worker administration including pushing rules, opening a debug shell, and applying labels manually.
 
-### osprey-cli push_rules
+### osprey-cli push-rules
 
 ```sh
-osprey-cli push_rules RULES_PATH [--dry-run/--no-dry-run] [--suppress-warnings]
+osprey-cli push-rules RULES_PATH [--dry-run/--no-dry-run] [--suppress-warnings]
 ```
 
 Validates the rules at `RULES_PATH` and pushes them. Use `--dry-run` to validate without pushing. Exits non-zero if validation fails.
 
-### osprey-cli compute_and_upload_dependencies_mapping
+### osprey-cli compute-and-upload-dependencies-mapping
 
 ```sh
-osprey-cli compute_and_upload_dependencies_mapping RULES_PATH [--suppress-warnings]
+osprey-cli compute-and-upload-dependencies-mapping RULES_PATH [--suppress-warnings]
 ```
 
 Computes the dependency graph for the rules at `RULES_PATH` and uploads it; this is what powers the [Rules Visualizer](../user/manage.md#rules-visualizer).
@@ -30,10 +30,10 @@ osprey-cli shell [-i / --auto-import / --no-auto-import]
 
 Opens an interactive shell (IPython if installed, otherwise a fallback `code.InteractiveConsole`) with `labels`, `access_audit_log`, and `stored_execution_result` storage modules pre-imported, plus `EntityT`, `EntityLabelMutation`, and `LabelStatus`. With `--auto-import` (the default), it also imports every model class it can find under `osprey_lib`. Useful for interactively inspecting stored data.
 
-### osprey-cli apply_label
+### osprey-cli apply-label
 
 ```bash
-osprey-cli apply_label ENTITY_TYPE ENTITY_ID LABEL_NAME LABEL_STATUS \
+osprey-cli apply-label ENTITY_TYPE ENTITY_ID LABEL_NAME LABEL_STATUS \
   [--reason REASON] [--description DESCRIPTION] [--expire-instantly]
 ```
 
@@ -41,14 +41,14 @@ Manually applies a label to a single entity. Mainly intended for debugging or im
 
 This requires a labels provider to be configured for the Osprey instance; it fails with an assertion error otherwise.
 
-### osprey-cli bulk_apply_label
+### osprey-cli bulk-apply-label
 
 ```bash
-osprey-cli bulk_apply_label ENTITY_TYPE ENTITY_IDS_FILE_PATH LABEL_NAME LABEL_STATUS \
+osprey-cli bulk-apply-label ENTITY_TYPE ENTITY_IDS_FILE_PATH LABEL_NAME LABEL_STATUS \
   [--reason REASON] [--description DESCRIPTION] [--expire-instantly]
 ```
 
-Same as `apply_label`, but reads entity IDs (one per line) from `ENTITY_IDS_FILE_PATH` and applies the label to all of them, printing progress as it goes. This is the CLI path for importing bulk label lists from external sources; see also the UI-driven [Bulk Actions](../user/operate.md#bulk-actions) workflow.
+Same as `apply-label`, but reads entity IDs (one per line) from `ENTITY_IDS_FILE_PATH` and applies the label to all of them, printing progress as it goes. This is the CLI path for importing bulk label lists from external sources; see also the UI-driven [Bulk Actions](../user/operate.md#bulk-actions) workflow.
 
 ## osprey-stress
 
@@ -77,7 +77,7 @@ Common flags:
 osprey-stress measure [--duration SECONDS] [--report {human,json}]
 ```
 
-Reserved for open-loop measurement against externally-produced events, once the jetstream input stream plugin (#236) lands. Today it prints a stub message and exits non-zero; use `run` for closed-loop synthetic testing in the meantime.
+Reserved for open-loop measurement against externally-produced events, such as the JetStream input stream sample ([#236](https://github.com/roostorg/osprey/pull/236)). The measurement layer isn't implemented yet, so today it prints a stub message and exits non-zero; use `run` for closed-loop synthetic testing in the meantime.
 
 ## osprey-async-cli
 

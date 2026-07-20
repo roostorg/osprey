@@ -28,7 +28,7 @@ Rules currently support the following concepts through the `Rule(...)` function 
 
   The rule's logic is the list of signals in the `when_all` parameter; a signal can be a comparison over features, a label check, a UDF call, or another rule.
 
-    If any signal in the list evaluates to `Null`, the whole rule evaluates to `Null`; see [Nulls](#nulls) below.
+    If any signal in the list evaluates to `None`, the whole rule evaluates to `None`; see [None values](#none-values) below.
 
 - **Description**
 
@@ -49,7 +49,7 @@ My_Rule_Name_v2 = Rule(
         # Secondary Signal
         RegexMatch(target=MyStringValue, pattern='(hello|world)'),
         MySecondValue >= 3,
-        MyThirdValue != Null,
+        MyThirdValue != None,
         # Guardrail Signal
         (_LocalValue in [1, 2, 3, 5]) or (GlobalValue in ['hello', 'howdy']),
         not HasLabel(entity=MySecondEntityName, label='MySecondLabel'),
@@ -262,27 +262,36 @@ A custom UDF can also create entities by declaring `EntityT` as its output type.
 
 ## Notable Gotchas
 
-### Nulls
+### None values
 
-A rule or variable in SML is `Null` when it doesn't exist; a piece of data was missing, or a rule didn't run. Unlike in many programming languages, a rule with a `Null` signal is skipped entirely (and so are rules downstream of it) unless the rule checks for `Null` explicitly. For example:
+A rule or variable in SML is `None` when it doesn't exist; a piece of data was missing, or a rule didn't run. Unlike in many programming languages, a rule with a `None` signal is skipped entirely (and so are rules downstream of it) unless the rule checks for `None` explicitly. For example:
 
 ```python
 Thing: int = JsonData(path='$.property_that_doesnt_exist')
 
 # Evaluates to False
-MyFirstRule = Rule(when_all=[
-    Thing != Null,
-])
+MyFirstRule = Rule(
+    when_all=[
+        Thing != None,
+    ],
+    description=f'Thing is present',
+)
 
-# Skips evaluation and sets to Null
-MySecondRule = Rule(when_all=[
-    Thing > 1,
-])
+# Skips evaluation and sets to None
+MySecondRule = Rule(
+    when_all=[
+        Thing > 1,
+    ],
+    description=f'Thing is greater than 1',
+)
 
-# Skips evaluation and sets to Null
-MyThirdRule = Rule(when_all=[
-    MySecondRule,
-])
+# Skips evaluation and sets to None
+MyThirdRule = Rule(
+    when_all=[
+        MySecondRule,
+    ],
+    description=f'MySecondRule matched',
+)
 ```
 
 ### Workflow Structure and File Placement
@@ -301,7 +310,7 @@ Import(
     ]
 )
 
-MyRule = Rule(when_all=[ActionName == "foo"])
+MyRule = Rule(when_all=[ActionName == "foo"], description=f'Action is foo')
 ```
 
 `Require` selectively runs other SML scripts. It supports templating and conditionals, so scripts can be skipped entirely; that matters when a rule or UDF is expensive to run, like a call to an AI service.

@@ -138,7 +138,7 @@ Implement any subset of these in your plugin's `register_plugins.py`:
 Rules are written in SML; examples with YAML config are provided in `example_rules/`. Rules are mounted into the worker processes when the containers start, controlled via environment variables; for example:
 
 ```bash
-OSPREY_RULES_PATH=./example_rules uv run python3.11 osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink
+OSPREY_RULES_PATH=./example_rules uv run python osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink
 ```
 
 For more about rules, see [Writing Rules](../rules/).

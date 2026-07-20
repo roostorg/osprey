@@ -7,7 +7,7 @@ Osprey uses SML (“Some Madeup Language,” a subset of Python with additional 
 ```py
 EventType == "create_post"
 UserId == 12345
-MessageText != Null
+MessageText != None
 ```
 
 ## Combining conditions
@@ -23,21 +23,21 @@ EventType == "user_login" and LoginAttempts >= 3
 EventType in ["create_post", "send_message"]
 ```
 
-## Using UDFs
+## Query functions
 
-UDFs (see [UDF Registry](../manage.md#udf-registry)) extend what you can express in a query:
+Queries support a small, fixed set of built-in functions. Unlike the UDFs you use in rules (which are pluggable), this set does not grow when you add plugins:
+
+- `RegexMatch(target=..., pattern=...)`: regex match against a feature
+- `DidAddLabel(...)` and `DidRemoveLabel(...)`: events where a label was added or removed (see [Label queries](#label-queries))
+- `DidDeclareVerdict(...)`: events where a verdict was declared
 
 ```py
-# Text search
-TextContains(text=PostContent, phrase="spam")
+# Regex match against a feature
 RegexMatch(target=MessageText, pattern="(buy|sell|deal)")
-
-# List operations
-ListLength(list=UserConnections) > 10
 ```
 
 > [!NOTE]
-> If you query a UDF that doesn't exist, Osprey will silently fail with a 500 error. Use the UDF Registry to confirm a function name before using it.
+> These are the only functions that work in queries. The [UDF Registry](../manage.md#udf-registry) lists every UDF, but most are rules-only and will fail with a silent 500 error if you use them in a query.
 
 ## Label queries
 
@@ -55,8 +55,8 @@ DidAddLabel(entity_type="IpAddress", label_name="suspicious")
 # Suspicious login attempts
 EventType == "user_login" and LoginAttempts >= 5
 
-# Posts containing specific words
-EventType == "create_post" and TextContains(text=PostContent, phrase="urgent")
+# Posts matching a pattern
+EventType == "create_post" and RegexMatch(target=PostContent, pattern="urgent")
 
 # Users who were flagged
 DidAddLabel(entity_type="UserId", label_name="flagged")

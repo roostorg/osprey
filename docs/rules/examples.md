@@ -124,6 +124,7 @@ Should_Warn_User_Of_Spammer = Rule(
         HasLabel(entity=UserId, label='likely_spammer'),
         This_Is_A_New_DM,
     ],
+    description=f'Likely spammer {UserId} started a new DM',
 )
 ```
 
