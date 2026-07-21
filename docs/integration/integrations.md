@@ -1,8 +1,8 @@
 # Integrations & Plugins
 
-Osprey is designed to be extended without modifying the core codebase; you can wire up your own logic such as detection functions, output destinations, entity state storage, and ML models through plugin packages that Osprey discovers at startup.
+Osprey is designed to be extended without modifying the core codebase; you can wire up your own logic such as detection functions, output destinations, entity state storage, and ML models through plugin packages that Osprey discovers at startup. A plugin package implements any subset of the hooks in the [Available hooks](../development/local.md#available-hooks) table; this page walks through the integration points adopters ask about most.
 
-See the [`example_plugins/` directory](https://github.com/roostorg/osprey/tree/main/example_plugins) for reference.
+See the [`example_plugins/` directory](https://github.com/roostorg/osprey/tree/main/example_plugins) for a working reference package.
 
 ## How plugins are loaded
 
@@ -25,7 +25,7 @@ Each entry point resolves to a module that contains hook functions decorated wit
 
 ## Writing UDFs
 
-A user-defined function (UDF) is a Python class that can be called from your rules. UDFs encapsulate reusable detection logic such as text matching, DNS lookups, hash comparisons, or ML inference and make it available under a named function in the rules language.
+A user-defined function (UDF) is a Python class that can be called from your rules. UDFs encapsulate reusable detection logic—text matching, DNS lookups, hash comparisons, ML inference—and expose it as a named function in the rules language. See [Writing Rules § User Defined Functions](../rules/#user-defined-functions-udfs) for the language-level view.
 
 ### Anatomy of a UDF
 
@@ -89,19 +89,25 @@ def register_udfs():
     return [TextContains, BanUser]
 ```
 
-## Built-in UDFs: hash lookups
+Give each UDF a category from `UdfCategories` (`osprey_worker/src/osprey/engine/stdlib/udfs/categories.py`, e.g. `STRING`, `HASH`, `ENTITY`, `HTTP`) so it's grouped sensibly in the [UDF Registry](../user/manage.md#udf-registry).
 
-Osprey's standard library includes hash UDFs (`HashMd5`, `HashSha1`, `HashSha256`, `HashSha512`) under the `HASH` category. They take a string `input` and return the hex digest. Use them in rules to compare hashed values against known-bad hash sets without storing raw data:
+## Hash-based lookups
+
+Osprey's standard library includes the `Hash*` UDF family (`HashMd5`, `HashSha1`, `HashSha256`, `HashSha512`, under the `HASH` category and available without registration), which takes a string `input` and returns the hex digest. Compose these with SML's `in` operator or `HasLabel` to check values against known-bad sets without storing raw data:
 
 ```python
-HashSha256(input=Username) == "e3b0c44298fc1c149afbf4c8996fb924..."
+# Check a hashed value against a small inline set
+IsKnownBadHash = HashSha256(input=SomeValue) in ['abc123...', 'def456...']
+
+# Or check membership via a label that was set by some other process
+IsKnownBadActor = HasLabel(entity=SomeEntity, label='KnownBad')
 ```
 
-These are available without registration.
+Inline sets suit small, stable lists. There's no bulk-import or lookup-table primitive, so for a large external list (millions of hashes, updated frequently), write a custom UDF (see above) that queries your own store.
 
 ## Configuring input sinks
 
-An input sink is where events _enter_ Osprey. Osprey ships with built-in sources (Kafka, Google Pub/Sub, the Osprey Coordinator, and a synthetic generator for local testing) selected via the `InputStreamSource` config value. If none of those fit your platform, you can register a custom input stream as a plugin.
+An input sink is where events _enter_ Osprey. Osprey ships with built-in sources (Kafka, Google Pub/Sub, the Osprey Coordinator, and a synthetic generator for local testing) selected via the `InputStreamSource` config value. If none of those fit your platform, you can register a custom input stream as a plugin. For the conceptual picture, see [Data Flow § Getting data in](data-flow.md#getting-data-in).
 
 ### Built-in sources
 
@@ -115,7 +121,7 @@ Source               | Config                                                   
 `SYNTHETIC`          | &nbsp;                                                              | Generates random fake events; useful for local dev without any upstream system
 `PLUGIN`             | &nbsp;                                                              | Delegates to your registered `register_input_stream` hook
 
-Set `InputStreamSource.KAFKA` (or whichever fits your existing infrastructure) if you already have events flowing through Kafka or Pub/Sub. Otherwise, implement a custom input stream and set `InputStreamSource.PLUGIN` in your config. 
+Set `InputStreamSource.KAFKA` if you already have events flowing through Kafka, or `InputStreamSource.PUBSUB` for Google Pub/Sub (see the table above). Otherwise, implement a custom input stream and set `InputStreamSource.PLUGIN` in your config. If your events arrive as protobuf rather than JSON, there's also a `register_action_proto_deserializer` hook for supplying your own deserializer.
 
 ### Writing a custom input stream
 
@@ -158,11 +164,11 @@ def register_input_stream(config):
 
 ## Configuring output sinks
 
-An output sink receives every `ExecutionResult` after rule evaluation and decides what to do with it, i.e. log it, forward it to a queue, call a webhook, or write to a database.
+An output sink receives every `ExecutionResult` after rule evaluation and decides what to do with it, e.g. log it, forward it to a queue, call a webhook, or write to a database. For the conceptual picture, see [Data Flow § Getting data out](data-flow.md#getting-data-out); if what you want is to persist results in a backend other than the built-in BigTable/GCS/MinIO/Postgres options, the `register_execution_result_store` hook covers that instead.
 
 ### Sync output sink
 
-Subclass `BaseOutputSink` and implement three methods; for example:
+Subclass `BaseOutputSink` and implement its methods; for example:
 
 ```python
 from osprey.worker.sinks.sink.output_sink import BaseOutputSink
@@ -175,7 +181,7 @@ class MyOutputSink(BaseOutputSink):
         return True
 
     def push(self, result: ExecutionResult) -> None:
-        # Do something with the result — send to a queue, call an API, etc.
+        # Do something with the result—send to a queue, call an API, etc.
         pass
 
     def stop(self) -> None:
@@ -226,9 +232,9 @@ def register_async_output_sinks(config):
     return [ExampleAsyncOutputSink()]
 ```
 
-## Connecting to a review tool via a labels service
+## Labels service
 
-Osprey tracks state across events through entity labels: arbitrary tags attached to users, accounts, or other entities. Labels are read during rule evaluation and written by rules with label effects. To persist labels across process restarts (and share them between workers), you provide a `LabelsServiceBase` implementation backed by your own storage.
+Osprey tracks state across events through entity labels: arbitrary tags attached to users, accounts, or other entities (e.g., "this user has 3 prior violations"). Labels are read during rule evaluation and written by rules with label effects. To persist labels across process restarts (and share them between workers), you provide a `LabelsServiceBase` implementation backed by your own storage via the `register_labels_service_or_provider` hook.
 
 The example implementation in [`example_plugins/src/services/labels_service.py`](https://github.com/roostorg/osprey/blob/main/example_plugins/src/services/labels_service.py) uses PostgreSQL, e.g.:
 
@@ -237,7 +243,7 @@ from osprey.worker.lib.storage.labels import LabelsServiceBase
 
 class PostgresLabelsService(LabelsServiceBase):
     def initialize(self) -> None:
-        # Called once at startup — open connections here
+        # Called once at startup—open connections here
         ...
 
     def read_labels(self, entity) -> EntityLabels:
@@ -259,11 +265,17 @@ def register_labels_service_or_provider(config):
     return PostgresLabelsService()
 ```
 
-A labels service backed by your existing datastore lets Osprey decisions feed directly into your review tool: label an entity "flagged", and your review queue queries for that label.
+## Connecting to a review tool
+
+Osprey doesn't currently support direct integration with a review tool; however, these extension points can help you integrate:
+
+- `register_output_sinks`—push execution results into a review queue as they're produced.
+- `register_label_output_sink`—a sink specifically for label mutations, replacing the default `LabelOutputSink`.
+- A labels service backed by your existing datastore (previous section)—label an entity "flagged" from a rule, and your review queue queries your own store for that label.
 
 ## Plugging in your own ML model
 
-ML models integrate as UDFs. Wrap your model's `predict` call in `execute`. Since a UDF's `__init__` receives `validation_context` and `arguments` from the framework, override it to accept and forward both, then do your model loading after the `super().__init__()` call; for example:
+ML models can be integrated as UDFs. For an in-process model, wrap your model's `predict` call in `execute`. Since a UDF's `__init__` receives `validation_context` and `arguments` from the framework, override it to accept and forward both, then do your model loading after the `super().__init__()` call; for example:
 
 ```python
 class Arguments(ArgumentsBase):
@@ -284,7 +296,13 @@ The returned score is then available in rules, e.g.:
 MySpamClassifier(text=MessageContent) > 0.85
 ```
 
-Osprey constructs one UDF instance per call site when the rules are compiled, not per event, so the model isn't reloaded for every action processed. Keep in mind this means per _call site_, not per _class_: if you call the same UDF from multiple rules, each call site gets its own instance, and each one loads its own copy of the model. **For a large model, prefer calling the UDF from a single rule (or share the loaded weights via a module-level cache) rather than invoking it from many places.**
+Osprey constructs one UDF instance per call site when the rules are compiled, not per event, so the model isn't reloaded for every event processed. That's one instance per _call site_, not per _class_: if you call the same UDF from multiple rules, each call site gets its own instance, and each one loads its own copy of the model. **For a large model, prefer calling the UDF from a single rule (or share the loaded weights via a module-level cache) rather than invoking it from many places.**
+
+For a model served remotely, the same pattern applies with `execute()` calling out over HTTP, gRPC, or your model server's SDK (you bring the client code). Because remote model calls are often slow or costly, gate them so they only run when relevant, using [Writing Rules' `Require(..., require_if=...)` pattern](../rules/#workflow-structure-and-file-placement):
+
+```python
+Require(rule='ai_services/my_ai_service.sml', require_if=ActionName == 'register')
+```
 
 ## Packaging your plugin
 
@@ -309,4 +327,4 @@ register_plugins = "register_plugins"
 
 Install it into the same environment as Osprey and it will be discovered automatically on the next startup.
 
-See also: [Writing Rules](rules.md)
+See also: [Writing Rules](../rules/)
