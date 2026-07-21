@@ -133,6 +133,9 @@ services:
 
   osprey-ui-api:
     container_name: osprey-ui-api
+    # On a fresh DB the 4 gunicorn workers race to create the schema; the losers
+    # exit and gunicorn halts. Restart so it self-heals once the type exists.
+    restart: unless-stopped
     build:
       context: .
       dockerfile: osprey_worker/Dockerfile
