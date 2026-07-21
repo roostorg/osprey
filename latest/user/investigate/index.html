@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="roost sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -19,7 +19,7 @@
         <link rel="stylesheet" href="../../css/chrome-ae938929.css">
 
         <!-- Fonts -->
-        <link rel="stylesheet" href="../../fonts/fonts-5adcde45.css">
+        <link rel="stylesheet" href="../../fonts/fonts-057a31e4.css">
 
         <!-- Highlight.js Stylesheets -->
         <link rel="stylesheet" id="mdbook-highlight-css" href="../../highlight-493f70e1.css">
@@ -27,17 +27,20 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../../ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../../theme/css/roost-f456bf59.css">
+        <link rel="stylesheet" href="../../theme/css/roost-hljs-bfdc96e7.css">
+        <link rel="stylesheet" href="../../theme/css/content-96c01c5a.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "../../";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-83b5ee43.js";
+            const default_light_theme = "roost";
+            const default_dark_theme = "roost";
+            window.path_to_searchindex_js = "../../searchindex-a91683c5.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../../toc-25a7537f.js"></script>
+        <script src="../../toc-bf5bb2f8.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -75,7 +78,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('roost')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -124,7 +127,7 @@
                             <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
                         </button>
                         <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">ROOST (Auto)</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
@@ -180,57 +183,60 @@
 <p>The Investigate section is where most day-to-day work happens. It contains the main query interface, your query history, and saved queries.</p>
 <h2 id="query"><a class="header" href="#query">Query</a></h2>
 <p>The Query page is the home page of Osprey. It’s a live investigation workspace with three panels.</p>
-<p><img src="../../images/osprey-home.png" alt="Osprey Home"></p>
+<p><img src="../../images/osprey-home.png" alt="The Query page on first load: an empty query input with a Last Day time range on the left above the query history, and empty Timeseries Chart, Top N Results, and Event Stream panels awaiting data"></p>
 <h3 id="query-input"><a class="header" href="#query-input">Query input</a></h3>
 <p>The left panel is where you write and run queries. Osprey uses SML syntax—the same language used to write rules—to filter and search event data. See <a href="query-syntax.html">Query Syntax</a> for a full reference.</p>
-<p><img src="../../images/query-box.png" alt="Query Box"></p>
+<p><img src="../../images/query-box.png" alt="The query input with an SML filter for post-creation events by one user, a Last 2 Weeks time range, and a Submit Query button"></p>
 <p>As you type, the input offers autocomplete suggestions for feature names, action names, and UDFs. Hovering over any UDF name shows a tooltip with its description.</p>
-<p><img src="../../images/query-udf-hover.png" alt="Query UDF Hover"></p>
+<p><img src="../../images/query-udf-hover.png" alt="Autocomplete in the query input suggesting the ContainsHello UDF after typing “Contains”, with a tooltip describing it as “Post contains the word hello”"></p>
 <p>The active query is reflected in the page URL, making it easy to share a specific investigation with a teammate, though be aware this may expose sensitive query parameters.</p>
 <h3 id="time-range"><a class="header" href="#time-range">Time range</a></h3>
 <p>Every query runs against a time window. You can choose a preset interval—from the last second up to the last three months—or set a custom date range using the date picker.</p>
-<p><img src="../../images/query-time-range.png" alt="Query Time Range"></p>
+<p><img src="../../images/query-time-range.png" alt="The time range dropdown under the query input, open to presets ranging from Last 12 Hours to Last 3 Months"></p>
 <p>The entire page updates dynamically when the query or time range changes, and interacting with any other panel (charts, event stream) can also update the query in turn.</p>
 <h3 id="charts"><a class="header" href="#charts">Charts</a></h3>
 <p>The center panels show two types of visualizations:</p>
-<p><img src="../../images/charts.png" alt="Charts"></p>
+<p><img src="../../images/charts.png" alt="A Timeseries Chart of daily matching event counts above a Top N Results table grouping events by PostText, with Download CSV, Bulk Label, PoP, Yeet Table, and Precision controls along the table footer"></p>
 <p><strong>Timeseries</strong> displays how many matching events occurred over time. You can set the granularity—minute, fifteen minutes, half hour, hour, day, week, or month—and hover over individual bars to see the count for that period.</p>
-<p><img src="../../images/hover-time-series.png" alt="Time Series Hover"></p>
-<p>You can add additional timeseries charts to compare different time granularities side-by-side. Charts you no longer need can be removed (“yeeted”).</p>
-<p><img src="../../images/multiple-time-series.png" alt="Multiple Time Series"></p>
+<p><img src="../../images/hover-time-series.png" alt="Hovering over a timeseries bar, showing a tooltip with that bucket’s date, time, and event count"></p>
+<p>You can add additional timeseries charts to compare different time granularities side by side. Charts you no longer need can be removed with the <strong>Yeet</strong> button.</p>
+<p><img src="../../images/multiple-time-series.png" alt="Two timeseries charts for the same query stacked vertically: daily granularity above, per-minute granularity below, with a Yeet button beside the second chart"></p>
 <p><strong>Top N</strong> shows a table of the top results for the current query, grouped by a dimension you choose. You can:</p>
 <ul>
 <li>Add or remove dimension columns</li>
-<li>Adjust the number of results shown (precision)</li>
-<li>Enable <strong>Period over Period (PoP)</strong> to compare current results against a past time window and see the delta</li>
+<li>Adjust the number of results shown with <strong>Precision</strong></li>
+<li>Toggle <strong>PoP</strong> (period over period) to compare current results against a past time window and see the delta</li>
 <li>Export the table as a CSV</li>
+<li>Remove the table with the <strong>Yeet Table</strong> button</li>
 </ul>
-<p><img src="../../images/top-n-charts.png" alt="Top N Charts"></p>
-<p><img src="../../images/pop.png" alt="Period over Period"></p>
+<p><img src="../../images/top-n-charts.png" alt="A Top N Results table grouping matching events by UserId, sorted by count"></p>
+<p><img src="../../images/pop.png" alt="A Top N Results table with PoP enabled, adding delta and percent-change columns comparing each count against the previous period, with values redacted"></p>
 <h3 id="event-stream"><a class="header" href="#event-stream">Event stream</a></h3>
-<p>The right panel is Osprey’s live feed. It shows individual events matching the current query in near-real time, and can also be used to search historical events.</p>
-<p><img src="../../images/event-stream.png" alt="Event Stream"></p>
-<p>The stream can be displayed in card format or list format. You can customize which fields appear per event by selecting <strong>Summary Features</strong>, helpful when different team members care about different metadata.</p>
-<p><img src="../../images/summary-features.png" alt="Summary Features"></p>
+<p>The right panel is Osprey’s live feed. It shows individual events matching the current query in near real time, and can also be used to search historical events.</p>
+<p><img src="../../images/event-stream.png" alt="The Event Stream filtered to one UserId, showing payment events as cards listing each extracted feature, with sensitive values redacted"></p>
+<p>The stream can be displayed in card format or list format. On first load, each event card shows all of its extracted features (or the summary features configured for that event type, if any), so the stream is useful before you’ve set anything up. You can customize which fields appear per event with <strong>Select Summary Features</strong>, helpful when different team members care about different metadata.</p>
+<p><img src="../../images/summary-features.png" alt="The Set Features modal for the event stream, with a toggle for Set Custom Features and a filterable checklist of features grouped by model and rule"></p>
 <p>Selecting an entity in the event stream (such as a user ID or IP address) opens the <a href="labels.html#entity-details">Entity Details</a> view. Hold <kbd>Ctrl</kbd> (<kbd>⌘ Cmd</kbd> on macOS) while clicking to select multiple events for bulk labeling.</p>
 <p>Selecting an event opens a detail view at <code>/events/:eventId</code> showing all extracted feature values for that specific event.</p>
 <h2 id="query-history"><a class="header" href="#query-history">Query History</a></h2>
 <p>Every query you run is automatically saved to your history.</p>
-<p><img src="../../images/query-history.png" alt="Query History"></p>
+<p><img src="../../images/query-history.png" alt="A history entry highlighted in the sidebar’s History tab, showing its query text and original time range beside the results it produced"></p>
 <p>Hovering over a query in the sidebar shows the Top N dimensions that were active during that session.</p>
 <p>The full Query History page (accessible from the sidebar) shows a searchable list of all queries run across your team. You can filter by user email, view the original query text, and re-run any past query using the same time range it was originally run with.</p>
-<p><img src="../../images/query-history-page.png" alt="Query History Page"></p>
+<p><img src="../../images/query-history-page.png" alt="The Query History page listing each query with its text and time range, buttons to view the original query or re-run it, a filter-by-user dropdown, and a Saved Queries sidebar"></p>
 <h2 id="saved-queries"><a class="header" href="#saved-queries">Saved Queries</a></h2>
 <p>For queries you return to frequently, Osprey lets you save them by name.</p>
-<p><img src="../../images/query-history-save.png" alt="Save Query"></p>
-<p>The Saved Queries page (accessible from the sidebar) shows a grid of all saved queries with the query text, the user who saved it, and when it was saved. You can filter by user email.</p>
-<p><img src="../../images/saved-queries-page.png" alt="Saved Queries Page"></p>
-<p>From the grid, you can:</p>
+<p><img src="../../images/query-history-save.png" alt="The menu on a query history entry, with View Original Query and Save Query options"></p>
+<p>The Saved Queries page (accessible from the sidebar) lists all saved queries with the query text, the user who saved it, and when it was saved. You can filter by user email.</p>
+<p><img src="../../images/saved-queries-page.png" alt="The Saved Queries page listing a saved query with its text and metadata, and an open menu of Run Original Query, Run Query Using Interval, Show Saved Query History, and Delete Saved Query options"></p>
+<p>From each saved query’s menu, you can:</p>
 <ul>
-<li><strong>Run</strong> a saved query to load it into the Query page</li>
-<li><strong>Rename</strong> it via an edit modal</li>
-<li><strong>Delete</strong> it (with a confirmation step)</li>
+<li><strong>Run Original Query</strong> to re-run it over its original time range</li>
+<li><strong>Run Query Using Interval</strong> to run it over its saved interval (e.g. Last Day) relative to now</li>
+<li><strong>Show Saved Query History</strong> to see past runs of the query</li>
+<li><strong>Delete Saved Query</strong>, with a confirmation step</li>
 </ul>
+<p>To rename a saved query, run it and select the edit icon next to its name on the Query page.</p>
 <p>Saved queries also have a direct URL: <code>/saved-query/:savedQueryId/latest</code> automatically loads and executes the query.</p>
 
                     </main>
