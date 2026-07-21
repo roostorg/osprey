@@ -128,7 +128,7 @@ Should_Warn_User_Of_Spammer = Rule(
 )
 ```
 
-Labels also show on the entity in the UI, where they can be added and removed by hand. One asymmetry to know about: `HasLabel()` works in rules but not in the query bar, because queries search events rather than current entity state. To find events where a label was applied, query `DidAddLabel(entity_type="UserId", label_name="likely_spammer")` instead; see [Query Syntax](../user/investigate/query-syntax.md) for details.
+Labels also show on the entity in the UI, where they can be added and removed by hand. One asymmetry to know about: `HasLabel()` works in rules but not in the query bar, because queries search events rather than current entity state. To find events where a label was applied, query `DidAddLabel(entity_type="User", label_name="likely_spammer")` instead; see [Query Syntax](../user/investigate/query-syntax.md) for details.
 
 ## A multi-signal rule, organized across files
 

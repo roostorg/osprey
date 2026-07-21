@@ -25,7 +25,7 @@ In our example, `UserId` would be declared as an entity: the same user posts man
 
 ## Rules
 
-A **rule** is a named condition over features, written in Osprey's rule language, SML. Rules are evaluated against every event as it arrives. On their own, rules just return a boolean true/false (which is itself queryable, like any feature). Rules can be wired to [effects](#effects).
+A **rule** is a named condition over features, written in Osprey's rule language, SML. Rules are evaluated against every event as it arrives. On their own, rules just return `True` or `False` (which is itself queryable, like any feature), or `None` when a signal it depends on is missing. Rules can be wired to [effects](#effects).
 
 In our example, a rule might cover "the event is a post creation and the post text contains 'hello'."
 

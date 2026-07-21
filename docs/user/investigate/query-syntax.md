@@ -45,7 +45,7 @@ The query UI searches across events, not entity state, so `HasLabel()` won't wor
 
 ```py
 # Find events that added a specific label
-DidAddLabel(entity_type="UserId", label_name="likely_spammer")
+DidAddLabel(entity_type="User", label_name="likely_spammer")
 DidAddLabel(entity_type="IpAddress", label_name="suspicious")
 ```
 
@@ -59,10 +59,10 @@ EventType == "user_login" and LoginAttempts >= 5
 EventType == "create_post" and RegexMatch(target=PostContent, pattern="urgent")
 
 # Users who were flagged
-DidAddLabel(entity_type="UserId", label_name="flagged")
+DidAddLabel(entity_type="User", label_name="flagged")
 
 # Complex: messages matching a pattern, from users without a verified label
 EventType == "send_message" and
 RegexMatch(target=MessageText, pattern="(click|link|urgent)") and
-not DidAddLabel(entity_type="UserId", label_name="verified")
+not DidAddLabel(entity_type="User", label_name="verified")
 ```

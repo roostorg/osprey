@@ -25,7 +25,7 @@ Each entry point resolves to a module that contains hook functions decorated wit
 
 ## Writing UDFs
 
-A user-defined function (UDF) is a Python class that can be called from your rules. UDFs encapsulate reusable detection logic—text matching, DNS lookups, hash comparisons, ML inference—and expose it as a named function in the rules language. See [Writing Rules § User Defined Functions](../rules/README.md#user-defined-functions-udfs) for the language-level view.
+A user-defined function (UDF) is a Python class that can be called from your rules. UDFs encapsulate reusable detection logic—text matching, DNS lookups, hash comparisons, ML inference—and expose it as a named function in the rules language. See [Writing Rules § User Defined Functions](../rules/#user-defined-functions-udfs) for the language-level view.
 
 ### Anatomy of a UDF
 
@@ -121,7 +121,7 @@ Source               | Config                                                   
 `SYNTHETIC`          | &nbsp;                                                              | Generates random fake events; useful for local dev without any upstream system
 `PLUGIN`             | &nbsp;                                                              | Delegates to your registered `register_input_stream` hook
 
-Set `InputStreamSource.KAFKA` (or whichever fits your existing infrastructure) if you already have events flowing through Kafka or Pub/Sub. Otherwise, implement a custom input stream and set `InputStreamSource.PLUGIN` in your config. If your events arrive as protobuf rather than JSON, there's also a `register_action_proto_deserializer` hook for supplying your own deserializer.
+Set `InputStreamSource.KAFKA` if you already have events flowing through Kafka, or `InputStreamSource.PUBSUB` for Google Pub/Sub (see the table above). Otherwise, implement a custom input stream and set `InputStreamSource.PLUGIN` in your config. If your events arrive as protobuf rather than JSON, there's also a `register_action_proto_deserializer` hook for supplying your own deserializer.
 
 ### Writing a custom input stream
 
@@ -298,7 +298,7 @@ MySpamClassifier(text=MessageContent) > 0.85
 
 Osprey constructs one UDF instance per call site when the rules are compiled, not per event, so the model isn't reloaded for every event processed. That's one instance per _call site_, not per _class_: if you call the same UDF from multiple rules, each call site gets its own instance, and each one loads its own copy of the model. **For a large model, prefer calling the UDF from a single rule (or share the loaded weights via a module-level cache) rather than invoking it from many places.**
 
-For a model served remotely, the same pattern applies with `execute()` calling out over HTTP, gRPC, or your model server's SDK (you bring the client code). Because remote model calls are often slow or costly, gate them so they only run when relevant, using [Writing Rules' `Require(..., require_if=...)` pattern](../rules/README.md#workflow-structure-and-file-placement):
+For a model served remotely, the same pattern applies with `execute()` calling out over HTTP, gRPC, or your model server's SDK (you bring the client code). Because remote model calls are often slow or costly, gate them so they only run when relevant, using [Writing Rules' `Require(..., require_if=...)` pattern](../rules/#workflow-structure-and-file-placement):
 
 ```python
 Require(rule='ai_services/my_ai_service.sml', require_if=ActionName == 'register')

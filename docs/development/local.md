@@ -113,7 +113,7 @@ def register_output_sinks(config: Config) -> Sequence[BaseOutputSink]:
     # By default it prints the execution results to the console
 
 @hookimpl_osprey
-def register_ast_validators() -> None:
+def register_ast_validators() -> Sequence[Type[BaseValidator]]:
     # Register AST validators
 ```
 

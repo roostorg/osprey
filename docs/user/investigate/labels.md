@@ -34,4 +34,4 @@ From the event stream, select any entity to open its label drawer.
 
 ![An entity view with negative labels applied, one expanded to show its description and the rule event that produced it, plus neutral labels below; identifying values are redacted](../../images/complete-label.png)
 
-For more about how labels are used, see [Writing Rules → Labels](../../rules/README.md#labels).
+For more about how labels are used, see [Writing Rules → Labels](../../rules/#labels).
