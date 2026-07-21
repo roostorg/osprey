@@ -21,6 +21,7 @@ from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
     from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter
+    from osprey.worker.lib.llm.base import BaseLLMProvider
 
 hookimpl_osprey: pluggy.HookimplMarker = pluggy.HookimplMarker(OSPREY_ADAPTOR)
 
@@ -177,3 +178,19 @@ def bootstrap_execution_result_store(config: Config):
         return store
     except Exception:
         return None
+
+
+def bootstrap_llm_provider(config: Config) -> BaseLLMProvider | None:
+    """Get the LLM API provider from plugins, if one is registered.
+
+    The hook uses ``firstresult=True``, so at most one provider is returned. Returns
+    ``None`` when no plugin registers ``register_llm_provider`` (provider absence), so
+    callers must null-check. A returned provider is *registered* but not necessarily
+    *ready*: readiness (SDK/credentials) is validated by the host's model policy before
+    use, and a hook that *raises* during construction propagates to the caller.
+    """
+    load_all_osprey_plugins()
+    provider = plugin_manager.hook.register_llm_provider(config=config)
+    if provider:
+        return provider
+    return None
