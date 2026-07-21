@@ -8,6 +8,7 @@ on:
       - 'osprey_rpc/pyproject.toml'
       - 'osprey_worker/pyproject.toml'
       - 'example_plugins/pyproject.toml'
+      - 'example_atproto_plugins/pyproject.toml'
       - '.github/allowed-licenses.txt'
       - '.github/pip-licenses-classifiers.txt'
 permissions:
@@ -44,7 +45,7 @@ jobs:
           #   google-crc32c: Apache-2.0; no metadata in 1.8.0 (googleapis/google-cloud-python#16515)
           #   ddtrace: Apache-2.0 OR BSD-3-Clause; sets License field to a filename ("LICENSE.BSD3")
           # First-party packages (no license metadata needed):
-          #   osprey-rpc, osprey-worker, example_plugins
+          #   osprey-rpc, osprey-worker, example_plugins, example_atproto_plugins
           # Packages pending license policy review:
           #   unidecode: GPL v2+ (#354)
           #   tld: GPL v2 / LGPL / MPL 1.1 (#355)
@@ -55,5 +56,5 @@ jobs:
             --ignore-packages \
               google-crc32c \
               ddtrace \
-              osprey-rpc osprey-worker example_plugins \
+              osprey-rpc osprey-worker example_plugins example_atproto_plugins \
               unidecode tld psycopg2-binary simplejson text-unidecode
