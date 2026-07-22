@@ -8,6 +8,8 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-22
+
 ### Added
 
 - Postgres execution result store backend ([#171](https://github.com/roostorg/osprey/pull/171) by [@serendipty01](https://github.com/serendipty01))
