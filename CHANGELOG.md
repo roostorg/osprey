@@ -20,7 +20,7 @@ For more information about each release including git tags and artifacts, see [R
 - `GetActionId()` stdlib UDF for retrieving the current action ID from execution context ([#327](https://github.com/roostorg/osprey/pull/327) by [@julietshen](https://github.com/julietshen))
 - `ParseInt` UDF for converting numeric strings to integers ([#190](https://github.com/roostorg/osprey/pull/190) by [@bealsbe](https://github.com/bealsbe))
 - `StringSlice` UDF for extracting substrings by index range ([#189](https://github.com/roostorg/osprey/pull/189) by [@bealsbe](https://github.com/bealsbe))
-- `InExperiment` UDF for checking experiment membership ([#203](https://github.com/roostorg/osprey/pull/203) by [@bealsbe](https://github.com/bealsbe))
+- `Experiment` and `ExperimentWhen` UDFs for checking experiment membership ([#203](https://github.com/roostorg/osprey/pull/203) by [@bealsbe](https://github.com/bealsbe))
 - Per-action health metrics in the executor ([#191](https://github.com/roostorg/osprey/pull/191) by [@cmttt](https://github.com/cmttt))
 - Option to suppress cached errors to reduce metric bloat ([#180](https://github.com/roostorg/osprey/pull/180) by [@lithium-powered](https://github.com/lithium-powered))
 - Experimental asyncio-native worker with metrics and engine/coordinator improvements ([#341](https://github.com/roostorg/osprey/pull/341) by [@cmttt](https://github.com/cmttt))
@@ -33,6 +33,7 @@ For more information about each release including git tags and artifacts, see [R
 - Event stream shows sensible defaults so first-load isn't empty ([#297](https://github.com/roostorg/osprey/pull/297) by [@haileyok](https://github.com/haileyok))
 - Replace `react-scripts` with `rsbuild`/`rspack` for UI builds ([#235](https://github.com/roostorg/osprey/pull/235) by [@chimosky](https://github.com/chimosky))
 - Migrate from npm to pnpm via Corepack ([#252](https://github.com/roostorg/osprey/pull/252) by [@haileyok](https://github.com/haileyok))
+- Replace `highcharts` (proprietary) with `echarts` (Apache 2.0) in the Timeseries chart ([#374](https://github.com/roostorg/osprey/issues/374))
 
 ### Fixed
 

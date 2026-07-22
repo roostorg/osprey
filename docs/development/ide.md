@@ -20,3 +20,13 @@ If using VS Code, we recommend you install these extensions for the best develop
   "python.analysis.typeCheckingMode": "basic"
 }
 ```
+
+## SML files
+
+There's no dedicated editor tooling for SML yet, but since SML is a legal subset of Python syntax, associating `.sml` files with Python gets you reasonable highlighting. In VS Code:
+
+```json
+"files.associations": {
+  "*.sml": "python"
+}
+```
