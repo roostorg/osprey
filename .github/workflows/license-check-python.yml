@@ -47,7 +47,6 @@ jobs:
           # First-party packages (no license metadata needed):
           #   osprey-rpc, osprey-worker, example_plugins, example_atproto_plugins
           # Packages pending license policy review:
-          #   unidecode: GPL v2+ (#354)
           #   tld: GPL v2 / LGPL / MPL 1.1 (#355)
           #   psycopg2-binary: LGPL (#357)
           #   simplejson: Academic Free License + MIT (#358)
@@ -57,4 +56,4 @@ jobs:
               google-crc32c \
               ddtrace \
               osprey-rpc osprey-worker example_plugins example_atproto_plugins \
-              unidecode tld psycopg2-binary simplejson text-unidecode
+              tld psycopg2-binary simplejson text-unidecode
