@@ -1,0 +1,151 @@
+.viewContainer {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scrollArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.editorGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .editorGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.codeArea {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important;
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 480px;
+}
+
+.sidePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+}
+
+.validationCard pre {
+  margin: 0;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.errorList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.errorItem {
+  padding: 8px 10px;
+  background: var(--background-secondary);
+  border-left: 3px solid var(--status-error);
+  border-radius: 2px;
+}
+
+.warningItem {
+  padding: 8px 10px;
+  background: var(--background-secondary);
+  border-left: 3px solid var(--status-warning);
+  border-radius: 2px;
+}
+
+.errorLocation {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 11px;
+  color: var(--text-light-secondary);
+}
+
+.builderSection {
+  margin-bottom: 16px;
+}
+
+.builderRow {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) 130px minmax(140px, 1fr) 32px;
+  gap: 8px;
+  align-items: start;
+  margin-bottom: 8px;
+}
+
+.builderRowOutcome {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) 32px;
+  gap: 8px;
+  align-items: start;
+  margin-bottom: 8px;
+}
+
+.builderArgsGrid {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 6px;
+  margin-top: 4px;
+  margin-left: 0;
+  padding: 8px;
+  background: var(--background-secondary);
+  border-radius: 4px;
+}
+
+.builderArgLabel {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12px;
+  align-self: center;
+}
+
+.previewBlock {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12px;
+  padding: 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--divider);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.footnote {
+  font-size: 11px;
+  color: var(--text-light-secondary);
+  margin-top: 4px;
+}

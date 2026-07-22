@@ -1,5 +1,7 @@
 import * as React from 'react';
 import {
+  Alert,
+  Button,
   Card,
   Collapse,
   Descriptions,
@@ -14,11 +16,12 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { Link } from 'react-router-dom';
 
-import { getRulesList } from '../../actions/RulesActions';
-import usePromiseResult from '../../hooks/usePromiseResult';
-import { RuleInfo, RulesListResponse, SortKey } from '../../types/RulesTypes';
+import { getRuleDrafts, getRulesList } from '../../actions/RulesActions';
+import usePromiseResult, { PromiseResultStatus } from '../../hooks/usePromiseResult';
+import { RuleDraft, RuleDraftsListResponse, RuleInfo, RulesListResponse, SortKey } from '../../types/RulesTypes';
 import { renderFromPromiseResult } from '../../utils/PromiseResultUtils';
 
 import styles from './RulesPage.module.css';
@@ -73,13 +76,19 @@ export const RulesPage: React.FC = () => {
   const result = usePromiseResult(() => {
     return getRulesList();
   });
+  const draftsResult = usePromiseResult<RuleDraftsListResponse>(() => {
+    return getRuleDrafts();
+  });
 
   return renderFromPromiseResult(result, (data) => {
-    return <RulesPageContent data={data} />;
+    return <RulesPageContent data={data} draftsResult={draftsResult} />;
   });
 };
 
-const RulesPageContent: React.FC<{ data: RulesListResponse }> = ({ data }) => {
+const RulesPageContent: React.FC<{
+  data: RulesListResponse;
+  draftsResult: ReturnType<typeof usePromiseResult<RuleDraftsListResponse>>;
+}> = ({ data, draftsResult }) => {
   const [filters, dispatch] = React.useReducer(filtersReducer, INITIAL_FILTERS);
   const { rules, total, when_rules_total, unused_total } = data;
   const { search, unusedOnly, sortKey, page, pageSize } = filters;
@@ -132,13 +141,32 @@ const RulesPageContent: React.FC<{ data: RulesListResponse }> = ({ data }) => {
   return (
     <div className={styles.viewContainer}>
       <div className={styles.scrollArea}>
-        <Title level={3} style={{ marginBottom: 4 }}>
-          Rules Registry
-        </Title>
-        <Paragraph type="secondary">
-          Named rule definitions across the engine — conditions, descriptions, the features each rule references, and
-          how many WhenRules blocks include it.
-        </Paragraph>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: 16,
+            marginBottom: 4,
+          }}
+        >
+          <div>
+            <Title level={3} style={{ marginBottom: 4 }}>
+              Rules Registry
+            </Title>
+            <Paragraph type="secondary">
+              Named rule definitions across the engine — conditions, descriptions, the features each rule references,
+              and how many WhenRules blocks include it.
+            </Paragraph>
+          </div>
+          <Link to="/rules/new">
+            <Button type="primary" icon={<PlusOutlined />}>
+              Add rule
+            </Button>
+          </Link>
+        </div>
+
+        <DraftsBanner draftsResult={draftsResult} />
 
         <div className={styles.statsRow}>
           <Card size="small">
@@ -262,7 +290,56 @@ const RuleHeader: React.FC<{ rule: RuleInfo }> = ({ rule }) => {
             <strong>{rule.referenced_by_whenrules}</strong> when-rules
           </Text>
         )}
+        <Tooltip title="Open this rule's source file in the editor.">
+          <Link
+            to={{ pathname: '/rules/edit', search: `?path=${encodeURIComponent(rule.source_file)}` }}
+            onClick={(e) => {
+              // Prevent the surrounding Collapse panel from toggling open.
+              e.stopPropagation();
+            }}
+          >
+            <Button type="text" size="small" icon={<EditOutlined />}>
+              Edit
+            </Button>
+          </Link>
+        </Tooltip>
       </Space>
+    </div>
+  );
+};
+
+const DraftsBanner: React.FC<{
+  draftsResult: ReturnType<typeof usePromiseResult<RuleDraftsListResponse>>;
+}> = ({ draftsResult }) => {
+  if (draftsResult.status !== PromiseResultStatus.Resolved) return null;
+  const { drafts } = draftsResult.value;
+  if (drafts.length === 0) return null;
+  return (
+    <Alert
+      type="info"
+      showIcon
+      style={{ marginBottom: 16 }}
+      message={`${drafts.length} rule draft${drafts.length === 1 ? '' : 's'} in progress`}
+      description={
+        <Space direction="vertical" size={4} style={{ width: '100%' }}>
+          {drafts.slice(0, 8).map((draft) => {
+            return <DraftRow key={draft.id} draft={draft} />;
+          })}
+          {drafts.length > 8 && <Text type="secondary">+{drafts.length - 8} more.</Text>}
+        </Space>
+      }
+    />
+  );
+};
+
+const DraftRow: React.FC<{ draft: RuleDraft }> = ({ draft }) => {
+  return (
+    <div>
+      <Link to={{ pathname: '/rules/edit', search: `?draftId=${draft.id}` }}>{draft.path}</Link>{' '}
+      <Tag color={draft.status === 'deployed' ? 'green' : 'gold'}>{draft.status}</Tag>{' '}
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        by {draft.author}
+      </Text>
     </div>
   );
 };
