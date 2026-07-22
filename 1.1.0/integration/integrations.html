@@ -1,0 +1,490 @@
+<!DOCTYPE HTML>
+<html lang="en" class="roost sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Integrations &amp; Plugins - Osprey Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-057a31e4.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../theme/css/roost-f456bf59.css">
+        <link rel="stylesheet" href="../theme/css/roost-hljs-bfdc96e7.css">
+        <link rel="stylesheet" href="../theme/css/content-96c01c5a.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "roost";
+            const default_dark_theme = "roost";
+            window.path_to_searchindex_js = "../searchindex-a91683c5.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-bf5bb2f8.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('roost')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">ROOST (Auto)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Osprey Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="https://github.com/roostorg/osprey" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/roostorg/osprey/edit/main/docs/./integration/integrations.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="integrations--plugins"><a class="header" href="#integrations--plugins">Integrations &amp; Plugins</a></h1>
+<p>Osprey is designed to be extended without modifying the core codebase; you can wire up your own logic such as detection functions, output destinations, entity state storage, and ML models through plugin packages that Osprey discovers at startup. A plugin package implements any subset of the hooks in the <a href="../development/local.html#available-hooks">Available hooks</a> table; this page walks through the integration points adopters ask about most.</p>
+<p>See the <a href="https://github.com/roostorg/osprey/tree/main/example_plugins"><code>example_plugins/</code> directory</a> for a working reference package.</p>
+<h2 id="how-plugins-are-loaded"><a class="header" href="#how-plugins-are-loaded">How plugins are loaded</a></h2>
+<p>Osprey uses <a href="https://pluggy.readthedocs.io/">pluggy</a> for plugin discovery. Your plugin package declares one or both of these entry-point groups in its <code>pyproject.toml</code>:</p>
+<ul>
+<li><code>osprey_plugin</code>: loaded by the standard gevent worker</li>
+<li><code>osprey_async_plugin</code>: loaded by the experimental asyncio worker</li>
+</ul>
+<p>For example:</p>
+<pre><code class="language-toml">[project.entry-points.osprey_plugin]
+register_plugins = "register_plugins"
+
+[project.entry-points.osprey_async_plugin]
+register_async_plugins = "register_async_plugins"
+</code></pre>
+<p>Each entry point resolves to a module that contains hook functions decorated with <code>@hookimpl_osprey</code> or <code>@hookimpl_osprey_async</code>. Osprey calls each hook at startup to collect your registrations; see <a href="https://github.com/roostorg/osprey/blob/main/example_plugins/src/register_plugins.py"><code>example_plugins/src/register_plugins.py</code></a> and <a href="https://github.com/roostorg/osprey/blob/main/example_plugins/src/register_async_plugins.py"><code>register_async_plugins.py</code></a> for more.</p>
+<h2 id="writing-udfs"><a class="header" href="#writing-udfs">Writing UDFs</a></h2>
+<p>A user-defined function (UDF) is a Python class that can be called from your rules. UDFs encapsulate reusable detection logic—text matching, DNS lookups, hash comparisons, ML inference—and expose it as a named function in the rules language. See <a href="../rules/#user-defined-functions-udfs">Writing Rules § User Defined Functions</a> for the language-level view.</p>
+<h3 id="anatomy-of-a-udf"><a class="header" href="#anatomy-of-a-udf">Anatomy of a UDF</a></h3>
+<p>UDFs require:</p>
+<ol>
+<li>An <strong>arguments</strong> class (subclass of <code>ArgumentsBase</code>) that declares the parameters the UDF accepts with types</li>
+<li>A <strong>UDF class</strong> (subclass of <code>UDFBase[Arguments, ReturnType]</code>) with an <code>execute</code> method that contains the logic</li>
+</ol>
+<p>For example:</p>
+<pre><code class="language-python"># example_plugins/src/udfs/text_contains.py
+import re
+
+from osprey.engine.executor.execution_context import ExecutionContext
+from osprey.engine.udf.arguments import ArgumentsBase
+from osprey.engine.udf.base import UDFBase
+
+
+class TextContainsArguments(ArgumentsBase):
+    text: str
+    phrase: str
+    case_sensitive = False
+
+
+class TextContains(UDFBase[TextContainsArguments, bool]):
+    def execute(self, execution_context: ExecutionContext, arguments: TextContainsArguments) -&gt; bool:
+        escaped = re.escape(arguments.phrase)
+
+        pattern = rf'\b{escaped}\b'
+
+        flags = 0 if arguments.case_sensitive else re.IGNORECASE
+        regex = re.compile(pattern, flags)
+
+        return bool(regex.search(arguments.text))
+</code></pre>
+<p>Once registered, <code>TextContains</code> is callable from rules as:</p>
+<pre><code class="language-python">TextContains(text=SomeFeature, phrase="spam")
+</code></pre>
+<h3 id="udfs-with-side-effects"><a class="header" href="#udfs-with-side-effects">UDFs with side effects</a></h3>
+<p>UDFs can also produce <strong>effects</strong>: structured outputs that downstream systems act on, such as banning a user or flagging content. Effects are expressed using <code>EffectBase</code> as the return type. See <a href="https://github.com/roostorg/osprey/blob/main/example_plugins/src/udfs/ban_user.py"><code>example_plugins/src/udfs/ban_user.py</code></a> for an example.</p>
+<h3 id="async-udfs"><a class="header" href="#async-udfs">Async UDFs</a></h3>
+<p>UDFs that perform I/O (e.g. network calls or database reads) should subclass <code>AsyncUDFBase</code> when used in the async worker; see <a href="https://github.com/roostorg/osprey/blob/main/osprey_async_worker/src/osprey/async_worker/stdlib_udfs/async_mx_lookup.py"><code>osprey_async_worker/src/osprey/async_worker/stdlib_udfs/async_mx_lookup.py</code></a> for an example. Pure-computation UDFs like <code>TextContains</code> can be reused in both workers without modification.</p>
+<h3 id="registering-udfs"><a class="header" href="#registering-udfs">Registering UDFs</a></h3>
+<p>Return your UDF classes from the <code>register_udfs</code> hook; for example:</p>
+<pre><code class="language-python">from osprey.worker.adaptor.plugin_manager import hookimpl_osprey
+
+@hookimpl_osprey
+def register_udfs():
+    return [TextContains, BanUser]
+</code></pre>
+<p>Give each UDF a category from <code>UdfCategories</code> (<code>osprey_worker/src/osprey/engine/stdlib/udfs/categories.py</code>, e.g. <code>STRING</code>, <code>HASH</code>, <code>ENTITY</code>, <code>HTTP</code>) so it’s grouped sensibly in the <a href="../user/manage.html#udf-registry">UDF Registry</a>.</p>
+<h2 id="hash-based-lookups"><a class="header" href="#hash-based-lookups">Hash-based lookups</a></h2>
+<p>Osprey’s standard library includes the <code>Hash*</code> UDF family (<code>HashMd5</code>, <code>HashSha1</code>, <code>HashSha256</code>, <code>HashSha512</code>, under the <code>HASH</code> category and available without registration), which takes a string <code>input</code> and returns the hex digest. Compose these with SML’s <code>in</code> operator or <code>HasLabel</code> to check values against known-bad sets without storing raw data:</p>
+<pre><code class="language-python"># Check a hashed value against a small inline set
+IsKnownBadHash = HashSha256(input=SomeValue) in ['abc123...', 'def456...']
+
+# Or check membership via a label that was set by some other process
+IsKnownBadActor = HasLabel(entity=SomeEntity, label='KnownBad')
+</code></pre>
+<p>Inline sets suit small, stable lists. There’s no bulk-import or lookup-table primitive, so for a large external list (millions of hashes, updated frequently), write a custom UDF (see above) that queries your own store.</p>
+<h2 id="configuring-input-sinks"><a class="header" href="#configuring-input-sinks">Configuring input sinks</a></h2>
+<p>An input sink is where events <em>enter</em> Osprey. Osprey ships with built-in sources (Kafka, Google Pub/Sub, the Osprey Coordinator, and a synthetic generator for local testing) selected via the <code>InputStreamSource</code> config value. If none of those fit your platform, you can register a custom input stream as a plugin. For the conceptual picture, see <a href="data-flow.html#getting-data-in">Data Flow § Getting data in</a>.</p>
+<h3 id="built-in-sources"><a class="header" href="#built-in-sources">Built-in sources</a></h3>
+<p>The worker picks an input stream based on <code>InputStreamSource</code>:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Source</th><th>Config</th><th>Use case</th></tr>
+</thead>
+<tbody>
+<tr><td><code>KAFKA</code></td><td><code>OSPREY_KAFKA_INPUT_STREAM_TOPIC</code>, <code>OSPREY_KAFKA_BOOTSTRAP_SERVERS</code></td><td>Consume Action events from a Kafka topic</td></tr>
+<tr><td><code>PUBSUB</code></td><td><code>PUBSUB_OSPREY_PROJECT_ID</code>, <code>PUBSUB_OSPREY_RULES_SINK_SUBSCRIPTION</code></td><td>Consume from Google Pub/Sub</td></tr>
+<tr><td><code>OSPREY_COORDINATOR</code></td><td><code>OSPREY_COORDINATOR_SERVICE_NAME</code></td><td>Pull work from the Osprey Coordinator service</td></tr>
+<tr><td><code>SYNTHETIC</code></td><td> </td><td>Generates random fake events; useful for local dev without any upstream system</td></tr>
+<tr><td><code>PLUGIN</code></td><td> </td><td>Delegates to your registered <code>register_input_stream</code> hook</td></tr>
+</tbody>
+</table>
+</div>
+<p>Set <code>InputStreamSource.KAFKA</code> if you already have events flowing through Kafka, or <code>InputStreamSource.PUBSUB</code> for Google Pub/Sub (see the table above). Otherwise, implement a custom input stream and set <code>InputStreamSource.PLUGIN</code> in your config. If your events arrive as protobuf rather than JSON, there’s also a <code>register_action_proto_deserializer</code> hook for supplying your own deserializer.</p>
+<h3 id="writing-a-custom-input-stream"><a class="header" href="#writing-a-custom-input-stream">Writing a custom input stream</a></h3>
+<p>If your event source isn’t Kafka or Pub/Sub (e.g. it’s a webhook receiver, a different message queue, or a polling API), subclass <code>BaseInputStream</code> and implement <code>_gen</code>, a generator that yields one <code>Action</code> (wrapped in an <code>AckingContext</code>) per event. For example:</p>
+<pre><code class="language-python">from collections.abc import Iterator
+
+from osprey.engine.executor.execution_context import Action
+from osprey.worker.sinks.sink.input_stream import BaseInputStream
+from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext, NoopAckingContext
+
+
+class MyInputStream(BaseInputStream[BaseAckingContext[Action]]):
+    def __init__(self, my_client):
+        super().__init__()
+        self._client = my_client
+
+    def _gen(self) -&gt; Iterator[BaseAckingContext[Action]]:
+        while True:
+            raw_event = self._client.poll()  # block until the next event
+            action = Action(
+                action_id=int(raw_event['id']),
+                action_name=raw_event['type'],
+                data=raw_event['payload'],
+                timestamp=raw_event['timestamp'],
+            )
+            yield NoopAckingContext(item=action)
+</code></pre>
+<p><code>_gen</code> is called once and re-used. It should block and yield indefinitely rather than returning. Use <code>NoopAckingContext</code> unless your source needs explicit ack/nack (e.g. a queue with at-least-once delivery), in which case implement a custom <code>BaseAckingContext</code> that acks on success.</p>
+<p>Register it from the hook, and set <code>InputStreamSource.PLUGIN</code> in your config so the worker picks it up; for example:</p>
+<pre><code class="language-python">@hookimpl_osprey
+def register_input_stream(config):
+    return MyInputStream(my_client=build_client(config))
+</code></pre>
+<h2 id="configuring-output-sinks"><a class="header" href="#configuring-output-sinks">Configuring output sinks</a></h2>
+<p>An output sink receives every <code>ExecutionResult</code> after rule evaluation and decides what to do with it, e.g. log it, forward it to a queue, call a webhook, or write to a database. For the conceptual picture, see <a href="data-flow.html#getting-data-out">Data Flow § Getting data out</a>; if what you want is to persist results in a backend other than the built-in BigTable/GCS/MinIO/Postgres options, the <code>register_execution_result_store</code> hook covers that instead.</p>
+<h3 id="sync-output-sink"><a class="header" href="#sync-output-sink">Sync output sink</a></h3>
+<p>Subclass <code>BaseOutputSink</code> and implement its methods; for example:</p>
+<pre><code class="language-python">from osprey.worker.sinks.sink.output_sink import BaseOutputSink
+from osprey.engine.executor.execution_context import ExecutionResult
+
+
+class MyOutputSink(BaseOutputSink):
+    def will_do_work(self, result: ExecutionResult) -&gt; bool:
+        # Return False to skip this result early (e.g. filter by rule hit)
+        return True
+
+    def push(self, result: ExecutionResult) -&gt; None:
+        # Do something with the result—send to a queue, call an API, etc.
+        pass
+
+    def stop(self) -&gt; None:
+        # Clean up connections, flush buffers
+        pass
+</code></pre>
+<p>Register it from the hook; for example:</p>
+<pre><code class="language-python">@hookimpl_osprey
+def register_output_sinks(config):
+    return [MyOutputSink()]
+</code></pre>
+<h3 id="async-output-sink"><a class="header" href="#async-output-sink">Async output sink</a></h3>
+<p>For the async worker, subclass <code>AsyncBaseOutputSink</code> and make <code>push</code> and <code>stop</code> coroutines. See <a href="https://github.com/roostorg/osprey/blob/main/example_plugins/src/async_sinks/example_async_output_sink.py"><code>example_plugins/src/async_sinks/example_async_output_sink.py</code></a>; for example:</p>
+<pre><code class="language-python">from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
+import logging
+
+logger = logging.getLogger(__name__)
+
+class ExampleAsyncOutputSink(AsyncBaseOutputSink):
+    def will_do_work(self, result: ExecutionResult) -&gt; bool:
+        return True
+
+    async def push(self, result: ExecutionResult) -&gt; None:
+        logger.info(
+            'example async output sink: features=%s verdicts=%s',
+            result.extracted_features_json,
+            result.verdicts,
+        )
+
+    async def stop(self) -&gt; None:
+        pass
+</code></pre>
+<p>Register it with <code>@hookimpl_osprey_async</code> under the hook name <code>register_async_output_sinks</code>. This is a different hook from the sync <code>register_output_sinks</code> above, and goes in your <code>register_async_plugins.py</code> module (the one wired to the <code>osprey_async_plugin</code> entry point); for example:</p>
+<pre><code class="language-python">from osprey.async_worker.adaptor.plugin_manager import hookimpl_osprey_async
+
+@hookimpl_osprey_async
+def register_async_output_sinks(config):
+    return [ExampleAsyncOutputSink()]
+</code></pre>
+<h2 id="labels-service"><a class="header" href="#labels-service">Labels service</a></h2>
+<p>Osprey tracks state across events through entity labels: arbitrary tags attached to users, accounts, or other entities (e.g., “this user has 3 prior violations”). Labels are read during rule evaluation and written by rules with label effects. To persist labels across process restarts (and share them between workers), you provide a <code>LabelsServiceBase</code> implementation backed by your own storage via the <code>register_labels_service_or_provider</code> hook.</p>
+<p>The example implementation in <a href="https://github.com/roostorg/osprey/blob/main/example_plugins/src/services/labels_service.py"><code>example_plugins/src/services/labels_service.py</code></a> uses PostgreSQL, e.g.:</p>
+<pre><code class="language-python">from osprey.worker.lib.storage.labels import LabelsServiceBase
+
+class PostgresLabelsService(LabelsServiceBase):
+    def initialize(self) -&gt; None:
+        # Called once at startup—open connections here
+        ...
+
+    def read_labels(self, entity) -&gt; EntityLabels:
+        # Return labels for this entity from your store
+        ...
+
+    @contextmanager
+    def read_modify_write_labels_atomically(self, entity):
+        # Yield the current labels; caller mutates them in place;
+        # persist the result before the context manager exits
+        ...
+</code></pre>
+<p>Register it from the hook:</p>
+<pre><code class="language-python">@hookimpl_osprey
+def register_labels_service_or_provider(config):
+    return PostgresLabelsService()
+</code></pre>
+<h2 id="connecting-to-a-review-tool"><a class="header" href="#connecting-to-a-review-tool">Connecting to a review tool</a></h2>
+<p>Osprey doesn’t currently support direct integration with a review tool; however, these extension points can help you integrate:</p>
+<ul>
+<li><code>register_output_sinks</code>—push execution results into a review queue as they’re produced.</li>
+<li><code>register_label_output_sink</code>—a sink specifically for label mutations, replacing the default <code>LabelOutputSink</code>.</li>
+<li>A labels service backed by your existing datastore (previous section)—label an entity “flagged” from a rule, and your review queue queries your own store for that label.</li>
+</ul>
+<h2 id="plugging-in-your-own-ml-model"><a class="header" href="#plugging-in-your-own-ml-model">Plugging in your own ML model</a></h2>
+<p>ML models can be integrated as UDFs. For an in-process model, wrap your model’s <code>predict</code> call in <code>execute</code>. Since a UDF’s <code>__init__</code> receives <code>validation_context</code> and <code>arguments</code> from the framework, override it to accept and forward both, then do your model loading after the <code>super().__init__()</code> call; for example:</p>
+<pre><code class="language-python">class Arguments(ArgumentsBase):
+    text: str
+
+class MySpamClassifier(UDFBase[Arguments, float]):
+    def __init__(self, validation_context, arguments):
+        super().__init__(validation_context, arguments)
+        self._model = load_model("/path/to/model.pkl")
+
+    def execute(self, execution_context: ExecutionContext, arguments: Arguments) -&gt; float:
+        return self._model.predict_proba([arguments.text])[0][1]
+</code></pre>
+<p>The returned score is then available in rules, e.g.:</p>
+<pre><code class="language-python">MySpamClassifier(text=MessageContent) &gt; 0.85
+</code></pre>
+<p>Osprey constructs one UDF instance per call site when the rules are compiled, not per event, so the model isn’t reloaded for every event processed. That’s one instance per <em>call site</em>, not per <em>class</em>: if you call the same UDF from multiple rules, each call site gets its own instance, and each one loads its own copy of the model. <strong>For a large model, prefer calling the UDF from a single rule (or share the loaded weights via a module-level cache) rather than invoking it from many places.</strong></p>
+<p>For a model served remotely, the same pattern applies with <code>execute()</code> calling out over HTTP, gRPC, or your model server’s SDK (you bring the client code). Because remote model calls are often slow or costly, gate them so they only run when relevant, using <a href="../rules/#workflow-structure-and-file-placement">Writing Rules’ <code>Require(..., require_if=...)</code> pattern</a>:</p>
+<pre><code class="language-python">Require(rule='ai_services/my_ai_service.sml', require_if=ActionName == 'register')
+</code></pre>
+<h2 id="packaging-your-plugin"><a class="header" href="#packaging-your-plugin">Packaging your plugin</a></h2>
+<p>Your plugin package needs a <code>pyproject.toml</code> that declares the entry points; for example:</p>
+<pre><code class="language-toml">[project]
+name = "my-osprey-plugins"
+version = "0.1.0"
+requires-python = "&gt;=3.11"
+dependencies = ["pluggy==1.5.0"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.entry-points.osprey_plugin]
+register_plugins = "register_plugins"
+</code></pre>
+<p>Install it into the same environment as Osprey and it will be discovered automatically on the next startup.</p>
+<p>See also: <a href="../rules/">Writing Rules</a></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../integration/data-flow.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../concepts.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../integration/data-flow.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../concepts.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

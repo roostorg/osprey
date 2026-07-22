@@ -1,0 +1,142 @@
+.roost,
+html:not(.js) {
+  color-scheme: light dark;
+  background-color: var(--roost-charcoal);
+
+  --roost-gray: rgb(187 193 190);
+  --roost-charcoal: hsl(80, 22%, 13%);
+  --roost-yellow: rgb(238 238 0);
+  --roost-peach: rgb(247 187 128);
+  --roost-muddy: rgb(229 217 136);
+
+  --color-scheme: light;
+  --bg: rgba(250 250 250);
+  --fg: var(--roost-charcoal);
+  --sidebar-header-border-color: oklch(from var(--roost-yellow) calc(l * 0.95) c h);
+  --sidebar-resize-indicator-space: 0px;
+  --sidebar-bg: var(--roost-charcoal);
+  --sidebar-fg: rgba(255 255 255 / 0.9);
+  --sidebar-non-existant: #5c6773;
+  --sidebar-active: var(--roost-muddy);
+  --sidebar-spacer: var(--roost-muddy);
+
+  --icons: white;
+  --icons-hover: var(--roost-yellow);
+  --links: inherit;
+
+  --theme-popup-bg: var(--bg);
+  --theme-popup-border: color-mix(var(--fg) 15%, transparent);
+  --theme-hover: color-mix(var(--fg) 4%, transparent);
+
+  --quote-bg: color-mix(var(--fg) 3%, transparent);
+  --quote-border: color-mix(var(--fg) 10%, transparent);
+
+  --searchbar-bg: color-mix(var(--fg) 3%, transparent);
+  --searchbar-fg: inherit;
+  --searchbar-border-color: color-mix(var(--fg) 10%, transparent);
+  --searchbar-shadow-color: var(--roost-peach);
+  --searchbar-margin-block-start: 2em;
+
+  --warning-border: color-mix(orange, var(--fg));
+
+  --table-border-color: color-mix(var(--fg) 7%, var(--bg));
+  --table-header-bg: color-mix(var(--fg) 10%, var(--bg));
+  --table-alternate-bg: color-mix(var(--fg) 3%, var(--bg));
+
+  --scrollbar: color-mix(var(--fg), transparent);
+
+  --inline-code-color: inherit;
+
+  --searchresults-header-fg: color-mix(var(--roost-peach) 75%, var(--fg));
+  --searchresults-border-color: color-mix(var(--fg), transparent);
+  --searchresults-li-bg: color-mix(var(--roost-yellow) 20%, transparent);
+  --search-mark-bg: color-mix(var(--roost-yellow), transparent);
+  --footnote-highlight: var(--search-mark-bg);
+
+  --copy-button-filter: none;
+  --copy-button-filter-hover: invert(20%);
+
+  --blockquote-note-color: color-mix(blue, var(--fg));
+  --blockquote-tip-color: color-mix(lime, var(--fg));
+  --blockquote-important-color: color-mix(fuchsia, var(--fg));
+  --blockquote-warning-color: var(--warning-border);
+  --blockquote-caution-color: color-mix(red, var(--fg));
+
+  --overlay-bg: color-mix(var(--fg), transparent);
+}
+
+html:not(.js) {
+  --sidebar-resize-indicator-width: 0px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .roost,
+  html:not(.js) {
+    --color-scheme: dark;
+    --bg: color-mix(var(--roost-charcoal) 90%, black);
+    --fg: rgba(255 255 255 / 0.9);
+    --copy-button-filter: invert(80%);
+    --copy-button-filter-hover: invert(100%);
+  }
+}
+
+/* Theme overrides */
+
+.roost body {
+  background-color: var(--bg);
+  min-height: calc(100vh + var(--menu-bar-height));
+}
+
+.roost #mdbook-menu-bar {
+  background-color: var(--roost-charcoal);
+  border: none;
+  box-shadow: 0 0.25em 1em rgba(0 0 0 / 0.25);
+}
+
+.roost #mdbook-theme-toggle {
+  x-display: none;
+}
+
+.roost #mdbook-searchbar {
+  border-radius: 999px;
+  transition: none;
+}
+
+.roost #mdbook-searchbar:focus-visible {
+  outline: 1px solid color-mix(var(--searchbar-shadow-color), transparent);
+}
+
+.roost ul#mdbook-searchresults li {
+  margin-block: 1.25em;
+}
+
+.roost #mdbook-sidebar {
+  z-index: 102;
+}
+
+.roost #mdbook-sidebar-resize-handle {
+  background-color: var(--sidebar-bg);
+}
+
+.roost :not(pre):not(a) > .hljs {
+  background: color-mix(var(--fg) 10%, transparent);
+}
+
+.roost .nav-wide-wrapper {
+  --icons: color-mix(var(--fg) 25%, transparent);
+  --icons-hover: var(--fg);
+}
+
+.roost .content {
+  padding: 2em 1em 1em;
+}
+
+.roost .content a {
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.roost a:link.mobile-nav-chapters {
+  color: var(--roost-yellow);
+}
+
