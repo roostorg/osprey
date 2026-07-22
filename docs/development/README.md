@@ -1,159 +1,61 @@
-# Development Guide
+# Getting Started
 
-Set up a development environment for Osprey.
+Quickly see Osprey working with sample data and a real rule using the demo script. It needs no code or configuration, and everything cleans up with a single command afterward. For a full development environment—running services individually, making changes, and debugging—see [Local Development](local.md).
 
-## Prerequisites
+To run the demo:
 
-- **Operating System**: macOS, Linux, or Windows (with WSL recommended)
-- **[Python](https://www.python.org/) 3.11 or higher** (check with `python --version`)
-- **[Git](https://git-scm.com/)** for version control
-- **[uv](https://docs.astral.sh/uv/)** for Python package management
-- **[Node.js](https://nodejs.org/en/download/) 22+** for the UI (Corepack ships with Node and auto-resolves pnpm from `osprey_ui/package.json`'s `packageManager` field; no separate pnpm install needed)
+1. **Ensure you have prerequisites** installed: Docker with the Compose v2 plugin, and the Docker daemon running. The script checks these before doing anything.
 
-## Project Setup
+   ```sh
+   docker --version && docker compose version
+   ```
 
-### 1. Clone the Repository
+   The stack also needs a number of free ports; the script checks them up front and names any that are taken. The ones you'll actually visit are `5002` (Osprey UI) and `8888` (Druid console); the worker and UI API use `5001` and `5004`.
 
-```bash
-git clone git@github.com:roostorg/osprey.git
-cd osprey
+2. **Run the script** from a clone of the repo:
+
+   ```sh
+   ./demo.sh
+   ```
+
+   Or without cloning anything first—this clones the repo into `./osprey-demo` for you:
+
+   ```sh
+   curl -sSL https://raw.githubusercontent.com/roostorg/osprey/main/demo.sh | bash
+   ```
+
+   The script starts the whole stack (Kafka, Druid, PostgreSQL, MinIO, and Osprey's own worker, API, and UI—more than a dozen containers in all) plus a test-data producer that sends one synthetic post event per second. If it finds services from a previous run, it asks before stopping them; volumes from earlier demo runs are removed either way, so each demo starts from clean state. Expect the first run to spend a few minutes pulling and building images.
+
+3. **Wait for the "Demo Ready!" banner.** The script waits for every service to report healthy, then for the first events to flow through, so this takes a couple of minutes. When it's done, it opens the UI in your browser (or prints the URL to open yourself), pre-filled with a query for the last day of events.
+
+## What to try
+
+The demo ruleset has one rule, `ContainsHello`: any post containing the word "hello" gets its author banned and labeled `meow`. The producer builds five-word posts from a small word pool, so roughly a third of the generated posts trigger it.
+
+- **Watch the event stream.** The right panel shows events as they're processed. Click one that matched `ContainsHello` and look at its extracted features and effects.
+- **Filter with a query.** Enter `ContainsHello == True` in the query bar to see only the posts that fired the rule; see [Query Syntax](../user/investigate/query-syntax.md) for what else you can express.
+- **Group with Top N.** The pre-filled query groups by `UserId`, showing which synthetic users have been banned the most.
+- **Open the Rules Visualizer** from the navigation bar to see the dependency graph between the demo's features and rule.
+
+The [User Guide](../user/) covers the full investigation workflow, and [Writing Rules](../rules/) explains the SML behind `ContainsHello` and how to write your own rules.
+
+## Stopping the demo
+
+From the repo folder (or `osprey-demo/` if the script cloned for you):
+
+```sh
+docker compose --profile test_data down -v
 ```
 
-### 2. Install Dependencies
+This stops every container and deletes the volumes, including all generated demo data.
 
-```bash
-# Install all dependencies including development tools
-uv sync
+## If something goes wrong
+
+The script is a convenience wrapper; you can run the same stack directly and watch the logs:
+
+```sh
+docker compose --profile test_data up -d
+docker compose logs --follow osprey-worker
 ```
 
-This command will:
-
-- Create a virtual environment automatically
-- Install all production dependencies
-- Install development dependencies (ruff, mypy, pre-commit) automatically
-- Use the locked versions from `uv.lock` for reproducible builds
-
-**Note**: `uv sync` includes development dependencies by default. Use `uv sync --no-dev` if you only want production dependencies.
-
-### 3. Set Up Pre-commit Hooks
-
-```bash
-uv run pre-commit install
-```
-
-This installs git hooks that automatically run code quality checks before each commit.
-
-### 4. Verify Setup
-
-Run these commands to ensure everything is working correctly:
-
-```bash
-# Check linting configuration
-uv run ruff check
-
-# Check formatting
-uv run ruff format --diff
-
-# Run type checking
-uv run mypy .
-
-# Test pre-commit hooks
-uv run pre-commit run --all-files
-```
-
-**Expected Results:**
-
-- Ruff should report "All checks passed!" or show specific issues to fix
-- MyPy should run without errors
-- Pre-commit should run all hooks successfully
-
-### 5. Getting Started
-
-```bash
-docker compose up -d
-```
-
-or using the wrapper script
-
-```bash
-./start.sh
-```
-
-This starts up many services, including:
-- **Osprey Worker**: The main engine that processes input events given the rules and UDFs
-  - **Test Data Producer**: Optional with `--profile test_data`
-- **Osprey UI**: Frontend service that hosts the react code for the web interface and communicates to the UI API
-- **Osprey UI API**: Backend service that provides data and functionality to the web interface
-- **Kafka** (KRaft mode): Message streaming for user generated events
-- **Postgres**: A database that the Worker, UI API, and Druid use for various reasons, such as the Postgres-backed Labels Service (in the example plugins)
-- **Druid**: A database that consumes Osprey Worker outputs to power the UI API for real-time querying
-
-Alternatively, you can start Osprey with `osprey-coordinator`, refer to the [Coordinator README](../example_docker_compose/run_osprey_with_coordinator/README.md) for more information
-
-### 6. (Optional) Open ports for the UI/UI API
-
-By default, the `docker-compose.yaml` binds running services to `127.0.0.1`. If you are running the docker compose on a headless machine, you may need to modify this configuration and/or make changes to your firewall, specifically for ports `5002` and `5004`.
-
-For example, if you use Tailscale to access your Osprey instance, you may change `127.0.0.1:5002:5002` to `<Tailscale IP>:5002:5002`. Alternatively, if you wish for your instance to be accessible from the public internet, you may set it simply to `5002:5002` to bind to `0.0.0.0`.
-
-Be aware that some firewalls like iptables/UFW do _not_ prevent access to ports being used by Docker networking. Not explicitly setting a bind address with only UFW as a firewall will not prevent access from the public internet unless [properly configured](https://github.com/chaifeng/ufw-docker).
-
-### 7. Access the Application
-
-The UI will automatically connect to the backend services running in Docker containers.
-
-- Osprey UI: [localhost:5002](http://localhost:5002)
-- Backend API: [localhost:5004](http://localhost:5004)
-- Worker Service: [localhost:5001](http://localhost:5001)
-
-## Plugins
-
-In Osprey, UDFs and output sinks are designed to be easily portable. This is done through a plugin system based on pluggy. An example plugin package has been provided for reference, see `example_plugins/register_plugins.py`:
-
-```python
-@hookimpl_osprey
-def register_udfs() -> Sequence[Type[UDFBase[Any, Any]]]:
-    # Register custom user-defined functions
-
-@hookimpl_osprey
-def register_output_sinks(config: Config) -> Sequence[BaseOutputSink]:
-    # Define output destinations
-    # By default it prints the execution results to the console
-
-@hookimpl_osprey
-def register_ast_validators() -> None:
-    # Register AST validators
-```
-
-### Available hooks
-
-Implement any subset of these in your plugin's `register_plugins.py`:
-
-| Hook | Returns | Notes |
-| --- | --- | --- |
-| `register_udfs` | `Sequence[Type[UDFBase]]` | Custom user-defined functions. |
-| `register_output_sinks` | `Sequence[BaseOutputSink]` | Where execution results go. |
-| `register_ast_validators` | `Sequence[Type[BaseValidator]]` | Extra SML validators. |
-| `register_action_proto_deserializer` | `ActionProtoDeserializer \| None` | Custom action proto → JSON. |
-| `register_input_stream` | `BaseInputStream` | Single-provider (`firstresult`). |
-| `register_execution_result_store` | `ExecutionResultStore` | Single-provider (`firstresult`). |
-| `register_labels_service_or_provider` | `LabelsServiceBase \| LabelsProvider` | Single-provider (`firstresult`). |
-
-## Rules
-
-Rules are written in SML, some examples are provided in `example_rules/` with YAML config, the rules are mounted to the worker processes when the containers start via environment variables. ex:
-
-```bash
-OSPREY_RULES=./example_rules uv run python3.11 osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink
-```
-
-For more about rules, see [Writing Rules](../rules.md).
-
-## Test Data
-
-Generate sample JSON actions:
-```bash
-docker compose --profile test_data up osprey-kafka-test-data-producer -d
-```
-
-Produces user login events with timestamps, user IDs, and IP addresses to `osprey.actions_input` topic.
+Then open <http://localhost:5002> once things settle. [Troubleshooting](troubleshooting.md) covers common failure modes, and [Local Development](local.md) documents each service the demo starts.

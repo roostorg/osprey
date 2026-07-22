@@ -1,30 +1,13 @@
 # Query Syntax
 
-Osprey uses SML (“Some Madeup Language,” a subset of Python with additional restrictions) for queries. Queries filter events by matching against features, actions, and labels.
-
-## Core concepts
-
-**Actions** are events that happen in your system, like a user creating a post or sending a message. Your query filters which action types to look at.
-
-**Features** are named variables extracted from events. All features are in a global namespace; any feature exported by Osprey rules is queryable. Prefixing a variable with `_` keeps it local to a rule file and excludes it from querying.
-
-```py
-UserId: Entity[int] = EntityJson(type='User', path='$.user.id', coerce_type=True)
-UserEmail: str = JsonData(type='Email', path='$.user.email', required=False)
-```
-
-Both `UserId` and `UserEmail` above are features.
-
-**Entities** are a special kind of feature. They can have effects applied to them: labels, classifications, signals. Clicking an entity in the UI navigates to its [Entity Details](labels.md#entity-details) view.
-
-**Effects** are outcomes triggered when one or more rules evaluate to true; for example, applying a `spammer` label to a `UserId` entity.
+Osprey uses SML (“Some Madeup Language,” a subset of Python with additional restrictions) for queries. Queries match against **features**—the named values your rules extract from each event—including **entities** and **labels**. If those terms are new, read [Concepts](../../concepts.md) first.
 
 ## Basic comparisons
 
 ```py
 EventType == "create_post"
 UserId == 12345
-MessageText != Null
+MessageText != None
 ```
 
 ## Combining conditions
@@ -40,29 +23,29 @@ EventType == "user_login" and LoginAttempts >= 3
 EventType in ["create_post", "send_message"]
 ```
 
-## Using UDFs
+## Query functions
 
-UDFs (see [UDF Registry](../manage.md#udf-registry)) extend what you can express in a query:
+Queries support a small, fixed set of built-in functions. Unlike the UDFs you use in rules (which are pluggable), this set does not grow when you add plugins:
+
+- `RegexMatch(target=..., pattern=...)`: regex match against a feature
+- `DidAddLabel(...)` and `DidRemoveLabel(...)`: events where a label was added or removed (see [Label queries](#label-queries))
+- `DidDeclareVerdict(...)`: events where a verdict was declared
 
 ```py
-# Text search
-TextContains(text=PostContent, phrase="spam")
+# Regex match against a feature
 RegexMatch(target=MessageText, pattern="(buy|sell|deal)")
-
-# List operations
-ListLength(list=UserConnections) > 10
 ```
 
 > [!NOTE]
-> If you query a UDF that doesn't exist, Osprey will silently fail with a 500 error. Use the UDF Registry to confirm a function name before using it.
+> These are the only functions that work in queries. The [UDF Registry](../manage.md#udf-registry) lists every UDF, but most are rules-only and will fail with a silent 500 error if you use them in a query.
 
 ## Label queries
 
-The query UI searches across actions (events), not entity state, so `HasLabel()` won't work here. Use `DidAddLabel()` instead, which matches events where a label was added:
+The query UI searches across events, not entity state, so `HasLabel()` won't work here. Use `DidAddLabel()` instead, which matches events where a label was added:
 
 ```py
 # Find events that added a specific label
-DidAddLabel(entity_type="UserId", label_name="likely_spammer")
+DidAddLabel(entity_type="User", label_name="likely_spammer")
 DidAddLabel(entity_type="IpAddress", label_name="suspicious")
 ```
 
@@ -72,14 +55,14 @@ DidAddLabel(entity_type="IpAddress", label_name="suspicious")
 # Suspicious login attempts
 EventType == "user_login" and LoginAttempts >= 5
 
-# Posts containing specific words
-EventType == "create_post" and TextContains(text=PostContent, phrase="urgent")
+# Posts matching a pattern
+EventType == "create_post" and RegexMatch(target=PostContent, pattern="urgent")
 
 # Users who were flagged
-DidAddLabel(entity_type="UserId", label_name="flagged")
+DidAddLabel(entity_type="User", label_name="flagged")
 
 # Complex: messages matching a pattern, from users without a verified label
 EventType == "send_message" and
 RegexMatch(target=MessageText, pattern="(click|link|urgent)") and
-not DidAddLabel(entity_type="UserId", label_name="verified")
+not DidAddLabel(entity_type="User", label_name="verified")
 ```
