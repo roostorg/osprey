@@ -8,6 +8,7 @@ from itertools import chain
 from typing import Literal, Set, cast
 from urllib.parse import ParseResult, urlparse, urlunparse
 
+from anyascii import anyascii
 from osprey.engine.stdlib.udfs._prelude import (
     ArgumentsBase,
     ConstExpr,
@@ -15,7 +16,6 @@ from osprey.engine.stdlib.udfs._prelude import (
     UDFBase,
     ValidationContext,
 )
-from unidecode import unidecode
 
 from .categories import UdfCategories
 
@@ -396,7 +396,7 @@ class StringClean(UDFBase[StringCleaningArguments, str]):
             s = new_s
 
         if arguments.unidecode:
-            s = unidecode(s)
+            s = anyascii(s)
 
         if arguments.upper and not arguments.lower:
             s = s.upper()
