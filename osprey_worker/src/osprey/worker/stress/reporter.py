@@ -8,7 +8,7 @@ The harness has two measurement modes:
 
 * Closed-loop (synthetic source): we know every action_id we sent and when we
   sent it, so we can compute exact drop rate and per-event latency.
-* Open-loop (external source — e.g. jetstream once #236 lands): we don't have
+* Open-loop (external source, e.g. the JetStream input stream): we don't have
   per-event produce timestamps, so latency is unavailable; we report aggregate
   throughput and drop rate via input/output counts.
 """
