@@ -25,7 +25,7 @@ common = [
     "googleapis-common-protos==1.70.0",
     "graphviz==0.20",
     "greenlet",
-    "grpc-google-iam-v1==0.14.2",
+    "grpc-google-iam-v1==0.14.4",
     "grpcio==1.49.1; platform_machine == 'x86_64'",
     "grpcio==1.53.*; platform_machine != 'x86_64'",
     "grpcio-health-checking==1.44.0",
