@@ -1,0 +1,43 @@
+name: Submit an Egg! (Idea)
+description: Tell us what you are proposing
+title: ''
+body:
+  - type: textarea
+    id: proposing
+    attributes:
+      label: What are you proposing?
+      description: In a few sentences, describe the tool/project/functionality and its core capabilities.
+    validations:
+      required: true
+
+  - type: textarea
+    id: need
+    attributes:
+      label: What is the need for this tool/project?
+      description: >
+        Provide any research, proposals, or requests that indicate this
+        would be something for ROOST to build for the open source community.
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: >
+        Summarize the core use case and user problems and needs you are
+        trying to solve. Please describe the most important user needs, pain
+        points and impact this project will have.
+
+
+        - Developer experience: does this have a REST API?
+
+        - Security: are there any security concerns? *Note: Please do not
+        report vulnerabilities here — see
+        [SECURITY.md](https://github.com/roostorg/.github/blob/main/SECURITY.md)*
+
+        - Breaking changes: Should any features of the project be integrated?
+
+        - User experience: What will the user experience be?
+    validations:
+      required: true
