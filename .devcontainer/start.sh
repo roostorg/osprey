@@ -30,6 +30,12 @@ if ! kafka_healthy; then
 fi
 
 echo "==> bringing up the Osprey stack"
+# Point the UI at the forwarded API URL (same as setup.sh). Without this, the
+# recreated osprey-ui defaults to localhost:5004 and the browser can't reach the
+# API (getApplicationConfig "Network Error").
+if [ -n "${CODESPACE_NAME:-}" ]; then
+  export REACT_APP_API_BASE_URL="https://${CODESPACE_NAME}-5004.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}"
+fi
 bash run-atproto.sh up -d || true
 
 exit 0
