@@ -4,9 +4,22 @@ from unittest.mock import patch
 import pytest
 from flask import Response, url_for
 from flask.testing import FlaskClient
+from osprey.worker.lib.singletons import CONFIG
 from osprey.worker.lib.snowflake import Snowflake
 from osprey.worker.lib.storage.postgres import scoped_session
 from osprey.worker.lib.storage.rule_drafts import RuleDraft
+
+
+def _set_rules_dir(monkeypatch: pytest.MonkeyPatch, path: object) -> None:
+    # Deploy reads OSPREY_RULES_LOCAL_PATH via CONFIG, which is bound once at app
+    # setup, so set it on the already-bound config for the deploy handler to see.
+    monkeypatch.setenv('OSPREY_RULES_LOCAL_PATH', str(path))
+    CONFIG.instance()._config_dict['OSPREY_RULES_LOCAL_PATH'] = str(path)
+
+
+def _unset_rules_dir(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv('OSPREY_RULES_LOCAL_PATH', raising=False)
+    CONFIG.instance()._config_dict.pop('OSPREY_RULES_LOCAL_PATH', None)
 
 
 @pytest.fixture(autouse=True)
@@ -364,7 +377,7 @@ def test_get_draft_returns_one_and_404s(client: 'FlaskClient[Response]') -> None
 def test_deploy_writes_sml_and_marks_deployed(
     client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
-    monkeypatch.setenv('OSPREY_RULES_LOCAL_PATH', str(tmp_path))
+    _set_rules_dir(monkeypatch, tmp_path)
     created = client.post(
         url_for('rule_drafts.create_draft'),
         json={'path': 'rules/deploy.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': ''},
@@ -389,7 +402,7 @@ def test_deploy_wire_into_main_appends_require(
     client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
     (tmp_path / 'main.sml').write_text("Import(rules=['models/base.sml'])\n")
-    monkeypatch.setenv('OSPREY_RULES_LOCAL_PATH', str(tmp_path))
+    _set_rules_dir(monkeypatch, tmp_path)
     created = client.post(
         url_for('rule_drafts.create_draft'),
         json={'path': 'rules/wired.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': ''},
@@ -409,7 +422,7 @@ def test_deploy_wire_into_main_is_idempotent(
     client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
     (tmp_path / 'main.sml').write_text("Import(rules=['models/base.sml'])\nRequire(rule='rules/already.sml')\n")
-    monkeypatch.setenv('OSPREY_RULES_LOCAL_PATH', str(tmp_path))
+    _set_rules_dir(monkeypatch, tmp_path)
     created = client.post(
         url_for('rule_drafts.create_draft'),
         json={'path': 'rules/already.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': ''},
@@ -428,7 +441,7 @@ def test_deploy_wire_into_main_is_idempotent(
 def test_deploy_wire_into_main_409_when_main_missing(
     client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
-    monkeypatch.setenv('OSPREY_RULES_LOCAL_PATH', str(tmp_path))
+    _set_rules_dir(monkeypatch, tmp_path)
     created = client.post(
         url_for('rule_drafts.create_draft'),
         json={'path': 'rules/nomain.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': ''},
@@ -444,7 +457,7 @@ def test_deploy_wire_into_main_409_when_main_missing(
 
 @pytest.mark.use_rules_sources(_base_sources)
 def test_deploy_503_when_rules_dir_unset(client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv('OSPREY_RULES_LOCAL_PATH', raising=False)
+    _unset_rules_dir(monkeypatch)
     created = client.post(
         url_for('rule_drafts.create_draft'),
         json={'path': 'rules/nodir.sml', 'rule_name': 'SomeRule', 'source': _VALID_DRAFT, 'summary': ''},
@@ -460,6 +473,6 @@ def test_deploy_503_when_rules_dir_unset(client: 'FlaskClient[Response]', monkey
 def test_deploy_404_for_unknown_draft(
     client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
-    monkeypatch.setenv('OSPREY_RULES_LOCAL_PATH', str(tmp_path))
+    _set_rules_dir(monkeypatch, tmp_path)
     res = client.post(url_for('rule_drafts.deploy_draft', draft_id=999999), json={})
     assert res.status_code == 404

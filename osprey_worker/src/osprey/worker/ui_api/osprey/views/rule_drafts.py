@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -32,7 +31,7 @@ from osprey.engine.ast_validator.validation_context import (
     ValidationFailed,
     ValidationWarning,
 )
-from osprey.worker.lib.singletons import ENGINE
+from osprey.worker.lib.singletons import CONFIG, ENGINE
 from osprey.worker.lib.storage.rule_drafts import RuleDraft
 from osprey.worker.ui_api.osprey.lib.abilities import CanEditRuleDrafts, require_ability
 from osprey.worker.ui_api.osprey.lib.auth import get_current_user_email
@@ -85,7 +84,7 @@ def _suggest_imports_from_errors(
     """
     suggested: set[str] = set()
     for err in errors:
-        for path in err.get('defined_in_source_paths') or []:
+        for path in err.get('defined_in_source_paths', []):
             if path == 'main.sml' or path == draft_path:
                 continue
             suggested.add(path)
@@ -94,7 +93,10 @@ def _suggest_imports_from_errors(
 
 def _validate_path(path: str) -> str | None:
     if not _VALID_PATH.match(path):
-        return f'Path {path!r} is not a valid SML source path (must end .sml and contain only [A-Za-z0-9_/-]).'
+        return (
+            f'Path {path!r} is not a valid SML source path. It must end in .sml and contain only '
+            'letters, numbers, underscores, slashes, and hyphens.'
+        )
     if path.startswith('/'):
         # Rule paths are relative to the rules directory; an absolute path would
         # escape it. Deploy also guards this with _resolve_within, but reject early.
@@ -437,7 +439,7 @@ def _rules_dir_or_error() -> tuple[Path | None, tuple[Any, int] | None]:
     SourcesProvider that lets the engine read deployed drafts straight from this
     table would remove that dependency entirely; see the PR notes.
     """
-    raw = os.environ.get('OSPREY_RULES_LOCAL_PATH', '').strip()
+    raw = CONFIG.instance().get_str('OSPREY_RULES_LOCAL_PATH', '').strip()
     if not raw:
         return None, (
             jsonify(
