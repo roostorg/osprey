@@ -31,5 +31,6 @@
     "9001": { "label": "MinIO Console" }
   },
   "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postStartCommand": "bash .devcontainer/start.sh",
   "remoteUser": "vscode"
 }
