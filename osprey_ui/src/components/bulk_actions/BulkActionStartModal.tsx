@@ -189,7 +189,7 @@ const BulkActionStartModalContainer = () => {
       job_name: values.jobName,
       job_description: values.jobDescription,
       workflow_name: workflow,
-      file_name: values.file.name,
+      file_name: values.file?.name,
       file: values.file,
       entity_type: values.entityType,
     });

@@ -8,9 +8,10 @@ from osprey.worker.sinks.sink.output_sink_utils.models import OspreyRulesVisuali
 from osprey.worker.ui_api.osprey.lib.marshal import JsonBodyMarshaller, marshal_with
 from pydantic.main import BaseModel
 
-from ..singletons import ANALYTICS_PUBLISHER
+from ..singletons import get_analytics_publisher
 
 blueprint = Blueprint('rules_visualizer', __name__)
+ANALYTICS_PUBLISHER = get_analytics_publisher()
 
 
 class BaseActionsViewQuery(BaseModel, JsonBodyMarshaller):

@@ -30,6 +30,10 @@
       "allow_all": true
     },
     {
+      "name": "CAN_BULK_ACTION",
+      "allow_all": true
+    },
+    {
       "name": "CAN_VIEW_SAVED_QUERIES",
       "allow_all": true
     },
