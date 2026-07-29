@@ -190,7 +190,7 @@ services:
   snowflake-id-worker:
     hostname: snowflake-id-worker
     container_name: snowflake-id-worker
-    image: ghcr.io/ayubun/snowflake-id-worker:0
+    image: ghcr.io/ayubun/snowflake-id-worker:0.4.0
     ports:
       - "127.0.0.1:8088:8088"
     environment:
