@@ -265,7 +265,7 @@ class ArgumentsBase:
         return list(ordered_mro)
 
     @classmethod
-    @lru_cache(1)
+    @lru_cache(maxsize=None)
     def items(cls) -> dict[str, type]:
         fields: dict[str, type] = {}
 
@@ -315,12 +315,12 @@ class ArgumentsBase:
         return cls.get_generic_param() is not None
 
     @classmethod
-    @lru_cache(1)
+    @lru_cache(maxsize=None)
     def is_extra_arguments_allowed(cls) -> bool:
         return EXTRA_ARGS_ATTR in cls.items()
 
     @classmethod
-    @lru_cache(1)
+    @lru_cache(maxsize=None)
     def get_extra_arguments_values_type(cls) -> type:
         """returns the type allowed by unexpected kwargs"""
         assert cls.is_extra_arguments_allowed(), 'check if is_extra_arguments_allowed() first'
