@@ -2,10 +2,10 @@
 
 import asyncio
 import threading
-from unittest.mock import MagicMock, patch
+import weakref
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from osprey.async_worker.engine import AsyncOspreyEngine
 
 
@@ -20,8 +20,11 @@ def _make_engine_with_stub_compile(initial_graph, recompile_graph):
 
     udf_registry = MagicMock()
 
-    with patch.object(AsyncOspreyEngine, '_compile_execution_graph_sync', return_value=initial_graph), \
-         patch('osprey.async_worker.engine.ConfigSubkeyHandler'):
+    with (
+        patch.object(AsyncOspreyEngine, '_compile_execution_graph_sync', return_value=initial_graph),
+        patch.object(AsyncOspreyEngine, '_load_and_register_schemas'),
+        patch('osprey.async_worker.engine.ConfigSubkeyHandler'),
+    ):
         engine = AsyncOspreyEngine(
             sources_provider=sources_provider,
             udf_registry=udf_registry,
@@ -63,27 +66,6 @@ async def test_handle_updated_sources_runs_compile_off_event_loop():
 
 
 @pytest.mark.asyncio
-async def test_handle_updated_sources_does_not_force_gc():
-    """We deliberately do NOT call gc.collect() after swap.
-
-    Forcing gen-2 collection promotes every surviving object to gen 2, which
-    makes subsequent automatic collections during action processing more
-    expensive. We let CPython's reference counting reclaim the old graph
-    naturally — same as the gevent engine.
-    """
-    import gc as gc_module
-    initial = MagicMock(name='initial_graph')
-    new = MagicMock(name='new_graph')
-    engine = _make_engine_with_stub_compile(initial, new)
-
-    with patch.object(engine, '_compile_execution_graph_sync', return_value=new), \
-         patch.object(gc_module, 'collect') as mock_collect:
-        await engine._handle_updated_sources()
-
-    assert mock_collect.call_count == 0
-
-
-@pytest.mark.asyncio
 async def test_handle_updated_sources_keeps_old_graph_on_compile_failure():
     """If the new compile raises, _execution_graph must still point at the old
     graph. Otherwise in-flight actions would crash on a missing graph."""
@@ -95,9 +77,7 @@ async def test_handle_updated_sources_keeps_old_graph_on_compile_failure():
     with patch.object(engine, '_compile_execution_graph_sync', side_effect=RuntimeError('boom')):
         await engine._handle_updated_sources()
 
-    assert engine._execution_graph is pre_swap_graph, (
-        'failed compile should not have replaced the existing graph'
-    )
+    assert engine._execution_graph is pre_swap_graph, 'failed compile should not have replaced the existing graph'
 
 
 @pytest.mark.asyncio
@@ -116,12 +96,142 @@ async def test_handle_updated_sources_dispatches_config_after_swap():
 
 
 @pytest.mark.asyncio
+async def test_handle_updated_sources_releases_old_graph_before_specializing():
+    class _Sources:
+        def hash(self):
+            return 'graph_hash'
+
+    class _ValidatedSources:
+        sources = _Sources()
+
+    class _CyclicGraph:
+        validated_sources = _ValidatedSources()
+
+        def __init__(self):
+            self.cycle = self
+
+    old = _CyclicGraph()
+    old_specialized = _CyclicGraph()
+    new = _CyclicGraph()
+    with patch.object(AsyncOspreyEngine, '_load_and_register_schemas'):
+        engine = _make_engine_with_stub_compile(old, new)
+    engine._specialized_graphs['old_action'] = old_specialized
+    engine._freeze_resident_graph()
+    old_ref = weakref.ref(old)
+    old_specialized_ref = weakref.ref(old_specialized)
+    del old
+    del old_specialized
+
+    old_graph_was_released = []
+
+    def observe_old_graph_lifetime():
+        old_graph_was_released.append(old_ref() is None and old_specialized_ref() is None)
+
+    with (
+        patch.object(engine, '_compile_execution_graph_sync', return_value=new),
+        patch.object(engine, '_break_old_graph_cycles', new=lambda *_: None),
+        patch.object(engine, '_load_and_register_schemas', side_effect=observe_old_graph_lifetime),
+    ):
+        await engine._handle_updated_sources()
+
+    assert old_graph_was_released == [True]
+
+
+@pytest.mark.asyncio
+async def test_handle_updated_sources_waits_for_active_execution_before_retiring_graph():
+    old = MagicMock(name='old_graph')
+    new = MagicMock(name='new_graph')
+    engine = _make_engine_with_stub_compile(old, new)
+    execution_started = asyncio.Event()
+    release_execution = asyncio.Event()
+    old_graph_retired = asyncio.Event()
+
+    async def blocked_execute(*args, **kwargs):
+        execution_started.set()
+        await release_execution.wait()
+        return MagicMock()
+
+    action = MagicMock(action_name='test_action', data={})
+    with (
+        patch('osprey.async_worker.engine.async_execute', side_effect=blocked_execute),
+        patch.object(engine, 'compile_execution_graph', new=AsyncMock(return_value=new)),
+        patch.object(engine, '_break_old_graph_cycles', side_effect=lambda *_: old_graph_retired.set()),
+        patch.object(engine, '_load_and_register_schemas'),
+        patch.object(engine, '_freeze_resident_graph'),
+    ):
+        execution_task = asyncio.create_task(engine.execute(MagicMock(), action))
+        await execution_started.wait()
+        reload_task = asyncio.create_task(engine._handle_updated_sources())
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+
+        assert not old_graph_retired.is_set()
+
+        release_execution.set()
+        await execution_task
+        await reload_task
+
+    assert old_graph_retired.is_set()
+
+
+@pytest.mark.asyncio
+async def test_handle_updated_sources_reopens_execution_after_specialization_failure():
+    old = MagicMock(name='old_graph')
+    new = MagicMock(name='new_graph')
+    engine = _make_engine_with_stub_compile(old, new)
+    action = MagicMock(action_name='test_action', data={})
+    expected = MagicMock()
+
+    with (
+        patch.object(engine, 'compile_execution_graph', new=AsyncMock(return_value=new)),
+        patch.object(engine, '_break_old_graph_cycles', new=lambda *_: None),
+        patch.object(engine, '_load_and_register_schemas', side_effect=RuntimeError('specialization failed')),
+        patch('osprey.async_worker.engine.async_execute', new=AsyncMock(return_value=expected)),
+    ):
+        with pytest.raises(RuntimeError, match='specialization failed'):
+            await engine._handle_updated_sources()
+
+        result = await asyncio.wait_for(engine.execute(MagicMock(), action), timeout=0.1)
+
+    assert result is expected
+
+
+@pytest.mark.asyncio
+async def test_handle_updated_sources_serves_full_graph_while_specializing():
+    old = MagicMock(name='old_graph')
+    new = MagicMock(name='new_graph')
+    engine = _make_engine_with_stub_compile(old, new)
+    specialization_started = threading.Event()
+    release_specialization = threading.Event()
+    action = MagicMock(action_name='test_action', data={})
+    expected = MagicMock()
+
+    def blocked_specialization():
+        specialization_started.set()
+        release_specialization.wait(timeout=1)
+
+    with (
+        patch.object(engine, 'compile_execution_graph', new=AsyncMock(return_value=new)),
+        patch.object(engine, '_break_old_graph_cycles', new=lambda *_: None),
+        patch.object(engine, '_load_and_register_schemas', side_effect=blocked_specialization),
+        patch('osprey.async_worker.engine.async_execute', new=AsyncMock(return_value=expected)) as execute,
+    ):
+        reload_task = asyncio.create_task(engine._handle_updated_sources())
+        assert await asyncio.to_thread(specialization_started.wait, 1)
+
+        result = await asyncio.wait_for(engine.execute(MagicMock(), action), timeout=0.1)
+        release_specialization.set()
+        await reload_task
+
+    assert result is expected
+    assert execute.await_args.args[0] is new
+
+
+@pytest.mark.asyncio
 async def test_handle_updated_sources_nulls_parents_on_old_graph():
     """After swap, parent pointers on every AST node in the OLD graph must be
     nulled so refcount reclaims the old graph without waiting for gen-2 GC.
     The NEW graph's parents must be left intact."""
-    initial = MagicMock(name='initial_graph')
-    new = MagicMock(name='new_graph')
 
     # Old graph: two mock sources, each with a fake ast_root whose iter_nodes
     # walk yields three nodes carrying a `parent` attribute.
@@ -137,7 +247,14 @@ async def test_handle_updated_sources_nulls_parents_on_old_graph():
         return iter(root._test_nodes)
 
     def make_sources(nodes_per_source):
-        sources = []
+        class _Sources(list):
+            def hash(self):
+                return 'graph_hash'
+
+            def schemas(self):
+                return {}
+
+        sources = _Sources()
         for nodes in nodes_per_source:
             src = MagicMock()
             src.ast_root._test_nodes = nodes
@@ -152,8 +269,10 @@ async def test_handle_updated_sources_nulls_parents_on_old_graph():
 
     engine = _make_engine_with_stub_compile(old_graph, new_graph)
 
-    with patch.object(engine, '_compile_execution_graph_sync', return_value=new_graph), \
-         patch('osprey.async_worker.engine.iter_nodes', side_effect=fake_iter_nodes):
+    with (
+        patch.object(engine, '_compile_execution_graph_sync', return_value=new_graph),
+        patch('osprey.async_worker.engine.iter_nodes', side_effect=fake_iter_nodes),
+    ):
         await engine._handle_updated_sources()
 
     # OLD graph nodes: every parent nulled.
@@ -175,8 +294,10 @@ async def test_handle_updated_sources_swallows_cycle_break_errors():
     new = MagicMock(name='new_graph')
     engine = _make_engine_with_stub_compile(initial, new)
 
-    with patch.object(engine, '_compile_execution_graph_sync', return_value=new), \
-         patch('osprey.async_worker.engine.iter_nodes', side_effect=RuntimeError('walker boom')):
+    with (
+        patch.object(engine, '_compile_execution_graph_sync', return_value=new),
+        patch('osprey.async_worker.engine.iter_nodes', side_effect=RuntimeError('walker boom')),
+    ):
         await engine._handle_updated_sources()
 
     assert engine._execution_graph is new, 'swap must complete even if cycle-break raises'

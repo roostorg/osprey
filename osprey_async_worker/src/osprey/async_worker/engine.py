@@ -11,7 +11,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from time import time
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Type, TypedDict, TypeVar
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Set, Type, TypedDict
 
 if TYPE_CHECKING:
     from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter
@@ -20,7 +20,7 @@ from ddtrace.span import Span as TracerSpan
 from osprey.async_worker.executor import execute as async_execute
 from osprey.engine.ast.ast_utils import iter_nodes
 from osprey.engine.ast.grammar import Assign, Span, parsed_ast_root_cache
-from osprey.engine.ast.sources import Sources, SourcesConfig
+from osprey.engine.ast.sources import SourcesConfig
 from osprey.engine.ast_validator import validate_sources
 from osprey.engine.ast_validator.validator_registry import ValidatorRegistry
 from osprey.engine.ast_validator.validators.feature_name_to_entity_type_mapping import (
@@ -106,6 +106,11 @@ class AsyncOspreyEngine:
             config_registry.get_validator()
         )
         self._thread_pool = ThreadPoolExecutor(max_workers=1)
+        self._execution_gate = asyncio.Event()
+        self._execution_gate.set()
+        self._executions_idle = asyncio.Event()
+        self._executions_idle.set()
+        self._active_executions = 0
         # Initial compile runs without periodic yields — there is no in-flight
         # work yet to protect, and we want fast cold-start.
         self._execution_graph = self._compile_execution_graph_sync(yield_during_compile=False)
@@ -195,68 +200,58 @@ class AsyncOspreyEngine:
             )
             return
 
-        # Atomic swap. In-flight actions captured the old graph by reference at
-        # rules_sink.classify_one start and continue to use it until they finish;
-        # only newly-arriving actions read the new graph. Safe regardless of
-        # whether the input stream is paused.
-        #
-        # After the swap we call _freeze_resident_graph(): gc.collect() then gc.freeze().
-        # The collect promotes survivors into gen 2, but the freeze immediately moves the
-        # resident graph into the permanent generation (excluded from automatic collection),
-        # so per-message gen-2 scans stay cheap as rules recompile.
-        #
-        # The old graph contains refcycles between AST roots and their children
-        # via ASTNode.parent back-pointers (see osprey/engine/ast/grammar.py),
-        # so plain refcount alone cannot reclaim it. Without intervention the
-        # old graph persists until gen-2 GC catches the cycle, and across many
-        # rule recompiles the resulting GC pressure raises per-message CPU.
-        #
-        # Fix: after the swap, walk the OLD graph's AST and null `parent`
-        # pointers — but ONLY on sources whose ast_root is not shared with the
-        # NEW graph. `parsed_ast_root_cache` in osprey/engine/ast/grammar.py
-        # memoizes ast_root by Source content, so unchanged source files share
-        # the same ast_root between graphs. Nulling parents on shared nodes
-        # would corrupt the new graph's AST.
-        #
-        # Typed-action-contracts dispatch order (mirrors osprey_engine.py):
-        # _specialized_graphs is cleared BEFORE _execution_graph is swapped,
-        # so any in-flight execute() observes one of the consistent states:
-        #   (old, old_specialized) → (old, {}) → (new, {}) → (new, new_specialized)
-        # and never (new_graph, stale_specialized_backed_by_old_graph).
-        old_graph = self._execution_graph
-        self._specialized_graphs.clear()
-        self._execution_graph = new_graph
+        self._execution_gate.clear()
+        try:
+            await self._executions_idle.wait()
 
-        # Confirm to the provider which sources are now actually live so it dedups
-        # future no-op re-deliveries against what we APPLIED (not just received).
-        # The compile-failure path above returns early without marking, so a
-        # transient failure self-heals on the next etcd re-delivery.
-        self._sources_provider.mark_sources_applied(new_graph.validated_sources.sources.hash())
+            # Retire the frozen old graph before allocating the replacement
+            # specializations. The gate keeps new actions out while active actions
+            # drain, so breaking the old AST's parent cycles is safe.
+            old_graph = self._execution_graph
+            self._specialized_graphs.clear()
+            self._execution_graph = new_graph
 
-        log.info(f'Compiled new execution graph for sources={self._sources_provider.get_current_sources().hash()}')
+            # Confirm to the provider which sources are now actually live so it dedups
+            # future no-op re-deliveries against what we APPLIED (not just received).
+            # The compile-failure path above returns early without marking, so a
+            # transient failure self-heals on the next etcd re-delivery.
+            self._sources_provider.mark_sources_applied(new_graph.validated_sources.sources.hash())
 
-        # Reload typed-action-contracts specialized graphs against the new full
-        # graph. Hoisted off the event loop because specialize_graph walks every
-        # chain in the full graph and, scaled across all schema'd actions
-        # (~hundreds), would block the bridge loop the sources-watcher trampoline
-        # runs on. During the window between _specialized_graphs.clear() above
-        # and re-population here, execute() correctly falls back to the new
-        # full graph for schema'd actions — the dispatch is `dict.get(name,
-        # _execution_graph)`, so a partially-populated dict is consistent.
-        await asyncio.get_running_loop().run_in_executor(
-            self._thread_pool, self._load_and_register_schemas
-        )
+            log.info(f'Compiled new execution graph for sources={self._sources_provider.get_current_sources().hash()}')
 
-        self._config_subkey_handler.dispatch_config(self._execution_graph.validated_sources)
+            gc.unfreeze()
+            self._break_old_graph_cycles(old_graph, new_graph)
+            del old_graph
+            gc.collect()
 
-        if self._validation_result_exporter is not None:
-            try:
-                self._validation_result_exporter.send(self._execution_graph.validated_sources)
-            except Exception:
-                log.exception('Failed to export validation results')
+            # Actions can safely use the new full graph while its specialized
+            # graphs are built. This keeps the long specialization pass off the
+            # request path.
+            self._execution_gate.set()
 
-        self._break_old_graph_cycles(old_graph, new_graph)
-        self._freeze_resident_graph()
+            # Reload typed-action-contracts specialized graphs against the new full
+            # graph. Hoisted off the event loop because specialize_graph walks every
+            # chain in the full graph and, scaled across all schema'd actions
+            # (~hundreds), would block the bridge loop the sources-watcher trampoline
+            # runs on.
+            await asyncio.get_running_loop().run_in_executor(self._thread_pool, self._load_and_register_schemas)
+
+            self._execution_gate.clear()
+            await self._executions_idle.wait()
+
+            self._config_subkey_handler.dispatch_config(self._execution_graph.validated_sources)
+
+            if self._validation_result_exporter is not None:
+                try:
+                    self._validation_result_exporter.send(self._execution_graph.validated_sources)
+                except Exception:
+                    log.exception('Failed to export validation results')
+
+        finally:
+            self._execution_gate.clear()
+            if self._active_executions == 0:
+                self._freeze_resident_graph()
+            self._execution_gate.set()
 
     @staticmethod
     def _break_old_graph_cycles(old_graph: ExecutionGraph, new_graph: ExecutionGraph) -> None:
@@ -324,7 +319,7 @@ class AsyncOspreyEngine:
         Mirrors OspreyEngine.register_specialized_graph in the gevent variant.
         """
         self._specialized_graphs[action_name] = graph
-        log.info("Registered specialized graph for action %r", action_name)
+        log.info('Registered specialized graph for action %r', action_name)
 
     def _load_and_register_schemas(self) -> None:
         """Load schemas from the resolved schemas directory and register
@@ -360,33 +355,50 @@ class AsyncOspreyEngine:
         parent_tracer_span: Optional[TracerSpan] = None,
     ) -> ExecutionResult:
         """Execute an action against the rules using the async executor."""
-        if max_concurrent is None:
-            max_concurrent = CONFIG.instance().get_int(
-                'OSPREY_MAX_ASYNC_PER_EXECUTION', _DEFAULT_MAX_ASYNC_PER_EXECUTION
-            )
-        action_name = action.action_name
+        if not self._execution_gate.is_set():
+            await self._execution_gate.wait()
+        self._active_executions += 1
+        if self._active_executions == 1:
+            self._executions_idle.clear()
+        try:
+            if max_concurrent is None:
+                max_concurrent = CONFIG.instance().get_int(
+                    'OSPREY_MAX_ASYNC_PER_EXECUTION', _DEFAULT_MAX_ASYNC_PER_EXECUTION
+                )
+            action_name = action.action_name
 
-        async def _run(graph: ExecutionGraph) -> ExecutionResult:
-            return await async_execute(
-                graph, udf_helpers, action,
-                max_concurrent=max_concurrent, sample_rate=sample_rate,
-                parent_tracer_span=parent_tracer_span,
-            )
+            async def _run(graph: ExecutionGraph) -> ExecutionResult:
+                return await async_execute(
+                    graph,
+                    udf_helpers,
+                    action,
+                    max_concurrent=max_concurrent,
+                    sample_rate=sample_rate,
+                    parent_tracer_span=parent_tracer_span,
+                )
 
-        serve_graph, shadow_spec = resolve_dispatch(
-            action_name, self._specialized_graphs, self._prune_filter,
-            self._shadow_filter, self._execution_graph, action_data=action.data,
-        )
-        result = await _run(serve_graph)
-        if shadow_spec is not None:
-            # Shadow DOUBLE-EXECUTES (state-mutating UDFs run twice) — use in canary/
-            # staging or a short low-mutation bake; the served result is the full graph's.
-            try:
-                record_shadow(action_name, result, await _run(shadow_spec))
-            except Exception:
-                log.exception("typed-contract shadow comparison failed for %s", action_name)
-                metrics.increment('osprey.typed_contracts.shadow_error', tags=[f'action:{action_name}'])
-        return result
+            serve_graph, shadow_spec = resolve_dispatch(
+                action_name,
+                self._specialized_graphs,
+                self._prune_filter,
+                self._shadow_filter,
+                self._execution_graph,
+                action_data=action.data,
+            )
+            result = await _run(serve_graph)
+            if shadow_spec is not None:
+                # Shadow DOUBLE-EXECUTES (state-mutating UDFs run twice) — use in canary/
+                # staging or a short low-mutation bake; the served result is the full graph's.
+                try:
+                    record_shadow(action_name, result, await _run(shadow_spec))
+                except Exception:
+                    log.exception('typed-contract shadow comparison failed for %s', action_name)
+                    metrics.increment('osprey.typed_contracts.shadow_error', tags=[f'action:{action_name}'])
+            return result
+        finally:
+            self._active_executions -= 1
+            if self._active_executions == 0:
+                self._executions_idle.set()
 
     def get_config_subkey(self, model_class: Type[ModelT]) -> ModelT:
         return self._config_subkey_handler.get_config_subkey(model_class)
