@@ -1,7 +1,7 @@
 """Async external service utilities for the async worker.
 
 Port of osprey.engine.executor.external_service_utils with asyncio instead of gevent.
-Uses asyncio.Future instead of gevent.event.AsyncResult for cache entries.
+Uses asyncio.Task instead of gevent.event.AsyncResult for single-value cache entries.
 """
 
 import asyncio
@@ -72,76 +72,91 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
         ttl = self._service.cache_ttl()
         return datetime.now() + ttl if ttl is not None else None
 
-    def _make_future(self) -> asyncio.Future[ValueT]:
-        """Create a new Future on the running event loop."""
-        return asyncio.get_running_loop().create_future()
+    def _make_task(self, key: KeyT) -> asyncio.Task[ValueT]:
+        task = asyncio.create_task(self._service.get_from_service(key))
+        task.add_done_callback(lambda completed: self._evict_failed_entry(key, completed))
+        return task
+
+    def _make_future(self, key: KeyT) -> asyncio.Future[ValueT]:
+        future: asyncio.Future[ValueT] = asyncio.get_running_loop().create_future()
+        future.add_done_callback(lambda completed: self._evict_failed_entry(key, completed))
+        return future
+
+    def _evict_failed_entry(self, key: KeyT, future: asyncio.Future[ValueT]) -> None:
+        failed = future.cancelled() or future.exception() is not None
+        cache_entry = self._cache.get(key)
+        if failed and not self._service.count_error_once() and cache_entry is not None and cache_entry[0] is future:
+            del self._cache[key]
+
+    async def _load_batch(self, keys: Sequence[KeyT], futures: Sequence[asyncio.Future[ValueT]]) -> None:
+        try:
+            results = await self._service.batch_get_from_service(keys)
+            if len(results) != len(keys):
+                raise ValueError(f'batch service returned {len(results)} results for {len(keys)} keys')
+            for future, result in zip(futures, results):
+                if result.is_ok():
+                    future.set_result(cast(ValueT, result.value))
+                else:
+                    future.set_exception(cast(BaseException, result.value))
+        except asyncio.CancelledError:
+            for future in futures:
+                if not future.done():
+                    future.cancel()
+            raise
+        except Exception as error:
+            for future in futures:
+                if not future.done():
+                    future.set_exception(error)
 
     async def get_without_cache(self, key: KeyT) -> ValueT:
         """
         Ignores any cached values and performs a read-through `get` to the external service.
         The new value is then used to update the cache entry for subsequent `get` calls.
         """
-        future: asyncio.Future[ValueT] = self._make_future()
+        task = self._make_task(key)
         cache_entry: Tuple[asyncio.Future[ValueT], Optional[datetime]] = (
-            future,
+            task,
             self._get_cache_expiration_datetime(),
         )
         self._cache[key] = cache_entry
-        try:
-            result = await self._service.get_from_service(key)
-            future.set_result(result)
-        except Exception as e:
-            future.set_exception(e)
-
-        return await future
+        return await asyncio.shield(task)
 
     async def get(self, key: KeyT) -> ValueT:
         cache_entry = self._cache.get(key)
-        if cache_entry is not None and not self._is_past_cache_expiration(cache_entry[1]):
-            # Cache hit — await the existing future (may still be in-flight from another caller)
-            return await cache_entry[0]
-
-        future: asyncio.Future[ValueT] = self._make_future()
-        cache_entry = (future, self._get_cache_expiration_datetime())
-        self._cache[key] = cache_entry
+        is_creator = cache_entry is None or self._is_past_cache_expiration(cache_entry[1])
+        if is_creator:
+            task = self._make_task(key)
+            cache_entry = (task, self._get_cache_expiration_datetime())
+            self._cache[key] = cache_entry
+        assert cache_entry is not None
         try:
-            result = await self._service.get_from_service(key)
-            future.set_result(result)
-        except Exception as e:
-            if self._service.count_error_once():
-                future.set_result(cast(ValueT, None))
-            else:
-                future.set_exception(e)
+            return await asyncio.shield(cache_entry[0])
+        except Exception:
+            if self._service.count_error_once() and not is_creator:
+                return cast(ValueT, None)
             raise
 
-        return await future
-
     async def batch_get(self, keys: Sequence[KeyT]) -> Sequence[Result[ValueT, Exception]]:
-        cached_entries = [self._cache.get(key) for key in keys]
-        non_cached_keys = [
-            key
-            for key, cache_entry in zip(keys, cached_entries)
-            if cache_entry is None or self._is_past_cache_expiration(cache_entry[1])
-        ]
+        non_cached_keys = []
+        for key in dict.fromkeys(keys):
+            cache_entry = self._cache.get(key)
+            if cache_entry is None or self._is_past_cache_expiration(cache_entry[1]):
+                non_cached_keys.append(key)
         if non_cached_keys:
+            futures = []
             for key in non_cached_keys:
-                self._cache[key] = (self._make_future(), self._get_cache_expiration_datetime())
-            try:
-                result = await self._service.batch_get_from_service(non_cached_keys)
-                for i, key in enumerate(non_cached_keys):
-                    if result[i].is_ok():
-                        self._cache[key][0].set_result(result[i].value)
-                    else:
-                        self._cache[key][0].set_exception(cast(BaseException, result[i].value))
-            except Exception as e:
-                for key in non_cached_keys:
-                    self._cache[key][0].set_exception(e)
+                future = self._make_future(key)
+                self._cache[key] = (future, self._get_cache_expiration_datetime())
+                futures.append(future)
+        futures_by_key = {key: self._cache[key][0] for key in keys}
+        if non_cached_keys:
+            loader = asyncio.create_task(self._load_batch(non_cached_keys, futures))
+            await asyncio.shield(loader)
 
         results: list[Result[ValueT, Exception]] = []
         for key in keys:
-            future = self._cache[key][0]
             try:
-                value = await future
+                value = await asyncio.shield(futures_by_key[key])
                 results.append(Ok(value))
             except Exception as e:
                 results.append(Err(e))
