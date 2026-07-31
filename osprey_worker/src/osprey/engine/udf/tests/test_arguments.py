@@ -17,6 +17,19 @@ def test_arguments_items() -> None:
     assert items['bar'] is StrConstExpr
 
 
+def test_arguments_items_cache_is_scoped_to_each_subclass() -> None:
+    class FirstArguments(ArgumentsBase):
+        first: str
+
+    class SecondArguments(ArgumentsBase):
+        second: int
+
+    first_items = FirstArguments.items()
+    SecondArguments.items()
+
+    assert FirstArguments.items() is first_items
+
+
 def test_arguments_can_be_none() -> None:
     class Arguments(ArgumentsBase):
         optional: Optional[str]
