@@ -138,6 +138,7 @@ class ExecutionContext:
         '_async_external_service_accessors_by_getter_id',
         '_dependency_dag',
         '_chain_by_id',
+        '_enqueued_sources',
         '_custom_extracted_features',
         '_rule_audit_entries',
     )
@@ -158,6 +159,7 @@ class ExecutionContext:
         self._async_external_service_accessors_by_getter_id: dict[int, Any] = {}
         self._dependency_dag = TopologicalSorter()
         self._chain_by_id: dict[int, DependencyChain] = {}
+        self._enqueued_sources: set[Source] = set()
         # feature name -> serializable feature
         self._custom_extracted_features: dict[str, Any] = {}
         self._rule_audit_entries: list[WhenRulesAuditEntry] = []
@@ -240,6 +242,10 @@ class ExecutionContext:
         return self._action.timestamp
 
     def enqueue_source(self, source: Source) -> None:
+        if source in self._enqueued_sources:
+            return
+        self._enqueued_sources.add(source)
+
         sorted_dependency_chain = self._execution_graph.get_sorted_dependency_chain(source)
 
         for chain in sorted_dependency_chain:
