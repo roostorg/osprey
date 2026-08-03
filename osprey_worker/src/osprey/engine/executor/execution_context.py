@@ -261,7 +261,6 @@ class ExecutionContext:
     def enqueue_source(self, source: Source) -> None:
         if source in self._enqueued_sources:
             return
-        self._enqueued_sources.add(source)
 
         sorted_dependency_chain = self._execution_graph.get_sorted_dependency_chain(source)
 
@@ -285,6 +284,10 @@ class ExecutionContext:
             self._chain_by_id[chainid] = chain
 
         self._dependency_dag.prepare()
+        # A graph's dependency chain for a Source is immutable. Dynamic Import
+        # and Require calls activate precompiled sources; they do not add chains
+        # to a source already in this ExecutionContext's graph.
+        self._enqueued_sources.add(source)
 
     def get_ready_to_execute(self) -> Sequence[DependencyChain]:
         ready_nodeids = self._dependency_dag.get_ready()
