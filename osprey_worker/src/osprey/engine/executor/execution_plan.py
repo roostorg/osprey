@@ -48,9 +48,7 @@ class ExecutionPlan:
 
         predecessor_lists: list[tuple[int, ...]] = []
         for chain in chains:
-            predecessor_lists.append(
-                tuple(index_by_chain_id[id(predecessor)] for predecessor in chain.dependent_on)
-            )
+            predecessor_lists.append(tuple(index_by_chain_id[id(predecessor)] for predecessor in chain.dependent_on))
             maybe_periodic_yield()
         predecessors = tuple(predecessor_lists)
         del predecessor_lists
@@ -113,8 +111,7 @@ class ExecutionPlanState:
             sum(
                 1
                 for predecessor in self._plan.predecessors[index]
-                if (self._active[predecessor] or predecessor in new_set)
-                and self._remaining[predecessor] != _DONE
+                if (self._active[predecessor] or predecessor in new_set) and self._remaining[predecessor] != _DONE
             )
             for index in new_indices
         )

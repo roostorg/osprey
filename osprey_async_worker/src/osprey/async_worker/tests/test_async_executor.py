@@ -77,10 +77,10 @@ async def test_concurrent_actions_isolate_dynamic_source_activation(
     sources = Sources.from_dict(
         {
             'main.sml': dedent(
-                '''
+                """
                 ActionName: str = JsonData(path="$.action_name", coerce_type=True)
                 Require(rule=f"actions/{ActionName}.sml")
-                '''
+                """
             ),
             'actions/a.sml': 'A = GatedAsyncUdf(value="a")',
             'actions/b.sml': 'B = GatedAsyncUdf(value="b")',
@@ -139,14 +139,14 @@ async def test_execution_plan_matches_legacy_dynamic_source_results(
     async_execute_with_result, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     sources = {
-        'main.sml': '''
+        'main.sml': """
             ActionName: str = JsonData(path="$.action_name", coerce_type=True)
             Require(rule=f"actions/{ActionName}.sml")
-        ''',
-        'actions/a.sml': '''
+        """,
+        'actions/a.sml': """
             Import(rules=["shared.sml"])
             A = 40 + SharedBase
-        ''',
+        """,
         'actions/b.sml': 'B = 99',
         'shared.sml': 'SharedBase = 2',
     }
@@ -154,13 +154,9 @@ async def test_execution_plan_matches_legacy_dynamic_source_results(
 
     with monkeypatch.context() as legacy:
         legacy.setattr(ExecutionGraph, 'get_execution_plan', lambda _graph: None)
-        legacy_result = await async_execute_with_result(
-            sources, data={'action_name': 'a'}, action_time=action_time
-        )
+        legacy_result = await async_execute_with_result(sources, data={'action_name': 'a'}, action_time=action_time)
 
-    planned_result = await async_execute_with_result(
-        sources, data={'action_name': 'a'}, action_time=action_time
-    )
+    planned_result = await async_execute_with_result(sources, data={'action_name': 'a'}, action_time=action_time)
 
     assert planned_result.extracted_features == legacy_result.extracted_features
     assert planned_result.effects == legacy_result.effects

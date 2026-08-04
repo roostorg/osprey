@@ -168,9 +168,7 @@ def test_scheduler_matches_legacy_sorter_for_randomized_valid_activations() -> N
 
     while transitions < 10_000:
         node_count = rng.randint(2, 9)
-        predecessors = tuple(
-            tuple(index for index in range(node) if rng.random() < 0.25) for node in range(node_count)
-        )
+        predecessors = tuple(tuple(index for index in range(node) if rng.random() < 0.25) for node in range(node_count))
 
         def closure_for(target: int) -> tuple[int, ...]:
             closure: set[int] = set()

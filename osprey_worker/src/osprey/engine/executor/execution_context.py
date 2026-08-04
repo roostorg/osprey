@@ -32,6 +32,8 @@ def _is_gevent_patched() -> bool:
         return is_module_patched('socket')
     except ImportError:
         return False
+
+
 from osprey.engine.ast.grammar import ASTNode, Load, Name, Source
 from osprey.engine.ast.printer import print_ast
 from osprey.engine.executor.custom_extracted_features import (
@@ -295,9 +297,7 @@ class ExecutionContext:
             chainid = id(chain)
             if self._dependency_dag.already_added(chainid):
                 continue
-            live_pred_ids = tuple(
-                id(pred) for pred in chain.dependent_on if id(pred) in known_chain_ids
-            )
+            live_pred_ids = tuple(id(pred) for pred in chain.dependent_on if id(pred) in known_chain_ids)
             self._dependency_dag.add(chainid, *live_pred_ids)
             self._chain_by_id[chainid] = chain
 
@@ -543,7 +543,8 @@ class ExecutionResult:
         return Verdicts(
             action_id=self.action.action_id,
             action_name=self.action.action_name,
-            verdicts=[v.verdict for v in self.verdicts] + [
+            verdicts=[v.verdict for v in self.verdicts]
+            + [
                 f'{e.entity.type}/{e.entity.id}/{e.name}'
                 for e in self.effects.get(LabelEffect, [])
                 if _label_effect_takes_effect(e)
