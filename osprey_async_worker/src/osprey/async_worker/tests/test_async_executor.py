@@ -4,7 +4,37 @@ Validates that the async executor produces the same results as the gevent
 executor for stdlib UDFs (pure computation, no I/O).
 """
 
+from typing import Sequence
+
 import pytest
+from osprey.engine.ast.grammar import Source
+from osprey.engine.executor.dependency_chain import DependencyChain
+from osprey.engine.executor.execution_graph import ExecutionGraph
+
+
+@pytest.mark.asyncio
+async def test_execute_skips_duplicate_import_and_require_source_activation(
+    async_execute_fn, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    looked_up_sources: list[str] = []
+    get_sorted_dependency_chain = ExecutionGraph.get_sorted_dependency_chain
+
+    def record_lookup(self: ExecutionGraph, source: Source) -> Sequence[DependencyChain]:
+        looked_up_sources.append(source.path)
+        return get_sorted_dependency_chain(self, source)
+
+    monkeypatch.setattr(ExecutionGraph, 'get_sorted_dependency_chain', record_lookup)
+
+    result = await async_execute_fn(
+        {
+            'main.sml': "Import(rules=['branch.sml', 'shared.sml'])",
+            'branch.sml': "Require(rule='shared.sml')",
+            'shared.sml': 'Shared = 1 + 0',
+        }
+    )
+
+    assert result == {'Shared': 1}
+    assert looked_up_sources == ['main.sml', 'branch.sml', 'shared.sml']
 
 
 @pytest.mark.asyncio
