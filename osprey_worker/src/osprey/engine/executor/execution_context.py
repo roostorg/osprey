@@ -255,9 +255,8 @@ class ExecutionContext:
             self._chain_by_id[chainid] = chain
 
         self._dependency_dag.prepare()
-        # A graph's dependency chain for a Source is immutable. Dynamic Import
-        # and Require calls activate precompiled sources; they do not add chains
-        # to a source already in this ExecutionContext's graph.
+        # Import and Require only activate immutable, precompiled sources, so each source
+        # needs to be integrated into this execution context once.
         self._enqueued_sources.add(source)
 
     def get_ready_to_execute(self) -> Sequence[DependencyChain]:
