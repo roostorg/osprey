@@ -31,28 +31,10 @@ class ExecutionPlan:
                 maybe_periodic_yield()
 
         chains = tuple(chains_by_id.values())
+        del chains_by_id
         index_by_chain_id: dict[int, int] = {}
         for index, chain in enumerate(chains):
             index_by_chain_id[id(chain)] = index
-            maybe_periodic_yield()
-
-        predecessor_lists: list[tuple[int, ...]] = []
-        for chain in chains:
-            predecessor_lists.append(
-                tuple(index_by_chain_id[id(predecessor)] for predecessor in chain.dependent_on)
-            )
-            maybe_periodic_yield()
-        predecessors = tuple(predecessor_lists)
-
-        successors_lists: list[list[int]] = [[] for _ in chains]
-        for successor, predecessor_indices in enumerate(predecessors):
-            for predecessor in predecessor_indices:
-                successors_lists[predecessor].append(successor)
-            maybe_periodic_yield()
-
-        successors: list[tuple[int, ...]] = []
-        for items in successors_lists:
-            successors.append(tuple(items))
             maybe_periodic_yield()
 
         source_indices: dict[Source, tuple[int, ...]] = {}
@@ -62,12 +44,37 @@ class ExecutionPlan:
                 indices.append(index_by_chain_id[chain_id])
                 maybe_periodic_yield()
             source_indices[source] = tuple(indices)
+        del source_chain_ids
+
+        predecessor_lists: list[tuple[int, ...]] = []
+        for chain in chains:
+            predecessor_lists.append(
+                tuple(index_by_chain_id[id(predecessor)] for predecessor in chain.dependent_on)
+            )
+            maybe_periodic_yield()
+        predecessors = tuple(predecessor_lists)
+        del predecessor_lists
+
+        successors_lists: list[list[int]] = [[] for _ in chains]
+        for successor, predecessor_indices in enumerate(predecessors):
+            for predecessor in predecessor_indices:
+                successors_lists[predecessor].append(successor)
+            maybe_periodic_yield()
+
+        successor_tuples: list[tuple[int, ...]] = []
+        for items in successors_lists:
+            successor_tuples.append(tuple(items))
+            items.clear()
+            maybe_periodic_yield()
+        del successors_lists
+        successors = tuple(successor_tuples)
+        del successor_tuples
 
         return cls(
             chains=chains,
             index_by_chain_id=MappingProxyType(index_by_chain_id),
             predecessors=predecessors,
-            successors=tuple(successors),
+            successors=successors,
             source_indices=MappingProxyType(source_indices),
         )
 
