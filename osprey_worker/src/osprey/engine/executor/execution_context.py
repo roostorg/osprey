@@ -39,6 +39,7 @@ from osprey.engine.executor.custom_extracted_features import (
 )
 from osprey.engine.executor.dependency_chain import DependencyChain
 from osprey.engine.executor.execution_graph import ExecutionGraph
+from osprey.engine.executor.execution_plan import ExecutionPlanState
 from osprey.engine.executor.external_service_utils_base import (
     ExternalService,
     KeyT,
@@ -143,6 +144,7 @@ class ExecutionContext:
         '_external_service_accessors_by_getter_id',
         '_async_external_service_accessors_by_getter_id',
         '_dependency_dag',
+        '_execution_plan_state',
         '_chain_by_id',
         '_enqueued_sources',
         '_custom_extracted_features',
@@ -167,7 +169,9 @@ class ExecutionContext:
         self._effects: DefaultDict[Type[EffectBase], List[EffectBase]] = defaultdict(list)
         self._external_service_accessors_by_getter_id: Dict[int, Any] = {}
         self._async_external_service_accessors_by_getter_id: Dict[int, Any] = {}
-        self._dependency_dag = TopologicalSorter()
+        plan = execution_graph.get_execution_plan()
+        self._execution_plan_state = ExecutionPlanState(plan) if plan is not None else None
+        self._dependency_dag = TopologicalSorter() if plan is None else None
         self._chain_by_id: Dict[int, DependencyChain] = {}
         self._enqueued_sources: Set[Source] = set()
         # feature name -> serializable feature
@@ -220,7 +224,11 @@ class ExecutionContext:
     def set_resolved_value(self, chain: DependencyChain, value: NodeResult) -> None:
         """Called by the main executor once a node has been resolved, to store its value for dependent executors."""
         self._resolved_node_values[id(chain.executor.node)] = value
-        self._dependency_dag.done(id(chain))
+        if self._execution_plan_state is not None:
+            self._execution_plan_state.done(chain)
+        else:
+            assert self._dependency_dag is not None
+            self._dependency_dag.done(id(chain))
 
     def set_output_value(self, key: str, value: Any) -> None:
         """Called by the assignment node executor to store an output key/value pair."""
@@ -262,6 +270,16 @@ class ExecutionContext:
         if source in self._enqueued_sources:
             return
 
+        if self._execution_plan_state is not None:
+            self._execution_plan_state.activate_source(source)
+        else:
+            self._enqueue_source_legacy(source)
+        # Import and Require only activate immutable, precompiled sources, so each source
+        # needs to be integrated into this execution context once.
+        self._enqueued_sources.add(source)
+
+    def _enqueue_source_legacy(self, source: Source) -> None:
+        assert self._dependency_dag is not None
         sorted_dependency_chain = self._execution_graph.get_sorted_dependency_chain(source)
 
         # Build the set of chain ids that will actually be in the DAG (includes
@@ -284,11 +302,12 @@ class ExecutionContext:
             self._chain_by_id[chainid] = chain
 
         self._dependency_dag.prepare()
-        # Import and Require only activate immutable, precompiled sources, so each source
-        # needs to be integrated into this execution context once.
-        self._enqueued_sources.add(source)
 
     def get_ready_to_execute(self) -> Sequence[DependencyChain]:
+        if self._execution_plan_state is not None:
+            return self._execution_plan_state.get_ready()
+
+        assert self._dependency_dag is not None
         ready_nodeids = self._dependency_dag.get_ready()
         ready = []
         for nodeid in ready_nodeids:

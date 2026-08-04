@@ -97,6 +97,9 @@ async def test_handle_updated_sources_dispatches_config_after_swap():
 
 @pytest.mark.asyncio
 async def test_handle_updated_sources_releases_old_graph_before_specializing():
+    class _Plan:
+        pass
+
     class _Sources:
         def hash(self):
             return 'graph_hash'
@@ -109,6 +112,7 @@ async def test_handle_updated_sources_releases_old_graph_before_specializing():
 
         def __init__(self):
             self.cycle = self
+            self._execution_plan = _Plan()
 
     old = _CyclicGraph()
     old_specialized = _CyclicGraph()
@@ -118,6 +122,8 @@ async def test_handle_updated_sources_releases_old_graph_before_specializing():
     engine._specialized_graphs['old_action'] = old_specialized
     engine._freeze_resident_graph()
     old_ref = weakref.ref(old)
+    old_plan_ref = weakref.ref(old._execution_plan)
+    new_plan_ref = weakref.ref(new._execution_plan)
     old_specialized_ref = weakref.ref(old_specialized)
     del old
     del old_specialized
@@ -125,7 +131,12 @@ async def test_handle_updated_sources_releases_old_graph_before_specializing():
     old_graph_was_released = []
 
     def observe_old_graph_lifetime():
-        old_graph_was_released.append(old_ref() is None and old_specialized_ref() is None)
+        old_graph_was_released.append(
+            old_ref() is None
+            and old_plan_ref() is None
+            and old_specialized_ref() is None
+            and new_plan_ref() is not None
+        )
 
     with (
         patch.object(engine, '_compile_execution_graph_sync', return_value=new),
