@@ -1,8 +1,9 @@
 import random
+from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
-from osprey.engine.ast.grammar import Source
+from osprey.engine.ast.grammar import Source, Span
 from osprey.engine.conftest import RunValidationFunction
 from osprey.engine.executor.dependency_chain import DependencyChain
 from osprey.engine.executor.execution_graph import ExecutionGraph, compile_execution_graph
@@ -12,6 +13,16 @@ from osprey.engine.executor.execution_plan import (
     LateDependencyActivationError,
 )
 from osprey.engine.executor.topological_sorter import TopologicalSorter
+
+
+@dataclass(frozen=True)
+class _PlanNode:
+    span: Span
+
+
+@dataclass(frozen=True)
+class _PlanExecutor:
+    node: _PlanNode
 
 
 def test_full_graph_compiles_execution_plan(compiled_execution_graph: ExecutionGraph) -> None:
@@ -57,9 +68,13 @@ def _manual_plan(
 ) -> tuple[ExecutionPlan, tuple[Source, ...]]:
     chains: list[DependencyChain] = []
     for chain_predecessors in predecessors:
+        index = len(chains)
+        node_source = Source(path=f'chain-{index}.sml', contents='')
         chains.append(
             DependencyChain(
-                executor=object(),  # type: ignore[arg-type]
+                executor=_PlanExecutor(  # type: ignore[arg-type]
+                    node=_PlanNode(span=Span(source=node_source, start_line=index + 1, start_pos=index))
+                ),
                 dependent_on=tuple(chains[index] for index in chain_predecessors),
             )
         )
@@ -124,9 +139,13 @@ def test_activation_failure_does_not_mutate_state() -> None:
     state.activate_source(dependent_source)
     before = (bytes(state._active), tuple(state._remaining), tuple(state._ready))
 
-    with pytest.raises(LateDependencyActivationError):
+    with pytest.raises(LateDependencyActivationError) as exc_info:
         state.activate_source(predecessor_source)
 
+    message = str(exc_info.value)
+    assert "source 'source-1.sml'" in message
+    assert 'chain 0 (_PlanNode at chain-0.sml:1:0)' in message
+    assert 'active successor chain(s) (1,)' in message
     assert (bytes(state._active), tuple(state._remaining), tuple(state._ready)) == before
 
 

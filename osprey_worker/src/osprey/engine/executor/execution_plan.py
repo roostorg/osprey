@@ -1,3 +1,16 @@
+"""Immutable scheduling metadata for full execution graphs.
+
+Each source's ``source_indices`` sequence must be a topologically ordered transitive
+closure: every predecessor of an activated chain must be activated in the same source
+or an earlier source. Full graphs satisfy this because their per-source sorted chains
+are built by recursively walking dependencies. Pruned and specialized graphs filter
+those closures, so they must keep using the legacy scheduler that explicitly drops
+pruned predecessor edges.
+
+``ExecutionPlan`` is shared by every action using a graph. All mutable scheduling
+state remains in a per-action ``ExecutionPlanState``.
+"""
+
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Mapping, Tuple
@@ -13,6 +26,8 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class ExecutionPlan:
+    """Precomputed chain indices and adjacency for an immutable full graph."""
+
     chains: Tuple[DependencyChain, ...]
     index_by_chain_id: Mapping[int, int]
     predecessors: Tuple[Tuple[int, ...], ...]
@@ -83,10 +98,23 @@ _DONE = -2
 
 
 class LateDependencyActivationError(RuntimeError):
-    pass
+    """Raised when source activation violates the plan's transitive-closure invariant."""
 
 
 class ExecutionPlanState:
+    """Mutable per-action state for an :class:`ExecutionPlan`.
+
+    ``_remaining`` stores the number of unfinished active predecessors when it is
+    non-negative. Negative sentinels mean the chain is inactive (``-3``), has been
+    returned by :meth:`get_ready` (``-1``), or is done (``-2``).
+
+    ``_activation_rank`` reproduces the legacy sorter's node insertion order. Its
+    ``prepare()`` rescans every zero-predecessor node in insertion order, so source
+    activation sorts the complete ready set by rank. Successor edges are likewise
+    inserted when their successor is activated, so newly ready successors are rank
+    sorted after a completion before being appended to any already-ready work.
+    """
+
     __slots__ = ('_plan', '_active', '_remaining', '_activation_rank', '_next_rank', '_ready')
 
     def __init__(self, plan: ExecutionPlan) -> None:
@@ -104,8 +132,17 @@ class ExecutionPlanState:
 
         new_set = set(new_indices)
         for index in new_indices:
-            if any(self._active[successor] for successor in self._plan.successors[index]):
-                raise LateDependencyActivationError(f'chain {index} became active after one of its successors')
+            active_successors = tuple(
+                successor for successor in self._plan.successors[index] if self._active[successor]
+            )
+            if active_successors:
+                node = self._plan.chains[index].executor.node
+                span = node.span
+                raise LateDependencyActivationError(
+                    f'source {source.path!r} would activate chain {index} '
+                    f'({type(node).__name__} at {span.source.path}:{span.start_line}:{span.start_pos}) '
+                    f'after active successor chain(s) {active_successors}'
+                )
 
         counts = tuple(
             sum(
