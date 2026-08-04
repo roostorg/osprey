@@ -8,6 +8,7 @@ from osprey.engine.executor.execution_graph import ExecutionGraph
 from osprey.engine.executor.execution_plan import ExecutionPlan
 from osprey.engine.executor.graph_specializer import SpecializedExecutionGraph
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
+from osprey.engine.schema.schema_loader import ActionSchema
 
 
 def _action() -> Action:
@@ -25,16 +26,23 @@ def test_context_uses_plan_for_full_graph(compiled_execution_graph: ExecutionGra
     assert context._execution_plan_state is not None
 
 
-def test_specialized_graph_keeps_legacy_scheduler() -> None:
-    entry = Source(path='main.sml', contents='')
-    graph = Mock(spec=SpecializedExecutionGraph)
-    graph.get_execution_plan.return_value = None
-    graph.get_entry_point.return_value = entry
-    graph.get_prefolded_node_values.return_value = {}
-    graph.get_sorted_dependency_chain.return_value = ()
+def test_specialized_graph_keeps_legacy_scheduler(compiled_execution_graph: ExecutionGraph) -> None:
+    graph = SpecializedExecutionGraph(
+        full_graph=compiled_execution_graph,
+        pruned_keys=frozenset(),
+        schema=ActionSchema(
+            action='test_action',
+            provides_groups=frozenset(),
+            absent_groups=frozenset(),
+            provides_field_types={},
+            optional_for={},
+        ),
+    )
 
     context = ExecutionContext(graph, _action(), Mock(spec=UDFHelpers))
 
+    assert compiled_execution_graph.get_execution_plan() is not None
+    assert graph.get_execution_plan() is None
     assert context._execution_plan_state is None
 
 
