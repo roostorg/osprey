@@ -23,35 +23,6 @@ from osprey.worker.lib.sources_provider_base import BaseSourcesProvider
 SourcesWatcherCallback = Callable[[], Union[None, Awaitable[None]]]
 
 
-class AsyncInputStreamReadySignaler:
-    """Async version of InputStreamReadySignaler.
-
-    Uses asyncio.Event instead of gevent.event.Event for pause/resume signaling.
-    """
-
-    def __init__(self) -> None:
-        self._event = asyncio.Event()
-        self._event.set()  # Start in "ready" state
-
-    def should_pause_input_stream(self) -> bool:
-        return not self._event.is_set()
-
-    async def pause_input_stream(self) -> None:
-        # Match the gevent worker's nominal jitter range. The compile pauses
-        # input on the worker for ~28s; spreading the pause start uniformly
-        # across the fleet over 10 minutes keeps the fraction of paused pods
-        # to ~5% at any moment, avoiding the throughput cliff that happens
-        # when the whole fleet pauses together.
-        await asyncio.sleep(random.uniform(0, 600))
-        self._event.clear()
-
-    def resume_input_stream(self) -> None:
-        self._event.set()
-
-    async def wait_until_resume(self) -> None:
-        await self._event.wait()
-
-
 class AsyncEtcdSourcesProvider(BaseSourcesProvider):
     """Provides sources dynamically updated by etcd, using asyncio.
 
@@ -64,13 +35,13 @@ class AsyncEtcdSourcesProvider(BaseSourcesProvider):
         self,
         etcd_key: str,
         etcd_client: Optional[EtcdClient] = None,
-        input_stream_ready_signaler: Optional[AsyncInputStreamReadySignaler] = None,
+        reload_jitter_seconds: float = 0,
     ):
         self._etcd_key = etcd_key
         self._client = etcd_client or EtcdClient()
         self._current_sources: Optional[Sources] = None
         self._sources_watcher_callback: Optional[SourcesWatcherCallback] = None
-        self._input_stream_ready_signaler = input_stream_ready_signaler
+        self._reload_jitter_seconds = reload_jitter_seconds
         self._watcher = None
         # Long-lived iterator over the watcher's event stream. continue_watching()
         # is a generator function — every call creates a new generator with a
@@ -165,19 +136,16 @@ class AsyncEtcdSourcesProvider(BaseSourcesProvider):
         if self._current_sources is not None and new_sources.hash() == self._current_sources.hash():
             return
 
-        if self._input_stream_ready_signaler is not None:
-            logging.info('Pausing input streams')
-            await self._input_stream_ready_signaler.pause_input_stream()
+        # Keep the stream connected while the engine serves its old graph; the engine
+        # gates executions only for the final graph swap.
+        if self._reload_jitter_seconds > 0:
+            await asyncio.sleep(random.uniform(0, self._reload_jitter_seconds))
 
         self._current_sources = new_sources
         if self._sources_watcher_callback:
             result = self._sources_watcher_callback()
             if inspect.isawaitable(result):
                 await result
-
-        if self._input_stream_ready_signaler is not None:
-            logging.info('Restarting input streams')
-            self._input_stream_ready_signaler.resume_input_stream()
 
     def get_current_sources(self) -> Optional[Sources]:
         return self._current_sources

@@ -8,7 +8,6 @@ import grpc
 import grpc.aio
 import pytz
 import sentry_sdk
-from osprey.async_worker.lib.etcd.sources_provider import AsyncInputStreamReadySignaler
 from osprey.async_worker.sinks.sink.input_stream import AsyncBaseInputStream
 from osprey.engine.executor.execution_context import Action as OspreyEngineAction
 from osprey.engine.executor.execution_context import ExecutionResult
@@ -293,13 +292,11 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
         self,
         client_id: str,
         coordinator_service_name: str = 'osprey_coordinator',
-        input_stream_ready_signaler: Optional[AsyncInputStreamReadySignaler] = None,
     ) -> None:
         self._client_id = client_id
         self._channel_pool = GrpcConnectionDiscoveryPool(coordinator_service_name)
         self._shutdown_event = asyncio.Event()
         self._current_execution_result: Optional[ExecutionResult] = None
-        self._input_stream_ready_signaler = input_stream_ready_signaler
 
     @classmethod
     def from_direct_address(
@@ -307,7 +304,6 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
         client_id: str,
         address: str,
         service_name: str = 'osprey_coordinator',
-        input_stream_ready_signaler: Optional[AsyncInputStreamReadySignaler] = None,
     ) -> 'OspreyCoordinatorInputStream':
         """Create an input stream connected directly to a coordinator address.
 
@@ -318,7 +314,6 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
         instance._shutdown_event = asyncio.Event()
         instance._current_execution_result = None
         instance._channel_pool = GrpcConnectionDiscoveryPool.from_static(address, service_name)
-        instance._input_stream_ready_signaler = input_stream_ready_signaler
         return instance
 
     @classmethod
@@ -326,7 +321,6 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
         cls,
         client_id: str,
         service_name: str = 'osprey_coordinator',
-        input_stream_ready_signaler: Optional[AsyncInputStreamReadySignaler] = None,
     ) -> 'OspreyCoordinatorInputStream':
         """Create an input stream using async etcd discovery (no gevent).
 
@@ -338,7 +332,6 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
         instance._shutdown_event = asyncio.Event()
         instance._current_execution_result = None
         instance._channel_pool = GrpcConnectionDiscoveryPool.from_async_discovery(service_name)
-        instance._input_stream_ready_signaler = input_stream_ready_signaler
         return instance
 
     async def stop(self) -> None:
@@ -463,19 +456,6 @@ class OspreyCoordinatorInputStream(AsyncBaseInputStream[BaseAckingContext[Osprey
                 # Prioritize shutdown so we can ack the last action and disconnect gracefully
                 if self._shutdown_event.is_set():
                     await bidirectional_stream.send_graceful_disconnect(ack_id, verdicts=context.get_verdicts())
-                    break
-
-                # Pause-and-rotate on rule reload. Mirrors the gevent equivalent at
-                # osprey/worker/sinks/sink/osprey_coordinator_input_stream.py:325-331:
-                # disconnect the bidi stream so the coordinator routes work elsewhere,
-                # wait for the reload to finish, then let the outer loop reconnect.
-                if (
-                    self._input_stream_ready_signaler is not None
-                    and self._input_stream_ready_signaler.should_pause_input_stream()
-                ):
-                    logger.info('Disconnecting due to input stream ready signaler')
-                    await bidirectional_stream.send_graceful_disconnect(ack_id, verdicts=context.get_verdicts())
-                    await self._input_stream_ready_signaler.wait_until_resume()
                     break
 
                 # Reconnect after the jittered uptime threshold

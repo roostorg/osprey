@@ -4,70 +4,7 @@ import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from osprey.async_worker.lib.etcd.sources_provider import (
-    AsyncEtcdSourcesProvider,
-    AsyncInputStreamReadySignaler,
-)
-
-
-# --- AsyncInputStreamReadySignaler ---
-
-
-@pytest.mark.asyncio
-async def test_signaler_starts_ready():
-    signaler = AsyncInputStreamReadySignaler()
-    assert not signaler.should_pause_input_stream()
-
-
-@pytest.mark.asyncio
-async def test_signaler_pause_clears_event():
-    signaler = AsyncInputStreamReadySignaler()
-    # Mock the jitter sleep so the test is fast
-    with patch('osprey.async_worker.lib.etcd.sources_provider.asyncio.sleep', return_value=None):
-        await signaler.pause_input_stream()
-    assert signaler.should_pause_input_stream()
-
-
-@pytest.mark.asyncio
-async def test_signaler_resume_sets_event():
-    signaler = AsyncInputStreamReadySignaler()
-    with patch('osprey.async_worker.lib.etcd.sources_provider.asyncio.sleep', return_value=None):
-        await signaler.pause_input_stream()
-    signaler.resume_input_stream()
-    assert not signaler.should_pause_input_stream()
-
-
-@pytest.mark.asyncio
-async def test_signaler_wait_blocks_when_paused():
-    signaler = AsyncInputStreamReadySignaler()
-    with patch('osprey.async_worker.lib.etcd.sources_provider.asyncio.sleep', return_value=None):
-        await signaler.pause_input_stream()
-
-    # wait_until_resume should block until resume is called
-    resumed = False
-
-    async def waiter():
-        nonlocal resumed
-        await signaler.wait_until_resume()
-        resumed = True
-
-    task = asyncio.create_task(waiter())
-    await asyncio.sleep(0.01)
-    assert not resumed
-
-    signaler.resume_input_stream()
-    await asyncio.sleep(0.01)
-    assert resumed
-    await task
-
-
-@pytest.mark.asyncio
-async def test_signaler_wait_returns_immediately_when_ready():
-    signaler = AsyncInputStreamReadySignaler()
-    # Should not block
-    await asyncio.wait_for(signaler.wait_until_resume(), timeout=0.1)
-
+from osprey.async_worker.lib.etcd.sources_provider import AsyncEtcdSourcesProvider
 
 # --- AsyncEtcdSourcesProvider ---
 
@@ -129,6 +66,32 @@ async def test_handle_event_awaits_async_callback():
         await provider._handle_event(_make_full_sync_event({'main.sml': '# noop'}))
 
     assert awaited.is_set(), 'async callback was not awaited'
+
+
+@pytest.mark.asyncio
+async def test_handle_event_staggers_reload_before_callback():
+    provider = AsyncEtcdSourcesProvider(
+        etcd_key='/test/key',
+        etcd_client=MagicMock(),
+        reload_jitter_seconds=600,
+    )
+    events = []
+
+    async def async_callback() -> None:
+        events.append(('callback', None))
+
+    async def record_sleep(seconds: float) -> None:
+        events.append(('sleep', seconds))
+
+    provider.set_sources_watcher(async_callback)
+
+    with (
+        patch('osprey.async_worker.lib.etcd.sources_provider.random.uniform', return_value=42),
+        patch('osprey.async_worker.lib.etcd.sources_provider.asyncio.sleep', side_effect=record_sleep),
+    ):
+        await provider._handle_event(_make_full_sync_event({'main.sml': '# changed'}))
+
+    assert events == [('sleep', 42), ('callback', None)]
 
 
 @pytest.mark.asyncio
