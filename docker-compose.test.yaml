@@ -42,6 +42,7 @@ services:
     build:
       context: .
       dockerfile: osprey_worker/Dockerfile
+    entrypoint: ["/osprey/run-tests-with-coverage.sh"]
     depends_on:
       osprey-kafka:
         condition: service_healthy
@@ -92,6 +93,7 @@ services:
       - ETCD_PEERS=http://etcd:2379
       - TESTING=true
     volumes:
+      - ./.github/run-tests-with-coverage.sh:/osprey/run-tests-with-coverage.sh:ro
       - ./osprey_worker:/osprey/osprey_worker
       - ./osprey_rpc:/osprey/osprey_rpc
       - ./example_rules:/osprey/example_rules

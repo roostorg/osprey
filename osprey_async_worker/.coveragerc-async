@@ -1,0 +1,11 @@
+[run]
+branch = True
+
+[report]
+skip_empty = True
+omit =
+    */tests/*
+    */test/*
+    */conftest.py
+    */__test__.py
+    *_pb2*.py

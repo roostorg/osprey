@@ -119,6 +119,9 @@ dev = [
     "sqlalchemy2-stubs==0.0.2a38",
     "types-flask-cors>=3.0.10",
 ]
+coverage = [
+    "pytest-cov",
+]
 
 
 [tool.uv]
@@ -211,6 +214,7 @@ ignore_unused = [
     "mypy-protobuf",
     "pre-commit",
     "pytest-asyncio",
+    "pytest-cov",
     "pytest-flask",
     "pytest-order",
     "requests-mock",
@@ -276,6 +280,7 @@ warn_unreachable = false
 
 exclude = [
     "^.*/venv/.*$",
+    "^osprey_coordinator/target/.*$",
     ".*/setup\\.py$",
     ".*_pb2\\.py$",
     ".*_pb2\\.pyi$",
