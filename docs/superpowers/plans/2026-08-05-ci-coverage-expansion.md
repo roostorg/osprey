@@ -4,7 +4,7 @@
 
 **Goal:** Expand advisory CI coverage across documentation, Rust, UI, and both Python runtimes while publishing trustworthy report-only coverage artifacts.
 
-**Architecture:** Keep each existing language job as the owner of its checks. Convert mdBook to a validation-only workflow, make Rust tests and Clippy affect their existing job, add the existing UI production build, and configure separate gevent-aware and gevent-free coverage collection for the sync and async Python suites.
+**Architecture:** Keep each existing language job as the owner of its checks. Convert mdBook to a validation-only workflow, make Rust tests affect their existing job while preserving Clippy as visible baseline debt, add the existing UI production build, and configure separate gevent-aware and gevent-free coverage collection for the sync and async Python suites.
 
 **Tech Stack:** GitHub Actions, mdBook 0.5.2, Rust/Cargo, npm/React Scripts, uv, pytest, pytest-cov, coverage.py, Docker Compose.
 
@@ -124,7 +124,7 @@ git commit -m "ci: validate mdBook documentation"
 **Interfaces:**
 
 - Consumes: existing `ui-quality` and `rust-quality` jobs and package scripts.
-- Produces: UI production-build validation and non-advisory failures within the advisory Rust job.
+- Produces: UI production-build validation, blocking Rust tests within the advisory job, and a Clippy run that reaches the known lint baseline.
 
 - [ ] **Step 1: Confirm the proposed commands are green before changing CI**
 
@@ -141,7 +141,7 @@ cargo clippy -- -D warnings
 cargo test --verbose
 ```
 
-Expected: UI formatting/build and Rust formatting/Clippy/all 52 tests exit 0.
+Expected: UI formatting/build, Rust formatting, and all 52 Rust tests exit 0. Clippy reaches linting and reports the known 229-error baseline instead of failing early on missing `protoc`.
 
 - [ ] **Step 2: Add UI production-build validation**
 
@@ -156,7 +156,8 @@ In `rust-quality`:
 
 - add an `Install protobuf compiler` step before Clippy;
 - move the existing apt update/install commands out of `Build Rust project`, leaving only `cargo build --verbose` there;
-- remove `continue-on-error: true` from Clippy and Rust tests.
+- keep `continue-on-error: true` on Clippy while its baseline is handled separately;
+- remove `continue-on-error: true` from Rust tests.
 
 - [ ] **Step 4: Validate the workflow**
 
@@ -383,14 +384,14 @@ Make the guidance state these exact contracts:
 
 ```markdown
 - UI CI runs both `npm run format:check` and `npm run build`.
-- Rust CI runs `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo build --verbose`, and `cargo test --verbose`; every command affects `rust-quality`.
+- Rust CI runs `cargo fmt --check`, advisory `cargo clippy -- -D warnings`, `cargo build --verbose`, and blocking `cargo test --verbose`.
 - `async-unit-tests` runs native asyncio pytest with `.coveragerc-async` and uploads JUnit plus report-only coverage XML.
 - `integration-tests` runs gevent-patched pytest in Docker with `.coveragerc-sync` and uploads JUnit plus report-only coverage XML.
 - `Documentation Check` compiles mdBook on pull requests and pushes; it does not deploy GitHub Pages.
 - Python CI runs `uv lock --check` and `uv sync --dev --locked` before quality checks.
 ```
 
-Replace stale command examples with the exact commands implemented in the three workflows; remove every reference to Rust checks being advisory and mdBook being a release/deploy workflow.
+Replace stale command examples with the exact commands implemented in the three workflows; document that Clippy alone remains advisory because of its existing baseline, and remove every reference to Rust tests being advisory or mdBook being a release/deploy workflow.
 
 - [ ] **Step 2: Run complete local verification**
 
@@ -407,7 +408,7 @@ SKIP=prettier-osprey-ui uv run pre-commit run --all-files
 go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 .github/workflows/code-quality.yml .github/workflows/integration-tests.yml .github/workflows/mdbook.yml
 ```
 
-Also rerun the CI-equivalent mdBook, UI, Rust, async coverage, and Docker coverage commands from Tasks 1-4.
+Also rerun the CI-equivalent mdBook, UI, Rust tests, async coverage, and Docker coverage commands from Tasks 1-4. Confirm separately that Clippy reaches linting after `protoc` installation and fails only on its documented baseline.
 
 - [ ] **Step 3: Inspect final state**
 

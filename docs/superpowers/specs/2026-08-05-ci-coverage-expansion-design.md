@@ -7,7 +7,7 @@ Expand Osprey's advisory CI coverage across documentation, Rust, UI, and Python 
 ## Current State
 
 - The mdBook workflow deploys only on pushes to `main`, but Discord's repository does not have GitHub Pages enabled. The workflow fails in `actions/configure-pages`; the repository homepage and book metadata still point to the upstream ROOST site.
-- Rust formatting and compilation are enforced. Clippy and all 52 Rust tests currently pass, but both use `continue-on-error` and therefore cannot make `rust-quality` fail.
+- Rust formatting and compilation are enforced. All 52 Rust tests pass but use `continue-on-error`. Clippy also uses `continue-on-error`; it previously stopped at missing `protoc`, and after that prerequisite is installed it exposes 229 existing lint errors.
 - UI CI installs the locked npm dependencies and checks Prettier. The existing production build succeeds locally but is not run in CI. There are no UI test files, and the current ESLint configuration does not define a meaningful rule baseline.
 - The sync Docker suite and native asyncio suite publish JUnit XML but do not collect coverage.
 
@@ -28,11 +28,11 @@ Convert `.github/workflows/mdbook.yml` from a Pages deployment into a validation
 
 The generated book remains an ephemeral build output. This repository will not publish a Discord-hosted Pages site or change its homepage/edit links.
 
-### Rust enforcement inside the advisory job
+### Rust test enforcement and Clippy visibility
 
-Install `protobuf-compiler` before Clippy so a cold runner can execute the coordinator's `build.rs`, then remove `continue-on-error` from Clippy and `cargo test`. The `rust-quality` status remains advisory at the repository level because no branch ruleset will require it, but a real Clippy or test failure will make the job visibly red.
+Install `protobuf-compiler` before Clippy so a cold runner can execute the coordinator's `build.rs`. Keep Clippy advisory while its 229-error baseline is cleaned up separately, but remove `continue-on-error` from `cargo test` so behavioral regressions make `rust-quality` visibly red.
 
-Keep the existing Rust format, build, cache, and toolchain configuration otherwise unchanged, and remove the now-duplicate package installation from the build step. Existing compiler warnings outside Clippy do not fail `cargo test` and are not part of this cleanup.
+Keep the existing Rust format, build, cache, toolchain, and Clippy command otherwise unchanged, and remove the now-duplicate package installation from the build step. Existing compiler and Clippy warnings are not part of this cleanup.
 
 ### UI production-build coverage
 
@@ -62,12 +62,12 @@ There is no `fail_under` value and no external coverage service in this PR. The 
 
 ### CI documentation cleanup
 
-Update `AGENTS.md`, `.github/copilot-instructions.md`, and `docs/docs.md` so their CI and documentation descriptions match the validation-only mdBook workflow, UI production build, enforced-within-job Rust checks, and report-only Python coverage. Remove stale wording that promises Pages deployment, says CI only checks formatting, or omits tests.
+Update `AGENTS.md`, `.github/copilot-instructions.md`, and `docs/docs.md` so their CI and documentation descriptions match the validation-only mdBook workflow, UI production build, enforced Rust tests/advisory Clippy, and report-only Python coverage. Remove stale wording that promises Pages deployment, says CI only checks formatting, or omits tests.
 
 ## Failure Behavior
 
 - A documentation compile error fails the mdBook job; no deployment is attempted.
-- A Rust Clippy or unit-test failure fails `rust-quality`.
+- A Rust unit-test failure fails `rust-quality`; existing Clippy debt remains visible but advisory.
 - A TypeScript or production-bundle failure fails `ui-quality`.
 - Test failures, missing/malformed coverage XML, and missing result artifacts fail their existing Python jobs, but low coverage percentages do not.
 - None of these statuses block merging because repository protection settings remain unchanged.
@@ -91,7 +91,7 @@ The excluded Python-integrity and workflow-security work will be implemented in 
 - `mdbook build` using mdBook `0.5.2` installed with `--locked`
 - `npm ci --ignore-scripts && npm run format:check && npm run build`
 - `cargo fmt --check`
-- `cargo clippy -- -D warnings`
+- `cargo clippy -- -D warnings` reaches linting after `protoc` installation and reports the known baseline without blocking the job
 - `cargo build --verbose`
 - `cargo test --verbose`
 - locked Python sync and the existing Ruff, formatting, mypy, and FawltyDeps checks
