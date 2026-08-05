@@ -13,6 +13,7 @@ from textwrap import dedent
 from typing import ClassVar, Iterator, Sequence
 
 import pytest
+from osprey.async_worker import executor as async_executor
 from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase, AsyncUDFBase
 from osprey.async_worker.executor import execute
 from osprey.engine.ast.grammar import Source
@@ -207,6 +208,43 @@ async def test_concurrent_actions_isolate_dynamic_source_activation(
 
 
 @pytest.mark.asyncio
+async def test_uncontended_permit_skips_wait_metric_and_tag_building(
+    async_execute_with_result, stdlib_udf_registry: UDFRegistry, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stdlib_udf_registry.register(PermitGatedAsyncUdf)
+    PermitGatedAsyncUdf.entered = 0
+    PermitGatedAsyncUdf.first_entered = asyncio.Event()
+    PermitGatedAsyncUdf.release = asyncio.Event()
+    PermitGatedAsyncUdf.release.set()
+    timed_metrics: list[str] = []
+    permit_tag_calls = 0
+    get_permit_metric_tags = async_executor._get_permit_metric_tags
+
+    @contextmanager
+    def record_timing(metric_name: str, **_kwargs: object) -> Iterator[None]:
+        timed_metrics.append(metric_name)
+        yield
+
+    def record_permit_tags(context: ExecutionContext, udf: object | None = None) -> list[str]:
+        nonlocal permit_tag_calls
+        permit_tag_calls += 1
+        return get_permit_metric_tags(context, udf)
+
+    monkeypatch.setattr(metrics, 'timed', record_timing)
+    monkeypatch.setattr(async_executor, '_get_permit_metric_tags', record_permit_tags)
+
+    result = await async_execute_with_result(
+        'A = PermitGatedAsyncUdf(value="a")',
+        udf_registry=stdlib_udf_registry,
+        max_concurrent=1,
+    )
+
+    assert result.extracted_features['A'] == 'a'
+    assert timed_metrics == ['udf_execution_duration']
+    assert permit_tag_calls == 0
+
+
+@pytest.mark.asyncio
 async def test_permit_wait_is_measured_before_remote_execution(
     async_execute_with_result, stdlib_udf_registry: UDFRegistry, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -251,8 +289,6 @@ async def test_permit_wait_is_measured_before_remote_execution(
     assert result.extracted_features['A'] == 'a'
     assert result.extracted_features['B'] == 'b'
     assert timing_events == [
-        ('udf_permit_wait_duration', 'start'),
-        ('udf_permit_wait_duration', 'end'),
         ('udf_execution_duration', 'start'),
         ('udf_permit_wait_duration', 'start'),
         ('udf_execution_duration', 'end'),
@@ -262,18 +298,6 @@ async def test_permit_wait_is_measured_before_remote_execution(
     ]
     permit_options = [options for name, options in timing_options if name == 'udf_permit_wait_duration']
     assert permit_options == [
-        {
-            'tags': [
-                'action:test',
-                'udf:PermitGatedAsyncUdf',
-                'host:none',
-                'kube_node:none',
-                'instance-id:none',
-                'internal-hostname:none',
-                'name:none',
-            ],
-            'sample_rate': 0.01,
-        },
         {
             'tags': [
                 'action:test',
@@ -513,13 +537,13 @@ def counting_batchable_udf():
 
 
 @pytest.mark.asyncio
-async def test_scheduler_wave_histograms_count_ready_and_batched_in_flight_nodes(
+async def test_scheduler_histograms_emit_per_action_maxima_for_batched_nodes(
     async_execute_with_result,
     stdlib_udf_registry: UDFRegistry,
     counting_batchable_udf,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Removing wave histograms or counting a two-node batch as one task must fail."""
+    """Each action emits one maximum-depth observation, counting batch nodes rather than tasks."""
     histogram_calls: list[tuple[str, float, list[str] | None, float | None]] = []
 
     def record_histogram(
@@ -543,24 +567,18 @@ async def test_scheduler_wave_histograms_count_ready_and_batched_in_flight_nodes
 
     assert result.extracted_features['A'] == 'a'
     assert result.extracted_features['B'] == 'b'
-    ready_depths = [value for name, value, _, _ in histogram_calls if name == 'udf_ready_depth']
-    in_flight = [value for name, value, _, _ in histogram_calls if name == 'udf_in_flight']
-    assert ready_depths.count(2) == 1
-    assert 2 in in_flight
-    assert len(ready_depths) == len(in_flight)
-    assert all(
-        tags
-        == [
-            'action:test',
-            'host:none',
-            'kube_node:none',
-            'instance-id:none',
-            'internal-hostname:none',
-            'name:none',
-        ]
-        and sample_rate == 0.01
-        for _, _, tags, sample_rate in histogram_calls
-    )
+    scheduler_tags = [
+        'action:test',
+        'host:none',
+        'kube_node:none',
+        'instance-id:none',
+        'internal-hostname:none',
+        'name:none',
+    ]
+    assert histogram_calls == [
+        ('udf_ready_depth', 2, scheduler_tags, 0.01),
+        ('udf_in_flight', 2, scheduler_tags, 0.01),
+    ]
 
 
 @pytest.mark.asyncio

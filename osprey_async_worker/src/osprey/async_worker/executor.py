@@ -12,7 +12,7 @@ import asyncio
 import os
 from collections import defaultdict
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, AsyncContextManager, AsyncIterator, Dict, List, Optional, Sequence, Set, Tuple
 
 import sentry_sdk
 from ddtrace import tracer
@@ -133,6 +133,15 @@ async def _acquire_udf_permit(semaphore: asyncio.Semaphore, metric_tags: List[st
         semaphore.release()
 
 
+def _select_udf_permit(
+    semaphore: asyncio.Semaphore, context: ExecutionContext, udf: Optional[object] = None
+) -> AsyncContextManager[None]:
+    """Use the raw semaphore unless acquisition would have to wait."""
+    if not semaphore.locked():
+        return semaphore
+    return _acquire_udf_permit(semaphore, _get_permit_metric_tags(context, udf))
+
+
 # --- Sync execution (inline, for pure-computation UDFs) ---
 
 
@@ -195,7 +204,7 @@ async def _execute_legacy_in_executor(
 ) -> NodeResult:
     """Run a legacy sync UDF in the thread pool with semaphore."""
     udf = chain.executor._udf if isinstance(chain.executor, CallExecutor) else None
-    async with _acquire_udf_permit(semaphore, _get_permit_metric_tags(context, udf)):
+    async with _select_udf_permit(semaphore, context, udf):
         return await loop.run_in_executor(None, _execute_legacy_sync, chain, context, error_info_)
 
 
@@ -261,7 +270,7 @@ async def _execute_async_udf(
     """
     call_executor: CallExecutor = chain.executor  # type: ignore
     udf: AsyncUDFBase[Any, Any] = call_executor._udf  # type: ignore
-    async with _acquire_udf_permit(semaphore, _get_permit_metric_tags(context, udf)):
+    async with _select_udf_permit(semaphore, context, udf):
         metric_tags = _get_metric_tags(context) + [f'udf:{udf.__class__.__name__}']
 
         caught_exception: Optional[Exception] = None
@@ -294,7 +303,7 @@ async def _execute_async_batch(
     error_info_: List[NodeErrorInfo],
 ) -> Sequence[NodeResult]:
     """Execute a batch of native async batchable UDFs."""
-    async with _acquire_udf_permit(semaphore, _get_permit_metric_tags(context, udfs[0])):
+    async with _select_udf_permit(semaphore, context, udfs[0]):
         assert len(udfs) == len(nodes) == len(batchable_args)
         num_executions = len(udfs)
         metric_tags = _get_metric_tags(context, udfs[0])
@@ -412,7 +421,7 @@ async def _enqueue_batches(
         else:
             # Legacy sync batchable UDF — run in thread pool
             async def _run_legacy_batch(s, u, n, a, c, e):
-                async with _acquire_udf_permit(s, _get_permit_metric_tags(c, u[0])):
+                async with _select_udf_permit(s, c, u[0]):
                     return await loop.run_in_executor(None, _execute_legacy_batch_sync, u, n, a, c, e)
 
             task = asyncio.create_task(
@@ -456,21 +465,12 @@ async def execute(
     in_progress_batches: Dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]] = {}
 
     ready_sync, ready_async = _get_ready_sync_and_async(allow_async, context)
-    scheduler_tags = [f'action:{context.get_action_name()}', *_CARDINALITY_SUPPRESSION_TAGS]
+    max_ready_depth = 0
+    max_in_flight = 0
 
     while ready_sync or ready_async or in_progress_singlets or in_progress_batches:
-        metrics.histogram(
-            'udf_ready_depth',
-            len(ready_async),
-            tags=scheduler_tags,
-            sample_rate=_OBSERVABILITY_SAMPLE_RATE,
-        )
-        metrics.histogram(
-            'udf_in_flight',
-            len(in_progress_singlets) + sum(len(chains) for chains in in_progress_batches.values()),
-            tags=scheduler_tags,
-            sample_rate=_OBSERVABILITY_SAMPLE_RATE,
-        )
+        if ready_async and len(ready_async) > max_ready_depth:
+            max_ready_depth = len(ready_async)
 
         # Check for already-finished tasks (non-blocking)
         finished_singlets = [t for t in in_progress_singlets if t.done()]
@@ -523,6 +523,12 @@ async def execute(
                     )
                 in_progress_singlets[task] = async_chain
 
+            in_flight = len(in_progress_singlets)
+            if in_progress_batches:
+                in_flight += sum(len(chains) for chains in in_progress_batches.values())
+            if in_flight > max_in_flight:
+                max_in_flight = in_flight
+
         # Execute sync chains inline (pure computation, fast, no I/O).
         # Only yield deep into a long sync round when async tasks are in flight.
         # Each sleep(0) triggers a full event loop cycle including gRPC C-core polling,
@@ -536,6 +542,21 @@ async def execute(
             context.set_resolved_value(sync_chain, result)
 
         ready_sync, ready_async = _get_ready_sync_and_async(allow_async, context)
+
+    # Per-action maxima expose saturation without emitting StatsD calls on every scheduler wave.
+    scheduler_tags = [f'action:{context.get_action_name()}', *_CARDINALITY_SUPPRESSION_TAGS]
+    metrics.histogram(
+        'udf_ready_depth',
+        max_ready_depth,
+        tags=scheduler_tags,
+        sample_rate=_OBSERVABILITY_SAMPLE_RATE,
+    )
+    metrics.histogram(
+        'udf_in_flight',
+        max_in_flight,
+        tags=scheduler_tags,
+        sample_rate=_OBSERVABILITY_SAMPLE_RATE,
+    )
 
     # --- Build result ---
 
