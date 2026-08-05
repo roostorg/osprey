@@ -6,6 +6,7 @@ decorated with `extracts_json_path = True`).
 Result shape: Dict[action_name, List[FieldDeclaration]]
 where action_name is derived from `actions/<name>.sml` paths.
 """
+
 from __future__ import annotations
 
 import logging
@@ -13,20 +14,24 @@ import re
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 from osprey.engine.ast import grammar
 from osprey.engine.ast.ast_utils import filter_nodes
 from osprey.engine.ast.grammar import Assign, Call, Source, Span
 from osprey.engine.ast_validator.base_validator import BaseValidator, HasResult
 from osprey.engine.ast_validator.validators.imports_must_not_have_cycles import ImportsMustNotHaveCycles
-from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
-from osprey.engine.schema.schema_loader import load_schema_for_action, resolve_schemas_dir
+from osprey.engine.ast_validator.validators.validate_call_kwargs import UDFNodeMapping, ValidateCallKwargs
+from osprey.engine.schema.schema_loader import ActionSchema, load_schema_for_action, resolve_schemas_dir
 from osprey.engine.stdlib.udfs.require import Require
+from osprey.engine.udf.arguments import ArgumentsBase
+from osprey.engine.udf.base import UDFBase
+from osprey.engine.utils.graph import Graph
 
 try:
     import jsonpath_rw
     import jsonpath_rw.jsonpath as _jp
+
     _HAS_JSONPATH_RW = True
 except ImportError:
     _HAS_JSONPATH_RW = False
@@ -78,13 +83,13 @@ ActionManifest = Dict[str, List[FieldDeclaration]]
 def _annotation_to_str(annotation: Optional[grammar.ASTNode]) -> str:
     """Convert an AST annotation node to a human-readable type string."""
     if annotation is None:
-        return "Any"
+        return 'Any'
     if isinstance(annotation, grammar.AnnotationWithVariants):
-        inner = ", ".join(_annotation_to_str(v) for v in annotation.variants)
-        return f"{annotation.identifier}[{inner}]"
+        inner = ', '.join(_annotation_to_str(v) for v in annotation.variants)
+        return f'{annotation.identifier}[{inner}]'
     if isinstance(annotation, grammar.Annotation):
         return annotation.identifier
-    return "Any"
+    return 'Any'
 
 
 def _extract_top_level_group(path_str: str) -> str:
@@ -96,26 +101,26 @@ def _extract_top_level_group(path_str: str) -> str:
         '$.captcha_response.score' -> 'captcha_response'
     """
     # Fast path: handle the common $.x.y... format directly without jsonpath_rw parse overhead
-    if path_str.startswith("$."):
+    if path_str.startswith('$.'):
         rest = path_str[2:]
         if rest:
-            return rest.split(".")[0].split("[")[0]
+            return rest.split('.')[0].split('[')[0]
     # Fallback: use jsonpath_rw for non-trivial paths
     if _HAS_JSONPATH_RW:
         try:
             parsed = jsonpath_rw.parse(path_str)
             cur = parsed
-            while hasattr(cur, "left"):
+            while hasattr(cur, 'left'):
                 if isinstance(cur.left, _jp.Root):
                     return str(cur.right)
-                if hasattr(cur.left, "left") and isinstance(cur.left.left, _jp.Root):
+                if hasattr(cur.left, 'left') and isinstance(cur.left.left, _jp.Root):
                     return str(cur.left.right)
                 cur = cur.left
-            if hasattr(cur, "fields"):
+            if hasattr(cur, 'fields'):
                 return cur.fields[0]
         except Exception:
-            log.debug("jsonpath_rw failed to parse %r, falling back to string split", path_str)
-    return path_str.lstrip("$").lstrip(".").split(".")[0]
+            log.debug('jsonpath_rw failed to parse %r, falling back to string split', path_str)
+    return path_str.lstrip('$').lstrip('.').split('.')[0]
 
 
 class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
@@ -130,10 +135,10 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
     """
 
     _manifest: ActionManifest
-    _udf_node_mapping: Dict
-    _import_graph: object
+    _udf_node_mapping: UDFNodeMapping
+    _import_graph: Graph[Source]
 
-    def __init__(self, context: "ValidationContext") -> None:
+    def __init__(self, context: 'ValidationContext') -> None:
         super().__init__(context)
         self._manifest = {}
         self._udf_node_mapping = context.get_validator_result(ValidateCallKwargs)
@@ -149,14 +154,14 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
         try:
             self._collect_fields_and_cross_check()
         except Exception:
-            log.exception("CollectJsonDataPaths failed; skipping typed-contract cross-check")
+            log.exception('CollectJsonDataPaths failed; skipping typed-contract cross-check')
 
     def _collect_fields_and_cross_check(self) -> None:
         # Action sources are those under actions/<name>.sml
         action_sources = [
             source
             for source in self.context.sources
-            if source.path.startswith("actions/") and source.path.endswith(".sml")
+            if source.path.startswith('actions/') and source.path.endswith('.sml')
         ]
 
         for action_source in action_sources:
@@ -170,7 +175,7 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
                     if id(call_node) not in self._udf_node_mapping:
                         continue
                     udf, arguments = self._udf_node_mapping[id(call_node)]
-                    if not getattr(type(udf), "extracts_json_path", False):
+                    if not getattr(type(udf), 'extracts_json_path', False):
                         continue
 
                     key = _node_key(call_node)
@@ -228,7 +233,7 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
             if not isinstance(udf, Require):
                 continue
 
-            keyword = call_node.find_argument("rule")
+            keyword = call_node.find_argument('rule')
             if keyword is None:
                 continue
             # find_argument returns a Keyword node; the actual AST value is keyword.value
@@ -240,7 +245,7 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
                     targets.append(target)
             elif isinstance(rule_ast_node, grammar.FormatString):
                 # Convert f-string to glob pattern (same as require.py:36-44)
-                names_as_wildcards = {name.identifier: "*" for name in rule_ast_node.names}
+                names_as_wildcards = {name.identifier: '*' for name in rule_ast_node.names}
                 glob_path = rule_ast_node.format_string.format(**names_as_wildcards)
                 for matched in self.context.sources.glob(glob_path):
                     targets.append(matched)
@@ -250,8 +255,8 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
     def _build_field_declaration(
         self,
         call_node: Call,
-        udf: object,
-        arguments: object,
+        udf: UDFBase[Any, Any],
+        arguments: ArgumentsBase,
         source: Source,
     ) -> Optional[FieldDeclaration]:
         """Build a FieldDeclaration from a UDF call node."""
@@ -261,8 +266,8 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
         coerce_type: bool = True
 
         try:
-            path_const = getattr(arguments, "path", None)
-            if path_const is not None and hasattr(path_const, "value"):
+            path_const = getattr(arguments, 'path', None)
+            if path_const is not None and hasattr(path_const, 'value'):
                 path_str = path_const.value
         except Exception:
             log.debug("Failed to read 'path' argument from %r", call_node)
@@ -274,16 +279,16 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
         # They are only available as AST nodes in _arguments_ast, not as
         # resolved Python values in _arguments. Read from the AST directly.
         try:
-            if hasattr(arguments, "has_argument_ast") and arguments.has_argument_ast("required"):
-                req_ast = arguments.get_argument_ast("required")
+            if hasattr(arguments, 'has_argument_ast') and arguments.has_argument_ast('required'):
+                req_ast = arguments.get_argument_ast('required')
                 if isinstance(req_ast, grammar.Boolean):
                     required = req_ast.value
         except Exception:
             log.debug("Failed to read 'required' argument from %r", call_node)
 
         try:
-            if hasattr(arguments, "has_argument_ast") and arguments.has_argument_ast("coerce_type"):
-                coerce_ast = arguments.get_argument_ast("coerce_type")
+            if hasattr(arguments, 'has_argument_ast') and arguments.has_argument_ast('coerce_type'):
+                coerce_ast = arguments.get_argument_ast('coerce_type')
                 if isinstance(coerce_ast, grammar.Boolean):
                     coerce_type = coerce_ast.value
         except Exception:
@@ -292,7 +297,7 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
         top_level_group = _extract_top_level_group(path_str)
 
         # Derive rvalue_type from the Assign node's annotation (if this call is on the rhs of an assign)
-        rvalue_type = "Any"
+        rvalue_type = 'Any'
         parent = call_node.parent
         if isinstance(parent, Assign) and parent.annotation is not None:
             rvalue_type = _annotation_to_str(parent.annotation)
@@ -312,7 +317,7 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
             span_start_col=span.start_pos,
         )
 
-    def _load_schema_if_present(self, action_name: str) -> Optional[object]:
+    def _load_schema_if_present(self, action_name: str) -> Optional[ActionSchema]:
         """Load the schema for this action from the resolved schemas directory.
 
         Returns None if no schema directory is discoverable (neither
@@ -360,9 +365,9 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
                 if field.top_level_group in schema.absent_groups:
                     self.context.add_warning(
                         message=(
-                            f"{action_name}: extracts {field.path!r} from group "
-                            f"{field.top_level_group!r} which the schema declares absent. "
-                            f"This node will be pruned at runtime."
+                            f'{action_name}: extracts {field.path!r} from group '
+                            f'{field.top_level_group!r} which the schema declares absent. '
+                            f'This node will be pruned at runtime.'
                         ),
                         span=span,
                     )
@@ -370,7 +375,7 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
 
                 # Strip array indices ($.a[0].b -> a.b) so the lookup matches the
                 # flattened dotted key in provides_field_types.
-                path_key = re.sub(r"\[[^\]]*\]", "", field.path.removeprefix("$."))
+                path_key = re.sub(r'\[[^\]]*\]', '', field.path.removeprefix('$.'))
 
                 # Check 2: type mismatch (only for fields in a provided group)
                 declared = schema.provides_field_types.get(path_key)
@@ -379,11 +384,10 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
                     if actual != declared:
                         self.context.add_warning(
                             message=(
-                                f"{action_name}: {field.path} declared {declared!r} in schema "
-                                f"but rule reads {actual!r}"
+                                f'{action_name}: {field.path} declared {declared!r} in schema but rule reads {actual!r}'
                             ),
                             span=span,
-                            hint="Possible InvalidJsonType at runtime — update schema or rule.",
+                            hint='Possible InvalidJsonType at runtime — update schema or rule.',
                         )
                     continue  # Field is known to the schema, no Check 3 needed
 
@@ -391,9 +395,9 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
                 if field.top_level_group in schema.provides_groups:
                     self.context.add_warning(
                         message=(
-                            f"{action_name}: extracts {field.path!r} but schema does not "
-                            f"declare it in provides for group {field.top_level_group!r}. "
-                            f"Schema may need updating."
+                            f'{action_name}: extracts {field.path!r} but schema does not '
+                            f'declare it in provides for group {field.top_level_group!r}. '
+                            f'Schema may need updating.'
                         ),
                         span=span,
                     )
@@ -406,11 +410,11 @@ def _normalize_rvalue_type(rvalue_type: str) -> str:
     """
     t = rvalue_type.strip()
     # Strip Optional[...]
-    if t.startswith("Optional[") and t.endswith("]"):
-        t = t[len("Optional["):-1].strip()
+    if t.startswith('Optional[') and t.endswith(']'):
+        t = t[len('Optional[') : -1].strip()
     # Strip Entity[...]
-    if t.startswith("Entity[") and t.endswith("]"):
-        t = t[len("Entity["):-1].strip()
+    if t.startswith('Entity[') and t.endswith(']'):
+        t = t[len('Entity[') : -1].strip()
     return t
 
 

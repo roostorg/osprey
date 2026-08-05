@@ -290,7 +290,9 @@ mod tests {
     fn insert_due(q: &mut MessageAckQueue<String>, n: usize) -> Vec<AckId> {
         let renew_at = TokioInstant::now();
         (0..n)
-            .map(|i| q.transform_and_store_ack_id(format!("srv-{}", i), StdInstant::now(), renew_at))
+            .map(|i| {
+                q.transform_and_store_ack_id(format!("srv-{}", i), StdInstant::now(), renew_at)
+            })
             .collect()
     }
 
@@ -359,7 +361,11 @@ mod tests {
             }
         }
 
-        assert_eq!(seen.len(), 5001, "some held message was never renewed (starved)");
+        assert_eq!(
+            seen.len(),
+            5001,
+            "some held message was never renewed (starved)"
+        );
         assert_eq!(ticks, 3, "5001 / 2500 should drain in exactly 3 ticks");
     }
 

@@ -268,7 +268,7 @@ class OspreyEngine:
         be used instead of the default graph (§4.5 runtime dispatch).
         """
         self._specialized_graphs[action_name] = graph
-        log.info("Registered specialized graph for action %r", action_name)
+        log.info('Registered specialized graph for action %r', action_name)
 
     def execute(
         self,
@@ -296,8 +296,12 @@ class OspreyEngine:
             )
 
         serve_graph, shadow_spec = resolve_dispatch(
-            action_name, self._specialized_graphs, self._prune_filter,
-            self._shadow_filter, self._execution_graph, action_data=action.data,
+            action_name,
+            self._specialized_graphs,
+            self._prune_filter,
+            self._shadow_filter,
+            self._execution_graph,
+            action_data=action.data,
         )
         result = _exec(serve_graph)
         if shadow_spec is not None:
@@ -306,7 +310,7 @@ class OspreyEngine:
             try:
                 record_shadow(action_name, result, _exec(shadow_spec))
             except Exception:
-                log.exception("typed-contract shadow comparison failed for %s", action_name)
+                log.exception('typed-contract shadow comparison failed for %s', action_name)
                 metrics.increment('osprey.typed_contracts.shadow_error', tags=[f'action:{action_name}'])
         return result
 

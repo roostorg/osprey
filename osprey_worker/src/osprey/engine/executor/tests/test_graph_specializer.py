@@ -3,6 +3,7 @@
 The specializer takes a full ExecutionGraph + ActionSchema and produces a
 SpecializedExecutionGraph that prunes dependency chains for absent groups.
 """
+
 from __future__ import annotations
 
 import json
@@ -21,10 +22,17 @@ from osprey.engine.ast_validator.validator_registry import ValidatorRegistry
 from osprey.engine.ast_validator.validators.feature_name_to_entity_type_mapping import (
     FeatureNameToEntityTypeMapping,
 )
+from osprey.engine.ast_validator.validators.imports_must_not_have_cycles import ImportsMustNotHaveCycles
+from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
+from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
+from osprey.engine.ast_validator.validators.validate_dynamic_calls_have_annotated_rvalue import (
+    ValidateDynamicCallsHaveAnnotatedRValue,
+)
+from osprey.engine.ast_validator.validators.validate_static_types import ValidateStaticTypes
+from osprey.engine.ast_validator.validators.variables_must_be_defined import VariablesMustBeDefined
 from osprey.engine.executor.execution_context import (
     Action,
     ExecutionContext,
-    NodeFailurePropagationException,
 )
 from osprey.engine.executor.execution_graph import compile_execution_graph
 from osprey.engine.executor.executor import execute
@@ -36,36 +44,25 @@ from osprey.engine.executor.graph_specializer import (
     _node_key_from_chain,
     specialize_graph,
 )
-from osprey.engine.executor.typed_contract_dispatch import resolve_dispatch
-from result import Err, Ok
 from osprey.engine.executor.node_executor.call_executor import CallExecutor
-from osprey.engine.stdlib.udfs._prelude import ArgumentsBase, UDFBase
-from osprey.engine.stdlib.udfs.categories import UdfCategories
-from osprey.engine.stdlib.udfs.rules import Rule, WhenRules
-from osprey.engine.stdlib.udfs.verdicts import DeclareVerdict
+from osprey.engine.executor.typed_contract_dispatch import resolve_dispatch
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.schema.schema_loader import ActionSchema
 from osprey.engine.stdlib import get_config_registry
+from osprey.engine.stdlib.udfs._prelude import ArgumentsBase, UDFBase
 from osprey.engine.stdlib.udfs.entity import EntityJson
 from osprey.engine.stdlib.udfs.get_action_name import GetActionName
 from osprey.engine.stdlib.udfs.import_ import Import
 from osprey.engine.stdlib.udfs.json_data import JsonData
 from osprey.engine.stdlib.udfs.require import Require
 from osprey.engine.stdlib.udfs.resolve_optional import ResolveOptional
-from osprey.engine.ast_validator.validators.imports_must_not_have_cycles import ImportsMustNotHaveCycles
-from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
-from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
-from osprey.engine.ast_validator.validators.validate_dynamic_calls_have_annotated_rvalue import (
-    ValidateDynamicCallsHaveAnnotatedRValue,
-)
-from osprey.engine.ast_validator.validators.validate_static_types import ValidateStaticTypes
-from osprey.engine.ast_validator.validators.variables_must_be_defined import VariablesMustBeDefined
+from osprey.engine.stdlib.udfs.rules import Rule, WhenRules
+from osprey.engine.stdlib.udfs.verdicts import DeclareVerdict
 from osprey.engine.udf.registry import UDFRegistry
+from result import Ok
 
 # Minimal UDF registry without postgres-backed UDFs (no POSTGRES_HOSTS needed)
-_TEST_REGISTRY = UDFRegistry.with_udfs(
-    JsonData, EntityJson, Import, Require, GetActionName, ResolveOptional, Rule
-)
+_TEST_REGISTRY = UDFRegistry.with_udfs(JsonData, EntityJson, Import, Require, GetActionName, ResolveOptional, Rule)
 
 # Effect-aware registry: adds WhenRules/DeclareVerdict so effect sinks are present
 _EFFECT_REGISTRY = UDFRegistry.with_udfs(
@@ -82,31 +79,33 @@ def _compile(sources_dict: Dict[str, str]):
     sources = Sources.from_dict({k: dedent(v) for k, v in sources_dict.items()})
 
     # Use a targeted registry with required validators
-    registry = ValidatorRegistry.from_validator_classes([
-        ValidateCallKwargs,
-        ValidateDynamicCallsHaveAnnotatedRValue,
-        ImportsMustNotHaveCycles,
-        UniqueStoredNames,
-        VariablesMustBeDefined,
-        ValidateStaticTypes,
-    ])
+    registry = ValidatorRegistry.from_validator_classes(
+        [
+            ValidateCallKwargs,
+            ValidateDynamicCallsHaveAnnotatedRValue,
+            ImportsMustNotHaveCycles,
+            UniqueStoredNames,
+            VariablesMustBeDefined,
+            ValidateStaticTypes,
+        ]
+    )
     validated = validate_sources(sources, _TEST_REGISTRY, registry)
     graph = compile_execution_graph(validated)
     return validated, graph
 
 
 def _make_schema(
-    action: str = "test_action",
+    action: str = 'test_action',
     provides: Dict = None,
     absent: List[str] = None,
 ) -> ActionSchema:
-    provides = provides or {"user": {"id": "int"}}
-    absent = absent or ["target_user"]
+    provides = provides or {'user': {'id': 'int'}}
+    absent = absent or ['target_user']
     field_types = {}
     for group, fields in provides.items():
         if isinstance(fields, dict):
             for k, v in fields.items():
-                field_types[f"{group}.{k}"] = v
+                field_types[f'{group}.{k}'] = v
     return ActionSchema(
         action=action,
         provides_groups=frozenset(provides.keys()),
@@ -116,7 +115,7 @@ def _make_schema(
     )
 
 
-def _run_graph(graph, data: Dict[str, Any], action_name: str = "test_action") -> Dict[str, Any]:
+def _run_graph(graph, data: Dict[str, Any], action_name: str = 'test_action') -> Dict[str, Any]:
     action = Action(
         action_id=1,
         action_name=action_name,
@@ -127,7 +126,7 @@ def _run_graph(graph, data: Dict[str, Any], action_name: str = "test_action") ->
     return result.extracted_features
 
 
-def _run_graph_full_result(graph, data: Dict[str, Any], action_name: str = "test_action"):
+def _run_graph_full_result(graph, data: Dict[str, Any], action_name: str = 'test_action'):
     """Like _run_graph but returns the full ExecutionResult (for inspecting effects/errors)."""
     action = Action(
         action_id=1,
@@ -141,16 +140,18 @@ def _run_graph_full_result(graph, data: Dict[str, Any], action_name: str = "test
 def _compile_effect(sources_dict: Dict[str, str]):
     """Compile with the effect-aware registry (adds WhenRules/DeclareVerdict)."""
     sources = Sources.from_dict({k: dedent(v) for k, v in sources_dict.items()})
-    registry = ValidatorRegistry.from_validator_classes([
-        ValidateCallKwargs,
-        ValidateDynamicCallsHaveAnnotatedRValue,
-        ImportsMustNotHaveCycles,
-        UniqueStoredNames,
-        VariablesMustBeDefined,
-        ValidateStaticTypes,
-        FeatureNameToEntityTypeMapping,
-        get_config_registry().get_validator(),
-    ])
+    registry = ValidatorRegistry.from_validator_classes(
+        [
+            ValidateCallKwargs,
+            ValidateDynamicCallsHaveAnnotatedRValue,
+            ImportsMustNotHaveCycles,
+            UniqueStoredNames,
+            VariablesMustBeDefined,
+            ValidateStaticTypes,
+            FeatureNameToEntityTypeMapping,
+            get_config_registry().get_validator(),
+        ]
+    )
     validated = validate_sources(sources, _EFFECT_REGISTRY, registry)
     graph = compile_execution_graph(validated)
     return validated, graph
@@ -160,21 +161,23 @@ def _compile_effect(sources_dict: Dict[str, str]):
 # Test: top_level_group extraction (used by specializer internally)
 # ---------------------------------------------------------------------------
 
+
 def test_top_level_group_helper() -> None:
-    assert _get_top_level_group("$.user.id") == "user"
-    assert _get_top_level_group("$.target_user.ip") == "target_user"
-    assert _get_top_level_group("$.captcha_response.score") == "captcha_response"
-    assert _get_top_level_group("$.http_request.ua") == "http_request"
+    assert _get_top_level_group('$.user.id') == 'user'
+    assert _get_top_level_group('$.target_user.ip') == 'target_user'
+    assert _get_top_level_group('$.captcha_response.score') == 'captcha_response'
+    assert _get_top_level_group('$.http_request.ua') == 'http_request'
 
 
 # ---------------------------------------------------------------------------
 # Test: no absent groups → returns specialized graph with 0 pruned chains
 # ---------------------------------------------------------------------------
 
+
 def test_no_schema_returns_default_graph_unchanged() -> None:
     _, graph = _compile(
         {
-            "main.sml": """
+            'main.sml': """
             UserId: int = JsonData(path='$.user.id')
             """,
         }
@@ -190,82 +193,86 @@ def test_no_schema_returns_default_graph_unchanged() -> None:
 # Test: prunes absent root node
 # ---------------------------------------------------------------------------
 
+
 def test_prunes_absent_root_node_and_cascade() -> None:
     _, graph = _compile(
         {
-            "main.sml": """
+            'main.sml': """
             TargetUserId: int = JsonData(path='$.target_user.id')
             UserId: int = JsonData(path='$.user.id')
             """,
         }
     )
     schema = _make_schema(
-        provides={"user": {"id": "int"}},
-        absent=["target_user"],
+        provides={'user': {'id': 'int'}},
+        absent=['target_user'],
     )
     specialized = specialize_graph(graph, schema)
     assert specialized.pruned_count > 0
 
     # Execute with a payload that only has user data
-    result = _run_graph(specialized, {"user": {"id": 42}})
-    assert "UserId" in result
-    assert result["UserId"] == 42
+    result = _run_graph(specialized, {'user': {'id': 42}})
+    assert 'UserId' in result
+    assert result['UserId'] == 42
 
 
 # ---------------------------------------------------------------------------
 # Test: keeps present root node
 # ---------------------------------------------------------------------------
 
+
 def test_keeps_present_root_node() -> None:
     _, graph = _compile(
         {
-            "main.sml": """
+            'main.sml': """
             UserId: int = JsonData(path='$.user.id')
             """,
         }
     )
     schema = _make_schema(
-        provides={"user": {"id": "int"}},
-        absent=["target_user"],
+        provides={'user': {'id': 'int'}},
+        absent=['target_user'],
     )
     specialized = specialize_graph(graph, schema)
-    result = _run_graph(specialized, {"user": {"id": 99}})
-    assert result.get("UserId") == 99
+    result = _run_graph(specialized, {'user': {'id': 99}})
+    assert result.get('UserId') == 99
 
 
 # ---------------------------------------------------------------------------
 # Test: ResolveOptional with default is not pruned when its dep is absent
 # ---------------------------------------------------------------------------
 
+
 def test_resolve_optional_with_default_not_pruned() -> None:
     _, graph = _compile(
         {
-            "main.sml": """
+            'main.sml': """
             _TargetId: Optional[int] = JsonData(path='$.target_user.id', required=False)
             TargetIdOrZero: int = ResolveOptional(optional_value=_TargetId, default_value=0)
             """,
         }
     )
     schema = _make_schema(
-        provides={"user": {"id": "int"}},
-        absent=["target_user"],
+        provides={'user': {'id': 'int'}},
+        absent=['target_user'],
     )
     specialized = specialize_graph(graph, schema)
-    result = _run_graph(specialized, {"user": {"id": 1}})
+    result = _run_graph(specialized, {'user': {'id': 1}})
     assert isinstance(result, dict)
     # The default_value path must fire: _TargetId is pruned (absent group), so
     # ResolveOptional should return the default (0) rather than raise.
-    assert result.get("TargetIdOrZero") == 0
+    assert result.get('TargetIdOrZero') == 0
 
 
 # ---------------------------------------------------------------------------
 # Test: specialized graph executes identically on payload with only present fields
 # ---------------------------------------------------------------------------
 
+
 def test_specialized_graph_executes_identically_on_payload_subset() -> None:
     _, graph = _compile(
         {
-            "main.sml": """
+            'main.sml': """
             UserId: int = JsonData(path='$.user.id')
             UserName: Optional[str] = JsonData(path='$.user.username', required=False)
             TargetId: Optional[int] = JsonData(path='$.target_user.id', required=False)
@@ -273,23 +280,24 @@ def test_specialized_graph_executes_identically_on_payload_subset() -> None:
         }
     )
     schema = _make_schema(
-        provides={"user": {"id": "int", "username": "str"}},
-        absent=["target_user"],
+        provides={'user': {'id': 'int', 'username': 'str'}},
+        absent=['target_user'],
     )
-    payload = {"user": {"id": 7, "username": "alice"}}
+    payload = {'user': {'id': 7, 'username': 'alice'}}
 
     result_default = _run_graph(graph, payload)
     specialized = specialize_graph(graph, schema)
     result_specialized = _run_graph(specialized, payload)
 
     # Present fields must match
-    assert result_default.get("UserId") == result_specialized.get("UserId")
-    assert result_default.get("UserName") == result_specialized.get("UserName")
+    assert result_default.get('UserId') == result_specialized.get('UserId')
+    assert result_default.get('UserName') == result_specialized.get('UserName')
 
 
 # ---------------------------------------------------------------------------
 # Test: misclassified absent group — divergence pinned, no crash
 # ---------------------------------------------------------------------------
+
 
 def test_misclassified_absent_group_divergence_pinned() -> None:
     """Pin the failure mode for a schema that declares a group absent while the
@@ -317,7 +325,7 @@ def test_misclassified_absent_group_divergence_pinned() -> None:
     """
     _, graph = _compile(
         {
-            "main.sml": """
+            'main.sml': """
             UserId: int = JsonData(path='$.user.id')
             TargetId: Optional[int] = JsonData(path='$.target_user.id', required=False)
             """,
@@ -325,24 +333,24 @@ def test_misclassified_absent_group_divergence_pinned() -> None:
     )
     # Schema MIS-CLASSIFIES target_user as absent.
     schema = _make_schema(
-        provides={"user": {"id": "int"}},
-        absent=["target_user"],
+        provides={'user': {'id': 'int'}},
+        absent=['target_user'],
     )
     # Payload contradicts the schema: target_user IS present.
-    payload = {"user": {"id": 1}, "target_user": {"id": 999}}
+    payload = {'user': {'id': 1}, 'target_user': {'id': 999}}
 
     default_result = _run_graph(graph, payload)
     specialized = specialize_graph(graph, schema)
     specialized_result = _run_graph(specialized, payload)
 
     # Default graph extracts the real value.
-    assert default_result.get("TargetId") == 999
+    assert default_result.get('TargetId') == 999
     # Specialized graph PRUNED the extractor — feature is missing from result,
     # not set to None. This is the divergence.
-    assert "TargetId" not in specialized_result
+    assert 'TargetId' not in specialized_result
     # User-side data still works (specialization didn't break unrelated chains).
-    assert default_result.get("UserId") == 1
-    assert specialized_result.get("UserId") == 1
+    assert default_result.get('UserId') == 1
+    assert specialized_result.get('UserId') == 1
 
 
 def test_misclassified_absent_feeding_enforcement_falls_back_via_presence_guard() -> None:
@@ -422,9 +430,7 @@ def test_fold_matches_full_graph_node_for_node() -> None:
     assert specialized.fold_count > 0, 'expected enforcement-feeding absent nodes to be folded'
 
     # Run the FULL graph on a genuinely-absent payload and capture every resolved NodeResult.
-    action = Action(action_id=1, action_name='test_action', data={'user': {'id': 42}},
-                    timestamp=datetime.utcnow())
-    ctx = ExecutionContext(graph, action, UDFHelpers())
+    action = Action(action_id=1, action_name='test_action', data={'user': {'id': 42}}, timestamp=datetime.utcnow())
     full_graph_values: Dict[int, Any] = {}
 
     real_set = ExecutionContext.set_resolved_value
@@ -511,7 +517,7 @@ def test_mixed_and_or_outer_node_survives_when_inner_pruned() -> None:
     Node identity must be collision-free (id()-based)."""
     _, graph = _compile(
         {
-            "main.sml": """
+            'main.sml': """
             AbsentA: bool = JsonData(path='$.absent.a', required=False)
             AbsentB: bool = JsonData(path='$.absent.b', required=False)
             PresentLow: bool = JsonData(path='$.user.c', required=False)
@@ -519,34 +525,33 @@ def test_mixed_and_or_outer_node_survives_when_inner_pruned() -> None:
             """,
         }
     )
-    schema = _make_schema(provides={"user": {"c": "bool"}}, absent=["absent"])
+    schema = _make_schema(provides={'user': {'c': 'bool'}}, absent=['absent'])
     specialized = specialize_graph(graph, schema)
-    payload = {"user": {"c": True}}  # absent group genuinely absent; C present and live
+    payload = {'user': {'c': True}}  # absent group genuinely absent; C present and live
 
     full = _run_graph(graph, payload)
     spec = _run_graph(specialized, payload)
-    assert full.get("Cond") is True, f"full graph Cond should be True; got {full.get('Cond')!r}"
+    assert full.get('Cond') is True, f'full graph Cond should be True; got {full.get("Cond")!r}'
     # The Or (outer) must NOT be pruned just because the And (inner) was.
-    assert "Cond" in spec, "Cond was silently dropped — outer Or wrongly pruned (NodeKey collision)"
-    assert spec.get("Cond") == full.get("Cond"), (
-        f"Cond diverged: full={full.get('Cond')!r} spec={spec.get('Cond')!r}"
-    )
+    assert 'Cond' in spec, 'Cond was silently dropped — outer Or wrongly pruned (NodeKey collision)'
+    assert spec.get('Cond') == full.get('Cond'), f'Cond diverged: full={full.get("Cond")!r} spec={spec.get("Cond")!r}'
 
 
 # ---------------------------------------------------------------------------
 # Test: idempotent across runs
 # ---------------------------------------------------------------------------
 
+
 def test_idempotent_across_runs() -> None:
     _, graph = _compile(
         {
-            "main.sml": """
+            'main.sml': """
             TargetId: Optional[int] = JsonData(path='$.target_user.id', required=False)
             UserId: Optional[int] = JsonData(path='$.user.id', required=False)
             """,
         }
     )
-    schema = _make_schema(absent=["target_user"])
+    schema = _make_schema(absent=['target_user'])
 
     spec1 = specialize_graph(graph, schema)
     spec2 = specialize_graph(graph, schema)
@@ -557,13 +562,14 @@ def test_idempotent_across_runs() -> None:
 # Test: stable node keys survive rewrite
 # ---------------------------------------------------------------------------
 
+
 def test_node_keys_are_collision_free_identity() -> None:
     """Node keys are id()-based: int, and unique per distinct AST node — including
     the `A and B or C` case whose Or/And nodes share line+col (structural keys
     collided there; see test_mixed_and_or_outer_node_survives_when_inner_pruned)."""
     _, graph = _compile(
         {
-            "main.sml": """
+            'main.sml': """
             UserId: int = JsonData(path='$.user.id')
             Mixed: bool = UserId == 1 and UserId == 2 or UserId == 3
             """,
@@ -583,19 +589,20 @@ def test_node_keys_are_collision_free_identity() -> None:
 # Test: conservative when_all prunes rule when any dep pruned
 # ---------------------------------------------------------------------------
 
+
 def test_conservative_when_all_prunes_rule_when_any_dep_pruned() -> None:
     # Use required=True extractor so the type is `int` (not Optional[int]),
     # enabling the boolean comparison without a static type error.
     _, graph = _compile(
         {
-            "main.sml": """
+            'main.sml': """
             TargetId: int = JsonData(path='$.target_user.id')
             IsTargetHigh: bool = TargetId > 1000
             SomeRule = Rule(when_all=[IsTargetHigh], description='target is high')
             """,
         }
     )
-    schema = _make_schema(absent=["target_user"])
+    schema = _make_schema(absent=['target_user'])
     specialized = specialize_graph(graph, schema)
     # TargetId extractor is absent → pruned (seed).
     # IsTargetHigh depends only on TargetId → pruned (rule c).
@@ -607,15 +614,16 @@ def test_conservative_when_all_prunes_rule_when_any_dep_pruned() -> None:
         for c in _collect_all_chains_recursive(_get_all_sorted_chains(graph))
         if _node_key_from_chain(c) in pruned_keys
     ]
-    assert "Assign" in pruned_classes, "Expected at least one Assign (Rule) chain to be pruned"
+    assert 'Assign' in pruned_classes, 'Expected at least one Assign (Rule) chain to be pruned'
     assert specialized.pruned_count >= 3, (
-        f"Expected TargetId extractor + IsTargetHigh + SomeRule to all be pruned, got {specialized.pruned_count}"
+        f'Expected TargetId extractor + IsTargetHigh + SomeRule to all be pruned, got {specialized.pruned_count}'
     )
 
 
 # ---------------------------------------------------------------------------
 # Test: specialized_graphs cache is cleared on source reload
 # ---------------------------------------------------------------------------
+
 
 def test_conservative_when_all_mixed_presence_prunes_rule() -> None:
     """Regression: when_all=[live_dep, absent_dep] — the Rule must be pruned.
@@ -626,7 +634,7 @@ def test_conservative_when_all_mixed_presence_prunes_rule() -> None:
     """
     _, graph = _compile(
         {
-            "main.sml": """
+            'main.sml': """
             UserId: int = JsonData(path='$.user.id')
             TargetId: int = JsonData(path='$.target_user.id')
             UserHigh: bool = UserId > 100
@@ -636,8 +644,8 @@ def test_conservative_when_all_mixed_presence_prunes_rule() -> None:
         }
     )
     schema = _make_schema(
-        provides={"user": {"id": "int"}},
-        absent=["target_user"],
+        provides={'user': {'id': 'int'}},
+        absent=['target_user'],
     )
     specialized = specialize_graph(graph, schema)
 
@@ -645,16 +653,20 @@ def test_conservative_when_all_mixed_presence_prunes_rule() -> None:
     # MixedRule depends on TargetHigh (which is pruned) → MixedRule must be pruned (rule a).
     # UserHigh depends only on UserId (present) → NOT pruned.
     assert specialized.pruned_count >= 3, (
-        f"Expected TargetId + TargetHigh + MixedRule pruned, got {specialized.pruned_count}"
+        f'Expected TargetId + TargetHigh + MixedRule pruned, got {specialized.pruned_count}'
     )
     # Verify UserId and UserHigh are NOT in the pruned set
-    user_id_pruned = any("user" in str(k).lower() and "target" not in str(k).lower() for k in pruned_keys if "JsonData" in str(k) or "Call" in str(k))
+    user_id_pruned = any(
+        'user' in str(k).lower() and 'target' not in str(k).lower()
+        for k in pruned_keys
+        if 'JsonData' in str(k) or 'Call' in str(k)
+    )
     assert not user_id_pruned or True  # The real check: run should not crash
     # The decisive test: execution should not raise even though only user data is present
-    result = _run_graph(specialized, {"user": {"id": 42}})
-    assert result.get("UserId") == 42
+    result = _run_graph(specialized, {'user': {'id': 42}})
+    assert result.get('UserId') == 42
     # MixedRule must not appear (pruned, so never executed)
-    assert "MixedRule" not in result
+    assert 'MixedRule' not in result
 
 
 def test_resolve_optional_default_prunes_absent_value_with_no_extractor_run() -> None:
@@ -671,14 +683,14 @@ def test_resolve_optional_default_prunes_absent_value_with_no_extractor_run() ->
 
     _, graph = _compile(
         {
-            "main.sml": """
+            'main.sml': """
             _TargetId: Optional[int] = JsonData(path='$.target_user.id', required=False)
             _TargetName: Optional[str] = JsonData(path='$.target_user.name', required=False)
             TargetIdOrZero: int = ResolveOptional(optional_value=_TargetId, default_value=0)
             """,
         }
     )
-    schema = _make_schema(provides={"user": {"id": "int"}}, absent=["target_user"])
+    schema = _make_schema(provides={'user': {'id': 'int'}}, absent=['target_user'])
     specialized = specialize_graph(graph, schema)
 
     # Both absent-group extractors are pruned; the ResolveOptional itself is NOT.
@@ -687,30 +699,30 @@ def test_resolve_optional_default_prunes_absent_value_with_no_extractor_run() ->
         for c in _collect_all_chains_recursive(_get_all_sorted_chains(graph))
         if _node_key_from_chain(c) in specialized._pruned_keys
     }
-    assert specialized.pruned_count >= 2, f"absent extractors should be pruned; got {specialized.pruned_count}"
-    assert pruned_classes <= {"Assign", "Call", "Boolean"}, f"Unexpected pruned node types: {pruned_classes}"
+    assert specialized.pruned_count >= 2, f'absent extractors should be pruned; got {specialized.pruned_count}'
+    assert pruned_classes <= {'Assign', 'Call', 'Boolean'}, f'Unexpected pruned node types: {pruned_classes}'
 
     # Count ExpectedUdfException raised during execution — must be ZERO (no absent
     # extractor runs). This is the expected-UDF-error elimination the prune delivers.
-    raised = {"n": 0}
+    raised = {'n': 0}
     orig = ExpectedUdfException.__init__
 
     def _counting(self, *a, **k):
-        raised["n"] += 1
+        raised['n'] += 1
         orig(self, *a, **k)
 
     ExpectedUdfException.__init__ = _counting  # type: ignore[method-assign]
     try:
-        result = _run_graph(specialized, {"user": {"id": 1}})
+        result = _run_graph(specialized, {'user': {'id': 1}})
     finally:
         ExpectedUdfException.__init__ = orig  # type: ignore[method-assign]
 
     # Behavior preserved: default returned; pruned extractors absent from output.
-    assert result.get("TargetIdOrZero") == 0
-    assert "_TargetName" not in result
-    assert "_TargetId" not in result
+    assert result.get('TargetIdOrZero') == 0
+    assert '_TargetName' not in result
+    assert '_TargetId' not in result
     # The whole point: no expected UDF error was manufactured by an absent extractor.
-    assert raised["n"] == 0, f"expected ZERO ExpectedUdfException, got {raised['n']}"
+    assert raised['n'] == 0, f'expected ZERO ExpectedUdfException, got {raised["n"]}'
 
 
 def test_specialized_graphs_cleared_on_source_reload() -> None:
@@ -726,12 +738,12 @@ def test_specialized_graphs_cleared_on_source_reload() -> None:
 
     _, graph = _compile(
         {
-            "main.sml": """
+            'main.sml': """
             UserId: int = JsonData(path='$.user.id')
             """,
         }
     )
-    schema = _make_schema(absent=["target_user"])
+    schema = _make_schema(absent=['target_user'])
     specialized = specialize_graph(graph, schema)
 
     # Build a minimal mock OspreyEngine that has the real _handle_updated_sources
@@ -739,19 +751,17 @@ def test_specialized_graphs_cleared_on_source_reload() -> None:
     from osprey.worker.lib.osprey_engine import OspreyEngine
 
     engine = MagicMock(spec=OspreyEngine)
-    engine._specialized_graphs = {"test_action": specialized}
+    engine._specialized_graphs = {'test_action': specialized}
     engine._compile_execution_graph = MagicMock(return_value=graph)
     engine._config_subkey_handler = MagicMock()
     engine._validation_result_exporter = MagicMock()
     engine._sources_provider = MagicMock()
-    engine._sources_provider.get_current_sources.return_value.hash.return_value = "test_hash"
+    engine._sources_provider.get_current_sources.return_value.hash.return_value = 'test_hash'
 
     # Call the real method, bound to our mock instance
     OspreyEngine._handle_updated_sources(engine)
 
-    assert len(engine._specialized_graphs) == 0, (
-        "_specialized_graphs must be empty after a successful source reload"
-    )
+    assert len(engine._specialized_graphs) == 0, '_specialized_graphs must be empty after a successful source reload'
 
 
 def test_specialized_graphs_cleared_before_execution_graph_assigned() -> None:
@@ -770,49 +780,50 @@ def test_specialized_graphs_cleared_before_execution_graph_assigned() -> None:
     asserting it still equals the OLD graph (i.e., the clear happened before the
     swap, not after).
     """
-    from unittest.mock import MagicMock, call
+    from unittest.mock import MagicMock
+
     from osprey.worker.lib.osprey_engine import OspreyEngine
 
-    _, old_graph = _compile({"main.sml": "UserId: int = JsonData(path='$.user.id')\n"})
-    _, new_graph = _compile({"main.sml": "UserId: int = JsonData(path='$.user.id')\n"})
+    _, old_graph = _compile({'main.sml': "UserId: int = JsonData(path='$.user.id')\n"})
+    _, new_graph = _compile({'main.sml': "UserId: int = JsonData(path='$.user.id')\n"})
 
     engine = MagicMock(spec=OspreyEngine)
     engine._execution_graph = old_graph
-    engine._specialized_graphs = {"test_action": MagicMock()}
+    engine._specialized_graphs = {'test_action': MagicMock()}
     engine._compile_execution_graph = MagicMock(return_value=new_graph)
     engine._config_subkey_handler = MagicMock()
     engine._validation_result_exporter = MagicMock()
     engine._sources_provider = MagicMock()
-    engine._sources_provider.get_current_sources.return_value.hash.return_value = "h"
+    engine._sources_provider.get_current_sources.return_value.hash.return_value = 'h'
 
     # Capture the value of _execution_graph at the moment clear() is called.
     graph_at_clear_time: list = []
-    real_dict = engine._specialized_graphs
 
     class _TrackingDict(dict):
         def clear(self):
             graph_at_clear_time.append(engine._execution_graph)
             super().clear()
 
-    engine._specialized_graphs = _TrackingDict({"test_action": MagicMock()})
+    engine._specialized_graphs = _TrackingDict({'test_action': MagicMock()})
 
     OspreyEngine._handle_updated_sources(engine)
 
-    assert len(graph_at_clear_time) == 1, "clear() must be called exactly once"
+    assert len(graph_at_clear_time) == 1, 'clear() must be called exactly once'
     assert graph_at_clear_time[0] is old_graph, (
-        "clear() must be called while _execution_graph is still the OLD graph "
-        "(i.e., clear before assign). "
-        f"Got {graph_at_clear_time[0]!r} expected old_graph={old_graph!r}"
+        'clear() must be called while _execution_graph is still the OLD graph '
+        '(i.e., clear before assign). '
+        f'Got {graph_at_clear_time[0]!r} expected old_graph={old_graph!r}'
     )
     # After the call, _execution_graph must be the new graph
     assert engine._execution_graph is new_graph, (
-        "_execution_graph must be updated to new_graph after _handle_updated_sources"
+        '_execution_graph must be updated to new_graph after _handle_updated_sources'
     )
 
 
 # ---------------------------------------------------------------------------
 # Test: OSPREY_SCHEMAS_DIR bootstrap populates _specialized_graphs
 # ---------------------------------------------------------------------------
+
 
 def test_load_and_register_schemas_populates_specialized_graphs() -> None:
     """_load_and_register_schemas() reads schema files and registers specialized graphs.
@@ -821,15 +832,16 @@ def test_load_and_register_schemas_populates_specialized_graphs() -> None:
     a known action, _specialized_graphs is populated on engine init.
     """
     from unittest.mock import MagicMock, patch
+
     from osprey.worker.lib.osprey_engine import OspreyEngine
 
     _, graph = _compile(
         {
-            "main.sml": """
+            'main.sml': """
             ActionName = GetActionName()
             Require(rule=f"actions/{ActionName}.sml")
             """,
-            "actions/guild_joined.sml": """
+            'actions/guild_joined.sml': """
             UserId: int = JsonData(path='$.user.id')
             TargetId: int = JsonData(path='$.target_user.id')
             """,
@@ -837,35 +849,35 @@ def test_load_and_register_schemas_populates_specialized_graphs() -> None:
     )
 
     valid_schema = {
-        "$schema": "https://discord.dev/smite/action-schema/v1",
-        "action": "guild_joined",
-        "version": 1,
-        "generated_from": {"source": "test", "date": "2026-05-25", "authored_by": "test"},
-        "provides": {"user": {"id": "int"}},
-        "absent": ["target_user"],
-        "types_used": {},
-        "optional_for": {},
+        '$schema': 'https://discord.dev/smite/action-schema/v1',
+        'action': 'guild_joined',
+        'version': 1,
+        'generated_from': {'source': 'test', 'date': '2026-05-25', 'authored_by': 'test'},
+        'provides': {'user': {'id': 'int'}},
+        'absent': ['target_user'],
+        'types_used': {},
+        'optional_for': {},
     }
 
     with tempfile.TemporaryDirectory() as tmp_dir:
-        schema_path = Path(tmp_dir) / "guild_joined.json"
+        schema_path = Path(tmp_dir) / 'guild_joined.json'
         schema_path.write_text(json.dumps(valid_schema))
 
         engine = MagicMock(spec=OspreyEngine)
         engine._execution_graph = graph
         engine._specialized_graphs = {}
-        engine.get_known_action_names = MagicMock(return_value={"guild_joined"})
+        engine.get_known_action_names = MagicMock(return_value={'guild_joined'})
         # Cached gates (set in __init__): prune-all, no shadow.
-        engine._prune_filter = frozenset({"*"})
+        engine._prune_filter = frozenset({'*'})
         engine._shadow_filter = frozenset()
 
-        with patch.dict(os.environ, {"OSPREY_SCHEMAS_DIR": tmp_dir}):
+        with patch.dict(os.environ, {'OSPREY_SCHEMAS_DIR': tmp_dir}):
             OspreyEngine._load_and_register_schemas(engine)
 
         # Verify that register_specialized_graph was called for guild_joined
         engine.register_specialized_graph.assert_called_once()
         call_args = engine.register_specialized_graph.call_args
-        assert call_args[0][0] == "guild_joined", (
+        assert call_args[0][0] == 'guild_joined', (
             f"Expected register_specialized_graph called with 'guild_joined', got {call_args}"
         )
 
@@ -873,17 +885,18 @@ def test_load_and_register_schemas_populates_specialized_graphs() -> None:
 def test_load_and_register_schemas_noop_when_env_unset() -> None:
     """_load_and_register_schemas() is a no-op when OSPREY_SCHEMAS_DIR is not set."""
     from unittest.mock import MagicMock, patch
+
     from osprey.worker.lib.osprey_engine import OspreyEngine
 
     engine = MagicMock(spec=OspreyEngine)
     engine._specialized_graphs = {}
     engine._execution_graph = MagicMock()
-    engine._prune_filter = frozenset({"*"})  # gates enabled...
+    engine._prune_filter = frozenset({'*'})  # gates enabled...
     engine._shadow_filter = frozenset()
 
     with patch.dict(os.environ, {}, clear=False):
-        os.environ.pop("OSPREY_SCHEMAS_DIR", None)
-        os.environ.pop("OSPREY_RULES_PATH", None)  # ...but no schemas dir resolves
+        os.environ.pop('OSPREY_SCHEMAS_DIR', None)
+        os.environ.pop('OSPREY_RULES_PATH', None)  # ...but no schemas dir resolves
         OspreyEngine._load_and_register_schemas(engine)
 
     engine.register_specialized_graph.assert_not_called()
@@ -894,28 +907,29 @@ def test_load_and_register_schemas_noop_when_pruning_disabled() -> None:
     unset/false, _load_and_register_schemas registers NOTHING — so execute() uses
     the full graph and pruning cannot change behavior just by shipping schemas."""
     from unittest.mock import MagicMock, patch
+
     from osprey.worker.lib.osprey_engine import OspreyEngine
 
     valid_schema = {
-        "$schema": "https://discord.dev/smite/action-schema/v1",
-        "action": "guild_joined",
-        "version": 1,
-        "generated_from": {"source": "test", "date": "2026-06-20", "authored_by": "test"},
-        "provides": {"user": {"id": "int"}},
-        "absent": ["target_user"],
-        "types_used": {},
-        "optional_for": {},
+        '$schema': 'https://discord.dev/smite/action-schema/v1',
+        'action': 'guild_joined',
+        'version': 1,
+        'generated_from': {'source': 'test', 'date': '2026-06-20', 'authored_by': 'test'},
+        'provides': {'user': {'id': 'int'}},
+        'absent': ['target_user'],
+        'types_used': {},
+        'optional_for': {},
     }
     with tempfile.TemporaryDirectory() as tmp_dir:
-        (Path(tmp_dir) / "guild_joined.json").write_text(json.dumps(valid_schema))
+        (Path(tmp_dir) / 'guild_joined.json').write_text(json.dumps(valid_schema))
         engine = MagicMock(spec=OspreyEngine)
         engine._specialized_graphs = {}
         engine._execution_graph = MagicMock()
-        engine.get_known_action_names = MagicMock(return_value={"guild_joined"})
+        engine.get_known_action_names = MagicMock(return_value={'guild_joined'})
         # Schema dir IS set, but both gates are empty (default) -> no registration.
         engine._prune_filter = frozenset()
         engine._shadow_filter = frozenset()
-        with patch.dict(os.environ, {"OSPREY_SCHEMAS_DIR": tmp_dir}, clear=False):
+        with patch.dict(os.environ, {'OSPREY_SCHEMAS_DIR': tmp_dir}, clear=False):
             OspreyEngine._load_and_register_schemas(engine)
         engine.register_specialized_graph.assert_not_called()
 
@@ -923,85 +937,100 @@ def test_load_and_register_schemas_noop_when_pruning_disabled() -> None:
 def test_action_filter_env_parsing() -> None:
     """The prune/shadow env vars parse into per-action allowlists; default OFF."""
     from unittest.mock import patch
+
     from osprey.engine.schema.schema_loader import (
-        pruning_action_filter, shadow_action_filter, filter_includes,
+        filter_includes,
+        pruning_action_filter,
+        shadow_action_filter,
     )
 
     with patch.dict(os.environ, {}, clear=False):
-        os.environ.pop("OSPREY_TYPED_CONTRACT_PRUNING", None)
-        os.environ.pop("OSPREY_TYPED_CONTRACT_SHADOW", None)
+        os.environ.pop('OSPREY_TYPED_CONTRACT_PRUNING', None)
+        os.environ.pop('OSPREY_TYPED_CONTRACT_SHADOW', None)
         assert pruning_action_filter() == frozenset()  # default OFF
         assert shadow_action_filter() == frozenset()
-    for falsy in ("", "0", "false", "no", "off"):
-        with patch.dict(os.environ, {"OSPREY_TYPED_CONTRACT_PRUNING": falsy}):
+    for falsy in ('', '0', 'false', 'no', 'off'):
+        with patch.dict(os.environ, {'OSPREY_TYPED_CONTRACT_PRUNING': falsy}):
             assert pruning_action_filter() == frozenset()
-    for allval in ("1", "true", "*", "all"):  # truthy scalar -> all actions
-        with patch.dict(os.environ, {"OSPREY_TYPED_CONTRACT_PRUNING": allval}):
+    for allval in ('1', 'true', '*', 'all'):  # truthy scalar -> all actions
+        with patch.dict(os.environ, {'OSPREY_TYPED_CONTRACT_PRUNING': allval}):
             f = pruning_action_filter()
-            assert filter_includes(f, "anything") and filter_includes(f, "guild_joined")
-    with patch.dict(os.environ, {"OSPREY_TYPED_CONTRACT_PRUNING": "guild_joined, api_user_deleted"}):
+            assert filter_includes(f, 'anything') and filter_includes(f, 'guild_joined')
+    with patch.dict(os.environ, {'OSPREY_TYPED_CONTRACT_PRUNING': 'guild_joined, api_user_deleted'}):
         f = pruning_action_filter()
-        assert f == frozenset({"guild_joined", "api_user_deleted"})
-        assert filter_includes(f, "guild_joined")
-        assert not filter_includes(f, "message_sent")  # not listed
+        assert f == frozenset({'guild_joined', 'api_user_deleted'})
+        assert filter_includes(f, 'guild_joined')
+        assert not filter_includes(f, 'message_sent')  # not listed
 
 
 def test_allowlist_registers_only_listed_actions() -> None:
     """With a per-action prune allowlist, only the listed action is specialized."""
     from unittest.mock import MagicMock, patch
+
     from osprey.worker.lib.osprey_engine import OspreyEngine
 
     _, graph = _compile(
         {
-            "main.sml": """
+            'main.sml': """
             ActionName = GetActionName()
             Require(rule=f"actions/{ActionName}.sml")
             """,
-            "actions/guild_joined.sml": "UserId: int = JsonData(path='$.user.id')",
-            "actions/message_sent.sml": "UserId2: int = JsonData(path='$.user.id')",
+            'actions/guild_joined.sml': "UserId: int = JsonData(path='$.user.id')",
+            'actions/message_sent.sml': "UserId2: int = JsonData(path='$.user.id')",
         }
     )
     schema = {
-        "$schema": "https://discord.dev/smite/action-schema/v1", "action": "guild_joined",
-        "version": 1, "generated_from": {"source": "test", "date": "2026-06-20"},
-        "provides": {"user": {"id": "int"}}, "absent": ["target_user"], "types_used": {}, "optional_for": {},
+        '$schema': 'https://discord.dev/smite/action-schema/v1',
+        'action': 'guild_joined',
+        'version': 1,
+        'generated_from': {'source': 'test', 'date': '2026-06-20'},
+        'provides': {'user': {'id': 'int'}},
+        'absent': ['target_user'],
+        'types_used': {},
+        'optional_for': {},
     }
     with tempfile.TemporaryDirectory() as tmp_dir:
-        for a in ("guild_joined", "message_sent"):
-            (Path(tmp_dir) / f"{a}.json").write_text(json.dumps({**schema, "action": a}))
+        for a in ('guild_joined', 'message_sent'):
+            (Path(tmp_dir) / f'{a}.json').write_text(json.dumps({**schema, 'action': a}))
         engine = MagicMock(spec=OspreyEngine)
         engine._execution_graph = graph
         engine._specialized_graphs = {}
-        engine.get_known_action_names = MagicMock(return_value={"guild_joined", "message_sent"})
-        engine._prune_filter = frozenset({"guild_joined"})  # only this one
+        engine.get_known_action_names = MagicMock(return_value={'guild_joined', 'message_sent'})
+        engine._prune_filter = frozenset({'guild_joined'})  # only this one
         engine._shadow_filter = frozenset()
-        with patch.dict(os.environ, {"OSPREY_SCHEMAS_DIR": tmp_dir}):
+        with patch.dict(os.environ, {'OSPREY_SCHEMAS_DIR': tmp_dir}):
             OspreyEngine._load_and_register_schemas(engine)
         registered = [c.args[0] for c in engine.register_specialized_graph.call_args_list]
-        assert registered == ["guild_joined"], registered  # message_sent NOT registered
+        assert registered == ['guild_joined'], registered  # message_sent NOT registered
 
 
 def test_shadow_filter_registers_so_shadow_can_run() -> None:
     """A shadow-only allowlist still registers the specialized graph (so the engine
     can run + diff it), even with pruning disabled."""
     from unittest.mock import MagicMock, patch
+
     from osprey.worker.lib.osprey_engine import OspreyEngine
 
-    _, graph = _compile({"main.sml": "UserId: int = JsonData(path='$.user.id')"})
+    _, graph = _compile({'main.sml': "UserId: int = JsonData(path='$.user.id')"})
     schema = {
-        "$schema": "https://discord.dev/smite/action-schema/v1", "action": "guild_joined",
-        "version": 1, "generated_from": {"source": "test", "date": "2026-06-20"},
-        "provides": {"user": {"id": "int"}}, "absent": ["target_user"], "types_used": {}, "optional_for": {},
+        '$schema': 'https://discord.dev/smite/action-schema/v1',
+        'action': 'guild_joined',
+        'version': 1,
+        'generated_from': {'source': 'test', 'date': '2026-06-20'},
+        'provides': {'user': {'id': 'int'}},
+        'absent': ['target_user'],
+        'types_used': {},
+        'optional_for': {},
     }
     with tempfile.TemporaryDirectory() as tmp_dir:
-        (Path(tmp_dir) / "guild_joined.json").write_text(json.dumps(schema))
+        (Path(tmp_dir) / 'guild_joined.json').write_text(json.dumps(schema))
         engine = MagicMock(spec=OspreyEngine)
         engine._execution_graph = graph
         engine._specialized_graphs = {}
-        engine.get_known_action_names = MagicMock(return_value={"guild_joined"})
-        engine._prune_filter = frozenset()             # pruning OFF
-        engine._shadow_filter = frozenset({"guild_joined"})  # shadow ON
-        with patch.dict(os.environ, {"OSPREY_SCHEMAS_DIR": tmp_dir}):
+        engine.get_known_action_names = MagicMock(return_value={'guild_joined'})
+        engine._prune_filter = frozenset()  # pruning OFF
+        engine._shadow_filter = frozenset({'guild_joined'})  # shadow ON
+        with patch.dict(os.environ, {'OSPREY_SCHEMAS_DIR': tmp_dir}):
             OspreyEngine._load_and_register_schemas(engine)
         engine.register_specialized_graph.assert_called_once()
 
@@ -1012,24 +1041,25 @@ def test_shadow_divergences_helper() -> None:
     a changed decision key, or differing effects => divergence. Time-variant effect
     description metadata is normalized out."""
     from types import SimpleNamespace
+
     from osprey.engine.executor.graph_specializer import shadow_divergences
 
     def res(features, effects=None):
         return SimpleNamespace(extracted_features=features, effects=effects or {})
 
     # Identical -> no divergence.
-    assert shadow_divergences(res({"UserId": 1}), res({"UserId": 1})) == []
+    assert shadow_divergences(res({'UserId': 1}), res({'UserId': 1})) == []
     # Spec is missing a feature the full graph had (pruned absent group) -> OK.
-    assert shadow_divergences(res({"UserId": 1, "TargetUserId": None}), res({"UserId": 1})) == []
+    assert shadow_divergences(res({'UserId': 1, 'TargetUserId': None}), res({'UserId': 1})) == []
     # Spec ADDED a feature the full graph didn't (pruning must only remove) -> divergence.
-    assert shadow_divergences(res({"UserId": 1}), res({"UserId": 1, "X": 2}))
+    assert shadow_divergences(res({'UserId': 1}), res({'UserId': 1, 'X': 2}))
     # A changed NON-decision feature value is NOT an enforcement divergence (feature-key bar;
     # this is exactly the absent-group False->None case the RFC correction allows).
-    assert shadow_divergences(res({"UserId": 1}), res({"UserId": 2})) == []
+    assert shadow_divergences(res({'UserId': 1}), res({'UserId': 2})) == []
     # A changed DECISION key IS a divergence.
-    assert shadow_divergences(res({"__verdicts": ["ban"]}), res({"__verdicts": []}))
+    assert shadow_divergences(res({'__verdicts': ['ban']}), res({'__verdicts': []}))
     # Effects differ (e.g. a dropped verdict) -> divergence.
-    assert shadow_divergences(res({}, {str: ["v"]}), res({}, {}))
+    assert shadow_divergences(res({}, {str: ['v']}), res({}, {}))
 
     # Effects differing ONLY in time-variant description metadata -> NOT a divergence.
     class _Eff:
@@ -1039,8 +1069,7 @@ def test_shadow_divergences_helper() -> None:
         def __repr__(self) -> str:
             return "LabelEffect(name='ban', value=True, features={'_AccountAge': '%s'})" % self.age
 
-    assert shadow_divergences(res({}, {str: [_Eff("171261810.97")]}),
-                              res({}, {str: [_Eff("171261811.00")]})) == []
+    assert shadow_divergences(res({}, {str: [_Eff('171261810.97')]}), res({}, {str: [_Eff('171261811.00')]})) == []
 
 
 # ===========================================================================
@@ -1093,12 +1122,8 @@ def test_pruned_rule_in_whenrules_any_does_not_kill_live_rules() -> None:
 
     # No KeyError-class error in the error_infos.
     for ei in spec_result.error_infos:
-        assert not isinstance(ei.error, KeyError), (
-            f'KeyError for pruned rule leaked into error_infos: {ei.error}'
-        )
-    assert spec_verdicts == ['live'], (
-        f'LiveRule should have fired verdict "live"; got {spec_verdicts}'
-    )
+        assert not isinstance(ei.error, KeyError), f'KeyError for pruned rule leaked into error_infos: {ei.error}'
+    assert spec_verdicts == ['live'], f'LiveRule should have fired verdict "live"; got {spec_verdicts}'
     # Both graphs agree on the verdict (full graph also fires LiveRule).
     assert full_verdicts == spec_verdicts
 
@@ -1148,12 +1173,8 @@ def test_nested_when_all_expression_with_pruned_dep_fails_gracefully() -> None:
     spec_verdicts = [v.verdict for v in spec_result.verdicts]
 
     for ei in spec_result.error_infos:
-        assert not isinstance(ei.error, KeyError), (
-            f'KeyError for pruned dep leaked into error_infos: {ei.error}'
-        )
-    assert spec_verdicts == [], (
-        f'Specialized graph should emit no verdicts (compound cond False); got {spec_verdicts}'
-    )
+        assert not isinstance(ei.error, KeyError), f'KeyError for pruned dep leaked into error_infos: {ei.error}'
+    assert spec_verdicts == [], f'Specialized graph should emit no verdicts (compound cond False); got {spec_verdicts}'
 
     # Present-group features must be identical in both graphs.
     full_features = _run_graph(graph, payload)
@@ -1176,9 +1197,7 @@ def test_resolved_keyerror_for_non_pruned_node_still_raises() -> None:
         }
     )
     # Full (non-specialized) graph — no nodes are pruned.
-    action = Action(
-        action_id=1, action_name='test_action', data={'user': {'id': 1}}, timestamp=datetime.utcnow()
-    )
+    action = Action(action_id=1, action_name='test_action', data={'user': {'id': 1}}, timestamp=datetime.utcnow())
     ctx = ExecutionContext(graph, action, UDFHelpers())
 
     # Get an ASTNode from the graph that was never executed (never set via set_resolved_value).
@@ -1269,20 +1288,39 @@ def test_declared_udf_is_folded_without_executing_its_body() -> None:
     yet the enforcement rule reading it still fires. With the rescue removed, this works purely via
     folding: the absent extractor + the declared UDF fold, so the Rule's deps are never pruned."""
     registry = UDFRegistry.with_udfs(
-        JsonData, EntityJson, Import, Require, GetActionName, ResolveOptional, Rule, WhenRules,
-        DeclareVerdict, FoldableProbeUdf,
+        JsonData,
+        EntityJson,
+        Import,
+        Require,
+        GetActionName,
+        ResolveOptional,
+        Rule,
+        WhenRules,
+        DeclareVerdict,
+        FoldableProbeUdf,
     )
-    sources = Sources.from_dict({'main.sml': dedent("""
+    sources = Sources.from_dict(
+        {
+            'main.sml': dedent("""
         _V: Optional[int] = JsonData(path='$.absent.v', required=False)
         Flag: bool = FoldableProbeUdf(value=_V)
         R = Rule(when_all=[Flag], description='probe')
         WhenRules(rules_any=[R], then=[DeclareVerdict(verdict="hit")])
-    """)})
-    vreg = ValidatorRegistry.from_validator_classes([
-        ValidateCallKwargs, ValidateDynamicCallsHaveAnnotatedRValue, ImportsMustNotHaveCycles,
-        UniqueStoredNames, VariablesMustBeDefined, ValidateStaticTypes, FeatureNameToEntityTypeMapping,
-        get_config_registry().get_validator(),
-    ])
+    """)
+        }
+    )
+    vreg = ValidatorRegistry.from_validator_classes(
+        [
+            ValidateCallKwargs,
+            ValidateDynamicCallsHaveAnnotatedRValue,
+            ImportsMustNotHaveCycles,
+            UniqueStoredNames,
+            VariablesMustBeDefined,
+            ValidateStaticTypes,
+            FeatureNameToEntityTypeMapping,
+            get_config_registry().get_validator(),
+        ]
+    )
     validated = validate_sources(sources, registry, vreg)
     graph = compile_execution_graph(validated)
 
