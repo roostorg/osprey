@@ -129,9 +129,7 @@ class ExecutionContext:
         '_input_encoding',
         '_execution_graph',
         '_outputs',
-        '_pending_executions',
         '_resolved_node_values',
-        '_visited_executions',
         '_effects',
         '_udf_helpers',
         '_external_service_accessors_by_getter_id',
@@ -150,9 +148,7 @@ class ExecutionContext:
         self._execution_graph = execution_graph
         self._udf_helpers: UDFHelpers = helpers
         self._outputs: dict[str, Any] = {}
-        self._pending_executions: set[DependencyChain] = set()
         self._resolved_node_values: dict[int, NodeResult] = {}
-        self._visited_executions: set[DependencyChain] = set()
         # a k/v store of effects, by effect type
         self._effects: defaultdict[Type[EffectBase], list[EffectBase]] = defaultdict(list)
         self._external_service_accessors_by_getter_id: dict[int, Any] = {}
