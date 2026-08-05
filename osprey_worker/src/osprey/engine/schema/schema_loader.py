@@ -20,6 +20,7 @@ _SUPPORTED_VERSION = 1
 # PRUNING prunes; SHADOW serves the full result but computes+diffs the specialized one.
 _PRUNING_ENV = "OSPREY_TYPED_CONTRACT_PRUNING"
 _SHADOW_ENV = "OSPREY_TYPED_CONTRACT_SHADOW"
+_LAZY_SPECIALIZE_ENV = "OSPREY_TYPED_CONTRACT_LAZY_SPECIALIZE"
 _ALL = "*"
 _FALSEY = {"", "0", "false", "no", "off"}
 _TRUTHY = {"1", "true", "yes", "on", "*", "all"}
@@ -45,6 +46,20 @@ def shadow_action_filter() -> FrozenSet[str]:
 
 def filter_includes(action_filter: FrozenSet[str], action_name: str) -> bool:
     return _ALL in action_filter or action_name in action_filter
+
+
+def lazy_specialize_enabled() -> bool:
+    """Whether the asyncio engine warms specializations in the background instead of
+    specializing every allowlisted action inline on the reload path. Defaults ON.
+
+    Set ``OSPREY_TYPED_CONTRACT_LAZY_SPECIALIZE=0`` to restore the inline-eager pass —
+    the escape hatch if background warm-up ever misbehaves. Only the asyncio engine
+    reads this; the gevent engine is always eager (see ``typed_contract_warmer``).
+    """
+    raw = os.environ.get(_LAZY_SPECIALIZE_ENV, "").strip().lower()
+    if not raw:
+        return True
+    return raw not in _FALSEY
 
 
 @dataclass(frozen=True)

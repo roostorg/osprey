@@ -13,7 +13,8 @@ logic to these functions.
 from __future__ import annotations
 
 import logging
-from typing import Callable, Dict, FrozenSet, Iterable, Mapping, Optional, Tuple
+from pathlib import Path
+from typing import Callable, Dict, FrozenSet, Iterable, List, Mapping, Optional, Tuple
 
 from osprey.engine.executor.execution_graph import ExecutionGraph
 from osprey.engine.executor.graph_specializer import (
@@ -24,6 +25,7 @@ from osprey.engine.executor.graph_specializer import (
     specialize_graph,
 )
 from osprey.engine.schema.schema_loader import (
+    ActionSchema,
     SchemaLoadError,
     filter_includes,
     load_schema_for_action,
@@ -39,6 +41,79 @@ _YIELD_EXECUTION_TIME_MS = 5
 _YIELD_TIME_MS = 25
 """Yield cadence for the specialization pass. Same values the compile path uses, so both
 CPU-bound rules-reload phases have the same duty cycle."""
+
+
+def schema_source_for(schemas: Optional[Mapping[str, str]]) -> Tuple[bool, Optional[Path]]:
+    """Resolve where schemas come from: ``(use_sources, schemas_dir)``.
+
+    The in-memory ``schemas`` map carried on the etcd Sources payload wins when non-empty
+    (that is the only source the prod worker has, which ships no schemas directory on disk);
+    otherwise fall back to the on-disk directory. ``(False, None)`` means no schema source is
+    available at all, so specialization must no-op.
+    """
+    if schemas:
+        return True, None
+    return False, resolve_schemas_dir()
+
+
+def filter_matching_actions(register_filter: FrozenSet[str], action_names: Iterable[str]) -> List[str]:
+    """The action names the typed-contract allowlist selects, in a stable (sorted) order.
+
+    Sorted because ``get_known_action_names`` returns a set, and the warm-up order needs to be
+    reproducible across pods for a given corpus.
+    """
+    return sorted(name for name in action_names if filter_includes(register_filter, name))
+
+
+def _load_action_schema(
+    action_name: str,
+    schemas: Optional[Mapping[str, str]],
+    schemas_dir: Optional[Path],
+) -> Optional[ActionSchema]:
+    """One action's schema, from the etcd Sources map when given, else from disk.
+
+    Returns ``None`` both when the action simply has no schema and when its schema fails to
+    parse (logged) — a broken schema must degrade to full-graph semantics, never raise into a
+    reload or a warm-up pass.
+    """
+    try:
+        if schemas:  # in-memory etcd Sources map (the truthiness narrows Optional for mypy)
+            return load_schema_for_action_from_sources(action_name, schemas)
+        if schemas_dir is not None:
+            return load_schema_for_action(action_name, schemas_dir)
+    except SchemaLoadError as e:
+        log.warning("Failed to load schema for %s: %s", action_name, e)
+    return None
+
+
+def specialize_one_action(
+    full_graph: ExecutionGraph,
+    action_name: str,
+    index: Optional[SpecializationIndex] = None,
+    schemas: Optional[Mapping[str, str]] = None,
+    schemas_dir: Optional[Path] = None,
+    yield_during_specialize: bool = False,
+) -> Optional[ExecutionGraph]:
+    """Load + specialize exactly ONE action. Returns ``None`` if it has no usable schema.
+
+    The single-action counterpart to ``load_and_register_specialized_graphs``, for the
+    background warmer: it owns its own ``periodic_execution_yield`` block (so each action gets
+    the same GIL duty cycle the eager pass gives the whole batch) and therefore must NOT be
+    called from inside one — the context manager refuses to nest.
+
+    ``index`` is the whole-corpus, action-independent analysis. Callers warming many actions
+    against one graph must build it once and pass it in; omitting it makes every call rebuild
+    it, which is what #25 removed from the per-action cost.
+    """
+    schema = _load_action_schema(action_name, schemas, schemas_dir)
+    if schema is None:
+        return None
+    with periodic_execution_yield(
+        on=yield_during_specialize,
+        execution_time_ms=_YIELD_EXECUTION_TIME_MS,
+        yield_time_ms=_YIELD_TIME_MS,
+    ):
+        return specialize_graph(full_graph, schema, index=index)
 
 
 def load_and_register_specialized_graphs(
@@ -73,8 +148,7 @@ def load_and_register_specialized_graphs(
     register_filter = prune_filter | shadow_filter
     if not register_filter:
         return 0
-    use_sources = bool(schemas)
-    schemas_dir = None if use_sources else resolve_schemas_dir()
+    use_sources, schemas_dir = schema_source_for(schemas)
     if not use_sources and schemas_dir is None:
         return 0
     loaded = 0
@@ -91,15 +165,7 @@ def load_and_register_specialized_graphs(
             maybe_periodic_yield()
             if not filter_includes(register_filter, action_name):
                 continue
-            try:
-                if schemas:  # in-memory etcd Sources map (the truthiness narrows Optional for mypy)
-                    schema = load_schema_for_action_from_sources(action_name, schemas)
-                else:
-                    assert schemas_dir is not None  # guaranteed by the gate above
-                    schema = load_schema_for_action(action_name, schemas_dir)
-            except SchemaLoadError as e:
-                log.warning("Failed to load schema for %s: %s", action_name, e)
-                continue
+            schema = _load_action_schema(action_name, schemas, schemas_dir)
             if schema is None:
                 continue
             if index is None:
@@ -120,6 +186,7 @@ def resolve_dispatch(
     shadow_filter: FrozenSet[str],
     full_graph: ExecutionGraph,
     action_data: Optional[Mapping[str, object]] = None,
+    on_miss: Optional[Callable[[str], None]] = None,
 ) -> Tuple[ExecutionGraph, Optional[ExecutionGraph]]:
     """Decide which graph(s) to run for an action. Returns
     ``(graph_to_serve, shadow_spec_or_None)``:
@@ -129,6 +196,12 @@ def resolve_dispatch(
       * else   -> ``(full, None)``            — default graph, zero overhead
 
     Schema-less / non-allowlisted actions hit the final case (``dict.get`` is O(1)).
+
+    ``on_miss`` is called with the action name when the action IS allowlisted but has no
+    specialized graph registered yet — the signal the asyncio engine's background warmer uses
+    to move that action to the front of its queue, so live traffic warms hot actions first
+    (see ``osprey.async_worker.typed_contract_warmer``). It must be cheap and non-raising: this
+    is the per-action hot path. Omitted by the eager (gevent) engine, where a miss is terminal.
 
     Presence guard (safety keystone): the specialized graph constant-folds enforcement-feeding
     absent-group nodes, baking in the "absent" assumption. So the PRUNE branch serves the lean
@@ -153,6 +226,12 @@ def resolve_dispatch(
         metrics.increment('osprey.typed_contracts.guard_fallback', tags=[f'action:{action_name}'])
     if spec is not None and filter_includes(shadow_filter, action_name):
         return full_graph, spec
+    if (
+        spec is None
+        and on_miss is not None
+        and (filter_includes(prune_filter, action_name) or filter_includes(shadow_filter, action_name))
+    ):
+        on_miss(action_name)
     return full_graph, None
 
 
