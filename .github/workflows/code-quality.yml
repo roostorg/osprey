@@ -97,6 +97,7 @@ jobs:
 
   ui-quality:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
@@ -116,6 +117,10 @@ jobs:
 
       - name: Run prettier check
         run: npm run format:check
+        working-directory: osprey_ui
+
+      - name: Build UI
+        run: npm run build
         working-directory: osprey_ui
 
   rust-quality:
@@ -149,19 +154,20 @@ jobs:
         run: cargo fmt --check
         working-directory: osprey_coordinator
 
+      - name: Install protobuf compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
       - name: Run Clippy linting
         run: cargo clippy -- -D warnings
         working-directory: osprey_coordinator
         continue-on-error: true
 
       - name: Build Rust project
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-          cargo build --verbose
+        run: cargo build --verbose
         working-directory: osprey_coordinator
 
       - name: Run Rust tests
         run: cargo test --verbose
         working-directory: osprey_coordinator
-        continue-on-error: true
