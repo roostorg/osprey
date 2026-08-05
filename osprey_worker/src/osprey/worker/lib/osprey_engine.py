@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 from time import time
-from typing import Callable, Dict, Generic, List, Optional, Set, Tuple, Type, TypeVar
+from typing import Callable, Dict, FrozenSet, Generic, List, Optional, Set, Tuple, Type, TypeVar
 
 import gevent
 import gevent.pool
@@ -102,13 +102,16 @@ class OspreyEngine:
         self._sources_provider.set_sources_watcher(self._handle_updated_sources)
         self._config_subkey_handler = ConfigSubkeyHandler(config_registry, self._execution_graph.validated_sources)
         self._validation_result_exporter = validation_exporter
-        # Per-action typed-contract gates (env, read once). _prune_filter: actions
-        # pruned; _shadow_filter: actions run in shadow (full result used + diffed).
-        self._prune_filter = pruning_action_filter()
-        self._shadow_filter = shadow_action_filter()
         # Specialized graphs for typed action contracts (§4.5 runtime dispatch)
         # Maps action_name -> SpecializedExecutionGraph. Populated via register_specialized_graph().
         self._specialized_graphs: Dict[str, ExecutionGraph] = {}
+        # Per-action typed-contract gates (env). Re-read fresh here AND on every
+        # reload (see _handle_updated_sources) rather than snapshotted once, so an
+        # operator can flip the allowlist via a rules republish without a pod
+        # restart. _prune_filter: actions pruned; _shadow_filter: actions run in
+        # shadow (full result used + diffed).
+        self._prune_filter: FrozenSet[str] = pruning_action_filter()
+        self._shadow_filter: FrozenSet[str] = shadow_action_filter()
         self._load_and_register_schemas()
 
     def _compile_execution_graph(self, disable_periodic_yield: bool = False) -> ExecutionGraph:
@@ -144,10 +147,15 @@ class OspreyEngine:
 
     def _load_and_register_schemas(self) -> None:
         """Load schemas from the resolved schemas directory and register
-        specialized graphs.
+        specialized graphs, using the current self._prune_filter / self._shadow_filter.
 
-        Called after every compilation (init + reload). No-op if
-        :func:`resolve_schemas_dir` returns ``None`` (neither
+        Callers (init + _handle_updated_sources) re-read those filters from env
+        immediately before calling this, so the allowlist is re-evaluated fresh on
+        every reload rather than snapshotted once — an operator can change
+        OSPREY_TYPED_CONTRACT_PRUNING / _SHADOW and apply it with a no-op rules
+        republish instead of a pod restart.
+
+        No-op if :func:`resolve_schemas_dir` returns ``None`` (neither
         ``OSPREY_SCHEMAS_DIR`` nor ``OSPREY_RULES_PATH/schemas`` resolves).
 
         Only registers graphs for actions in the prune OR shadow allowlist
@@ -192,6 +200,11 @@ class OspreyEngine:
         self._execution_graph = new_graph
         log.info(f'Compiled new execution graph for sources={self._sources_provider.get_current_sources().hash()}')
 
+        # Re-read the typed-contract allowlist env vars on every reload (not just
+        # once at __init__) so an operator can apply a changed allowlist with a
+        # no-op rules republish instead of a pod restart.
+        self._prune_filter = pruning_action_filter()
+        self._shadow_filter = shadow_action_filter()
         self._load_and_register_schemas()
         self._config_subkey_handler.dispatch_config(self._execution_graph.validated_sources)
         # Confirm to the provider which sources are now live so it dedups no-op
@@ -268,7 +281,7 @@ class OspreyEngine:
         be used instead of the default graph (§4.5 runtime dispatch).
         """
         self._specialized_graphs[action_name] = graph
-        log.info("Registered specialized graph for action %r", action_name)
+        log.info('Registered specialized graph for action %r', action_name)
 
     def execute(
         self,
@@ -296,8 +309,12 @@ class OspreyEngine:
             )
 
         serve_graph, shadow_spec = resolve_dispatch(
-            action_name, self._specialized_graphs, self._prune_filter,
-            self._shadow_filter, self._execution_graph, action_data=action.data,
+            action_name,
+            self._specialized_graphs,
+            self._prune_filter,
+            self._shadow_filter,
+            self._execution_graph,
+            action_data=action.data,
         )
         result = _exec(serve_graph)
         if shadow_spec is not None:
@@ -306,7 +323,7 @@ class OspreyEngine:
             try:
                 record_shadow(action_name, result, _exec(shadow_spec))
             except Exception:
-                log.exception("typed-contract shadow comparison failed for %s", action_name)
+                log.exception('typed-contract shadow comparison failed for %s', action_name)
                 metrics.increment('osprey.typed_contracts.shadow_error', tags=[f'action:{action_name}'])
         return result
 
