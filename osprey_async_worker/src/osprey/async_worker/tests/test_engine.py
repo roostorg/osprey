@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from osprey.async_worker.engine import AsyncOspreyEngine
+from osprey.engine.executor import typed_contract_dispatch as dispatch
 
 
 def _make_engine_with_stub_compile(initial_graph, recompile_graph):
@@ -356,3 +357,42 @@ def test_break_old_graph_cycles_evicts_reverted_content_from_ast_cache():
         for key in list(parsed_ast_root_cache.keys()):
             if key not in before:
                 parsed_ast_root_cache.pop(key, None)
+
+
+@pytest.mark.asyncio
+async def test_handle_updated_sources_reevaluates_typed_contract_filters(monkeypatch):
+    """OSPREY_TYPED_CONTRACT_PRUNING must be re-read on every reload, not
+    snapshotted once at __init__ — otherwise an operator can only flip the
+    typed-contract kill switch via a pod restart."""
+    monkeypatch.delenv('OSPREY_TYPED_CONTRACT_PRUNING', raising=False)
+    monkeypatch.delenv('OSPREY_TYPED_CONTRACT_SHADOW', raising=False)
+
+    class _Sources:
+        def hash(self):
+            return 'new_hash'
+
+        def schemas(self):
+            return {'schemas/test_action.json': '{}'}
+
+    new = MagicMock(name='new_graph')
+    new.validated_sources.sources = _Sources()
+
+    engine = _make_engine_with_stub_compile(MagicMock(name='old_graph'), new)
+    assert engine._specialized_graphs == {}, 'pruning is off at boot; nothing should be registered yet'
+
+    monkeypatch.setattr(engine, 'get_known_action_names', lambda: {'test_action'})
+    monkeypatch.setattr(dispatch, 'load_schema_for_action_from_sources', lambda action_name, schemas: object())
+    monkeypatch.setattr(dispatch, 'specialize_graph', lambda full_graph, schema: object())
+
+    # Flip the kill switch AFTER boot -- a reload must pick it up without a restart.
+    monkeypatch.setenv('OSPREY_TYPED_CONTRACT_PRUNING', '*')
+
+    with (
+        patch.object(engine, 'compile_execution_graph', new=AsyncMock(return_value=new)),
+        patch.object(engine, '_break_old_graph_cycles', new=lambda *_: None),
+    ):
+        await engine._handle_updated_sources()
+
+    assert 'test_action' in engine._specialized_graphs, (
+        'reload did not re-read OSPREY_TYPED_CONTRACT_PRUNING; the allowlist change should not require a restart'
+    )

@@ -11,7 +11,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from time import time
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Set, Type, TypedDict
+from typing import TYPE_CHECKING, Callable, Dict, FrozenSet, List, Optional, Set, Type, TypedDict
 
 if TYPE_CHECKING:
     from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter
@@ -117,15 +117,17 @@ class AsyncOspreyEngine:
         self._sources_provider.set_sources_watcher(self._handle_updated_sources)
         self._config_subkey_handler = ConfigSubkeyHandler(config_registry, self._execution_graph.validated_sources)
         self._validation_result_exporter = validation_exporter
-        # Per-action typed-contract gates (env, read once — env is stable per process).
-        # _prune_filter: actions whose graph is pruned. _shadow_filter: actions run in
-        # shadow (full result used, specialized computed + diffed).
-        self._prune_filter = pruning_action_filter()
-        self._shadow_filter = shadow_action_filter()
         # Specialized graphs for typed action contracts (§4.5 runtime dispatch).
         # Maps action_name -> SpecializedExecutionGraph.  Populated via
         # register_specialized_graph() during init + every source reload.
         self._specialized_graphs: Dict[str, ExecutionGraph] = {}
+        # Per-action typed-contract gates (env). Re-read fresh here AND on every
+        # reload (see _handle_updated_sources) rather than snapshotted once, so an
+        # operator can flip the allowlist via a rules republish without a pod
+        # restart. _prune_filter: actions whose graph is pruned. _shadow_filter:
+        # actions run in shadow (full result used, specialized computed + diffed).
+        self._prune_filter: FrozenSet[str] = pruning_action_filter()
+        self._shadow_filter: FrozenSet[str] = shadow_action_filter()
         self._load_and_register_schemas()
         # Freeze the boot graph out of gen-2 GC (see _freeze_resident_graph).
         # Runs AFTER schema load so the specialized graphs are frozen into the
@@ -229,6 +231,13 @@ class AsyncOspreyEngine:
             # request path.
             self._execution_gate.set()
 
+            # Re-read the typed-contract allowlist env vars on every reload (not just
+            # once at __init__) so an operator can apply a changed allowlist with a
+            # no-op rules republish instead of a pod restart. Cheap (os.environ +
+            # string parsing) so it stays on the event loop rather than the executor.
+            self._prune_filter = pruning_action_filter()
+            self._shadow_filter = shadow_action_filter()
+
             # Reload typed-action-contracts specialized graphs against the new full
             # graph. Hoisted off the event loop because specialize_graph walks every
             # chain in the full graph and, scaled across all schema'd actions
@@ -323,7 +332,13 @@ class AsyncOspreyEngine:
 
     def _load_and_register_schemas(self) -> None:
         """Load schemas from the resolved schemas directory and register
-        specialized graphs.
+        specialized graphs, using the current self._prune_filter / self._shadow_filter.
+
+        Callers (init + _handle_updated_sources) re-read those filters from env
+        immediately before calling this, so the allowlist is re-evaluated fresh on
+        every reload rather than snapshotted once — an operator can change
+        OSPREY_TYPED_CONTRACT_PRUNING / _SHADOW and apply it with a no-op rules
+        republish instead of a pod restart.
 
         Synchronous, CPU-heavy: each ``specialize_graph`` call walks every
         chain in the full graph. On the reload path this is dispatched via
