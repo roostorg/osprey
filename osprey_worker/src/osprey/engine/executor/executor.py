@@ -195,18 +195,30 @@ def _wrapped_execution(
 ) -> NodeResult:
     caught_exception: Optional[Exception] = None
 
-    metric_tags = _get_metric_tags(context)
+    call_node: Optional[CallExecutor] = None
     if isinstance(chain.executor, CallExecutor):
         # This half step is necessary as mypy has a difficult time linting build in class variables
-        call_node: CallExecutor = chain.executor
-        metric_tags += [f'udf:{call_node._udf.__class__.__name__}']
+        call_node = chain.executor
+
+    # Most nodes never emit a metric (sync, non-UDF nodes with no exception), so tags are built
+    # lazily on first use and memoized -- avoids paying for an 8-element list + 3 f-strings on
+    # every node execution when nothing ends up consuming them.
+    _metric_tags: Optional[List[str]] = None
+
+    def _get_tags() -> List[str]:
+        nonlocal _metric_tags
+        if _metric_tags is None:
+            _metric_tags = _get_metric_tags(context)
+            if call_node is not None:
+                _metric_tags += [f'udf:{call_node._udf.__class__.__name__}']
+        return _metric_tags
 
     # Make mypy happy
     execution_result: NodeResult = _UNSET_RESULT
     try:
         # only track time if using an async function
         if chain.executor.execute_async:
-            with metrics.timed('udf_execution_duration', tags=metric_tags, sample_rate=0.01):
+            with metrics.timed('udf_execution_duration', tags=_get_tags(), sample_rate=0.01):
                 execution_result = Ok(chain.executor.execute(execution_context=context))
         else:
             execution_result = Ok(chain.executor.execute(execution_context=context))
@@ -219,16 +231,16 @@ def _wrapped_execution(
 
     finally:
         # If this is a call node which executed a UDF, push the results of the execution to the datadog metrics.
-        if isinstance(chain.executor, CallExecutor):
+        if call_node is not None:
             if execution_result.is_ok() and chain.executor and chain.executor.execute_async:
-                metrics.increment('udf_execution', tags=metric_tags + ['exc_name:none', 'result:success'])
+                metrics.increment('udf_execution', tags=_get_tags() + ['exc_name:none', 'result:success'])
 
             # Ignore some well-known "unexpected" exceptions that are spammy.
             elif not _is_spammy_exception(caught_exception):
                 exc_name = caught_exception.__class__.__name__
                 metrics.increment(
                     'udf_execution',
-                    tags=metric_tags + [f'exc_name:{exc_name}', 'result:unexpected_failure'],
+                    tags=_get_tags() + [f'exc_name:{exc_name}', 'result:unexpected_failure'],
                 )
 
         return execution_result

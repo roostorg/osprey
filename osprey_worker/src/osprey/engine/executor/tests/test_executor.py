@@ -2,6 +2,7 @@ import abc
 import json
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Type
+from unittest.mock import MagicMock
 
 import gevent
 import gevent.event
@@ -15,6 +16,8 @@ from osprey.engine.stdlib.udfs.import_ import Import
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import BatchableUDFBase, UDFBase
 from osprey.engine.udf.registry import UDFRegistry
+from osprey.worker.lib.instruments import metrics
+from pytest_mock import MockFixture
 from result import Err, Ok, Result
 
 
@@ -791,3 +794,66 @@ def test_dependent_node_imported_after_parent_node_executed(
         }
     )
     assert data == {'Child': 8}
+
+
+_BASE_METRIC_TAGS = [
+    'action:test',
+    'encoding:unknown',
+    'batch_type:none',
+    'host:none',
+    'kube_node:none',
+    'instance-id:none',
+    'internal-hostname:none',
+    'name:none',
+]
+
+
+def _sole_call_for_metric(mock: MagicMock, metric_name: str) -> Any:
+    """`execute()` also emits an unrelated `osprey.action_health` increment; isolate the call
+    for the metric under test, asserting there's exactly one."""
+    matching = [call for call in mock.call_args_list if call.args[0] == metric_name]
+    assert len(matching) == 1, f'expected exactly one {metric_name!r} call, got {matching}'
+    return matching[0]
+
+
+def test_metric_tags_on_sync_call_exception(
+    udf_registry: UDFRegistry, execute_with_result: ExecuteWithResultFunction, mocker: MockFixture
+) -> None:
+    """A sync (execute_async=False) Call node that raises never enters the `metrics.timed`
+    branch, but must still emit `udf_execution` with the exact same tags the old eager-build
+    code would have produced."""
+    udf_registry.register(FailingUdf)
+    mocker.patch('osprey.worker.lib.instruments.metrics.increment')
+    mocker.patch('osprey.worker.lib.instruments.metrics.timed')
+
+    result = execute_with_result('A = FailingUdf()')
+
+    assert len(result.error_infos) == 1
+    metrics.timed.assert_not_called()
+    call = _sole_call_for_metric(metrics.increment, 'udf_execution')
+    assert call.kwargs['tags'] == [
+        *_BASE_METRIC_TAGS,
+        'udf:FailingUdf',
+        'exc_name:ValueError',
+        'result:unexpected_failure',
+    ]
+
+
+def test_metric_tags_on_async_udf_success(
+    blocking_udf: Type[BlockingUdf], execute_with_result: ExecuteWithResultFunction, mocker: MockFixture
+) -> None:
+    """An async (execute_async=True) UDF that succeeds consumes tags in both the `metrics.timed`
+    call and the success `metrics.increment` -- both must be built from the identical base list."""
+    mocker.patch('osprey.worker.lib.instruments.metrics.increment')
+    mocker.patch('osprey.worker.lib.instruments.metrics.timed')
+
+    result = execute_with_result('A = BlockingUdf(block=False, id="a")', async_pool=None)
+
+    assert result.error_infos == []
+    timed_call = _sole_call_for_metric(metrics.timed, 'udf_execution_duration')
+    assert timed_call.kwargs['sample_rate'] == 0.01
+    timed_tags = timed_call.kwargs['tags']
+    assert timed_tags == [*_BASE_METRIC_TAGS, 'udf:BlockingUdf']
+
+    inc_call = _sole_call_for_metric(metrics.increment, 'udf_execution')
+    assert inc_call.kwargs['tags'] == [*timed_tags, 'exc_name:none', 'result:success']
