@@ -214,7 +214,8 @@ class ExecutionPlanState:
         self._ready.clear()
         for index in indices:
             self._remaining[index] = _OUT
-        return tuple(self._plan.chains[index] for index in indices)
+        ready_chains = [self._plan.chains[index] for index in indices]
+        return tuple(ready_chains)
 
     def done(self, chain: DependencyChain) -> None:
         index = self._plan.index_by_chain_id[id(chain)]
