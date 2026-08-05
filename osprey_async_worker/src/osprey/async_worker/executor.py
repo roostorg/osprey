@@ -11,7 +11,8 @@ primitives will NOT work here — they must be ported to AsyncUDFBase.
 import asyncio
 import os
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
+from contextlib import asynccontextmanager
+from typing import Any, AsyncContextManager, AsyncIterator, Dict, List, Optional, Sequence, Set, Tuple
 
 import sentry_sdk
 from ddtrace import tracer
@@ -50,6 +51,14 @@ logger = get_logger(__name__)
 _UNSET_RESULT: NodeResult = Err(None)
 
 _DEFAULT_MAX_ASYNC_PER_EXECUTION = 12
+_OBSERVABILITY_SAMPLE_RATE = 0.01
+_CARDINALITY_SUPPRESSION_TAGS = (
+    'host:none',
+    'kube_node:none',
+    'instance-id:none',
+    'internal-hostname:none',
+    'name:none',
+)
 
 
 def _get_ready_sync_and_async(
@@ -85,11 +94,7 @@ def _get_metric_tags(
         f'batch_type:{batchable_udf.get_batchable_arguments_type().__name__}'
         if batchable_udf is not None
         else 'batch_type:none',
-        'host:none',
-        'kube_node:none',
-        'instance-id:none',
-        'internal-hostname:none',
-        'name:none',
+        *_CARDINALITY_SUPPRESSION_TAGS,
     ]
 
 
@@ -110,6 +115,31 @@ def _record_udf_metric(
             tags=metric_tags + [f'exc_name:{exc_name}', 'result:unexpected_failure'],
         )
         sentry_sdk.capture_exception(caught_exception)
+
+
+def _get_permit_metric_tags(context: ExecutionContext, udf: Optional[object] = None) -> List[str]:
+    udf_name = udf.__class__.__name__ if udf is not None else 'none'
+    return [f'action:{context.get_action_name()}', f'udf:{udf_name}', *_CARDINALITY_SUPPRESSION_TAGS]
+
+
+@asynccontextmanager
+async def _acquire_udf_permit(semaphore: asyncio.Semaphore, metric_tags: List[str]) -> AsyncIterator[None]:
+    """Acquire one execution permit while measuring only time spent waiting for it."""
+    with metrics.timed('udf_permit_wait_duration', tags=metric_tags, sample_rate=_OBSERVABILITY_SAMPLE_RATE):
+        await semaphore.acquire()
+    try:
+        yield
+    finally:
+        semaphore.release()
+
+
+def _select_udf_permit(
+    semaphore: asyncio.Semaphore, context: ExecutionContext, udf: Optional[object] = None
+) -> AsyncContextManager[None]:
+    """Use the raw semaphore unless acquisition would have to wait."""
+    if not semaphore.locked():
+        return semaphore
+    return _acquire_udf_permit(semaphore, _get_permit_metric_tags(context, udf))
 
 
 # --- Sync execution (inline, for pure-computation UDFs) ---
@@ -173,7 +203,8 @@ async def _execute_legacy_in_executor(
     error_info_: List[NodeErrorInfo],
 ) -> NodeResult:
     """Run a legacy sync UDF in the thread pool with semaphore."""
-    async with semaphore:
+    udf = chain.executor._udf if isinstance(chain.executor, CallExecutor) else None
+    async with _select_udf_permit(semaphore, context, udf):
         return await loop.run_in_executor(None, _execute_legacy_sync, chain, context, error_info_)
 
 
@@ -237,9 +268,9 @@ async def _execute_async_udf(
     chain (e.g. by `_enqueue_batches` while checking whether a batch would form), so this
     skips a redundant `resolve_arguments` call for the same message.
     """
-    async with semaphore:
-        call_executor: CallExecutor = chain.executor  # type: ignore
-        udf: AsyncUDFBase[Any, Any] = call_executor._udf  # type: ignore
+    call_executor: CallExecutor = chain.executor  # type: ignore
+    udf: AsyncUDFBase[Any, Any] = call_executor._udf  # type: ignore
+    async with _select_udf_permit(semaphore, context, udf):
         metric_tags = _get_metric_tags(context) + [f'udf:{udf.__class__.__name__}']
 
         caught_exception: Optional[Exception] = None
@@ -272,7 +303,7 @@ async def _execute_async_batch(
     error_info_: List[NodeErrorInfo],
 ) -> Sequence[NodeResult]:
     """Execute a batch of native async batchable UDFs."""
-    async with semaphore:
+    async with _select_udf_permit(semaphore, context, udfs[0]):
         assert len(udfs) == len(nodes) == len(batchable_args)
         num_executions = len(udfs)
         metric_tags = _get_metric_tags(context, udfs[0])
@@ -390,7 +421,7 @@ async def _enqueue_batches(
         else:
             # Legacy sync batchable UDF — run in thread pool
             async def _run_legacy_batch(s, u, n, a, c, e):
-                async with s:
+                async with _select_udf_permit(s, c, u[0]):
                     return await loop.run_in_executor(None, _execute_legacy_batch_sync, u, n, a, c, e)
 
             task = asyncio.create_task(
@@ -434,8 +465,13 @@ async def execute(
     in_progress_batches: Dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]] = {}
 
     ready_sync, ready_async = _get_ready_sync_and_async(allow_async, context)
+    max_ready_depth = 0
+    max_in_flight = 0
 
     while ready_sync or ready_async or in_progress_singlets or in_progress_batches:
+        if ready_async and len(ready_async) > max_ready_depth:
+            max_ready_depth = len(ready_async)
+
         # Check for already-finished tasks (non-blocking)
         finished_singlets = [t for t in in_progress_singlets if t.done()]
         finished_batches = [t for t in in_progress_batches if t.done()]
@@ -487,6 +523,12 @@ async def execute(
                     )
                 in_progress_singlets[task] = async_chain
 
+            in_flight = len(in_progress_singlets)
+            if in_progress_batches:
+                in_flight += sum(len(chains) for chains in in_progress_batches.values())
+            if in_flight > max_in_flight:
+                max_in_flight = in_flight
+
         # Execute sync chains inline (pure computation, fast, no I/O).
         # Only yield deep into a long sync round when async tasks are in flight.
         # Each sleep(0) triggers a full event loop cycle including gRPC C-core polling,
@@ -500,6 +542,21 @@ async def execute(
             context.set_resolved_value(sync_chain, result)
 
         ready_sync, ready_async = _get_ready_sync_and_async(allow_async, context)
+
+    # Per-action maxima expose saturation without emitting StatsD calls on every scheduler wave.
+    scheduler_tags = [f'action:{context.get_action_name()}', *_CARDINALITY_SUPPRESSION_TAGS]
+    metrics.histogram(
+        'udf_ready_depth',
+        max_ready_depth,
+        tags=scheduler_tags,
+        sample_rate=_OBSERVABILITY_SAMPLE_RATE,
+    )
+    metrics.histogram(
+        'udf_in_flight',
+        max_in_flight,
+        tags=scheduler_tags,
+        sample_rate=_OBSERVABILITY_SAMPLE_RATE,
+    )
 
     # --- Build result ---
 

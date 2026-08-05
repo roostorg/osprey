@@ -6,7 +6,7 @@ import weakref
 from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass
-from time import time_ns
+from time import monotonic_ns, time_ns
 from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type, TypeVar, Union, cast
 
 import grpc
@@ -69,6 +69,7 @@ _GRPC_CODE_FALLBACK = grpc.StatusCode.UNKNOWN
 # This is the name of the span that the pigeon client uses.  The Service RPC Guard uses this name
 # to avoid creating a new span for the grpc request and just adds info to the existing guard span
 PIGEON_REQUEST_SPAN_NAME = 'pigeon.request'
+_NANOSECONDS_PER_MILLISECOND = 1_000_000
 
 
 class RoutingType:
@@ -426,6 +427,31 @@ class AsyncUnaryUnaryRpcCallable(Generic[T, Request, Response]):
     method_name: str
     client: RoutedClient[T]
 
+    async def _sleep_before_retry(self, started_at: int, attempt: int, reason: str) -> None:
+        sleep_duration = 0.5 * attempt
+        tags = [
+            f'service:{self.service_name}',
+            f'resource_name:{self.method_name}',
+            f'reason:{reason}',
+        ]
+        sleep_started_at = monotonic_ns()
+        try:
+            await asyncio.sleep(sleep_duration)
+        finally:
+            sleep_finished_at = monotonic_ns()
+            metrics.timing(
+                'pigeon.retry_sleep_duration',
+                (sleep_finished_at - sleep_started_at) / _NANOSECONDS_PER_MILLISECOND,
+                tags=tags,
+            )
+
+        metrics.increment('pigeon.retry_attempt', tags=tags)
+        metrics.timing(
+            'pigeon.retry_elapsed_duration',
+            (sleep_finished_at - started_at) / _NANOSECONDS_PER_MILLISECOND,
+            tags=tags,
+        )
+
     async def __call__(
         self,
         message: Request,
@@ -439,6 +465,7 @@ class AsyncUnaryUnaryRpcCallable(Generic[T, Request, Response]):
         retry_policy = retry_policy or self.client._default_retry_policy
         try_count = 0
         last_exception = None
+        started_at = monotonic_ns()
         while True:
             try:
                 instances_to_skip = try_count
@@ -459,7 +486,7 @@ class AsyncUnaryUnaryRpcCallable(Generic[T, Request, Response]):
                 if retry_policy and try_count < retry_policy['max_secondaries_to_retry']:
                     # Retry ServiceUnavailable (empty ring at startup) with backoff
                     try_count += 1
-                    await asyncio.sleep(0.5 * try_count)
+                    await self._sleep_before_retry(started_at, try_count, 'service_unavailable')
                     continue
 
                 raise e
@@ -472,7 +499,7 @@ class AsyncUnaryUnaryRpcCallable(Generic[T, Request, Response]):
                     and try_count < retry_policy['max_secondaries_to_retry']
                 ):
                     try_count += 1
-                    await asyncio.sleep(0.5 * try_count)
+                    await self._sleep_before_retry(started_at, try_count, f'grpc.{error_code.name.lower()}')
                     continue
 
                 raise e

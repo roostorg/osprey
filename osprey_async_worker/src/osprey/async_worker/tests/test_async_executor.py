@@ -6,12 +6,14 @@ executor for stdlib UDFs (pure computation, no I/O).
 
 import asyncio
 from collections import defaultdict
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from textwrap import dedent
-from typing import ClassVar, Sequence
+from typing import ClassVar, Iterator, Sequence
 
 import pytest
+from osprey.async_worker import executor as async_executor
 from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase, AsyncUDFBase
 from osprey.async_worker.executor import execute
 from osprey.engine.ast.grammar import Source
@@ -25,6 +27,7 @@ from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.stdlib import get_config_registry
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.registry import UDFRegistry
+from osprey.worker.lib.instruments import metrics
 from result import Ok
 
 
@@ -42,6 +45,19 @@ class GatedAsyncUdf(AsyncUDFBase[GatedArguments, str]):
         if type(self).entered == 2:
             type(self).both_entered.set()
         await type(self).release.wait()
+        return arguments.value
+
+
+class PermitGatedAsyncUdf(AsyncUDFBase[GatedArguments, str]):
+    entered: ClassVar[int] = 0
+    first_entered: ClassVar[asyncio.Event]
+    release: ClassVar[asyncio.Event]
+
+    async def async_execute(self, execution_context: ExecutionContext, arguments: GatedArguments) -> str:
+        type(self).entered += 1
+        if type(self).entered == 1:
+            type(self).first_entered.set()
+            await type(self).release.wait()
         return arguments.value
 
 
@@ -189,6 +205,112 @@ async def test_concurrent_actions_isolate_dynamic_source_activation(
         'a': ['main.sml', 'actions/a.sml'],
         'b': ['main.sml', 'actions/b.sml'],
     }
+
+
+@pytest.mark.asyncio
+async def test_uncontended_permit_skips_wait_metric_and_tag_building(
+    async_execute_with_result, stdlib_udf_registry: UDFRegistry, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stdlib_udf_registry.register(PermitGatedAsyncUdf)
+    PermitGatedAsyncUdf.entered = 0
+    PermitGatedAsyncUdf.first_entered = asyncio.Event()
+    PermitGatedAsyncUdf.release = asyncio.Event()
+    PermitGatedAsyncUdf.release.set()
+    timed_metrics: list[str] = []
+    permit_tag_calls = 0
+    get_permit_metric_tags = async_executor._get_permit_metric_tags
+
+    @contextmanager
+    def record_timing(metric_name: str, **_kwargs: object) -> Iterator[None]:
+        timed_metrics.append(metric_name)
+        yield
+
+    def record_permit_tags(context: ExecutionContext, udf: object | None = None) -> list[str]:
+        nonlocal permit_tag_calls
+        permit_tag_calls += 1
+        return get_permit_metric_tags(context, udf)
+
+    monkeypatch.setattr(metrics, 'timed', record_timing)
+    monkeypatch.setattr(async_executor, '_get_permit_metric_tags', record_permit_tags)
+
+    result = await async_execute_with_result(
+        'A = PermitGatedAsyncUdf(value="a")',
+        udf_registry=stdlib_udf_registry,
+        max_concurrent=1,
+    )
+
+    assert result.extracted_features['A'] == 'a'
+    assert timed_metrics == ['udf_execution_duration']
+    assert permit_tag_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_permit_wait_is_measured_before_remote_execution(
+    async_execute_with_result, stdlib_udf_registry: UDFRegistry, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Removing the permit timer must fail while execution timing remains intact."""
+    stdlib_udf_registry.register(PermitGatedAsyncUdf)
+    PermitGatedAsyncUdf.entered = 0
+    PermitGatedAsyncUdf.first_entered = asyncio.Event()
+    PermitGatedAsyncUdf.release = asyncio.Event()
+    timing_events: list[tuple[str, str]] = []
+    timing_options: list[tuple[str, dict[str, object]]] = []
+
+    @contextmanager
+    def record_timing(metric_name: str, **_kwargs: object) -> Iterator[None]:
+        timing_options.append((metric_name, _kwargs))
+        timing_events.append((metric_name, 'start'))
+        try:
+            yield
+        finally:
+            timing_events.append((metric_name, 'end'))
+
+    monkeypatch.setattr(metrics, 'timed', record_timing)
+    execution_task = asyncio.create_task(
+        async_execute_with_result(
+            """
+            A = PermitGatedAsyncUdf(value="a")
+            B = PermitGatedAsyncUdf(value="b")
+            """,
+            udf_registry=stdlib_udf_registry,
+            max_concurrent=1,
+        )
+    )
+
+    try:
+        await asyncio.wait_for(PermitGatedAsyncUdf.first_entered.wait(), timeout=5)
+        await asyncio.sleep(0)
+        assert not execution_task.done()
+    finally:
+        PermitGatedAsyncUdf.release.set()
+
+    result = await execution_task
+
+    assert result.extracted_features['A'] == 'a'
+    assert result.extracted_features['B'] == 'b'
+    assert timing_events == [
+        ('udf_execution_duration', 'start'),
+        ('udf_permit_wait_duration', 'start'),
+        ('udf_execution_duration', 'end'),
+        ('udf_permit_wait_duration', 'end'),
+        ('udf_execution_duration', 'start'),
+        ('udf_execution_duration', 'end'),
+    ]
+    permit_options = [options for name, options in timing_options if name == 'udf_permit_wait_duration']
+    assert permit_options == [
+        {
+            'tags': [
+                'action:test',
+                'udf:PermitGatedAsyncUdf',
+                'host:none',
+                'kube_node:none',
+                'instance-id:none',
+                'internal-hostname:none',
+                'name:none',
+            ],
+            'sample_rate': 0.01,
+        },
+    ]
 
 
 @pytest.mark.asyncio
@@ -412,6 +534,51 @@ def counting_batchable_udf():
     yield CountingBatchableUdf
     CountingBatchableUdf.resolve_call_count = 0
     CountingBatchableUdf.raise_on_resolve = False
+
+
+@pytest.mark.asyncio
+async def test_scheduler_histograms_emit_per_action_maxima_for_batched_nodes(
+    async_execute_with_result,
+    stdlib_udf_registry: UDFRegistry,
+    counting_batchable_udf,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Each action emits one maximum-depth observation, counting batch nodes rather than tasks."""
+    histogram_calls: list[tuple[str, float, list[str] | None, float | None]] = []
+
+    def record_histogram(
+        metric_name: str,
+        value: float = 1,
+        tags: list[str] | None = None,
+        sample_rate: float | None = None,
+    ) -> None:
+        histogram_calls.append((metric_name, value, tags, sample_rate))
+
+    monkeypatch.setattr(metrics, 'histogram', record_histogram)
+    stdlib_udf_registry.register(counting_batchable_udf)
+
+    result = await async_execute_with_result(
+        """
+        A = CountingBatchableUdf(key="shared", value="a")
+        B = CountingBatchableUdf(key="shared", value="b")
+        """,
+        udf_registry=stdlib_udf_registry,
+    )
+
+    assert result.extracted_features['A'] == 'a'
+    assert result.extracted_features['B'] == 'b'
+    scheduler_tags = [
+        'action:test',
+        'host:none',
+        'kube_node:none',
+        'instance-id:none',
+        'internal-hostname:none',
+        'name:none',
+    ]
+    assert histogram_calls == [
+        ('udf_ready_depth', 2, scheduler_tags, 0.01),
+        ('udf_in_flight', 2, scheduler_tags, 0.01),
+    ]
 
 
 @pytest.mark.asyncio
