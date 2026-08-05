@@ -131,9 +131,7 @@ class Sources:
         # root with glob (NOT rglob) so every key is rooted at 'schemas/' and round-trips
         # through from_dict's prefix partition; rglob would also match a nested 'schemas/' dir,
         # whose non-prefixed key would crash from_dict's .sml assert.
-        schemas = {
-            '/'.join(path.relative_to(root).parts): path.read_text() for path in root.glob('schemas/**/*.json')
-        }
+        schemas = {'/'.join(path.relative_to(root).parts): path.read_text() for path in root.glob('schemas/**/*.json')}
 
         return builder.build(schemas=schemas)
 

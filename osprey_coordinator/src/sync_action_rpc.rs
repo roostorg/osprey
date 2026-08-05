@@ -93,7 +93,9 @@ impl SyncActionServer {
         // whose bidi streams are about to tear down, and end up hitting the
         // client-side deadline as `DEADLINE_EXCEEDED`.
         if self.is_shutting_down.load(Ordering::Acquire) {
-            self.metrics.sync_classification_failure_shutting_down.incr();
+            self.metrics
+                .sync_classification_failure_shutting_down
+                .incr();
             return Err(tonic::Status::unavailable("coordinator draining"));
         }
 

@@ -23,6 +23,7 @@ import queue
 from types import SimpleNamespace
 
 import pytest
+from osprey.async_worker.lib.discovery.async_directory import AsyncServiceWatcher, _AsyncHashRing
 from osprey.worker.lib.discovery.exceptions import ServiceUnavailable
 from osprey.worker.lib.discovery.service import Service
 from osprey.worker.lib.etcd import (
@@ -32,8 +33,6 @@ from osprey.worker.lib.etcd import (
     IncrementalSyncDelete,
     IncrementalSyncUpsert,
 )
-
-from osprey.async_worker.lib.discovery.async_directory import AsyncServiceWatcher, _AsyncHashRing
 
 # Sentinel pushed into a fake watcher's inbox to make continue_watching() return.
 # After the watch task is cancelled, the executor thread is still parked in
@@ -52,7 +51,7 @@ class FakeWatcher:
 
     def __init__(self, initial_event):
         self.initial_event = initial_event
-        self.inbox: "queue.Queue" = queue.Queue()
+        self.inbox: 'queue.Queue' = queue.Queue()
         self.begin_count = 0
         self.continue_count = 0
 

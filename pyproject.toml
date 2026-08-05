@@ -209,6 +209,7 @@ ignore_unused = [
     "mypy-extensions",
     "mypy-protobuf",
     "pre-commit",
+    "pytest-asyncio",
     "pytest-flask",
     "pytest-order",
     "requests-mock",
@@ -288,7 +289,7 @@ module = "pydantic.main"
 implicit_reexport = true
 
 [[tool.mypy.overrides]]
-module = ["jsonpath_rw", "minio.*"]
+module = ["jsonpath_rw", "jsonpath_rw.*", "minio.*"]
 ignore_missing_imports = true
 
 # third party packages we don't care about
@@ -299,6 +300,7 @@ module = [
     "perf_tools.*",
     "gevent.*",
     "grpc.*",
+    "hash_ring",
     "pydruid.*",
     "phone_iso3166.*",
     "typing_inspect.*",

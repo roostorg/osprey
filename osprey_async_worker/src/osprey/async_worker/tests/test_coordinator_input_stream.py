@@ -1,17 +1,14 @@
 """Tests for the async coordinator input stream."""
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-
 from osprey.async_worker.lib.coordinator_input_stream import (
     GrpcConnectionDiscoveryPool,
     OspreyCoordinatorBiDirectionalStream,
     OspreyCoordinatorInputStream,
-    AsyncVerdictsAckingContext,
 )
-
 
 # --- GrpcConnectionDiscoveryPool ---
 

@@ -303,7 +303,8 @@ async def _execute_async_batch(
                         exc_name = exc_name + f'.{result.value.code().name.lower()}'
                     metrics.increment(
                         'udf_execution',
-                        tags=metric_tags + [f'udf:{udf.__class__.__name__}', f'exc_name:{exc_name}', 'result:unexpected_failure'],
+                        tags=metric_tags
+                        + [f'udf:{udf.__class__.__name__}', f'exc_name:{exc_name}', 'result:unexpected_failure'],
                     )
                 type_checked_results.append(Err(None))
                 continue
@@ -397,9 +398,7 @@ async def _enqueue_batches(
             )
         new_batch_tasks[task] = chains
 
-    remaining = [
-        (chain, pre_resolved_by_chain.get(chain)) for chain in ready_async if chain not in chains_to_remove
-    ]
+    remaining = [(chain, pre_resolved_by_chain.get(chain)) for chain in ready_async if chain not in chains_to_remove]
     return remaining, new_batch_tasks
 
 
@@ -456,9 +455,12 @@ async def execute(
             context.set_resolved_value(chain, task.result())
 
         # Process finished batches
-        for task in finished_batches:
-            chains = in_progress_batches.pop(task)
-            results = task.result()
+        # Distinct loop variable from the singlet `task` above: the two dicts hold
+        # tasks with different result types (Task[NodeResult] vs Task[Sequence[NodeResult]]),
+        # and reusing one name would unify them to the singlet type.
+        for batch_task in finished_batches:
+            chains = in_progress_batches.pop(batch_task)
+            results = batch_task.result()
             for i, chain in enumerate(chains):
                 context.set_resolved_value(chain, results[i])
 
@@ -472,8 +474,9 @@ async def execute(
 
             for async_chain, pre_resolved_arguments in remaining_ready_async:
                 # Native async UDF → await on event loop
-                if (isinstance(async_chain.executor, CallExecutor)
-                        and isinstance(async_chain.executor._udf, (AsyncUDFBase, AsyncBatchableUDFBase))):
+                if isinstance(async_chain.executor, CallExecutor) and isinstance(
+                    async_chain.executor._udf, (AsyncUDFBase, AsyncBatchableUDFBase)
+                ):
                     task = asyncio.create_task(
                         _execute_async_udf(semaphore, async_chain, context, error_infos, pre_resolved_arguments)
                     )

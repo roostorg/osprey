@@ -16,25 +16,24 @@ from ddtrace.contrib.grpc.constants import GRPC_STATUS_CODE_KEY
 from ddtrace.ext.http import STATUS_CODE
 from ddtrace.span import Span
 from google.protobuf.message import Message
-from osprey.worker.lib.ddtrace_utils import current_span, noop_span, pin_override, trace
-from osprey.worker.lib.discovery.exceptions import ServiceUnavailable
-from osprey.worker.lib.discovery.service import Service
-# String constant matching osprey.worker.lib.discovery.service_watcher.DOWN
-# Defined locally to avoid importing service_watcher which pulls in gevent.
-DOWN = 'down'
-
 from osprey.async_worker.lib.discovery.async_directory import AsyncDirectory
-from osprey.worker.lib.instruments import metrics
 from osprey.async_worker.lib.pigeon.exceptions import InvalidRoutingValueException, NoResponsesException, RPCException
 from osprey.async_worker.lib.pigeon.interceptors.baggage import BaggageInterceptor
 from osprey.async_worker.lib.pigeon.interceptors.metadata import MetadataInterceptor
-from typing_extensions import TypedDict
-
 from osprey.async_worker.lib.pigeon.skip_rate_limit import skip_rate_limit_context
+from osprey.worker.lib.ddtrace_utils import current_span, noop_span, pin_override, trace
+from osprey.worker.lib.discovery.exceptions import ServiceUnavailable
+from osprey.worker.lib.discovery.service import Service
+from osprey.worker.lib.instruments import metrics
+from typing_extensions import TypedDict
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar('T')
+
+# String constant matching osprey.worker.lib.discovery.service_watcher.DOWN
+# Defined locally to avoid importing service_watcher which pulls in gevent.
+DOWN = 'down'
 
 
 class ServiceDefinition(TypedDict):
@@ -457,10 +456,7 @@ class AsyncUnaryUnaryRpcCallable(Generic[T, Request, Response]):
                     # ran out of secondaries to try
                     raise last_exception
 
-                if (
-                    retry_policy
-                    and try_count < retry_policy['max_secondaries_to_retry']
-                ):
+                if retry_policy and try_count < retry_policy['max_secondaries_to_retry']:
                     # Retry ServiceUnavailable (empty ring at startup) with backoff
                     try_count += 1
                     await asyncio.sleep(0.5 * try_count)

@@ -3,12 +3,13 @@
 Loads per-action JSON schemas from a smite-rules checkout.
 Schema format is defined in §4.3 of the typed-action-contracts plan.
 """
+
 import json
 import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, FrozenSet, List, Mapping, Optional, Set
+from typing import Any, Callable, Dict, FrozenSet, List, Mapping, Optional, Set
 
 log = logging.getLogger(__name__)
 
@@ -18,22 +19,22 @@ _SUPPORTED_VERSION = 1
 # switch. Both default OFF — a wrong `absent` entry silently drops features/enforcement,
 # so schema files on the rules path do nothing until an action is explicitly listed.
 # PRUNING prunes; SHADOW serves the full result but computes+diffs the specialized one.
-_PRUNING_ENV = "OSPREY_TYPED_CONTRACT_PRUNING"
-_SHADOW_ENV = "OSPREY_TYPED_CONTRACT_SHADOW"
-_LAZY_SPECIALIZE_ENV = "OSPREY_TYPED_CONTRACT_LAZY_SPECIALIZE"
-_ALL = "*"
-_FALSEY = {"", "0", "false", "no", "off"}
-_TRUTHY = {"1", "true", "yes", "on", "*", "all"}
+_PRUNING_ENV = 'OSPREY_TYPED_CONTRACT_PRUNING'
+_SHADOW_ENV = 'OSPREY_TYPED_CONTRACT_SHADOW'
+_LAZY_SPECIALIZE_ENV = 'OSPREY_TYPED_CONTRACT_LAZY_SPECIALIZE'
+_ALL = '*'
+_FALSEY = {'', '0', 'false', 'no', 'off'}
+_TRUTHY = {'1', 'true', 'yes', 'on', '*', 'all'}
 
 
 def _parse_action_filter(env_name: str) -> FrozenSet[str]:
     """frozenset() when disabled, {'*'} for all (truthy scalar), else the named actions."""
-    raw = os.environ.get(env_name, "").strip()
+    raw = os.environ.get(env_name, '').strip()
     if raw.lower() in _FALSEY:
         return frozenset()
     if raw.lower() in _TRUTHY:
         return frozenset({_ALL})
-    return frozenset(p.strip() for p in raw.split(",") if p.strip())
+    return frozenset(p.strip() for p in raw.split(',') if p.strip())
 
 
 def pruning_action_filter() -> FrozenSet[str]:
@@ -56,7 +57,7 @@ def lazy_specialize_enabled() -> bool:
     the escape hatch if background warm-up ever misbehaves. Only the asyncio engine
     reads this; the gevent engine is always eager (see ``typed_contract_warmer``).
     """
-    raw = os.environ.get(_LAZY_SPECIALIZE_ENV, "").strip().lower()
+    raw = os.environ.get(_LAZY_SPECIALIZE_ENV, '').strip().lower()
     if not raw:
         return True
     return raw not in _FALSEY
@@ -67,9 +68,9 @@ class ActionSchema:
     """Parsed representation of a per-action schema JSON file."""
 
     action: str
-    provides_groups: FrozenSet[str]       # keys of `provides`
-    absent_groups: FrozenSet[str]         # from `absent`
-    provides_field_types: Dict[str, str]   # "user.id" -> "int" (dot-notation, flattened)
+    provides_groups: FrozenSet[str]  # keys of `provides`
+    absent_groups: FrozenSet[str]  # from `absent`
+    provides_field_types: Dict[str, str]  # "user.id" -> "int" (dot-notation, flattened)
     optional_for: Dict[str, List[str]]
 
 
@@ -77,7 +78,7 @@ class SchemaLoadError(Exception):
     """Raised when a schema file cannot be parsed or is invalid."""
 
 
-def parse_schema(raw: dict, ref_reader: Callable[[str], dict], where: str) -> ActionSchema:
+def parse_schema(raw: Dict[str, Any], ref_reader: Callable[[str], Dict[str, Any]], where: str) -> ActionSchema:
     """Parse an already-decoded schema dict into an ActionSchema.
 
     This is the source-agnostic core shared by the disk loader (``load_schema``) and the
@@ -94,21 +95,18 @@ def parse_schema(raw: dict, ref_reader: Callable[[str], dict], where: str) -> Ac
     Raises:
         SchemaLoadError: if the schema is malformed or violates constraints.
     """
-    version = raw.get("version")
+    version = raw.get('version')
     if version != _SUPPORTED_VERSION:
-        raise SchemaLoadError(
-            f"Unsupported schema version in {where}: {version!r}. "
-            f"Expected {_SUPPORTED_VERSION!r}."
-        )
+        raise SchemaLoadError(f'Unsupported schema version in {where}: {version!r}. Expected {_SUPPORTED_VERSION!r}.')
 
-    action = raw.get("action", "")
+    action = raw.get('action', '')
     if not action:
         raise SchemaLoadError(f"Missing 'action' field in {where}")
 
-    raw_provides: Dict[str, object] = raw.get("provides", {})
-    absent_list: List[str] = raw.get("absent", [])
-    types_used: Dict[str, str] = raw.get("types_used", {})
-    optional_for: Dict[str, List[str]] = raw.get("optional_for", {})
+    raw_provides: Dict[str, object] = raw.get('provides', {})
+    absent_list: List[str] = raw.get('absent', [])
+    types_used: Dict[str, str] = raw.get('types_used', {})
+    optional_for: Dict[str, List[str]] = raw.get('optional_for', {})
 
     absent_groups: Set[str] = set(absent_list)
     provides_groups: Set[str] = set(raw_provides.keys())
@@ -116,21 +114,19 @@ def parse_schema(raw: dict, ref_reader: Callable[[str], dict], where: str) -> Ac
     # Constraint: provides and absent must not overlap
     overlap = provides_groups & absent_groups
     if overlap:
-        raise SchemaLoadError(
-            f"Schema {where}: groups {overlap!r} appear in both 'provides' and 'absent'."
-        )
+        raise SchemaLoadError(f"Schema {where}: groups {overlap!r} appear in both 'provides' and 'absent'.")
 
     # Resolve $ref: references — load referenced type definitions and merge into provides.
     resolved_provides: Dict[str, object] = {}
     for group, value in raw_provides.items():
-        if isinstance(value, str) and value.startswith("$ref:"):
+        if isinstance(value, str) and value.startswith('$ref:'):
             resolved_provides[group] = ref_reader(value)
         else:
             resolved_provides[group] = value
 
     # Also resolve top-level $ref entries in types_used if they provide field definitions
     for group, ref_str in types_used.items():
-        if isinstance(ref_str, str) and ref_str.startswith("$ref:") and group not in resolved_provides:
+        if isinstance(ref_str, str) and ref_str.startswith('$ref:') and group not in resolved_provides:
             try:
                 resolved_provides[group] = ref_reader(ref_str)
                 provides_groups.add(group)
@@ -148,13 +144,13 @@ def parse_schema(raw: dict, ref_reader: Callable[[str], dict], where: str) -> Ac
     provides_field_types: Dict[str, str] = {}
     for group, fields in resolved_provides.items():
         if isinstance(fields, dict):
-            if list(fields.keys()) == ["_scalar"] and isinstance(fields["_scalar"], str):
+            if list(fields.keys()) == ['_scalar'] and isinstance(fields['_scalar'], str):
                 # Scalar group: flatten to bare group name
-                provides_field_types[group] = fields["_scalar"]
+                provides_field_types[group] = fields['_scalar']
                 continue
             for field_name, field_type in fields.items():
                 if isinstance(field_type, str):
-                    provides_field_types[f"{group}.{field_name}"] = field_type
+                    provides_field_types[f'{group}.{field_name}'] = field_type
 
     return ActionSchema(
         action=action,
@@ -185,27 +181,25 @@ def load_schema(schema_path: Path, schemas_dir: Optional[Path] = None) -> Action
     try:
         raw = json.loads(schema_path.read_text())
     except FileNotFoundError:
-        raise SchemaLoadError(f"Schema file not found: {schema_path}")
+        raise SchemaLoadError(f'Schema file not found: {schema_path}')
     except json.JSONDecodeError as e:
-        raise SchemaLoadError(f"Invalid JSON in {schema_path}: {e}")
+        raise SchemaLoadError(f'Invalid JSON in {schema_path}: {e}')
 
     # $ref values point to types/<name>.json relative to schemas_dir.
     _schemas_dir_resolved = schemas_dir.resolve()
 
-    def _disk_ref_reader(ref_str: str) -> dict:
+    def _disk_ref_reader(ref_str: str) -> Dict[str, Any]:
         """Resolve a $ref: path on disk, asserting it stays within schemas_dir."""
-        ref_rel = ref_str[len("$ref:"):]
+        ref_rel = ref_str[len('$ref:') :]
         ref_path = (schemas_dir / ref_rel).resolve()
         if not ref_path.is_relative_to(_schemas_dir_resolved):
-            raise SchemaLoadError(
-                f"$ref path escapes schemas directory: {ref_rel!r} resolves to {ref_path}"
-            )
+            raise SchemaLoadError(f'$ref path escapes schemas directory: {ref_rel!r} resolves to {ref_path}')
         try:
             return json.loads(ref_path.read_text())
         except FileNotFoundError:
-            raise SchemaLoadError(f"Referenced type file not found: {ref_path} (from {schema_path})")
+            raise SchemaLoadError(f'Referenced type file not found: {ref_path} (from {schema_path})')
         except json.JSONDecodeError as e:
-            raise SchemaLoadError(f"Invalid JSON in referenced file {ref_path}: {e}")
+            raise SchemaLoadError(f'Invalid JSON in referenced file {ref_path}: {e}')
 
     return parse_schema(raw, _disk_ref_reader, where=str(schema_path))
 
@@ -224,16 +218,16 @@ def resolve_schemas_dir() -> Optional[Path]:
     activate in environments that already point the worker at a smite-rules
     checkout, without requiring a separate env var or deployment change.
     """
-    explicit = os.environ.get("OSPREY_SCHEMAS_DIR", "").strip()
+    explicit = os.environ.get('OSPREY_SCHEMAS_DIR', '').strip()
     if explicit:
         candidate = Path(explicit)
         if candidate.is_dir():
             return candidate
-        log.warning("OSPREY_SCHEMAS_DIR=%r is not a directory; ignoring", explicit)
+        log.warning('OSPREY_SCHEMAS_DIR=%r is not a directory; ignoring', explicit)
 
-    rules_path = os.environ.get("OSPREY_RULES_PATH", "").strip()
+    rules_path = os.environ.get('OSPREY_RULES_PATH', '').strip()
     if rules_path:
-        candidate = Path(rules_path) / "schemas"
+        candidate = Path(rules_path) / 'schemas'
         if candidate.is_dir():
             return candidate
 
@@ -246,19 +240,17 @@ def load_schema_for_action(action_name: str, schemas_dir: Path) -> Optional[Acti
     Returns None if no schema file exists for that action (schema-less actions
     fall back to the default execution graph).
     """
-    schema_path = schemas_dir / f"{action_name}.json"
+    schema_path = schemas_dir / f'{action_name}.json'
     if not schema_path.exists():
         return None
     try:
         return load_schema(schema_path, schemas_dir=schemas_dir)
     except SchemaLoadError:
-        log.exception("Failed to load schema for action %r from %s", action_name, schema_path)
+        log.exception('Failed to load schema for action %r from %s', action_name, schema_path)
         return None
 
 
-def load_schema_for_action_from_sources(
-    action_name: str, schemas: Mapping[str, str]
-) -> Optional[ActionSchema]:
+def load_schema_for_action_from_sources(action_name: str, schemas: Mapping[str, str]) -> Optional[ActionSchema]:
     """Load the schema for an action from the in-memory ``Sources`` schema map.
 
     ``schemas`` maps repo-relative posix paths (``schemas/<action>.json``,
@@ -273,29 +265,29 @@ def load_schema_for_action_from_sources(
         SchemaLoadError: if the schema (or a referenced type) is malformed, missing, or a
             ``$ref:`` attempts to escape the ``schemas/`` key space.
     """
-    key = f"schemas/{action_name}.json"
+    key = f'schemas/{action_name}.json'
     raw_text = schemas.get(key)
     if raw_text is None:
         return None
 
-    def _sources_ref_reader(ref_str: str) -> dict:
+    def _sources_ref_reader(ref_str: str) -> Dict[str, Any]:
         """Resolve a $ref: against the schemas map, rejecting absolute / traversing paths."""
-        ref_rel = ref_str[len("$ref:"):]
+        ref_rel = ref_str[len('$ref:') :]
         # Reject absolute paths or any parent-traversal segment — refs must stay within the
         # `schemas/` key space, mirroring the disk loader's path-traversal guard.
-        if ref_rel.startswith("/") or any(part == ".." for part in ref_rel.split("/")):
-            raise SchemaLoadError(f"$ref path escapes schemas directory: {ref_rel!r}")
-        ref_key = f"schemas/{ref_rel}"
+        if ref_rel.startswith('/') or any(part == '..' for part in ref_rel.split('/')):
+            raise SchemaLoadError(f'$ref path escapes schemas directory: {ref_rel!r}')
+        ref_key = f'schemas/{ref_rel}'
         ref_text = schemas.get(ref_key)
         if ref_text is None:
-            raise SchemaLoadError(f"Referenced type not found: {ref_key} (from {key})")
+            raise SchemaLoadError(f'Referenced type not found: {ref_key} (from {key})')
         try:
             return json.loads(ref_text)
         except json.JSONDecodeError as e:
-            raise SchemaLoadError(f"Invalid JSON in referenced source {ref_key}: {e}")
+            raise SchemaLoadError(f'Invalid JSON in referenced source {ref_key}: {e}')
 
     try:
         raw = json.loads(raw_text)
     except json.JSONDecodeError as e:
-        raise SchemaLoadError(f"Invalid JSON in {key}: {e}")
+        raise SchemaLoadError(f'Invalid JSON in {key}: {e}')
     return parse_schema(raw, _sources_ref_reader, where=key)

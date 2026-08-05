@@ -8,19 +8,18 @@ from __future__ import annotations
 
 import logging
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, List, Sequence, Type
+from typing import TYPE_CHECKING, Any, List, Type, cast
 
 import pluggy
+from osprey.async_worker.adaptor import hookspecs as async_hookspecs
+from osprey.async_worker.adaptor.constants import OSPREY_ASYNC_ADAPTOR
+from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
+from osprey.async_worker.sinks.sink.output_sink import AsyncMultiOutputSink
 from osprey.engine.ast_validator import ValidatorRegistry
 from osprey.engine.executor.udf_execution_helpers import HasHelper, UDFHelpers
 from osprey.engine.udf.base import UDFBase
 from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
-
-from osprey.async_worker.adaptor import hookspecs as async_hookspecs
-from osprey.async_worker.adaptor.constants import OSPREY_ASYNC_ADAPTOR
-from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
-from osprey.async_worker.sinks.sink.output_sink import AsyncMultiOutputSink
 
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
@@ -97,7 +96,9 @@ def bootstrap_async_udfs(config: 'Config | None' = None) -> tuple[UDFRegistry, U
     # pairs; the framework binds them without needing to import the UDF class.
     if config is not None:
         for udf_class, helper in _iter_plugin_udf_helpers(config):
-            udf_helpers.set_udf_helper(udf_class, helper)
+            # Plugin-provided pairs are helper-bearing UDFs by contract, but the
+            # collection is typed as the looser UDFBase; narrow for set_udf_helper.
+            udf_helpers.set_udf_helper(cast('Type[HasHelper[Any]]', udf_class), helper)
 
     udf_registry = UDFRegistry.with_udfs(*all_udfs)
     return udf_registry, udf_helpers

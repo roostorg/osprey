@@ -11,7 +11,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from time import time
-from typing import TYPE_CHECKING, Callable, Dict, FrozenSet, List, Optional, Set, Type, TypedDict
+from typing import TYPE_CHECKING, Callable, Dict, FrozenSet, List, Optional, Set, Type, TypedDict, cast
 
 if TYPE_CHECKING:
     from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter
@@ -116,7 +116,10 @@ class AsyncOspreyEngine:
         # Initial compile runs without periodic yields — there is no in-flight
         # work yet to protect, and we want fast cold-start.
         self._execution_graph = self._compile_execution_graph_sync(yield_during_compile=False)
-        self._sources_provider.set_sources_watcher(self._handle_updated_sources)
+        # BaseSourcesProvider.set_sources_watcher is typed Callable[[], None], but the
+        # async provider (AsyncEtcdSourcesProvider) awaits an awaitable result, so a
+        # coroutine callback is valid at runtime. Cast to satisfy the narrower base type.
+        self._sources_provider.set_sources_watcher(cast(Callable[[], None], self._handle_updated_sources))
         self._config_subkey_handler = ConfigSubkeyHandler(config_registry, self._execution_graph.validated_sources)
         self._validation_result_exporter = validation_exporter
         # Specialized graphs for typed action contracts (§4.5 runtime dispatch).

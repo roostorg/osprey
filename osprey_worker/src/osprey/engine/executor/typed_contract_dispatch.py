@@ -10,6 +10,7 @@ Each engine keeps its own `_specialized_graphs` / `_prune_filter` / `_shadow_fil
 state and its thin `_load_and_register_schemas` + `execute` methods, delegating the shared
 logic to these functions.
 """
+
 from __future__ import annotations
 
 import logging
@@ -82,7 +83,7 @@ def _load_action_schema(
         if schemas_dir is not None:
             return load_schema_for_action(action_name, schemas_dir)
     except SchemaLoadError as e:
-        log.warning("Failed to load schema for %s: %s", action_name, e)
+        log.warning('Failed to load schema for %s: %s', action_name, e)
     return None
 
 
@@ -173,9 +174,14 @@ def load_and_register_specialized_graphs(
             register(action_name, specialize_graph(full_graph, schema, index=index))
             loaded += 1
     if loaded:
-        source_desc = "Sources" if use_sources else schemas_dir
-        log.info("Loaded %d specialized graphs from %s (prune=%r shadow=%r)",
-                 loaded, source_desc, sorted(prune_filter), sorted(shadow_filter))
+        source_desc = 'Sources' if use_sources else schemas_dir
+        log.info(
+            'Loaded %d specialized graphs from %s (prune=%r shadow=%r)',
+            loaded,
+            source_desc,
+            sorted(prune_filter),
+            sorted(shadow_filter),
+        )
     return loaded
 
 
@@ -243,4 +249,4 @@ def record_shadow(action_name: str, full_result: object, spec_result: object) ->
         tags=[f'action:{action_name}', f'divergent:{str(bool(issues)).lower()}'],
     )
     if issues:
-        log.warning("typed-contract SHADOW DIVERGENCE for %s: %s", action_name, '; '.join(issues[:8]))
+        log.warning('typed-contract SHADOW DIVERGENCE for %s: %s', action_name, '; '.join(issues[:8]))

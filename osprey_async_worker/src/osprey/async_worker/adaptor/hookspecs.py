@@ -16,11 +16,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence, Tuple, Type
 
 import pluggy
-from osprey.engine.ast_validator.base_validator import BaseValidator
-from osprey.engine.udf.base import UDFBase
-
 from osprey.async_worker.adaptor.constants import OSPREY_ASYNC_ADAPTOR
 from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
+from osprey.engine.ast_validator.base_validator import BaseValidator
+from osprey.engine.udf.base import UDFBase
 
 if TYPE_CHECKING:
     from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer

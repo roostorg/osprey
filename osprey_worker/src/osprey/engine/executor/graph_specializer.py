@@ -42,6 +42,7 @@ Node identity: NodeKey = id(ast_node) — collision-free (see NodeKey definition
 Scoping: the prune/fold analysis runs over the chains reachable from ONE action's source
 closure, not the whole corpus — see `SpecializationIndex` and `_scoped_chains_for_action`.
 """
+
 from __future__ import annotations
 
 import logging
@@ -103,7 +104,7 @@ def _is_json_extractor(chain: DependencyChain) -> bool:
     udf = _chain_udf(chain)
     if udf is None:
         return False
-    return getattr(type(udf), "extracts_json_path", False)
+    return getattr(type(udf), 'extracts_json_path', False)
 
 
 def _get_extractor_path(chain: DependencyChain) -> Optional[str]:
@@ -115,7 +116,7 @@ def _get_extractor_path(chain: DependencyChain) -> Optional[str]:
     # Access via the executor's unresolved_arguments
     if isinstance(chain.executor, CallExecutor):
         try:
-            path_arg = chain.executor.unresolved_arguments.get_argument_ast("path")
+            path_arg = chain.executor.unresolved_arguments.get_argument_ast('path')
             if path_arg is not None:
                 if isinstance(path_arg, String):
                     return path_arg.value
@@ -126,11 +127,11 @@ def _get_extractor_path(chain: DependencyChain) -> Optional[str]:
 
 def _get_top_level_group(path_str: str) -> str:
     """Extract top-level group from a json path string."""
-    if path_str.startswith("$."):
+    if path_str.startswith('$.'):
         rest = path_str[2:]
         if rest:
-            return rest.split(".")[0].split("[")[0]
-    return path_str.lstrip("$").lstrip(".").split(".")[0]
+            return rest.split('.')[0].split('[')[0]
+    return path_str.lstrip('$').lstrip('.').split('.')[0]
 
 
 def _is_resolve_optional_chain(chain: DependencyChain) -> bool:
@@ -163,15 +164,13 @@ def _resolve_optional_has_default(chain: DependencyChain) -> bool:
     if not isinstance(chain.executor, CallExecutor):
         return False
     try:
-        default_arg = chain.executor.unresolved_arguments.get_argument_ast("default_value")
+        default_arg = chain.executor.unresolved_arguments.get_argument_ast('default_value')
         return default_arg is not None
     except Exception:
         return False
 
 
-def _get_all_sorted_chains(
-    graph: ExecutionGraph, sources: Optional[Sequence[Source]] = None
-) -> List[DependencyChain]:
+def _get_all_sorted_chains(graph: ExecutionGraph, sources: Optional[Sequence[Source]] = None) -> List[DependencyChain]:
     """Gather the sorted dependency chains of `sources` (default: every source in the graph).
 
     Each source's sorted chain is already a topologically ordered transitive closure of its
@@ -213,7 +212,7 @@ def _collect_all_chains_recursive(chains: Sequence[DependencyChain]) -> List[Dep
     return result
 
 
-def _collect_chain_keys(chain: DependencyChain, out: "Set[NodeKey]") -> None:
+def _collect_chain_keys(chain: DependencyChain, out: 'Set[NodeKey]') -> None:
     """Add `chain`'s node key and the keys of all its transitive deps to `out`."""
     key = _node_key_from_chain(chain)
     if key in out:
@@ -283,7 +282,7 @@ def _compute_fold_values(
     all_chains: Sequence[DependencyChain],
     foldable: Set[NodeKey],
     action_name: str,
-) -> "Dict[NodeKey, NodeResult]":
+) -> 'Dict[NodeKey, NodeResult]':
     """Compute each foldable node's NodeResult by REPLAYING its executor against an empty
     (all-groups-absent) action — reusing the engine's own executors + ExecutionContext.resolved
     so the Ok/Err kind and value are byte-identical to what the rescue would execute (no
@@ -301,20 +300,21 @@ def _compute_fold_values(
         Action(action_id=0, action_name=action_name, data={}, timestamp=datetime(2020, 1, 1)),
         UDFHelpers(),
     )
-    fold_values: "Dict[NodeKey, NodeResult]" = {}
+    fold_values: 'Dict[NodeKey, NodeResult]' = {}
     # all_chains is post-order (deps before dependents), so a node's deps are resolved first.
     for chain in all_chains:
         key = _node_key_from_chain(chain)
         if key not in foldable and not _is_constant_node(chain):
             continue
         udf = _chain_udf(chain)
-        result: "NodeResult"
+        result: 'NodeResult'
         if udf is not None and not _is_json_extractor(chain) and udf.is_fold_safe_when_absent():
             # A UDF that declares itself fold-safe: resolve its arguments (so an absent *required*
             # input still fail-propagates exactly as execute would) then take the declared
             # absent_value INSTEAD of running the body — skipping its backend IO. resolve_arguments
             # makes no UDF call itself.
             try:
+                assert isinstance(chain.executor, CallExecutor)
                 resolved_args = udf.resolve_arguments(ctx, chain.executor)
             except Exception:
                 # A required absent input fail-propagated -> shadowed, exactly as execute would.
@@ -327,7 +327,7 @@ def _compute_fold_values(
                     # declaration LOUDLY rather than silently mis-folding to Err — but don't crash
                     # config-load for every action; fall back to Err for this node only.
                     result = Err(None)
-                    log.warning("absent_value raised for %s on %s: %r", chain.executor.node, action_name, e)
+                    log.warning('absent_value raised for %s on %s: %r', chain.executor.node, action_name, e)
         else:
             try:
                 result = Ok(chain.executor.execute(execution_context=ctx))
@@ -336,7 +336,7 @@ def _compute_fold_values(
                 # Err, exactly as the rescue would. Debug-log so a genuinely-broken fold-safe node
                 # stays diagnosable rather than indistinguishable from the expected absent failures.
                 result = Err(None)
-                log.debug("fold replay raised for %s on %s: %r", chain.executor.node, action_name, e)
+                log.debug('fold replay raised for %s on %s: %r', chain.executor.node, action_name, e)
         # Store directly rather than via set_resolved_value — the latter calls the topological
         # sorter's done(), which raises for chains never handed out by get_ready().
         ctx._resolved_node_values[key] = result
@@ -456,10 +456,10 @@ def _assert_dependency_closed(chains: Sequence[DependencyChain], action_name: st
 
 def specialize_graph(
     full_graph: ExecutionGraph,
-    schema: "ActionSchema",
+    schema: 'ActionSchema',
     index: Optional[SpecializationIndex] = None,
     scope_to_action_closure: bool = True,
-) -> "SpecializedExecutionGraph":
+) -> 'SpecializedExecutionGraph':
     """Produce a specialized execution graph for the given action schema.
 
     Chains whose top-level json group is in schema.absent_groups are pruned,
@@ -499,9 +499,7 @@ def specialize_graph(
     # undeclared backend UDFs) are NOT folded; they stay scheduled and execute, reading the folded
     # values — exactly as the rescue made them, but without the rescue step.
     foldable = _compute_foldable_closure(all_chains, absent_groups) & index.protected
-    fold_values = (
-        _compute_fold_values(full_graph, all_chains, foldable, schema.action) if foldable else {}
-    )
+    fold_values = _compute_fold_values(full_graph, all_chains, foldable, schema.action) if foldable else {}
 
     # Step 3 — seed the pruned set with absent extractors that are NOT folded (i.e. analytics-only
     # absent reads, outside any WhenRules closure). Folded enforcement extractors are deliberately
@@ -552,7 +550,10 @@ def specialize_graph(
                     # If this dep is the when_all List node, check its own deps too.
                     if isinstance(dep.executor.node, GrammarList):
                         for when_all_dep in dep.dependent_on:
-                            if isinstance(when_all_dep.executor.node, IsConstant) and when_all_dep.executor.node.is_constant:
+                            if (
+                                isinstance(when_all_dep.executor.node, IsConstant)
+                                and when_all_dep.executor.node.is_constant
+                            ):
                                 continue
                             when_all_dep_key = _node_key_from_chain(when_all_dep)
                             if when_all_dep_key in pruned:
@@ -593,8 +594,7 @@ def specialize_graph(
             # Only prune if there is at least one non-constant dep (otherwise
             # the chain itself is effectively constant and should remain).
             has_non_const_dep = any(
-                not (isinstance(dep.executor.node, IsConstant) and dep.executor.node.is_constant)
-                for dep in deps
+                not (isinstance(dep.executor.node, IsConstant) and dep.executor.node.is_constant) for dep in deps
             )
             if has_non_const_dep and not non_const_surviving_dep_keys:
                 pruned.add(key)
@@ -604,8 +604,7 @@ def specialize_graph(
     # absent nodes are now FOLDED in step 2, so the propagation above never prunes them.)
 
     log.debug(
-        "specialize_graph: schema=%s absent_groups=%r pruned %d, folded %d of %d chains "
-        "(closure %d/%d sources)",
+        'specialize_graph: schema=%s absent_groups=%r pruned %d, folded %d of %d chains (closure %d/%d sources)',
         schema.action,
         absent_groups,
         len(pruned),
@@ -627,9 +626,9 @@ def specialize_graph(
 # description; it can embed time-variant values (e.g. _AccountAge = SnowflakeAge(now()))
 # and never affects enforcement. Strip it before comparing effects so a ~ms drift
 # between the full and specialized passes is not mistaken for a divergence.
-_EFFECT_DESC_META = re.compile(r"features=\{[^}]*\}")
+_EFFECT_DESC_META = re.compile(r'features=\{[^}]*\}')
 # The enforcement-determining decision outputs (engine-injected, `__`-prefixed).
-_DECISION_KEYS = ("__verdicts", "__classifications", "__entity_label_mutations")
+_DECISION_KEYS = ('__verdicts', '__classifications', '__entity_label_mutations')
 
 
 def shadow_divergences(full_result: object, spec_result: object) -> List[str]:
@@ -646,28 +645,28 @@ def shadow_divergences(full_result: object, spec_result: object) -> List[str]:
     metadata is normalized out (see `_EFFECT_DESC_META`).
     """
     issues: List[str] = []
-    ff = getattr(full_result, "extracted_features", {}) or {}
-    sf = getattr(spec_result, "extracted_features", {}) or {}
+    ff = getattr(full_result, 'extracted_features', {}) or {}
+    sf = getattr(spec_result, 'extracted_features', {}) or {}
     # Pruning must only ever REMOVE features, never add them.
-    extra = sorted(k for k in (set(sf) - set(ff)) if not k.startswith("__"))
+    extra = sorted(k for k in (set(sf) - set(ff)) if not k.startswith('__'))
     if extra:
-        issues.append(f"spec-only features: {extra[:10]}")
+        issues.append(f'spec-only features: {extra[:10]}')
     # Enforcement decision outputs must be identical.
     for k in _DECISION_KEYS:
         if ff.get(k) != sf.get(k):
-            issues.append(f"decision changed: {k} ({ff.get(k)!r} != {sf.get(k)!r})")
+            issues.append(f'decision changed: {k} ({ff.get(k)!r} != {sf.get(k)!r})')
 
     def _effects(result: object) -> List[str]:
         out: List[str] = []
-        for effect_type, seq in (getattr(result, "effects", {}) or {}).items():
+        for effect_type, seq in (getattr(result, 'effects', {}) or {}).items():
             for effect in seq:
-                rendered = f"{getattr(effect_type, '__name__', effect_type)}:{effect!r}"
-                out.append(_EFFECT_DESC_META.sub("features=<desc>", rendered))
+                rendered = f'{getattr(effect_type, "__name__", effect_type)}:{effect!r}'
+                out.append(_EFFECT_DESC_META.sub('features=<desc>', rendered))
         return sorted(out)
 
     fe, se = _effects(full_result), _effects(spec_result)
     if fe != se:
-        issues.append(f"effects differ: full={fe[:6]} spec={se[:6]}")
+        issues.append(f'effects differ: full={fe[:6]} spec={se[:6]}')
     return issues
 
 
@@ -697,8 +696,8 @@ class SpecializedExecutionGraph(ExecutionGraph):
         self,
         full_graph: ExecutionGraph,
         pruned_keys: FrozenSet[NodeKey],
-        schema: "ActionSchema",
-        fold_values: "Optional[Mapping[NodeKey, NodeResult]]" = None,
+        schema: 'ActionSchema',
+        fold_values: 'Optional[Mapping[NodeKey, NodeResult]]' = None,
     ) -> None:
         # Initialize the base ExecutionGraph with the full graph's registry and sources
         super().__init__(
@@ -760,7 +759,7 @@ class SpecializedExecutionGraph(ExecutionGraph):
         key = _node_key_from_node(node)
         return key in self._pruned_keys or key in self._fold_values
 
-    def get_prefolded_node_values(self) -> "Mapping[int, NodeResult]":
+    def get_prefolded_node_values(self) -> 'Mapping[int, NodeResult]':
         """Precomputed NodeResults to seed into the ExecutionContext before execution, so folded
         nodes resolve to their constant without running their executor."""
         return self._fold_values
@@ -783,5 +782,5 @@ class SpecializedExecutionGraph(ExecutionGraph):
         return len(self._fold_values)
 
     @property
-    def schema(self) -> "ActionSchema":
+    def schema(self) -> 'ActionSchema':
         return self._schema
