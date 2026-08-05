@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
@@ -15,6 +16,7 @@ from typing import Any, Dict, List, Optional
 
 import gevent.pool
 import pytest
+from osprey.engine.ast.grammar import Source
 from osprey.engine.ast.sources import Sources
 from osprey.engine.ast_validator import validate_sources
 from osprey.engine.ast_validator.validator_registry import ValidatorRegistry
@@ -1334,3 +1336,157 @@ def test_no_rescue_step_enforcement_preserved_via_folding() -> None:
     payload = {'user': {'id': 7}}  # target_user genuinely absent; None != "spam" is True
     assert [v.verdict for v in _run_graph_full_result(graph, payload).verdicts] == ['ban']
     assert [v.verdict for v in _run_graph_full_result(specialized, payload).verdicts] == ['ban']
+
+
+# ===========================================================================
+# Request-path cost: the per-source scheduling list is precomputed, not rebuilt
+# ===========================================================================
+
+
+def _compile_effect_many_rules(n_rules: int):
+    """A source big enough for the scheduling-list rebuild to be measurable: each rule mixes two
+    absent-group conditions (folded) with a present-group one (live), plus an analytics-only absent
+    read (pruned)."""
+    lines = ["UserId: int = JsonData(path='$.user.id')"]
+    rule_names = []
+    for i in range(n_rules):
+        lines += [
+            f"_TA{i}: Optional[str] = JsonData(path='$.target_user.n{i}', required=False)",
+            f"_TB{i}: Optional[int] = JsonData(path='$.target_user.v{i}', required=False)",
+            f"CondA{i}: bool = _TA{i} != 'spam{i}'",
+            f'CondB{i}: bool = _TB{i} == {i}',
+            f'Live{i}: bool = UserId == {i}',
+            f"R{i} = Rule(when_all=[CondA{i}, CondB{i}, Live{i}], description='r{i}')",
+            f"Analytics{i}: Optional[str] = JsonData(path='$.target_user.a{i}', required=False)",
+        ]
+        rule_names.append(f'R{i}')
+    lines.append(f"WhenRules(rules_any=[{', '.join(rule_names)}], then=[DeclareVerdict(verdict='ban')])")
+    return _compile_effect({'main.sml': '\n'.join(lines) + '\n'})
+
+
+def test_sorted_dependency_chain_is_precomputed_not_rebuilt_per_call() -> None:
+    """The request path calls get_sorted_dependency_chain once per enqueued source per action, so
+    filtering there rebuilt the same list for every message. It is now precomputed in __init__:
+    repeated calls hand back the identical object, and the call costs a dict lookup instead of a
+    full pass over the source's chains.
+    """
+    _, graph = _compile_effect_many_rules(12)
+    specialized = specialize_graph(graph, _make_schema(provides={'user': {'id': 'int'}}, absent=['target_user']))
+    assert specialized.fold_count > 0 and specialized.pruned_count > 0
+    source = graph.get_entry_point()
+
+    first = specialized.get_sorted_dependency_chain(source)
+    assert specialized.get_sorted_dependency_chain(source) is first, 'must not rebuild the list per call'
+
+    original = graph.get_sorted_dependency_chain(source)
+    excluded = set(specialized._pruned_keys) | set(specialized.get_prefolded_node_values())
+    expected = [chain for chain in original if _node_key_from_chain(chain) not in excluded]
+    assert list(first) == expected, 'precomputed list must equal the old per-call filter'
+    assert len(original) > 200, 'need a non-trivial chain count for the timing check below'
+
+    # Timing check on the SPECIALIZED path only: a lookup must be far cheaper than the pass it
+    # replaced. The real gap is ~1000x; 20x keeps this robust on a loaded CI box.
+    iterations = 200
+    specialized.get_sorted_dependency_chain(source)
+    start = time.perf_counter()
+    for _ in range(iterations):
+        specialized.get_sorted_dependency_chain(source)
+    precomputed_seconds = time.perf_counter() - start
+
+    start = time.perf_counter()
+    for _ in range(iterations):
+        [chain for chain in original if _node_key_from_chain(chain) not in excluded]
+    rebuild_seconds = time.perf_counter() - start
+
+    assert precomputed_seconds * 20 < rebuild_seconds, (
+        f'expected the precomputed lookup to be >20x cheaper than rebuilding; '
+        f'precomputed={precomputed_seconds:.6f}s rebuild={rebuild_seconds:.6f}s'
+    )
+
+
+def test_specialization_that_prunes_nothing_reuses_the_full_graph_lists() -> None:
+    """No-op guarantee: with nothing pruned and nothing folded, every source's scheduling list is
+    the full graph's own list object — so the precompute adds no memory and cannot change behavior
+    for the graphs served today (pruning is off in production)."""
+    _, graph = _compile_effect_many_rules(3)
+    # Built directly: _make_schema's `absent or [...]` default would substitute a group back in.
+    schema = ActionSchema(
+        action='test_action',
+        provides_groups=frozenset({'user', 'target_user'}),
+        absent_groups=frozenset(),
+        provides_field_types={'user.id': 'int'},
+        optional_for={},
+    )
+    specialized = specialize_graph(graph, schema)
+    assert specialized.pruned_count == 0 and specialized.fold_count == 0
+    for source in graph.validated_sources.sources:
+        assert specialized.get_sorted_dependency_chain(source) is graph.get_sorted_dependency_chain(source)
+
+
+def test_full_graph_scheduling_list_and_seeding_are_untouched() -> None:
+    """The full-graph path consults no new attribute: its scheduling list is still the object built
+    at compile time, and it seeds no prefolded values."""
+    _, graph = _compile_effect_many_rules(2)
+    source = graph.get_entry_point()
+    assert graph.get_sorted_dependency_chain(source) is graph._sorted_dependency_chains[source]
+    assert graph.get_prefolded_node_values() == {}
+    assert not hasattr(graph, '_filtered_sorted_chains')
+
+
+def test_unknown_source_still_raises_key_error() -> None:
+    """A source the graph never compiled raises KeyError, as the base ExecutionGraph does —
+    _get_all_sorted_chains relies on that."""
+    _, graph = _compile_effect_many_rules(1)
+    specialized = specialize_graph(graph, _make_schema(provides={'user': {'id': 'int'}}, absent=['target_user']))
+    with pytest.raises(KeyError):
+        specialized.get_sorted_dependency_chain(Source(path='never-compiled.sml', contents=''))
+
+
+def test_folded_node_resolution_parity_including_err_fold() -> None:
+    """Folded nodes are excluded from scheduling, so their value must come from the graph's fold map
+    via the ExecutionContext's seeding. Pins the resolution contract for every folded node — Ok AND
+    Err folds — including the `should_unwrap` conversion and both failure behaviors of resolved()."""
+    _, graph = _compile_effect(
+        {
+            'main.sml': """
+            _OptName: Optional[str] = JsonData(path='$.target_user.name', required=False)
+            ReqId: int = JsonData(path='$.target_user.id')
+            UserId: int = JsonData(path='$.user.id')
+            OptNotSpam: bool = _OptName != "spam"
+            ReqHigh: bool = ReqId > 10
+            Live: bool = UserId == 42
+            BanRule = Rule(when_all=[OptNotSpam, ReqHigh, Live], description='ban')
+            WhenRules(rules_any=[BanRule], then=[DeclareVerdict(verdict="ban")])
+            """,
+        }
+    )
+    specialized = specialize_graph(graph, _make_schema(provides={'user': {'id': 'int'}}, absent=['target_user']))
+    folded = specialized.get_prefolded_node_values()
+    assert folded, 'expected folded nodes'
+    assert any(r.is_ok() for r in folded.values()), 'expected at least one Ok fold (required=False -> None)'
+    err_results = [r for r in folded.values() if r.is_err()]
+    assert err_results, 'expected at least one Err fold (required=True over an absent group)'
+
+    action = Action(action_id=1, action_name='test_action', data={'user': {'id': 42}}, timestamp=datetime.utcnow())
+    ctx = ExecutionContext(specialized, action, UDFHelpers())
+
+    checked_ok = checked_err = 0
+    for chain in _collect_all_chains_recursive(_get_all_sorted_chains(graph)):
+        node = chain.executor.node
+        expected = folded.get(_node_key_from_chain(chain))
+        if expected is None:
+            continue
+        actual = ctx.resolved_result(node)
+        assert actual.is_ok() == expected.is_ok(), f'Ok/Err kind changed for {node}'
+        if expected.is_ok():
+            checked_ok += 1
+            if not graph.should_unwrap(node):
+                assert actual == expected, f'folded value changed for {node}'
+            assert ctx.resolved(node) == actual.unwrap()
+        else:
+            checked_err += 1
+            # An Err fold must fail-propagate exactly like an Err from a real execution.
+            with pytest.raises(NodeFailurePropagationException):
+                ctx.resolved(node)
+            assert ctx.resolved(node, return_none_for_failed_values=True) is None
+    assert checked_ok and checked_err, f'vacuous parity check: ok={checked_ok} err={checked_err}'
