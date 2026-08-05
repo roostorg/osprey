@@ -129,6 +129,7 @@ default-groups = ["common", "dev"]
 erlpack = { git = "https://github.com/discord/erlpack.git", rev = "b25ebd51ae4c097bd7f756fd4e1c841b61bfe50b" }
 greenlet = { git = "https://github.com/discord/greenlet.git", rev = "a75d78f1547c74a81134644a179467525a255466" }
 gunicorn = { git = "https://github.com/discord/gunicorn.git", rev = "979efdcb918daa536d8923668241c6e6bf1edb58" }
+hash-ring = { git = "https://github.com/discord/hash_ring.git", rev = "b4b56bc93053881b68b829ee9d1a4871b4aee592" }
 jsonpath-rw = { url = "https://github.com/kennknowles/python-jsonpath-rw/archive/6f5647bb3ad2395c20f0191fef07a1df51c9fed8.tar.gz" }
 nostril = { url = "https://github.com/casics/nostril/archive/v1.2.0.tar.gz" }
 osprey_rpc = { workspace = true }
@@ -292,6 +293,11 @@ implicit_reexport = true
 module = ["jsonpath_rw", "jsonpath_rw.*", "minio.*"]
 ignore_missing_imports = true
 
+# hash-ring is installed from a pinned source revision but does not ship type metadata.
+[[tool.mypy.overrides]]
+module = "hash_ring"
+follow_untyped_imports = true
+
 # third party packages we don't care about
 [[tool.mypy.overrides]]
 module = [
@@ -300,7 +306,6 @@ module = [
     "perf_tools.*",
     "gevent.*",
     "grpc.*",
-    "hash_ring",
     "pydruid.*",
     "phone_iso3166.*",
     "typing_inspect.*",
