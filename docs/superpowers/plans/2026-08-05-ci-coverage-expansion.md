@@ -331,8 +331,8 @@ Pass these arguments through `./run-tests.sh`:
 ```text
 --junitxml=/tmp/test-results/junit-pytest.xml
 --cov-config=osprey_worker/.coveragerc-sync
---cov=osprey.engine
---cov=osprey.worker
+--cov=osprey_worker/src/osprey/engine
+--cov=osprey_worker/src/osprey/worker
 --cov=example_plugins/src
 --cov-branch
 --cov-report=term-missing

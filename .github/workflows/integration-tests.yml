@@ -32,12 +32,30 @@ jobs:
           docker compose -f docker-compose.yaml -f docker-compose.test.yaml --profile test build
 
       - name: Run integration tests
-        run: ./run-tests.sh --junitxml=/tmp/test-results/junit-pytest.xml
+        run: |
+          ./run-tests.sh \
+            --junitxml=/tmp/test-results/junit-pytest.xml \
+            --cov-config=osprey_worker/.coveragerc-sync \
+            --cov=osprey_worker/src/osprey/engine \
+            --cov=osprey_worker/src/osprey/worker \
+            --cov=example_plugins/src \
+            --cov-branch \
+            --cov-report=term-missing \
+            --cov-report=xml:/tmp/test-results/coverage-sync.xml
+
+      - name: Validate integration test results
+        run: |
+          test -s /tmp/test-results/junit-pytest.xml
+          test -s /tmp/test-results/coverage-sync.xml
+          python3 -c 'from xml.etree import ElementTree; ElementTree.parse("/tmp/test-results/junit-pytest.xml"); ElementTree.parse("/tmp/test-results/coverage-sync.xml")'
 
       - name: Upload test results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         if: always()
         with:
           name: pytest-results
-          path: /tmp/test-results/junit-pytest.xml
+          path: |
+            /tmp/test-results/junit-pytest.xml
+            /tmp/test-results/coverage-sync.xml
+          if-no-files-found: error
           retention-days: 30
