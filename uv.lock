@@ -1204,10 +1204,14 @@ wheels = [
 [[package]]
 name = "hash-ring"
 version = "0.0.4"
-source = { git = "https://github.com/discord/hash_ring.git?rev=b4b56bc93053881b68b829ee9d1a4871b4aee592#b4b56bc93053881b68b829ee9d1a4871b4aee592" }
+source = { url = "https://storage.googleapis.com/discord-devops/hash_ring-src-b4b56bc93053881b68b829ee9d1a4871b4aee592.zip" }
 dependencies = [
     { name = "six" },
 ]
+sdist = { hash = "sha256:e30bccd9f6c75972dd6d89a5b5f249c04d7784c138a32323dcbe2df919e45dc0" }
+
+[package.metadata]
+requires-dist = [{ name = "six", specifier = "~=1.15" }]
 
 [[package]]
 name = "httpcore"
@@ -1873,7 +1877,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aiodns" },
-    { name = "hash-ring", git = "https://github.com/discord/hash_ring.git?rev=b4b56bc93053881b68b829ee9d1a4871b4aee592" },
+    { name = "hash-ring", url = "https://storage.googleapis.com/discord-devops/hash_ring-src-b4b56bc93053881b68b829ee9d1a4871b4aee592.zip" },
     { name = "osprey-rpc", editable = "osprey_rpc" },
     { name = "osprey-worker", editable = "osprey_worker" },
     { name = "pycares" },

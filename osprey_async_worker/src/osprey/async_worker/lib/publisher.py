@@ -8,21 +8,53 @@ import asyncio
 import logging
 from typing import List, Optional
 
-from google.api_core.retry import Retry
+from google.api_core.exceptions import (
+    Aborted,
+    DeadlineExceeded,
+    InternalServerError,
+    ResourceExhausted,
+    RetryError,
+    ServiceUnavailable,
+    TooManyRequests,
+)
+from google.api_core.retry import Retry, if_exception_type
 from google.cloud import pubsub_v1
 from osprey.worker.lib.instruments import metrics
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-# Retry policy passed to PublisherClient.publish().  Google's Retry already
-# classifies transient gRPC codes (UNAVAILABLE, DEADLINE_EXCEEDED,
-# RESOURCE_EXHAUSTED, ABORTED, INTERNAL) and TimeoutError as retryable.
+_TRANSIENT_PUBLISH_ERRORS = (
+    TimeoutError,
+    Aborted,
+    DeadlineExceeded,
+    InternalServerError,
+    ResourceExhausted,
+    ServiceUnavailable,
+    TooManyRequests,
+)
+_is_retryable_publish_error = if_exception_type(*_TRANSIENT_PUBLISH_ERRORS)
+
+
+def _is_transient_publish_error(error: Exception) -> bool:
+    if isinstance(error, RetryError):
+        error = error.cause
+    return _is_retryable_publish_error(error)
+
+
+# Retry policy passed to PublisherClient.publish(). The explicit predicate
+# includes the TimeoutError and DeadlineExceeded failures seen in production.
 # The 30-second deadline gives the internal retry loop enough headroom for a
 # few backoff attempts before we give up.  The future.result() timeout below
 # is set slightly above deadline so the Retry loop, not the wall-clock cap,
 # decides when to stop.
-_PUBLISH_RETRY = Retry(initial=0.5, maximum=10.0, multiplier=2.0, deadline=30.0)
+_PUBLISH_RETRY = Retry(
+    predicate=_is_transient_publish_error,
+    initial=0.5,
+    maximum=10.0,
+    multiplier=2.0,
+    deadline=30.0,
+)
 
 
 class AsyncPubSubPublisher:
@@ -103,15 +135,29 @@ class AsyncPubSubPublisher:
     async def _flush_batch(self, batch: List[bytes]) -> None:
         """Publish a batch of messages. Runs sync publishes in executor."""
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._sync_flush, batch)
+        flush_future = loop.run_in_executor(None, self._sync_flush, batch)
+        try:
+            retry_messages = await asyncio.shield(flush_future)
+        except asyncio.CancelledError:
+            retry_messages = await flush_future
+            self._requeue(retry_messages)
+            raise
+        self._requeue(retry_messages)
 
-    def _sync_flush(self, batch: List[bytes]) -> None:
+    def _requeue(self, messages: List[bytes]) -> None:
+        """Put transient publish failures back on the process-local queue."""
+        for data in messages:
+            self._queue.put_nowait(data)
+            metrics.increment('async_pubsub_publisher.publish.retry_queued', tags=self._metric_tags)
+
+    def _sync_flush(self, batch: List[bytes]) -> List[bytes]:
         """Synchronous batch publish."""
         futures = []
         for data in batch:
             metrics.increment('async_pubsub_publisher.publish.attempt', tags=self._metric_tags)
-            futures.append(self._client.publish(self._topic_path, data, retry=_PUBLISH_RETRY))
-        for future in futures:
+            futures.append((data, self._client.publish(self._topic_path, data, retry=_PUBLISH_RETRY)))
+        retry_messages = []
+        for data, future in futures:
             try:
                 # deadline=30s above; 35s here ensures Retry's own deadline,
                 # not this wall-clock cap, is what terminates failed attempts.
@@ -123,6 +169,9 @@ class AsyncPubSubPublisher:
                     'async_pubsub_publisher.publish.failure',
                     tags=self._metric_tags + [f'error:{e.__class__.__name__}'],
                 )
+                if _is_transient_publish_error(e):
+                    retry_messages.append(data)
+        return retry_messages
 
     def publish(self, data: BaseModel) -> None:
         """Queue a Pydantic model for async batched publishing."""
