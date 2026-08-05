@@ -12,6 +12,7 @@ dependencies = [
     "osprey_rpc",
     "osprey_worker",
     "aiodns",
+    "hash-ring",
     "pycares",
 ]
 

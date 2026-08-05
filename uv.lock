@@ -1202,6 +1202,14 @@ wheels = [
 ]
 
 [[package]]
+name = "hash-ring"
+version = "0.0.4"
+source = { git = "https://github.com/discord/hash_ring.git?rev=b4b56bc93053881b68b829ee9d1a4871b4aee592#b4b56bc93053881b68b829ee9d1a4871b4aee592" }
+dependencies = [
+    { name = "six" },
+]
+
+[[package]]
 name = "httpcore"
 version = "1.0.9"
 source = { registry = "https://pypi.org/simple" }
@@ -1856,6 +1864,7 @@ version = "0.1.0"
 source = { editable = "osprey_async_worker" }
 dependencies = [
     { name = "aiodns" },
+    { name = "hash-ring" },
     { name = "osprey-rpc" },
     { name = "osprey-worker" },
     { name = "pycares" },
@@ -1864,6 +1873,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aiodns" },
+    { name = "hash-ring", git = "https://github.com/discord/hash_ring.git?rev=b4b56bc93053881b68b829ee9d1a4871b4aee592" },
     { name = "osprey-rpc", editable = "osprey_rpc" },
     { name = "osprey-worker", editable = "osprey_worker" },
     { name = "pycares" },
