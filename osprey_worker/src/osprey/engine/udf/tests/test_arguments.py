@@ -43,3 +43,20 @@ def test_arguments_can_be_none() -> None:
     assert Arguments.kwarg_can_be_none('obj')
     assert not Arguments.kwarg_can_be_none('string')
     assert not Arguments.kwarg_can_be_none('integer')
+
+
+def test_arguments_can_be_none_is_cached() -> None:
+    class Arguments(ArgumentsBase):
+        optional: str | None
+        string: str
+
+    hits_before = Arguments.kwarg_can_be_none.cache_info().hits
+
+    assert Arguments.kwarg_can_be_none('optional') is True
+    assert Arguments.kwarg_can_be_none('string') is False
+
+    # Repeat the same calls; both should now be served from the cache.
+    assert Arguments.kwarg_can_be_none('optional') is True
+    assert Arguments.kwarg_can_be_none('string') is False
+
+    assert Arguments.kwarg_can_be_none.cache_info().hits == hits_before + 2
