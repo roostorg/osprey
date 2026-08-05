@@ -10,13 +10,14 @@ primitives will NOT work here — they must be ported to AsyncUDFBase.
 
 import asyncio
 import os
-
-import sentry_sdk
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
+import sentry_sdk
 from ddtrace import tracer
 from ddtrace.span import Span as TracerSpan
+from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase, AsyncUDFBase
+from osprey.async_worker.lib.pigeon.exceptions import RPCException
 from osprey.engine.ast.grammar import ASTNode
 from osprey.engine.executor.custom_extracted_features import (
     ActionIdExtractedFeature,
@@ -41,10 +42,7 @@ from osprey.engine.stdlib.udfs.json_utils import MissingJsonPath
 from osprey.engine.udf.base import BatchableUDFBase
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
-from osprey.async_worker.lib.pigeon.exceptions import RPCException
 from result import Err, Ok
-
-from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase, AsyncUDFBase
 
 logger = get_logger(__name__)
 
@@ -231,8 +229,14 @@ async def _execute_async_udf(
     chain: DependencyChain,
     context: ExecutionContext,
     error_info_: List[NodeErrorInfo],
+    pre_resolved_arguments: Optional[Any] = None,
 ) -> NodeResult:
-    """Execute a native async UDF. Awaited directly on the event loop."""
+    """Execute a native async UDF. Awaited directly on the event loop.
+
+    `pre_resolved_arguments`, when given, is the Arguments already computed for this same
+    chain (e.g. by `_enqueue_batches` while checking whether a batch would form), so this
+    skips a redundant `resolve_arguments` call for the same message.
+    """
     async with semaphore:
         call_executor: CallExecutor = chain.executor  # type: ignore
         udf: AsyncUDFBase[Any, Any] = call_executor._udf  # type: ignore
@@ -241,7 +245,11 @@ async def _execute_async_udf(
         caught_exception: Optional[Exception] = None
         execution_result: NodeResult = _UNSET_RESULT
         try:
-            resolved_arguments = udf.resolve_arguments(context, call_executor)
+            resolved_arguments = (
+                pre_resolved_arguments
+                if pre_resolved_arguments is not None
+                else udf.resolve_arguments(context, call_executor)
+            )
             with metrics.timed('udf_execution_duration', tags=metric_tags, sample_rate=0.01):
                 result = await udf.async_execute(context, resolved_arguments)
             execution_result = Ok(udf.check_result_type(result))
@@ -323,12 +331,18 @@ async def _enqueue_batches(
     context: ExecutionContext,
     error_infos: List[NodeErrorInfo],
     ready_async: Sequence[DependencyChain],
-) -> Tuple[Sequence[DependencyChain], Dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]]]:
+) -> Tuple[
+    Sequence[Tuple[DependencyChain, Optional[Any]]],
+    Dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]],
+]:
     """Collect batchable async chains and launch them as tasks.
 
-    Returns (remaining non-batched chains, dict of batch tasks -> chains).
+    Returns ((chain, pre_resolved_arguments) pairs for chains not folded into a batch, dict
+    of batch tasks -> chains). `pre_resolved_arguments` is set for a batchable chain whose
+    `resolve_arguments` already succeeded here but whose batch group stayed below the
+    minimum size, so the caller can reuse it instead of resolving a second time.
     """
-    batch_chains: Dict[Tuple[type, str], List[Tuple[DependencyChain, Any]]] = defaultdict(list)
+    batch_chains: Dict[Tuple[type, str], List[Tuple[DependencyChain, Any, Any]]] = defaultdict(list)
     chains_to_remove: List[DependencyChain] = []
 
     for async_chain in ready_async:
@@ -344,7 +358,7 @@ async def _enqueue_batches(
             resolved_arguments = udf.resolve_arguments(context, call_executor)
             batchable_arguments = udf.get_batchable_arguments(resolved_arguments)
             routing_key = udf.get_batch_routing_key(batchable_arguments)
-            batch_chains[(batch_type, routing_key)].append((async_chain, batchable_arguments))
+            batch_chains[(batch_type, routing_key)].append((async_chain, resolved_arguments, batchable_arguments))
         except Exception as e:
             if not isinstance(e, NodeFailurePropagationException):
                 error_infos.append(NodeErrorInfo(e, call_executor.node))
@@ -352,12 +366,17 @@ async def _enqueue_batches(
             context.set_resolved_value(async_chain, Err(None))
 
     new_batch_tasks: Dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]] = {}
+    pre_resolved_by_chain: Dict[DependencyChain, Any] = {}
 
     for _, chains_and_args in batch_chains.items():
         if len(chains_and_args) < 2:
+            # Batch didn't form — carry the already-resolved arguments forward so the
+            # fallthrough to _execute_async_udf doesn't resolve them a second time.
+            for chain, resolved_arguments, _ in chains_and_args:
+                pre_resolved_by_chain[chain] = resolved_arguments
             continue
 
-        chains, args = zip(*chains_and_args)
+        chains, _resolved_args, args = zip(*chains_and_args)
         chains_to_remove.extend(chains)
 
         batch_udfs = [chain.executor._udf for chain in chains]
@@ -378,7 +397,9 @@ async def _enqueue_batches(
             )
         new_batch_tasks[task] = chains
 
-    remaining = [chain for chain in ready_async if chain not in chains_to_remove]
+    remaining = [
+        (chain, pre_resolved_by_chain.get(chain)) for chain in ready_async if chain not in chains_to_remove
+    ]
     return remaining, new_batch_tasks
 
 
@@ -449,12 +470,12 @@ async def execute(
                 )
             in_progress_batches.update(new_batch_tasks)
 
-            for async_chain in remaining_ready_async:
+            for async_chain, pre_resolved_arguments in remaining_ready_async:
                 # Native async UDF → await on event loop
                 if (isinstance(async_chain.executor, CallExecutor)
                         and isinstance(async_chain.executor._udf, (AsyncUDFBase, AsyncBatchableUDFBase))):
                     task = asyncio.create_task(
-                        _execute_async_udf(semaphore, async_chain, context, error_infos)
+                        _execute_async_udf(semaphore, async_chain, context, error_infos, pre_resolved_arguments)
                     )
                 else:
                     # Legacy sync UDF with execute_async=True → thread pool fallback
