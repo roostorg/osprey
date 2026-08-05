@@ -1,3 +1,4 @@
+import gc
 import random
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -107,6 +108,38 @@ def _manual_plan(
 
 def _ready_indices(state: ExecutionPlanState, plan: ExecutionPlan) -> tuple[int, ...]:
     return tuple(plan.index_by_chain_id[id(chain)] for chain in state.get_ready())
+
+
+class _TupleResizeObserver:
+    def __init__(self, chains: tuple[DependencyChain, ...]) -> None:
+        self._chains = chains
+        self._previous: DependencyChain | None = None
+        self._held_tuples: list[tuple[object, ...]] = []
+
+    def __getitem__(self, index: int) -> DependencyChain:
+        if self._previous is not None:
+            # Retaining the in-progress tuple simulates a sampler observing it before CPython shrinks it.
+            self._held_tuples.extend(
+                referrer
+                for referrer in gc.get_referrers(self._previous)
+                if isinstance(referrer, tuple) and len(referrer) > len(self._chains)
+            )
+        chain = self._chains[index]
+        self._previous = chain
+        return chain
+
+
+def test_get_ready_does_not_resize_an_observable_tuple() -> None:
+    plan, (source,) = _manual_plan(predecessors=((), ()), source_indices=((0, 1),))
+    state = ExecutionPlanState(plan)
+    expected_ready = plan.chains
+    observed_chains = _TupleResizeObserver(expected_ready)
+    object.__setattr__(plan, 'chains', observed_chains)
+    state.activate_source(source)
+
+    ready = state.get_ready()
+
+    assert ready == expected_ready
 
 
 def test_plan_states_are_independent(compiled_execution_graph: ExecutionGraph) -> None:
