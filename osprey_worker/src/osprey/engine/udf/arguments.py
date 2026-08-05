@@ -331,6 +331,7 @@ class ArgumentsBase:
         return val_type
 
     @classmethod
+    @lru_cache(maxsize=None)
     def kwarg_can_be_none(cls, name: str) -> bool:
         """Whether or not the kwarg can accept None as an input.
 

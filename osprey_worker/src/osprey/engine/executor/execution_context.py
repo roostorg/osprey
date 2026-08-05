@@ -30,6 +30,7 @@ from osprey.engine.executor.custom_extracted_features import (
 )
 from osprey.engine.executor.dependency_chain import DependencyChain
 from osprey.engine.executor.execution_graph import ExecutionGraph
+from osprey.engine.executor.execution_plan import ExecutionPlanState
 from osprey.engine.executor.external_service_utils_base import (
     ExternalService,
     KeyT,
@@ -61,7 +62,7 @@ from osprey.engine.language_types.post_execution_convertible import PostExecutio
 from osprey.engine.language_types.verdicts import VerdictEffect
 from osprey.engine.utils.types import add_slots, cached_property
 from osprey.rpc.common.v1.verdicts_pb2 import Verdicts
-from result import Result, UnwrapError
+from result import Err, Ok, Result, UnwrapError
 
 if TYPE_CHECKING:
     from osprey.engine.ast_validator.validation_context import ValidatedSources
@@ -136,14 +137,13 @@ class ExecutionContext:
         '_input_encoding',
         '_execution_graph',
         '_outputs',
-        '_pending_executions',
         '_resolved_node_values',
-        '_visited_executions',
         '_effects',
         '_udf_helpers',
         '_external_service_accessors_by_getter_id',
         '_async_external_service_accessors_by_getter_id',
         '_dependency_dag',
+        '_execution_plan_state',
         '_chain_by_id',
         '_enqueued_sources',
         '_custom_extracted_features',
@@ -157,18 +157,18 @@ class ExecutionContext:
         self._execution_graph = execution_graph
         self._udf_helpers: UDFHelpers = helpers
         self._outputs: Dict[str, Any] = {}
-        self._pending_executions: Set[DependencyChain] = set()
         self._resolved_node_values: Dict[int, NodeResult] = {}
         # Seed any precomputed (constant-folded) node values for a specialized graph, so folded
         # absent-group nodes resolve to their constant without being scheduled or executed. Empty
         # for a full graph. Keyed by id(node), matching set_resolved_value's keying.
         self._resolved_node_values.update(execution_graph.get_prefolded_node_values())
-        self._visited_executions: Set[DependencyChain] = set()
         # a k/v store of effects, by effect type
         self._effects: DefaultDict[Type[EffectBase], List[EffectBase]] = defaultdict(list)
         self._external_service_accessors_by_getter_id: Dict[int, Any] = {}
         self._async_external_service_accessors_by_getter_id: Dict[int, Any] = {}
-        self._dependency_dag = TopologicalSorter()
+        plan = execution_graph.get_execution_plan()
+        self._execution_plan_state = ExecutionPlanState(plan) if plan is not None else None
+        self._dependency_dag = TopologicalSorter() if plan is None else None
         self._chain_by_id: Dict[int, DependencyChain] = {}
         self._enqueued_sources: Set[Source] = set()
         # feature name -> serializable feature
@@ -188,6 +188,26 @@ class ExecutionContext:
         failed, will either raise a NodeFailurePropagationException (default) or return None (if
         return_none_for_failed_values is True).
         """
+        try:
+            return self.resolved_result(node).unwrap()
+        except UnwrapError:
+            if return_none_for_failed_values:
+                return None
+            else:
+                raise NodeFailurePropagationException()
+
+    def resolved_result(self, node: ASTNode) -> NodeResult:
+        """Returns the underlying NodeResult (Ok or Err) for a given node, with the `should_unwrap`
+        conversion already applied to Ok values.
+
+        Callers that need both of `resolved()`'s failure behaviors (None-on-failure and
+        raise-on-failure) can call this once and derive both from the returned NodeResult via
+        is_ok()/is_err(), instead of paying for the should_unwrap check, Name indirection, and
+        dict lookup twice.
+
+        Raises KeyError if the node has yet to be resolved and is not a pruned node, same as
+        `resolved()`.
+        """
         # We need to check this on the original node, not (say) the assignment node if this is a Name.
         should_unwrap = self._execution_graph.should_unwrap(node)
 
@@ -195,23 +215,18 @@ class ExecutionContext:
             node = self.get_name_node(node)
 
         try:
-            value = self._resolved_node_values[id(node)].unwrap()
-            if should_unwrap:
-                assert isinstance(value, PostExecutionConvertible), (value, type(value))
-                value = value.to_post_execution_value()
-            return value
-        except UnwrapError:
-            if return_none_for_failed_values:
-                return None
-            else:
-                raise NodeFailurePropagationException()
+            node_result = self._resolved_node_values[id(node)]
         except KeyError:
             if self._execution_graph.is_pruned_node(node):
-                if return_none_for_failed_values:
-                    return None
-                else:
-                    raise NodeFailurePropagationException()
+                return Err(None)
             raise
+
+        if should_unwrap and node_result.is_ok():
+            value = node_result.unwrap()
+            assert isinstance(value, PostExecutionConvertible), (value, type(value))
+            return Ok(value.to_post_execution_value())
+
+        return node_result
 
     def get_name_node(self, name: Name) -> ASTNode:
         """Returns the node that is responsible for resolving a given Loaded name."""
@@ -221,7 +236,11 @@ class ExecutionContext:
     def set_resolved_value(self, chain: DependencyChain, value: NodeResult) -> None:
         """Called by the main executor once a node has been resolved, to store its value for dependent executors."""
         self._resolved_node_values[id(chain.executor.node)] = value
-        self._dependency_dag.done(id(chain))
+        if self._execution_plan_state is not None:
+            self._execution_plan_state.done(chain)
+        else:
+            assert self._dependency_dag is not None
+            self._dependency_dag.done(id(chain))
 
     def set_output_value(self, key: str, value: Any) -> None:
         """Called by the assignment node executor to store an output key/value pair."""
@@ -263,6 +282,16 @@ class ExecutionContext:
         if source in self._enqueued_sources:
             return
 
+        if self._execution_plan_state is not None:
+            self._execution_plan_state.activate_source(source)
+        else:
+            self._enqueue_source_legacy(source)
+        # Import and Require only activate immutable, precompiled sources, so each source
+        # needs to be integrated into this execution context once.
+        self._enqueued_sources.add(source)
+
+    def _enqueue_source_legacy(self, source: Source) -> None:
+        assert self._dependency_dag is not None
         sorted_dependency_chain = self._execution_graph.get_sorted_dependency_chain(source)
 
         # Build the set of chain ids that will actually be in the DAG (includes
@@ -283,11 +312,12 @@ class ExecutionContext:
             self._chain_by_id[chainid] = chain
 
         self._dependency_dag.prepare()
-        # Import and Require only activate immutable, precompiled sources, so each source
-        # needs to be integrated into this execution context once.
-        self._enqueued_sources.add(source)
 
     def get_ready_to_execute(self) -> Sequence[DependencyChain]:
+        if self._execution_plan_state is not None:
+            return self._execution_plan_state.get_ready()
+
+        assert self._dependency_dag is not None
         ready_nodeids = self._dependency_dag.get_ready()
         ready = []
         for nodeid in ready_nodeids:

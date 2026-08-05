@@ -11,13 +11,14 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from time import time
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Set, Type, TypedDict, cast
+from typing import TYPE_CHECKING, Callable, Dict, FrozenSet, List, Optional, Set, Type, TypedDict, cast
 
 if TYPE_CHECKING:
     from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter
 
 from ddtrace.span import Span as TracerSpan
 from osprey.async_worker.executor import execute as async_execute
+from osprey.async_worker.typed_contract_warmer import TypedContractWarmer
 from osprey.engine.ast.ast_utils import iter_nodes
 from osprey.engine.ast.grammar import Assign, Span, parsed_ast_root_cache
 from osprey.engine.ast.sources import SourcesConfig
@@ -46,6 +47,7 @@ from osprey.engine.executor.typed_contract_dispatch import (
 )
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.schema.schema_loader import (
+    lazy_specialize_enabled,
     pruning_action_filter,
     shadow_action_filter,
 )
@@ -120,16 +122,43 @@ class AsyncOspreyEngine:
         self._sources_provider.set_sources_watcher(cast(Callable[[], None], self._handle_updated_sources))
         self._config_subkey_handler = ConfigSubkeyHandler(config_registry, self._execution_graph.validated_sources)
         self._validation_result_exporter = validation_exporter
-        # Per-action typed-contract gates (env, read once — env is stable per process).
-        # _prune_filter: actions whose graph is pruned. _shadow_filter: actions run in
-        # shadow (full result used, specialized computed + diffed).
-        self._prune_filter = pruning_action_filter()
-        self._shadow_filter = shadow_action_filter()
         # Specialized graphs for typed action contracts (§4.5 runtime dispatch).
         # Maps action_name -> SpecializedExecutionGraph.  Populated via
         # register_specialized_graph() during init + every source reload.
         self._specialized_graphs: Dict[str, ExecutionGraph] = {}
-        self._load_and_register_schemas()
+        # Per-action typed-contract gates (env). Re-read fresh here AND on every
+        # reload (see _handle_updated_sources) rather than snapshotted once, so an
+        # operator can flip the allowlist via a rules republish without a pod
+        # restart. _prune_filter: actions whose graph is pruned. _shadow_filter:
+        # actions run in shadow (full result used, specialized computed + diffed).
+        self._prune_filter: FrozenSet[str] = pruning_action_filter()
+        self._shadow_filter: FrozenSet[str] = shadow_action_filter()
+        # Guards the warm-up re-freeze against clobbering a reload's execution gate; see
+        # _refreeze_after_warmup. Only ever mutated on the event loop.
+        self._reload_in_progress = False
+        self._warmer = TypedContractWarmer(
+            # All providers are late-bound: the graph, the allowlist and the corpus all change
+            # under the warmer between reloads, and it must never read a snapshot of any of them.
+            graph_provider=lambda: self._execution_graph,
+            register_filter_provider=lambda: self._prune_filter | self._shadow_filter,
+            action_names_provider=lambda: self.get_known_action_names(),
+            register=self.register_specialized_graph,
+            thread_pool=self._thread_pool,
+            on_drained=self._refreeze_after_warmup,
+            yield_during_specialize=self._should_yield_during_compilation,
+        )
+        self._lazy_specialize = lazy_specialize_enabled()
+        self._dispatch_on_miss: Optional[Callable[[str], None]] = None
+        if self._lazy_specialize:
+            # Seed only: __init__ is sync and pre-loop, so the drain task starts on the
+            # first dispatch miss or reload. Boot serves full graphs until then, which is
+            # the behavior of every pod today.
+            self._dispatch_on_miss = self._warmer.note_miss
+            self._warmer.seed()
+        else:
+            # Like the initial compile above: no periodic yields at boot, there is no
+            # in-flight work to protect and we want a fast cold start.
+            self._load_and_register_schemas(yield_during_specialize=False)
         # Freeze the boot graph out of gen-2 GC (see _freeze_resident_graph).
         # Runs AFTER schema load so the specialized graphs are frozen into the
         # permanent generation too (mirrors the reload path ordering).
@@ -203,6 +232,7 @@ class AsyncOspreyEngine:
             )
             return
 
+        self._reload_in_progress = True
         self._execution_gate.clear()
         try:
             await self._executions_idle.wait()
@@ -212,6 +242,10 @@ class AsyncOspreyEngine:
             # drain, so breaking the old AST's parent cycles is safe.
             old_graph = self._execution_graph
             self._specialized_graphs.clear()
+            # Same retirement, for the warmer: drop the queue, the negative cache and the
+            # old graph's specialization index. A warm-up already in flight for old_graph
+            # is not cancelled — its result is discarded at publish by the identity guard.
+            self._warmer.reset()
             self._execution_graph = new_graph
 
             # Confirm to the provider which sources are now actually live so it dedups
@@ -232,12 +266,28 @@ class AsyncOspreyEngine:
             # request path.
             self._execution_gate.set()
 
-            # Reload typed-action-contracts specialized graphs against the new full
-            # graph. Hoisted off the event loop because specialize_graph walks every
-            # chain in the full graph and, scaled across all schema'd actions
-            # (~hundreds), would block the bridge loop the sources-watcher trampoline
-            # runs on.
-            await asyncio.get_running_loop().run_in_executor(self._thread_pool, self._load_and_register_schemas)
+            # Re-read the typed-contract allowlist env vars on every reload (not just
+            # once at __init__) so an operator can apply a changed allowlist with a
+            # no-op rules republish instead of a pod restart. Cheap (os.environ +
+            # string parsing) so it stays on the event loop rather than the executor.
+            self._prune_filter = pruning_action_filter()
+            self._shadow_filter = shadow_action_filter()
+            self._lazy_specialize = lazy_specialize_enabled()
+            self._dispatch_on_miss = self._warmer.note_miss if self._lazy_specialize else None
+
+            if self._lazy_specialize:
+                # Re-seed against the NEW graph and return to serving immediately: the
+                # reload never waits on specialization. Until an action is warm, dispatch
+                # serves the full graph (see typed_contract_warmer).
+                self._warmer.seed()
+            else:
+                # Eager fallback (OSPREY_TYPED_CONTRACT_LAZY_SPECIALIZE=0): specialize every
+                # allowlisted action against the new full graph before returning. Hoisted off
+                # the event loop because, scaled across all schema'd actions (~hundreds), the
+                # pass would block the bridge loop the sources-watcher trampoline runs on. It
+                # also yields periodically inside (see _load_and_register_schemas) so it
+                # releases the GIL like compile does.
+                await asyncio.get_running_loop().run_in_executor(self._thread_pool, self._load_and_register_schemas)
 
             self._execution_gate.clear()
             await self._executions_idle.wait()
@@ -255,6 +305,7 @@ class AsyncOspreyEngine:
             if self._active_executions == 0:
                 self._freeze_resident_graph()
             self._execution_gate.set()
+            self._reload_in_progress = False
 
     @staticmethod
     def _break_old_graph_cycles(old_graph: ExecutionGraph, new_graph: ExecutionGraph) -> None:
@@ -306,6 +357,29 @@ class AsyncOspreyEngine:
         except Exception:
             log.exception('gc freeze of resident execution graph failed')
 
+    def _refreeze_after_warmup(self) -> None:
+        """Re-freeze once the background warmer has drained.
+
+        Graphs specialized after the post-reload ``gc.freeze`` land in the unfrozen set, so
+        without this every reload leaves the warm-up's payloads exposed to per-message gen-2
+        collections — the exact cost `_freeze_resident_graph` exists to remove.
+
+        Same quiescence rule as the reload path's own freeze: gate closed, and skip entirely if
+        anything is executing. There is deliberately no ``await`` between the gate clear and the
+        set, so the whole block is atomic on the event loop — no execution can slip in, and no
+        concurrent reload can observe a transiently-open gate. A reload already holding the gate
+        is the one case that check cannot cover, hence the ``_reload_in_progress`` bail; the
+        reload's own freeze will cover the warm-up's graphs anyway.
+        """
+        if self._reload_in_progress:
+            return
+        self._execution_gate.clear()
+        try:
+            if self._active_executions == 0:
+                self._freeze_resident_graph()
+        finally:
+            self._execution_gate.set()
+
     @property
     def execution_graph(self) -> ExecutionGraph:
         return self._execution_graph
@@ -324,13 +398,29 @@ class AsyncOspreyEngine:
         self._specialized_graphs[action_name] = graph
         log.info('Registered specialized graph for action %r', action_name)
 
-    def _load_and_register_schemas(self) -> None:
+    def _load_and_register_schemas(self, yield_during_specialize: bool = True) -> None:
         """Load schemas from the resolved schemas directory and register
-        specialized graphs.
+        specialized graphs, using the current self._prune_filter / self._shadow_filter.
 
-        Synchronous, CPU-heavy: each ``specialize_graph`` call walks every
-        chain in the full graph. On the reload path this is dispatched via
-        ``run_in_executor`` to keep the bridge loop responsive.
+        The EAGER pass, now reached only with ``OSPREY_TYPED_CONTRACT_LAZY_SPECIALIZE=0``.
+        By default the asyncio engine warms specializations in the background instead
+        (:class:`TypedContractWarmer`), because on the production corpus this pass costs
+        29.35s of CPU and cannot be made to fit on the reload path.
+
+        Callers (init + _handle_updated_sources) re-read those filters from env
+        immediately before calling this, so the allowlist is re-evaluated fresh on
+        every reload rather than snapshotted once — an operator can change
+        OSPREY_TYPED_CONTRACT_PRUNING / _SHADOW and apply it with a no-op rules
+        republish instead of a pod restart.
+
+        Synchronous, CPU-heavy: each ``specialize_graph`` call walks the chains
+        reachable from its action's source closure. On the reload path this is
+        dispatched via ``run_in_executor`` to keep the bridge loop responsive.
+
+        ``run_in_executor`` alone is not enough — it moves the work off the loop's
+        thread but not off the GIL. ``yield_during_specialize`` gives this pass the
+        same periodic-yield duty cycle ``_compile_execution_graph_sync`` uses, under
+        the same config flag, so neither reload phase can starve the event loop.
 
         No-op if :func:`resolve_schemas_dir` returns ``None``. Mirrors
         :meth:`OspreyEngine._load_and_register_schemas` in the gevent variant.
@@ -347,6 +437,7 @@ class AsyncOspreyEngine:
             self.get_known_action_names,
             self.register_specialized_graph,
             schemas=self._execution_graph.validated_sources.sources.schemas(),
+            yield_during_specialize=yield_during_specialize and self._should_yield_during_compilation,
         )
 
     async def execute(
@@ -387,6 +478,7 @@ class AsyncOspreyEngine:
                 self._shadow_filter,
                 self._execution_graph,
                 action_data=action.data,
+                on_miss=self._dispatch_on_miss,
             )
             result = await _run(serve_graph)
             if shadow_spec is not None:
@@ -464,5 +556,6 @@ class AsyncOspreyEngine:
         }
 
     def shutdown(self) -> None:
-        """Shutdown the compilation thread pool."""
+        """Stop the typed-contract warmer, then shut down the compilation thread pool."""
+        self._warmer.cancel()
         self._thread_pool.shutdown(wait=True)

@@ -6,7 +6,21 @@ import weakref
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from osprey.async_worker import typed_contract_warmer as warmer_mod
 from osprey.async_worker.engine import AsyncOspreyEngine
+from osprey.engine.executor import typed_contract_dispatch as dispatch
+from osprey.engine.executor.graph_specializer import SpecializedExecutionGraph
+
+
+@pytest.fixture
+def eager_specialize(monkeypatch):
+    """Pin the reload to the INLINE specialization pass.
+
+    Specialization is lazy (background-warmed) by default; these tests assert properties of
+    the eager pass, which survives behind OSPREY_TYPED_CONTRACT_LAZY_SPECIALIZE=0. Their
+    lazy-mode counterparts live at the bottom of this file.
+    """
+    monkeypatch.setenv('OSPREY_TYPED_CONTRACT_LAZY_SPECIALIZE', '0')
 
 
 def _make_engine_with_stub_compile(initial_graph, recompile_graph):
@@ -96,7 +110,10 @@ async def test_handle_updated_sources_dispatches_config_after_swap():
 
 
 @pytest.mark.asyncio
-async def test_handle_updated_sources_releases_old_graph_before_specializing():
+async def test_handle_updated_sources_releases_old_graph_before_specializing(eager_specialize):
+    class _Plan:
+        pass
+
     class _Sources:
         def hash(self):
             return 'graph_hash'
@@ -109,6 +126,7 @@ async def test_handle_updated_sources_releases_old_graph_before_specializing():
 
         def __init__(self):
             self.cycle = self
+            self._execution_plan = _Plan()
 
     old = _CyclicGraph()
     old_specialized = _CyclicGraph()
@@ -118,6 +136,8 @@ async def test_handle_updated_sources_releases_old_graph_before_specializing():
     engine._specialized_graphs['old_action'] = old_specialized
     engine._freeze_resident_graph()
     old_ref = weakref.ref(old)
+    old_plan_ref = weakref.ref(old._execution_plan)
+    new_plan_ref = weakref.ref(new._execution_plan)
     old_specialized_ref = weakref.ref(old_specialized)
     del old
     del old_specialized
@@ -125,7 +145,12 @@ async def test_handle_updated_sources_releases_old_graph_before_specializing():
     old_graph_was_released = []
 
     def observe_old_graph_lifetime():
-        old_graph_was_released.append(old_ref() is None and old_specialized_ref() is None)
+        old_graph_was_released.append(
+            old_ref() is None
+            and old_plan_ref() is None
+            and old_specialized_ref() is None
+            and new_plan_ref() is not None
+        )
 
     with (
         patch.object(engine, '_compile_execution_graph_sync', return_value=new),
@@ -175,7 +200,7 @@ async def test_handle_updated_sources_waits_for_active_execution_before_retiring
 
 
 @pytest.mark.asyncio
-async def test_handle_updated_sources_reopens_execution_after_specialization_failure():
+async def test_handle_updated_sources_reopens_execution_after_specialization_failure(eager_specialize):
     old = MagicMock(name='old_graph')
     new = MagicMock(name='new_graph')
     engine = _make_engine_with_stub_compile(old, new)
@@ -197,7 +222,7 @@ async def test_handle_updated_sources_reopens_execution_after_specialization_fai
 
 
 @pytest.mark.asyncio
-async def test_handle_updated_sources_serves_full_graph_while_specializing():
+async def test_handle_updated_sources_serves_full_graph_while_specializing(eager_specialize):
     old = MagicMock(name='old_graph')
     new = MagicMock(name='new_graph')
     engine = _make_engine_with_stub_compile(old, new)
@@ -345,3 +370,172 @@ def test_break_old_graph_cycles_evicts_reverted_content_from_ast_cache():
         for key in list(parsed_ast_root_cache.keys()):
             if key not in before:
                 parsed_ast_root_cache.pop(key, None)
+
+
+@pytest.mark.asyncio
+async def test_handle_updated_sources_reevaluates_typed_contract_filters(monkeypatch, eager_specialize):
+    """OSPREY_TYPED_CONTRACT_PRUNING must be re-read on every reload, not
+    snapshotted once at __init__ — otherwise an operator can only flip the
+    typed-contract kill switch via a pod restart."""
+    monkeypatch.delenv('OSPREY_TYPED_CONTRACT_PRUNING', raising=False)
+    monkeypatch.delenv('OSPREY_TYPED_CONTRACT_SHADOW', raising=False)
+
+    class _Sources:
+        def hash(self):
+            return 'new_hash'
+
+        def schemas(self):
+            return {'schemas/test_action.json': '{}'}
+
+    new = MagicMock(name='new_graph')
+    new.validated_sources.sources = _Sources()
+
+    engine = _make_engine_with_stub_compile(MagicMock(name='old_graph'), new)
+    assert engine._specialized_graphs == {}, 'pruning is off at boot; nothing should be registered yet'
+
+    monkeypatch.setattr(engine, 'get_known_action_names', lambda: {'test_action'})
+    monkeypatch.setattr(dispatch, 'load_schema_for_action_from_sources', lambda action_name, schemas: object())
+    monkeypatch.setattr(dispatch, 'specialize_graph', lambda full_graph, schema, index=None: object())
+    # The corpus-wide specialization index is a real collaborator that needs a real graph; this
+    # test asserts the reload re-reads the allowlist, so stub it out with specialize_graph.
+    monkeypatch.setattr(dispatch, 'build_specialization_index', lambda full_graph: object())
+
+    # Flip the kill switch AFTER boot -- a reload must pick it up without a restart.
+    monkeypatch.setenv('OSPREY_TYPED_CONTRACT_PRUNING', '*')
+
+    with (
+        patch.object(engine, 'compile_execution_graph', new=AsyncMock(return_value=new)),
+        patch.object(engine, '_break_old_graph_cycles', new=lambda *_: None),
+    ):
+        await engine._handle_updated_sources()
+
+    assert 'test_action' in engine._specialized_graphs, (
+        'reload did not re-read OSPREY_TYPED_CONTRACT_PRUNING; the allowlist change should not require a restart'
+    )
+
+
+def _arm_lazy_warmup(monkeypatch):
+    """Clean typed-contract env for a lazy-warm-up test, with a zero inter-action sleep.
+
+    Must run BEFORE the engine is constructed: the warmer reads its interval once, and
+    __init__ with the allowlist already set would seed against the stub compile's graph.
+    """
+    monkeypatch.delenv('OSPREY_TYPED_CONTRACT_PRUNING', raising=False)
+    monkeypatch.delenv('OSPREY_TYPED_CONTRACT_SHADOW', raising=False)
+    monkeypatch.delenv('OSPREY_TYPED_CONTRACT_LAZY_SPECIALIZE', raising=False)
+    monkeypatch.setenv('OSPREY_TYPED_CONTRACT_WARM_INTERVAL_MS', '0')
+    monkeypatch.setattr(warmer_mod, 'build_specialization_index', lambda graph: object())
+
+
+@pytest.mark.asyncio
+async def test_reload_never_specializes_inline_when_warming_lazily(monkeypatch):
+    """The reload path must not run the specialization pass at all.
+
+    Measured on the production corpus: 242 actions, 29.35s of CPU, mean 120.6ms/action,
+    p95 190.7ms — and the periodic-yield wrapper that keeps it from starving the loop
+    stretches that ~6x in wall clock. It cannot live on a reload.
+    """
+    _arm_lazy_warmup(monkeypatch)
+    new = MagicMock(name='new_graph')
+    engine = _make_engine_with_stub_compile(MagicMock(name='old_graph'), new)
+    assert engine._specialized_graphs == {}, 'pruning is off at boot; nothing should be registered yet'
+
+    warmed = []
+    inline_specialize = MagicMock(name='specialize_graph')
+    monkeypatch.setattr(dispatch, 'specialize_graph', inline_specialize)
+    monkeypatch.setattr(
+        warmer_mod,
+        'specialize_one_action',
+        lambda graph, action_name, **kwargs: warmed.append(action_name) or MagicMock(name=f'spec_{action_name}'),
+    )
+    monkeypatch.setattr(engine, 'get_known_action_names', lambda: {'test_action'})
+    monkeypatch.setenv('OSPREY_TYPED_CONTRACT_PRUNING', '*')
+
+    with (
+        patch.object(engine, 'compile_execution_graph', new=AsyncMock(return_value=new)),
+        patch.object(engine, '_break_old_graph_cycles', new=lambda *_: None),
+        patch.object(engine, '_freeze_resident_graph'),
+    ):
+        await engine._handle_updated_sources()
+
+        inline_specialize.assert_not_called()
+        assert warmed == [], 'the reload waited on a specialization'
+        assert engine._specialized_graphs == {}, 'the reload published a specialization inline'
+        assert engine._warmer.pending_count == 1, 'the reload did not queue the action for warm-up'
+
+        await engine._warmer._task
+
+    assert warmed == ['test_action']
+    assert 'test_action' in engine._specialized_graphs
+
+
+@pytest.mark.asyncio
+async def test_dispatch_serves_full_graph_until_warm_then_the_specialized_one(monkeypatch):
+    """A cold action is never wrong, only unoptimized: it gets the full graph until the
+    warmer publishes its specialization."""
+    _arm_lazy_warmup(monkeypatch)
+    new = MagicMock(name='new_graph')
+    engine = _make_engine_with_stub_compile(MagicMock(name='old_graph'), new)
+
+    specialized = MagicMock(spec=SpecializedExecutionGraph)
+    specialized.absent_groups_satisfied.return_value = True
+    monkeypatch.setattr(warmer_mod, 'specialize_one_action', lambda graph, action_name, **kwargs: specialized)
+    monkeypatch.setattr(engine, 'get_known_action_names', lambda: {'test_action'})
+    monkeypatch.setenv('OSPREY_TYPED_CONTRACT_PRUNING', '*')
+
+    action = MagicMock(action_name='test_action', data={})
+    with (
+        patch.object(engine, 'compile_execution_graph', new=AsyncMock(return_value=new)),
+        patch.object(engine, '_break_old_graph_cycles', new=lambda *_: None),
+        patch.object(engine, '_freeze_resident_graph'),
+        patch('osprey.async_worker.engine.async_execute', new=AsyncMock(return_value=MagicMock())) as execute,
+    ):
+        await engine._handle_updated_sources()
+
+        await engine.execute(MagicMock(), action)
+        assert execute.await_args.args[0] is new, 'a not-yet-warm action must be served the full graph'
+
+        await engine._warmer._task
+
+        await engine.execute(MagicMock(), action)
+        assert execute.await_args.args[0] is specialized, 'a warmed action must be served its specialization'
+
+
+@pytest.mark.asyncio
+async def test_warm_up_refreezes_once_drained_and_leaves_the_gate_open(monkeypatch):
+    """Graphs specialized after the post-reload gc.freeze land in the unfrozen set, so the
+    warmer re-freezes when it drains. That must not leave executions gated off."""
+    _arm_lazy_warmup(monkeypatch)
+    new = MagicMock(name='new_graph')
+    engine = _make_engine_with_stub_compile(MagicMock(name='old_graph'), new)
+
+    monkeypatch.setattr(warmer_mod, 'specialize_one_action', lambda graph, action_name, **kwargs: MagicMock())
+    monkeypatch.setattr(engine, 'get_known_action_names', lambda: {'test_action'})
+    monkeypatch.setenv('OSPREY_TYPED_CONTRACT_PRUNING', '*')
+
+    with (
+        patch.object(engine, 'compile_execution_graph', new=AsyncMock(return_value=new)),
+        patch.object(engine, '_break_old_graph_cycles', new=lambda *_: None),
+        patch.object(engine, '_freeze_resident_graph') as freeze,
+    ):
+        await engine._handle_updated_sources()
+        reload_freezes = freeze.call_count
+        await engine._warmer._task
+
+    assert freeze.call_count == reload_freezes + 1, 'warm-up did not re-freeze after draining'
+    assert engine._execution_gate.is_set(), 'warm-up re-freeze left the execution gate closed'
+
+
+@pytest.mark.asyncio
+async def test_refreeze_after_warmup_does_not_reopen_a_reloads_execution_gate():
+    """The gate is not reentrant: if the warmer drained while a reload held it closed,
+    re-opening it would let actions run against a half-swapped graph."""
+    engine = _make_engine_with_stub_compile(MagicMock(name='old_graph'), MagicMock(name='new_graph'))
+    engine._reload_in_progress = True
+    engine._execution_gate.clear()
+
+    with patch.object(engine, '_freeze_resident_graph') as freeze:
+        engine._refreeze_after_warmup()
+
+    freeze.assert_not_called()
+    assert not engine._execution_gate.is_set(), 'warm-up re-freeze reopened a gate a reload was holding'

@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 from time import time
-from typing import Callable, Dict, Generic, List, Optional, Set, Tuple, Type, TypeVar
+from typing import Callable, Dict, FrozenSet, Generic, List, Optional, Set, Tuple, Type, TypeVar
 
 import gevent
 import gevent.pool
@@ -102,14 +102,18 @@ class OspreyEngine:
         self._sources_provider.set_sources_watcher(self._handle_updated_sources)
         self._config_subkey_handler = ConfigSubkeyHandler(config_registry, self._execution_graph.validated_sources)
         self._validation_result_exporter = validation_exporter
-        # Per-action typed-contract gates (env, read once). _prune_filter: actions
-        # pruned; _shadow_filter: actions run in shadow (full result used + diffed).
-        self._prune_filter = pruning_action_filter()
-        self._shadow_filter = shadow_action_filter()
         # Specialized graphs for typed action contracts (§4.5 runtime dispatch)
         # Maps action_name -> SpecializedExecutionGraph. Populated via register_specialized_graph().
         self._specialized_graphs: Dict[str, ExecutionGraph] = {}
-        self._load_and_register_schemas()
+        # Per-action typed-contract gates (env). Re-read fresh here AND on every
+        # reload (see _handle_updated_sources) rather than snapshotted once, so an
+        # operator can flip the allowlist via a rules republish without a pod
+        # restart. _prune_filter: actions pruned; _shadow_filter: actions run in
+        # shadow (full result used + diffed).
+        self._prune_filter: FrozenSet[str] = pruning_action_filter()
+        self._shadow_filter: FrozenSet[str] = shadow_action_filter()
+        # Like the initial compile: no periodic yields at boot, nothing in flight to protect.
+        self._load_and_register_schemas(disable_periodic_yield=True)
 
     def _compile_execution_graph(self, disable_periodic_yield: bool = False) -> ExecutionGraph:
         def _do_compile_execution_graph() -> ExecutionGraph:
@@ -142,18 +146,27 @@ class OspreyEngine:
 
         return self._execution_graph_compilation_thread_pool.apply(_do_compile_execution_graph)
 
-    def _load_and_register_schemas(self) -> None:
+    def _load_and_register_schemas(self, disable_periodic_yield: bool = False) -> None:
         """Load schemas from the resolved schemas directory and register
-        specialized graphs.
+        specialized graphs, using the current self._prune_filter / self._shadow_filter.
 
-        Called after every compilation (init + reload). No-op if
-        :func:`resolve_schemas_dir` returns ``None`` (neither
+        Callers (init + _handle_updated_sources) re-read those filters from env
+        immediately before calling this, so the allowlist is re-evaluated fresh on
+        every reload rather than snapshotted once — an operator can change
+        OSPREY_TYPED_CONTRACT_PRUNING / _SHADOW and apply it with a no-op rules
+        republish instead of a pod restart.
+
+        No-op if :func:`resolve_schemas_dir` returns ``None`` (neither
         ``OSPREY_SCHEMAS_DIR`` nor ``OSPREY_RULES_PATH/schemas`` resolves).
 
         Only registers graphs for actions in the prune OR shadow allowlist
         (OSPREY_TYPED_CONTRACT_PRUNING / _SHADOW); both default OFF, so shipping
         schema files on the rules path cannot change behavior on its own. The shared
         loop lives in `typed_contract_dispatch` (identical to the async engine).
+
+        Unlike compilation this runs on the caller's greenlet, so it gets the same
+        ``periodic_execution_yield`` duty cycle under the same config flag — otherwise a
+        reload's specialization pass holds the hub for the whole pass.
         """
         load_and_register_specialized_graphs(
             self._execution_graph,
@@ -162,6 +175,7 @@ class OspreyEngine:
             self.get_known_action_names,
             self.register_specialized_graph,
             schemas=self._execution_graph.validated_sources.sources.schemas(),
+            yield_during_specialize=self._should_yield_during_compilation and not disable_periodic_yield,
         )
 
     def _handle_updated_sources(self) -> None:
@@ -192,6 +206,11 @@ class OspreyEngine:
         self._execution_graph = new_graph
         log.info(f'Compiled new execution graph for sources={self._sources_provider.get_current_sources().hash()}')
 
+        # Re-read the typed-contract allowlist env vars on every reload (not just
+        # once at __init__) so an operator can apply a changed allowlist with a
+        # no-op rules republish instead of a pod restart.
+        self._prune_filter = pruning_action_filter()
+        self._shadow_filter = shadow_action_filter()
         self._load_and_register_schemas()
         self._config_subkey_handler.dispatch_config(self._execution_graph.validated_sources)
         # Confirm to the provider which sources are now live so it dedups no-op

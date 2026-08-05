@@ -38,17 +38,26 @@ payload is caught at dispatch by `absent_groups_satisfied` (serve the full graph
 typed_contract_dispatch.resolve_dispatch.
 
 Node identity: NodeKey = id(ast_node) — collision-free (see NodeKey definition).
+
+Scoping: the prune/fold analysis runs over the chains reachable from ONE action's source
+closure, not the whole corpus — see `SpecializationIndex` and `_scoped_chains_for_action`.
 """
 
 from __future__ import annotations
 
 import logging
 import re
+from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, FrozenSet, List, Mapping, Optional, Sequence, Set
+from typing import TYPE_CHECKING, Any, Dict, FrozenSet, List, Mapping, Optional, Sequence, Set, Tuple
 
 from osprey.engine.ast.grammar import ASTNode, IsConstant, Source, String
 from osprey.engine.ast.grammar import List as GrammarList
+from osprey.engine.ast_validator.source_closure import (
+    SourceClosureIndex,
+    action_source_path,
+    build_source_closure_index_for,
+)
 from osprey.engine.executor.dependency_chain import DependencyChain
 from osprey.engine.executor.execution_context import Action, ExecutionContext, NodeResult
 from osprey.engine.executor.execution_graph import ExecutionGraph
@@ -57,6 +66,7 @@ from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.stdlib.udfs.resolve_optional import ResolveOptional
 from osprey.engine.stdlib.udfs.rules import Rule, WhenRules
 from osprey.engine.udf.base import UDFBase
+from osprey.engine.utils.periodic_execution_yielder import maybe_periodic_yield
 from result import Err, Ok
 
 if TYPE_CHECKING:
@@ -160,12 +170,18 @@ def _resolve_optional_has_default(chain: DependencyChain) -> bool:
         return False
 
 
-def _get_all_sorted_chains(graph: ExecutionGraph) -> List[DependencyChain]:
-    """Gather all sorted dependency chains from all sources in the graph."""
+def _get_all_sorted_chains(graph: ExecutionGraph, sources: Optional[Sequence[Source]] = None) -> List[DependencyChain]:
+    """Gather the sorted dependency chains of `sources` (default: every source in the graph).
+
+    Each source's sorted chain is already a topologically ordered transitive closure of its
+    statements' dependencies (see execution_plan's module docstring), so restricting the
+    source set yields a dependency-closed chain set — the property `_scoped_chains_for_action`
+    verifies before scoping the analysis to it.
+    """
     chains: List[DependencyChain] = []
     seen: Set[int] = set()
 
-    for source in graph.validated_sources.sources:
+    for source in graph.validated_sources.sources if sources is None else sources:
         try:
             for chain in graph.get_sorted_dependency_chain(source):
                 if id(chain) not in seen:
@@ -173,6 +189,7 @@ def _get_all_sorted_chains(graph: ExecutionGraph) -> List[DependencyChain]:
                     chains.append(chain)
         except KeyError:
             pass
+        maybe_periodic_yield()
     return chains
 
 
@@ -188,6 +205,7 @@ def _collect_all_chains_recursive(chains: Sequence[DependencyChain]) -> List[Dep
         for dep in chain.dependent_on:
             visit(dep)
         result.append(chain)
+        maybe_periodic_yield()
 
     for chain in chains:
         visit(chain)
@@ -255,6 +273,7 @@ def _compute_foldable_closure(
             if non_const_deps and all(_node_key_from_chain(dep) in foldable for dep in non_const_deps):
                 foldable.add(key)
                 changed = True
+            maybe_periodic_yield()
     return foldable
 
 
@@ -323,26 +342,152 @@ def _compute_fold_values(
         ctx._resolved_node_values[key] = result
         if key in foldable:
             fold_values[key] = result
+        maybe_periodic_yield()
     return fold_values
+
+
+class ClosureScopeError(Exception):
+    """Raised when an action's scoped chain set is not dependency-closed.
+
+    Means the source-closure walk and the compiled graph disagree, so prune/fold decisions
+    taken over the scoped set could be missing a cross-boundary predecessor. `specialize_graph`
+    catches this and falls back to whole-corpus scoping (today's known-good behavior).
+    """
+
+
+@dataclass(frozen=True)
+class SpecializationIndex:
+    """Corpus-wide, action-INDEPENDENT analysis of one full graph, computed once and reused
+    for every action's specialization.
+
+    `protected` deliberately stays whole-corpus. Whether a chain is FOLDED (value precomputed)
+    or PRUNED (resolves to Err) turns on whether *any* WhenRules in the corpus consumes it, not
+    just the ones this action can reach — so scoping it per action would reclassify shared model
+    nodes and, worse, would let an under-approximated source closure prune an input that an
+    excluded action's enforcement still reads. Keeping it corpus-wide makes closure scoping
+    exactly equivalent to corpus scoping within the closure, and robust to an under-approximated
+    closure.
+    """
+
+    protected: FrozenSet[NodeKey]
+    """Transitive dependency closure of every WhenRules chain in the corpus."""
+
+    closure_index: Optional[SourceClosureIndex]
+    """Static Import + Require adjacency, or None when the validator results it needs are
+    absent — in which case specialization stays whole-corpus."""
+
+    corpus_source_count: int
+
+
+def build_specialization_index(full_graph: ExecutionGraph) -> SpecializationIndex:
+    """Compute the whole-corpus analysis that every action's specialization shares.
+
+    Callers specializing many actions against one graph (see
+    `typed_contract_dispatch.load_and_register_specialized_graphs`) must build this ONCE and
+    pass it to every `specialize_graph` call; that is what turns the per-reload cost from
+    O(actions x corpus) into O(corpus + sum of per-action closures).
+    """
+    all_chains = _collect_all_chains_recursive(_get_all_sorted_chains(full_graph))
+    protected: Set[NodeKey] = set()
+    for chain in all_chains:
+        if _is_whenrules_chain(chain):
+            _collect_chain_keys(chain, protected)
+        maybe_periodic_yield()
+    return SpecializationIndex(
+        protected=frozenset(protected),
+        closure_index=build_source_closure_index_for(full_graph.validated_sources),
+        corpus_source_count=len(full_graph.validated_sources.sources),
+    )
+
+
+def _scoped_chains_for_action(
+    full_graph: ExecutionGraph,
+    index: SpecializationIndex,
+    action_name: str,
+) -> Tuple[List[DependencyChain], int]:
+    """The chains reachable from `action_name`'s source closure, plus the closure's source count.
+
+    The closure is walked from the graph's entry point (where execution actually begins —
+    `ExecutionContext.__init__` enqueues it) with the per-action `Require(rule=f'actions/{...}')`
+    dispatch narrowed to this action, and is additionally seeded with the action's own source so
+    an unconventionally-wired corpus still scopes to something useful.
+
+    Raises ClosureScopeError if the resulting chain set is not dependency-closed. Every chain the
+    action can reach is inside it by construction (each source's sorted chain is a transitive
+    closure), so a predecessor outside it means the walk and the graph disagree.
+    """
+    if index.closure_index is None:
+        return _collect_all_chains_recursive(_get_all_sorted_chains(full_graph)), index.corpus_source_count
+
+    sources = full_graph.validated_sources.sources
+    starts: List[Source] = [sources.get_entry_point()]
+    action_source = sources.get_by_path(action_source_path(action_name))
+    if action_source is not None:
+        starts.append(action_source)
+
+    scoped_sources = index.closure_index.reachable(starts, action_name=action_name)
+    if len(scoped_sources) >= index.corpus_source_count:
+        # Closure spans the corpus (single-file or fully-imported corpus) — nothing to scope.
+        return _collect_all_chains_recursive(_get_all_sorted_chains(full_graph)), index.corpus_source_count
+
+    scoped_chains = _get_all_sorted_chains(full_graph, scoped_sources)
+    _assert_dependency_closed(scoped_chains, action_name)
+    return scoped_chains, len(scoped_sources)
+
+
+def _assert_dependency_closed(chains: Sequence[DependencyChain], action_name: str) -> None:
+    """Verify no chain in `chains` has a predecessor outside `chains`.
+
+    Holds by construction today — each source's sorted chain is a transitive closure of its
+    statements' dependencies — so a violation means that invariant broke and prune/fold
+    propagation over this set would be reasoning from an incomplete DAG.
+    """
+    scoped_ids = {id(chain) for chain in chains}
+    for chain in chains:
+        for dep in chain.dependent_on:
+            if id(dep) not in scoped_ids:
+                node = dep.executor.node
+                raise ClosureScopeError(
+                    f'chain for {type(node).__name__} at '
+                    f'{node.span.source.path}:{node.span.start_line} is a predecessor of a chain '
+                    f"inside {action_name}'s closure but is outside its scoped chain set"
+                )
 
 
 def specialize_graph(
     full_graph: ExecutionGraph,
     schema: 'ActionSchema',
+    index: Optional[SpecializationIndex] = None,
+    scope_to_action_closure: bool = True,
 ) -> 'SpecializedExecutionGraph':
     """Produce a specialized execution graph for the given action schema.
 
     Chains whose top-level json group is in schema.absent_groups are pruned,
     along with their dependents (using the propagation rules in §4.4).
 
+    The analysis is scoped to the chains reachable from this action's source closure; chains
+    outside it are left untouched (full-graph semantics) because the action can never activate
+    them. `scope_to_action_closure=False` restores whole-corpus scoping — the reference
+    algorithm the golden equivalence test diffs against.
+
     Returns a SpecializedExecutionGraph that delegates to full_graph for
     everything except pruned chains.
     """
     absent_groups: FrozenSet[str] = schema.absent_groups
+    if index is None:
+        index = build_specialization_index(full_graph)
 
-    # Step 1 — collect all chains
-    all_top_level_chains = _get_all_sorted_chains(full_graph)
-    all_chains = _collect_all_chains_recursive(all_top_level_chains)
+    # Step 1 — collect the chains in scope for this action.
+    if scope_to_action_closure:
+        try:
+            all_chains, scoped_source_count = _scoped_chains_for_action(full_graph, index, schema.action)
+        except ClosureScopeError:
+            log.exception('closure scoping disagreed with the graph for %s; using whole corpus', schema.action)
+            all_chains = _collect_all_chains_recursive(_get_all_sorted_chains(full_graph))
+            scoped_source_count = index.corpus_source_count
+    else:
+        all_chains = _collect_all_chains_recursive(_get_all_sorted_chains(full_graph))
+        scoped_source_count = index.corpus_source_count
 
     # Step 2 — constant-fold the enforcement-feeding absent subtrees (this REPLACES the old
     # "rescue"). `protected` is the transitive closure of every WhenRules chain: the rules_any
@@ -353,11 +498,7 @@ def specialize_graph(
     # MissingJsonPath throw, no backend call). Non-fold-safe enforcement nodes (the Rules, effects,
     # undeclared backend UDFs) are NOT folded; they stay scheduled and execute, reading the folded
     # values — exactly as the rescue made them, but without the rescue step.
-    protected: Set[NodeKey] = set()
-    for chain in all_chains:
-        if _is_whenrules_chain(chain):
-            _collect_chain_keys(chain, protected)
-    foldable = _compute_foldable_closure(all_chains, absent_groups) & protected
+    foldable = _compute_foldable_closure(all_chains, absent_groups) & index.protected
     fold_values = _compute_fold_values(full_graph, all_chains, foldable, schema.action) if foldable else {}
 
     # Step 3 — seed the pruned set with absent extractors that are NOT folded (i.e. analytics-only
@@ -380,6 +521,7 @@ def specialize_graph(
     while changed:
         changed = False
         for chain in all_chains:
+            maybe_periodic_yield()
             key = _node_key_from_chain(chain)
             if key in pruned or key in foldable:
                 # Folded nodes are injected, not pruned — never propagate-prune them.
@@ -462,12 +604,14 @@ def specialize_graph(
     # absent nodes are now FOLDED in step 2, so the propagation above never prunes them.)
 
     log.debug(
-        'specialize_graph: schema=%s absent_groups=%r pruned %d, folded %d of %d chains',
+        'specialize_graph: schema=%s absent_groups=%r pruned %d, folded %d of %d chains (closure %d/%d sources)',
         schema.action,
         absent_groups,
         len(pruned),
         len(fold_values),
         len(all_chains),
+        scoped_source_count,
+        index.corpus_source_count,
     )
 
     return SpecializedExecutionGraph(
@@ -544,6 +688,7 @@ class SpecializedExecutionGraph(ExecutionGraph):
         '_full_graph',
         '_pruned_keys',
         '_fold_values',
+        '_filtered_sorted_chains',
         '_schema',
     )
 
@@ -570,19 +715,42 @@ class SpecializedExecutionGraph(ExecutionGraph):
         # Keyed by NodeKey (== id(node)), so it doubles as the runtime pre-seed map.
         self._fold_values: Mapping[NodeKey, NodeResult] = fold_values or {}
         self._schema = schema
+        self._filtered_sorted_chains = self._build_filtered_sorted_chains(full_graph)
+
+    def _build_filtered_sorted_chains(self, full_graph: ExecutionGraph) -> Dict[Source, Sequence[DependencyChain]]:
+        """Precompute every source's scheduling list once, at construction.
+
+        The request path asks for these lists once per enqueued source per action, and both the
+        graph and its pruned/folded sets are immutable after construction, so filtering per call
+        was pure repeated work (one full pass over the source's chains, ~0.17ms/action for a
+        ~1k-chain source). Precomputing eagerly rather than caching lazily costs one extra O(chains)
+        pass inside specialize_graph — which already walks every chain several times — and keeps the
+        instance read-only after __init__, so there is no cache-population race to reason about.
+
+        A source whose chains are all kept maps to the full graph's own list object (identity, no
+        copy), so a specialization that prunes and folds nothing is indistinguishable from the full
+        graph and the memo costs no extra memory for untouched sources.
+        """
+        excluded = frozenset(self._pruned_keys) | frozenset(self._fold_values)
+        filtered: Dict[Source, Sequence[DependencyChain]] = {}
+        for source in full_graph._sorted_dependency_chains:
+            # Via the getter, so specializing a specialized graph keeps the inner filtering.
+            original = full_graph.get_sorted_dependency_chain(source)
+            if not excluded:
+                filtered[source] = original
+                continue
+            kept = tuple(chain for chain in original if _node_key_from_chain(chain) not in excluded)
+            # We only ever remove, so equal lengths means nothing was dropped.
+            filtered[source] = original if len(kept) == len(original) else kept
+        return filtered
 
     def get_sorted_dependency_chain(self, source: Source) -> Sequence[DependencyChain]:
         """Return the sorted dependency chain for a source, with pruned AND folded chains removed
-        (both are excluded from scheduling — pruned resolve to None/failure, folded are pre-seeded)."""
-        original = self._full_graph.get_sorted_dependency_chain(source)
-        if not self._pruned_keys and not self._fold_values:
-            return original
-        return [
-            chain
-            for chain in original
-            if _node_key_from_chain(chain) not in self._pruned_keys
-            and _node_key_from_chain(chain) not in self._fold_values
-        ]
+        (both are excluded from scheduling — pruned resolve to None/failure, folded are pre-seeded).
+
+        Precomputed in __init__; raises KeyError for an unknown source, as the base class does.
+        """
+        return self._filtered_sorted_chains[source]
 
     def is_pruned_node(self, node: ASTNode) -> bool:
         """True if this node's chain was removed from scheduling (pruned or folded). Folded nodes

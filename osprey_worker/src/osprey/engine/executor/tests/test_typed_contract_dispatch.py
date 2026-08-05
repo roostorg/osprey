@@ -23,7 +23,7 @@ def _run(monkeypatch, prune, shadow, schemas, *, resolve_should_be_called: bool)
     loaded_from: List[Tuple[str, str]] = []
     registered: List[str] = []
 
-    def fake_specialize(full_graph, schema):
+    def fake_specialize(full_graph, schema, index=None):
         # schema is the sentinel we returned below; pass it straight through.
         return schema
 
@@ -44,6 +44,9 @@ def _run(monkeypatch, prune, shadow, schemas, *, resolve_should_be_called: bool)
         return Path('/fake/schemas')
 
     monkeypatch.setattr(dispatch, 'specialize_graph', fake_specialize)
+    # The corpus-wide index is a real collaborator that needs a real graph; this suite
+    # isolates the schema-source seam, so stub it out alongside specialize_graph.
+    monkeypatch.setattr(dispatch, 'build_specialization_index', lambda full_graph: object())
     monkeypatch.setattr(dispatch, 'load_schema_for_action_from_sources', fake_from_sources)
     monkeypatch.setattr(dispatch, 'load_schema_for_action', fake_from_disk)
     monkeypatch.setattr(dispatch, 'resolve_schemas_dir', fake_resolve)
