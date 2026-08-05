@@ -108,6 +108,7 @@ class AsyncOspreyEngine:
             config_registry.get_validator()
         )
         self._thread_pool = ThreadPoolExecutor(max_workers=1)
+        self._shutdown_complete = False
         self._execution_gate = asyncio.Event()
         self._execution_gate.set()
         self._executions_idle = asyncio.Event()
@@ -555,7 +556,25 @@ class AsyncOspreyEngine:
             if type_and_span.should_extract
         }
 
+    def _shutdown_thread_pool(self) -> None:
+        try:
+            self._thread_pool.shutdown(wait=True, cancel_futures=True)
+        except TypeError:
+            # Python <3.9 and narrow test doubles do not expose cancel_futures.
+            self._thread_pool.shutdown(wait=True)
+
+    async def shutdown_async(self) -> None:
+        """Drain the warmer on-loop, then join the compilation pool off-loop."""
+        if self._shutdown_complete:
+            return
+        await self._warmer.shutdown_async()
+        await asyncio.to_thread(self._shutdown_thread_pool)
+        self._shutdown_complete = True
+
     def shutdown(self) -> None:
-        """Stop the typed-contract warmer, then shut down the compilation thread pool."""
+        """Synchronous compatibility wrapper for non-event-loop callers."""
+        if self._shutdown_complete:
+            return
         self._warmer.cancel()
-        self._thread_pool.shutdown(wait=True)
+        self._shutdown_thread_pool()
+        self._shutdown_complete = True

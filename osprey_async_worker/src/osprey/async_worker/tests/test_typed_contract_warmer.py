@@ -58,6 +58,29 @@ def _make_warmer(pool, graph_holder, registered, *, on_drained=None) -> TypedCon
     )
 
 
+async def _await_warmer(warmer: TypedContractWarmer) -> None:
+    """Drive and clean up a warmer task without relying on executor wakeups.
+
+    The coder's asyncio selector can miss the thread pool's self-pipe notification when
+    no timer is scheduled. Periodic polling gives completion callbacks a bounded chance
+    to run and keeps every task owned by the test that started it.
+    """
+    task = warmer._task
+    assert task is not None
+
+    async def _drive() -> None:
+        while not task.done():
+            await asyncio.sleep(0.001)
+        await task
+
+    try:
+        await asyncio.wait_for(_drive(), timeout=5)
+    finally:
+        if not task.done():
+            warmer.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+
+
 async def test_seed_warms_every_filter_matching_action(pool, monkeypatch):
     graph_holder = {'graph': _FakeGraph('g1')}
     registered: List = []
@@ -66,7 +89,7 @@ async def test_seed_warms_every_filter_matching_action(pool, monkeypatch):
     warmer = _make_warmer(pool, graph_holder, registered)
     warmer.seed()
     assert warmer.pending_count == len(_ACTIONS), 'seed must queue every allowlisted action'
-    await warmer._task
+    await _await_warmer(warmer)
 
     assert registered == [(a, f'spec:{a}') for a in _ACTIONS]
     assert warmer.pending_count == 0
@@ -87,7 +110,7 @@ async def test_traffic_miss_moves_action_to_front_of_queue(pool, monkeypatch):
     warmer = _make_warmer(pool, graph_holder, [])
     warmer.seed()
     warmer.note_miss('action_c')  # last in the seeded order
-    await warmer._task
+    await _await_warmer(warmer)
 
     assert order[0] == 'action_c', f'traffic miss did not jump the queue: {order}'
     assert sorted(order) == sorted(_ACTIONS), 'promotion must not drop or duplicate work'
@@ -101,9 +124,14 @@ async def test_repeated_traffic_misses_do_not_requeue_the_same_action(pool, monk
 
     warmer = _make_warmer(pool, graph_holder, [])
     warmer.seed()
-    for _ in range(5):
-        warmer.note_miss('action_c')
-    assert warmer.pending_count == len(_ACTIONS)
+    try:
+        for _ in range(5):
+            warmer.note_miss('action_c')
+        assert warmer.pending_count == len(_ACTIONS)
+    finally:
+        warmer.cancel()
+        if warmer._task is not None:
+            await asyncio.gather(warmer._task, return_exceptions=True)
 
 
 async def test_reload_mid_warmup_never_publishes_the_old_graphs_specialization(pool, monkeypatch):
@@ -126,14 +154,16 @@ async def test_reload_mid_warmup_never_publishes_the_old_graphs_specialization(p
 
     warmer = _make_warmer(pool, graph_holder, registered)
     warmer.seed()
-    assert await asyncio.to_thread(started.wait, 5)
+    async with asyncio.timeout(5):
+        while not started.is_set():
+            await asyncio.sleep(0.001)
 
     # The reload: swap the graph and retire the warmer's state, exactly as the engine does.
     graph_holder['graph'] = _FakeGraph('new')
     warmer.reset()
     warmer.seed()
     release.set()
-    await warmer._task
+    await _await_warmer(warmer)
 
     assert all(spec.endswith('@new') for _, spec in registered), (
         f'a specialization built against the retired graph was published: {registered}'
@@ -141,6 +171,7 @@ async def test_reload_mid_warmup_never_publishes_the_old_graphs_specialization(p
     assert sorted(name for name, _ in registered) == sorted(_ACTIONS), (
         'the action whose in-flight specialization was dropped must be re-warmed'
     )
+    assert warmer._inputs is None, 'completed replacement window retained generation inputs'
 
 
 async def test_specialize_failure_is_negative_cached_for_the_generation(pool, monkeypatch):
@@ -158,7 +189,7 @@ async def test_specialize_failure_is_negative_cached_for_the_generation(pool, mo
 
     warmer = _make_warmer(pool, graph_holder, registered)
     warmer.seed()
-    await warmer._task
+    await _await_warmer(warmer)
 
     assert attempts == _ACTIONS
     assert registered == [], 'a failed specialization must not be published'
@@ -169,7 +200,7 @@ async def test_specialize_failure_is_negative_cached_for_the_generation(pool, mo
             warmer.note_miss(action)
     assert warmer.pending_count == 0, 'negative-cached actions were re-queued'
     if warmer._task is not None and not warmer._task.done():
-        await warmer._task
+        await _await_warmer(warmer)
     assert attempts == _ACTIONS, 'a failed action was retried against the same graph'
 
     # A new graph generation clears the negative cache — the failure may have been the
@@ -177,7 +208,7 @@ async def test_specialize_failure_is_negative_cached_for_the_generation(pool, mo
     graph_holder['graph'] = _FakeGraph('g2')
     warmer.reset()
     warmer.seed()
-    await warmer._task
+    await _await_warmer(warmer)
     assert attempts == _ACTIONS * 2
 
 
@@ -194,7 +225,7 @@ async def test_action_without_a_schema_is_settled_not_retried(pool, monkeypatch)
 
     warmer = _make_warmer(pool, graph_holder, registered)
     warmer.seed()
-    await warmer._task
+    await _await_warmer(warmer)
 
     assert registered == []
     for action in _ACTIONS:
@@ -213,20 +244,44 @@ async def test_drain_hook_is_debounced_to_once_per_generation(pool, monkeypatch)
 
     warmer = _make_warmer(pool, graph_holder, [], on_drained=hook)
     warmer.seed()
-    await warmer._task
+    await _await_warmer(warmer)
     assert hook.call_count == 1
 
     # A traffic miss for an action outside the seeded set starts a second drain that DOES
     # specialize something — the case the debounce has to absorb.
     warmer.note_miss('action_d')
-    await warmer._task
+    await _await_warmer(warmer)
     assert hook.call_count == 1, 'the re-freeze must be debounced to once per generation'
 
     graph_holder['graph'] = _FakeGraph('g2')
     warmer.reset()
     warmer.seed()
-    await warmer._task
+    await _await_warmer(warmer)
     assert hook.call_count == 2, 'a new generation re-arms the re-freeze'
+
+
+async def test_completed_window_releases_generation_inputs(pool, monkeypatch):
+    """The specialization index and schema map are construction-only state. Once the
+    completed window has fired its drain hook, traffic must not keep them resident."""
+    graph = _FakeGraph('g1')
+    graph_holder = {'graph': graph}
+    hook = MagicMock()
+    monkeypatch.setattr(warmer_mod, 'specialize_one_action', lambda graph, action, **kw: f'spec:{action}')
+
+    warmer = TypedContractWarmer(
+        graph_provider=lambda: graph_holder['graph'],
+        register_filter_provider=lambda: frozenset({'*'}),
+        action_names_provider=lambda: ['action_a'],
+        register=lambda name, spec: None,
+        thread_pool=pool,
+        on_drained=hook,
+        yield_during_specialize=False,
+    )
+    warmer.seed()
+    await _await_warmer(warmer)
+
+    hook.assert_called_once_with()
+    assert warmer._inputs is None, 'completed drain retained its generation index and schemas'
 
 
 async def test_seed_is_a_noop_when_the_allowlist_is_empty(pool):
@@ -262,7 +317,7 @@ def test_seed_without_a_running_loop_queues_work_for_later(pool, monkeypatch):
 
     async def drive():
         warmer.ensure_running()
-        await warmer._task
+        await _await_warmer(warmer)
 
     asyncio.run(drive())
     assert sorted(name for name, _ in registered) == sorted(_ACTIONS)

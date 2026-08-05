@@ -155,11 +155,11 @@ def run(rules_path: str, input_file: Optional[str], max_concurrent: int, with_pl
         max_concurrent_udfs=max_concurrent,
     )
 
-    async def _run():
+    async def _run() -> None:
         loop = asyncio.get_running_loop()
         stop_event = asyncio.Event()
 
-        def _signal_handler():
+        def _signal_handler() -> None:
             logger.info('Received shutdown signal')
             stop_event.set()
 
@@ -167,20 +167,22 @@ def run(rules_path: str, input_file: Optional[str], max_concurrent: int, with_pl
             loop.add_signal_handler(sig, _signal_handler)
 
         sink_task = asyncio.create_task(rules_sink.run())
-
-        # Wait for either the sink to finish or a shutdown signal
-        done = asyncio.create_task(stop_event.wait())
-        await asyncio.wait([sink_task, done], return_when=asyncio.FIRST_COMPLETED)
-
-        if not sink_task.done():
-            sink_task.cancel()
+        signal_task = asyncio.create_task(stop_event.wait())
+        try:
+            # Wait for either the sink to finish or a shutdown signal.
+            await asyncio.wait([sink_task, signal_task], return_when=asyncio.FIRST_COMPLETED)
+        finally:
+            if not sink_task.done():
+                sink_task.cancel()
+            if not signal_task.done():
+                signal_task.cancel()
+            await asyncio.gather(sink_task, signal_task, return_exceptions=True)
             try:
-                await sink_task
-            except asyncio.CancelledError:
-                pass
-
-        await rules_sink.stop()
-        logger.info('Async worker shutdown complete')
+                await rules_sink.stop()
+            finally:
+                if isinstance(engine, AsyncOspreyEngine):
+                    await engine.shutdown_async()
+            logger.info('Async worker shutdown complete')
 
     asyncio.run(_run())
 

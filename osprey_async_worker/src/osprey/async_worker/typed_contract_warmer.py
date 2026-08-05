@@ -235,6 +235,14 @@ class TypedContractWarmer:
         except RuntimeError:
             log.debug('typed-contract warm-up task could not be cancelled from this thread')
 
+    async def shutdown_async(self) -> None:
+        """Cancel and drain the warmer task on its owning event loop."""
+        task = self._task
+        if task is None:
+            return
+        self.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+
     async def _drain(self) -> None:
         try:
             while True:
@@ -335,6 +343,10 @@ class TypedContractWarmer:
         if self._window_start is not None:
             metrics.timing(_DURATION_METRIC, (monotonic() - self._window_start) * 1000.0)
             self._window_start = None
+        # The queue and in-flight slot are both empty now, so no specialization can still
+        # consume this generation's construction-only index and schema map. Drop them before
+        # the drain hook's gc.freeze so they are reclaimed rather than frozen permanently.
+        self._inputs = None
         if self._specialized_count and self._on_drained is not None and not self._drained_hook_fired:
             # Debounced to once per generation: at most one extra freeze per reload cycle.
             self._drained_hook_fired = True

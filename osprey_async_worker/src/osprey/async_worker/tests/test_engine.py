@@ -11,6 +11,28 @@ from osprey.async_worker.engine import AsyncOspreyEngine
 from osprey.engine.executor import typed_contract_dispatch as dispatch
 from osprey.engine.executor.graph_specializer import SpecializedExecutionGraph
 
+_CONSTRUCTED_ENGINES: list[AsyncOspreyEngine] = []
+
+
+@pytest.fixture(autouse=True)
+async def _drive_executor_callbacks_and_shutdown_engines():
+    """Keep this coder's selector responsive and release every test engine's pool."""
+
+    async def _tick() -> None:
+        while True:
+            await asyncio.sleep(0.001)
+
+    ticker = asyncio.create_task(_tick())
+    try:
+        yield
+    finally:
+        for engine in _CONSTRUCTED_ENGINES:
+            await engine.shutdown_async()
+        _CONSTRUCTED_ENGINES.clear()
+        await asyncio.get_running_loop().shutdown_default_executor()
+        ticker.cancel()
+        await asyncio.gather(ticker, return_exceptions=True)
+
 
 @pytest.fixture
 def eager_specialize(monkeypatch):
@@ -46,6 +68,7 @@ def _make_engine_with_stub_compile(initial_graph, recompile_graph):
 
     # Register what subsequent compiles should return.
     engine._stub_recompile_graph = recompile_graph
+    _CONSTRUCTED_ENGINES.append(engine)
     return engine
 
 
@@ -242,7 +265,9 @@ async def test_handle_updated_sources_serves_full_graph_while_specializing(eager
         patch('osprey.async_worker.engine.async_execute', new=AsyncMock(return_value=expected)) as execute,
     ):
         reload_task = asyncio.create_task(engine._handle_updated_sources())
-        assert await asyncio.to_thread(specialization_started.wait, 1)
+        async with asyncio.timeout(1):
+            while not specialization_started.is_set():
+                await asyncio.sleep(0.001)
 
         result = await asyncio.wait_for(engine.execute(MagicMock(), action), timeout=0.1)
         release_specialization.set()
@@ -539,3 +564,65 @@ async def test_refreeze_after_warmup_does_not_reopen_a_reloads_execution_gate():
 
     freeze.assert_not_called()
     assert not engine._execution_gate.is_set(), 'warm-up re-freeze reopened a gate a reload was holding'
+
+
+@pytest.mark.asyncio
+async def test_shutdown_async_drains_warmer_and_joins_pool_off_loop():
+    engine = _make_engine_with_stub_compile(MagicMock(name='graph'), MagicMock(name='unused'))
+    specialization_started = threading.Event()
+    release_specialization = threading.Event()
+    queued_specialization_ran = threading.Event()
+    warmer_cancelled = asyncio.Event()
+    ticker_ticks = 0
+
+    def blocked_specialization() -> None:
+        specialization_started.set()
+        release_specialization.wait(timeout=5)
+
+    async def live_warmer() -> None:
+        try:
+            await asyncio.Event().wait()
+        finally:
+            await asyncio.sleep(0)
+            warmer_cancelled.set()
+
+    async def tick() -> None:
+        nonlocal ticker_ticks
+        while True:
+            ticker_ticks += 1
+            await asyncio.sleep(0)
+
+    running_future = engine._thread_pool.submit(blocked_specialization)
+    async with asyncio.timeout(1):
+        while not specialization_started.is_set():
+            await asyncio.sleep(0.001)
+    queued_future = engine._thread_pool.submit(queued_specialization_ran.set)
+    engine._warmer._task = asyncio.create_task(live_warmer())
+    await asyncio.sleep(0)
+    ticker = asyncio.create_task(tick())
+    shutdown_task = None
+
+    try:
+        shutdown_async = getattr(engine, 'shutdown_async', None)
+        assert shutdown_async is not None, 'async engine teardown is missing'
+        shutdown_task = asyncio.create_task(shutdown_async())
+
+        async with asyncio.timeout(1):
+            while not warmer_cancelled.is_set() or not queued_future.cancelled() or ticker_ticks < 3:
+                await asyncio.sleep(0)
+
+        assert not shutdown_task.done(), 'thread-pool join did not wait for the running specialization'
+        assert not queued_specialization_ran.is_set(), 'shutdown executed a queued specialization'
+
+        release_specialization.set()
+        await shutdown_task
+        assert running_future.done()
+    finally:
+        release_specialization.set()
+        if shutdown_task is not None and not shutdown_task.done():
+            await asyncio.gather(shutdown_task, return_exceptions=True)
+        # shutdown_async uses the loop's default executor for the blocking join. Drain that
+        # test-owned worker while the ticker still guarantees selector progress.
+        await asyncio.get_running_loop().shutdown_default_executor()
+        ticker.cancel()
+        await asyncio.gather(ticker, return_exceptions=True)
