@@ -119,6 +119,7 @@ common = [
     { name = "unidecode", specifier = "==1.3.8" },
     { name = "werkzeug", specifier = "==1.0.1" },
 ]
+coverage = [{ name = "pytest-cov" }]
 dev = [
     { name = "ipdb", specifier = "==0.13.13" },
     { name = "ipython", specifier = "==9.4.0" },
@@ -128,7 +129,6 @@ dev = [
     { name = "mypy-protobuf", specifier = "==3.6.0" },
     { name = "pre-commit", specifier = ">=4.3.0" },
     { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
     { name = "pytest-flask", specifier = "==1.3.0" },
     { name = "pytest-order", specifier = "==1.3.0" },
     { name = "requests-mock", specifier = "==1.12.1" },

@@ -42,7 +42,7 @@ Do not add `npm test` while the repository has no UI tests, and do not add ESLin
 
 ### Report-only Python coverage
 
-Add `pytest-cov` to the root development dependency group, add it to FawltyDeps' plugin/CLI-only unused-dependency exemptions, and regenerate `uv.lock`.
+Add `pytest-cov` to a non-default root `coverage` dependency group, add it to FawltyDeps' plugin/CLI-only unused-dependency exemptions, and regenerate `uv.lock`. The native async job opts into this group explicitly. The Docker test service uses a test-only entrypoint that opts into the locked group at container start, while the shared production Dockerfile continues installing only the default groups.
 
 Use separate coverage configuration files for the two runtimes:
 
@@ -97,6 +97,7 @@ The excluded Python-integrity and workflow-security work will be implemented in 
 - locked Python sync and the existing Ruff, formatting, mypy, and FawltyDeps checks
 - native asyncio suite with JUnit and coverage XML
 - Docker-backed integration suite with JUnit and coverage XML
+- production and built test-runner images exclude coverage tooling, while the ephemeral Docker test container loads it from the locked non-default group
 - inspection of both coverage artifacts to confirm non-empty measured files and branch data
 - current CI guidance in `AGENTS.md`, `.github/copilot-instructions.md`, and `docs/docs.md` updated for the new documentation, UI build, Rust, and coverage behavior
 - independent read-only review of the complete diff

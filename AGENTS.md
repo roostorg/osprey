@@ -134,9 +134,9 @@ SKIP=prettier-osprey-ui uv run pre-commit run --show-diff-on-failure --color=alw
 uv tool run fawltydeps --check-unused --pyenv .venv
 
 # code-quality.yml → async-unit-tests
-uv sync --dev --locked
+uv sync --dev --group coverage --locked
 mkdir -p /tmp/test-results
-uv run pytest -q \
+uv run --locked --group coverage pytest -q \
   --junitxml=/tmp/test-results/junit-async.xml \
   --cov-config=osprey_async_worker/.coveragerc-async \
   --cov=osprey_async_worker/src/osprey/async_worker \
@@ -146,7 +146,7 @@ uv run pytest -q \
   osprey_async_worker
 test -s /tmp/test-results/junit-async.xml
 test -s /tmp/test-results/coverage-async.xml
-uv run python -c 'from xml.etree import ElementTree; ElementTree.parse("/tmp/test-results/junit-async.xml"); ElementTree.parse("/tmp/test-results/coverage-async.xml")'
+uv run --locked --group coverage python -c 'from xml.etree import ElementTree; ElementTree.parse("/tmp/test-results/junit-async.xml"); ElementTree.parse("/tmp/test-results/coverage-async.xml")'
 
 # code-quality.yml → ui-quality (CI `working-directory: osprey_ui`)
 ( cd osprey_ui
@@ -186,7 +186,7 @@ cargo install --locked --version 0.5.2 mdbook
 mdbook build
 ```
 
-The async and Docker pytest jobs upload their validated JUnit and report-only coverage XML files; neither enforces a coverage threshold. `mdbook.yml` validates documentation on pull requests and pushes to `main`; it does not deploy GitHub Pages. Do not modify `mdbook.yml` or the release/deploy workflows without human approval (see "Human-approval-required actions" below).
+Coverage tooling lives in the non-default `coverage` dependency group so production images do not include it. The async and Docker pytest jobs opt into that group and upload their validated JUnit and report-only coverage XML files; neither enforces a coverage threshold. `mdbook.yml` validates documentation on pull requests and pushes to `main`; it does not deploy GitHub Pages. Do not modify `mdbook.yml` or the release/deploy workflows without human approval (see "Human-approval-required actions" below).
 
 ## Security
 

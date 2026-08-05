@@ -207,11 +207,11 @@ Expected: pytest exits non-zero with `unrecognized arguments: --cov=osprey_async
 
 - [ ] **Step 2: Declare and lock pytest-cov**
 
-Add `pytest-cov` to the root `dev` dependency group. Add `pytest-cov` beside the other pytest plugins in `[tool.fawltydeps].ignore_unused`, with the existing plugin/CLI comment. Then run:
+Add `pytest-cov` to a non-default root `coverage` dependency group. Add `pytest-cov` beside the other pytest plugins in `[tool.fawltydeps].ignore_unused`, with the existing plugin/CLI comment. The async job and Docker test-only entrypoint must opt into this group explicitly so production images retain only the default groups. Then run:
 
 ```bash
 uv lock
-uv sync --dev --locked
+uv sync --dev --group coverage --locked
 uv lock --check
 ```
 
@@ -260,7 +260,7 @@ Run:
 
 ```bash
 mkdir -p /tmp/test-results
-uv run pytest -q \
+uv run --locked --group coverage pytest -q \
   osprey_async_worker/src/osprey/async_worker/tests/test_no_gevent_imports.py \
   --cov-config=osprey_async_worker/.coveragerc-async \
   --cov=osprey_async_worker/src/osprey/async_worker \
@@ -268,7 +268,7 @@ uv run pytest -q \
   --cov-report=term-missing \
   --cov-report=xml:/tmp/test-results/coverage-async.xml
 test -s /tmp/test-results/coverage-async.xml
-uv run python -c 'from xml.etree import ElementTree; ElementTree.parse("/tmp/test-results/coverage-async.xml")'
+uv run --locked --group coverage python -c 'from xml.etree import ElementTree; ElementTree.parse("/tmp/test-results/coverage-async.xml")'
 ```
 
 Expected: the no-gevent test passes and coverage XML parses.
@@ -282,7 +282,7 @@ Extend its pytest command with the async configuration, branch coverage, `term-m
 Run:
 
 ```bash
-uv run pytest -q \
+uv run --locked --group coverage pytest -q \
   --junitxml=/tmp/test-results/junit-async.xml \
   --cov-config=osprey_async_worker/.coveragerc-async \
   --cov=osprey_async_worker/src/osprey/async_worker \
@@ -292,7 +292,7 @@ uv run pytest -q \
   osprey_async_worker
 test -s /tmp/test-results/junit-async.xml
 test -s /tmp/test-results/coverage-async.xml
-uv run python -c 'from xml.etree import ElementTree; ElementTree.parse("/tmp/test-results/junit-async.xml"); ElementTree.parse("/tmp/test-results/coverage-async.xml")'
+uv run --locked --group coverage python -c 'from xml.etree import ElementTree; ElementTree.parse("/tmp/test-results/junit-async.xml"); ElementTree.parse("/tmp/test-results/coverage-async.xml")'
 ```
 
 Expected: all 111 async tests pass, both XML files parse, and coverage XML reports branch data for `osprey.async_worker`.
@@ -318,13 +318,25 @@ git commit -m "ci: publish async Python coverage"
 **Files:**
 
 - Modify: `.github/workflows/integration-tests.yml:34-43`
+- Modify: `docker-compose.test.yaml`
+- Create: `.github/run-tests-with-coverage.sh`
 
 **Interfaces:**
 
-- Consumes: `osprey_worker/.coveragerc-sync` through the existing `/osprey/osprey_worker` bind mount and pytest-cov installed in the locked image.
+- Consumes: `osprey_worker/.coveragerc-sync` through the existing `/osprey/osprey_worker` bind mount and pytest-cov from the locked, non-default `coverage` group selected by the test-only Compose entrypoint.
 - Produces: branch coverage XML at `/tmp/test-results/coverage-sync.xml` alongside sync JUnit XML.
 
-- [ ] **Step 1: Extend the Docker test invocation**
+- [ ] **Step 1: Opt the Docker test service into coverage tooling**
+
+Add a test-only Compose entrypoint that requires the existing `run-tests` command, then executes pytest through:
+
+```bash
+uv run --locked --group coverage python3.11 -m gevent.monkey --module pytest
+```
+
+Mount this entrypoint only on `test_runner`. Do not modify the shared production Dockerfile or include the `coverage` group in `tool.uv.default-groups`.
+
+- [ ] **Step 2: Extend the Docker test invocation**
 
 Pass these arguments through `./run-tests.sh`:
 
@@ -339,17 +351,17 @@ Pass these arguments through `./run-tests.sh`:
 --cov-report=xml:/tmp/test-results/coverage-sync.xml
 ```
 
-- [ ] **Step 2: Validate and upload both sync artifacts**
+- [ ] **Step 3: Validate and upload both sync artifacts**
 
 After the Docker test step, add non-empty and XML parsing assertions for JUnit and sync coverage. Add coverage XML to the upload path and set `if-no-files-found: error`.
 
-- [ ] **Step 3: Run the Docker suite end to end**
+- [ ] **Step 4: Run the Docker suite end to end**
 
 Run the exact workflow command through `./run-tests.sh`. If Clyde's supervisor owns host port 9000, use a temporary, uncommitted Compose override that changes only MinIO host bindings; keep container address `minio:9000` unchanged.
 
-Expected: the full sync suite passes, both XML files exist on the host, and `coverage-sync.xml` contains branch data for engine/worker/plugin source files.
+Expected: the production and built test-runner images do not contain pytest-cov, the ephemeral test container loads it from the locked group, the full sync suite passes, both XML files exist on the host, and `coverage-sync.xml` contains branch data for engine/worker/plugin source files.
 
-- [ ] **Step 4: Validate workflow syntax and commit**
+- [ ] **Step 5: Validate workflow syntax and commit**
 
 Run:
 
@@ -361,7 +373,7 @@ git diff --check
 Then commit:
 
 ```bash
-git add .github/workflows/integration-tests.yml
+git add .github/run-tests-with-coverage.sh .github/workflows/integration-tests.yml docker-compose.test.yaml
 git commit -m "ci: publish sync Python coverage"
 ```
 
