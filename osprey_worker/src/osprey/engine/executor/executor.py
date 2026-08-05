@@ -34,6 +34,9 @@ from .udf_execution_helpers import UDFHelpers
 
 logger = get_logger(__name__)
 
+# Shared placeholder for the "make mypy happy" default below; always overwritten before use.
+_UNSET_RESULT: NodeResult = Err(None)
+
 InProgressSingletsType = Dict['gevent.Greenlet[NodeResult]', DependencyChain]
 """
 A dictionary mapping in-progress async greenlets to the chain that they are executing.
@@ -199,7 +202,7 @@ def _wrapped_execution(
         metric_tags += [f'udf:{call_node._udf.__class__.__name__}']
 
     # Make mypy happy
-    execution_result: NodeResult = Err(None)
+    execution_result: NodeResult = _UNSET_RESULT
     try:
         # only track time if using an async function
         if chain.executor.execute_async:

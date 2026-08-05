@@ -48,6 +48,9 @@ from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase, AsyncU
 
 logger = get_logger(__name__)
 
+# Shared placeholder for the "make mypy happy" default below; always overwritten before use.
+_UNSET_RESULT: NodeResult = Err(None)
+
 _DEFAULT_MAX_ASYNC_PER_EXECUTION = 12
 
 
@@ -120,7 +123,7 @@ def _execute_sync(
     error_info_: List[NodeErrorInfo],
 ) -> NodeResult:
     """Execute a sync UDF inline. For pure computation only — no I/O."""
-    execution_result: NodeResult = Err(None)
+    execution_result: NodeResult = _UNSET_RESULT
     try:
         execution_result = Ok(chain.executor.execute(execution_context=context))
     except Exception as e:
@@ -149,7 +152,7 @@ def _execute_legacy_sync(
         call_node: CallExecutor = chain.executor
         metric_tags += [f'udf:{call_node._udf.__class__.__name__}']
 
-    execution_result: NodeResult = Err(None)
+    execution_result: NodeResult = _UNSET_RESULT
     try:
         with metrics.timed('udf_execution_duration', tags=metric_tags, sample_rate=0.01):
             execution_result = Ok(chain.executor.execute(execution_context=context))
@@ -236,7 +239,7 @@ async def _execute_async_udf(
         metric_tags = _get_metric_tags(context) + [f'udf:{udf.__class__.__name__}']
 
         caught_exception: Optional[Exception] = None
-        execution_result: NodeResult = Err(None)
+        execution_result: NodeResult = _UNSET_RESULT
         try:
             resolved_arguments = udf.resolve_arguments(context, call_executor)
             with metrics.timed('udf_execution_duration', tags=metric_tags, sample_rate=0.01):
