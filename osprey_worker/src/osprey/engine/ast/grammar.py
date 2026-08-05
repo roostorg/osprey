@@ -4,9 +4,8 @@ from collections import defaultdict
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from pathlib import Path
-from typing import ClassVar, Dict, Optional, Sequence, TypeVar, Union
-
 from threading import Lock
+from typing import ClassVar, Dict, Optional, Sequence, TypeVar, Union
 
 # TODO: Uncomment logging when we have a logging system
 # from osprey.worker.ui_api.lib.osprey_shared.logging import get_logger
@@ -418,6 +417,10 @@ class Call(Expression, Statement):
         return None
 
     def argument_dict(self) -> Dict[str, Expression]:
+        return self._argument_dict_cached
+
+    @cached_property
+    def _argument_dict_cached(self) -> Dict[str, Expression]:
         return {arg.name: arg.value for arg in self.arguments}
 
     @property
