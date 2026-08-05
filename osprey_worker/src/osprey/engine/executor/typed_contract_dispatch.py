@@ -17,7 +17,9 @@ from typing import Callable, Dict, FrozenSet, Iterable, Mapping, Optional, Tuple
 
 from osprey.engine.executor.execution_graph import ExecutionGraph
 from osprey.engine.executor.graph_specializer import (
+    SpecializationIndex,
     SpecializedExecutionGraph,
+    build_specialization_index,
     shadow_divergences,
     specialize_graph,
 )
@@ -28,9 +30,15 @@ from osprey.engine.schema.schema_loader import (
     load_schema_for_action_from_sources,
     resolve_schemas_dir,
 )
+from osprey.engine.utils.periodic_execution_yielder import maybe_periodic_yield, periodic_execution_yield
 from osprey.worker.lib.instruments import metrics
 
 log = logging.getLogger(__name__)
+
+_YIELD_EXECUTION_TIME_MS = 5
+_YIELD_TIME_MS = 25
+"""Yield cadence for the specialization pass. Same values the compile path uses, so both
+CPU-bound rules-reload phases have the same duty cycle."""
 
 
 def load_and_register_specialized_graphs(
@@ -40,6 +48,7 @@ def load_and_register_specialized_graphs(
     get_action_names: Callable[[], Iterable[str]],
     register: Callable[[str, ExecutionGraph], None],
     schemas: Optional[Mapping[str, str]] = None,
+    yield_during_specialize: bool = False,
 ) -> int:
     """Load schemas for allowlisted actions, specialize them against ``full_graph``, and
     register each via ``register(action_name, specialized_graph)``. Returns the count
@@ -54,6 +63,12 @@ def load_and_register_specialized_graphs(
     schemas dir resolves — so shipping schema files cannot change behavior until an action is
     explicitly listed in ``OSPREY_TYPED_CONTRACT_PRUNING`` / ``_SHADOW``. ``get_action_names``
     is called lazily (only past those gate checks) so the disabled-by-default path does no work.
+
+    ``yield_during_specialize`` mirrors the compile path's ``periodic_execution_yield``: this
+    pass is CPU-bound and GIL-holding for as long as compilation is, and it runs on the same
+    single-worker pool, so without the yields it starves the caller's event loop / gevent hub
+    exactly the way an unyielded compile does. Callers must not already be inside a
+    ``periodic_execution_yield`` block (it refuses to nest).
     """
     register_filter = prune_filter | shadow_filter
     if not register_filter:
@@ -63,22 +78,34 @@ def load_and_register_specialized_graphs(
     if not use_sources and schemas_dir is None:
         return 0
     loaded = 0
-    for action_name in get_action_names():
-        if not filter_includes(register_filter, action_name):
-            continue
-        try:
-            if schemas:  # in-memory etcd Sources map (the truthiness narrows Optional for mypy)
-                schema = load_schema_for_action_from_sources(action_name, schemas)
-            else:
-                assert schemas_dir is not None  # guaranteed by the gate above
-                schema = load_schema_for_action(action_name, schemas_dir)
-        except SchemaLoadError as e:
-            log.warning("Failed to load schema for %s: %s", action_name, e)
-            continue
-        if schema is None:
-            continue
-        register(action_name, specialize_graph(full_graph, schema))
-        loaded += 1
+    with periodic_execution_yield(
+        on=yield_during_specialize,
+        execution_time_ms=_YIELD_EXECUTION_TIME_MS,
+        yield_time_ms=_YIELD_TIME_MS,
+    ):
+        # Whole-corpus analysis is action-independent: compute it once and share it across
+        # every action, so each specialization only walks its own source closure. Built
+        # lazily so a run that loads no schema at all still touches nothing.
+        index: Optional[SpecializationIndex] = None
+        for action_name in get_action_names():
+            maybe_periodic_yield()
+            if not filter_includes(register_filter, action_name):
+                continue
+            try:
+                if schemas:  # in-memory etcd Sources map (the truthiness narrows Optional for mypy)
+                    schema = load_schema_for_action_from_sources(action_name, schemas)
+                else:
+                    assert schemas_dir is not None  # guaranteed by the gate above
+                    schema = load_schema_for_action(action_name, schemas_dir)
+            except SchemaLoadError as e:
+                log.warning("Failed to load schema for %s: %s", action_name, e)
+                continue
+            if schema is None:
+                continue
+            if index is None:
+                index = build_specialization_index(full_graph)
+            register(action_name, specialize_graph(full_graph, schema, index=index))
+            loaded += 1
     if loaded:
         source_desc = "Sources" if use_sources else schemas_dir
         log.info("Loaded %d specialized graphs from %s (prune=%r shadow=%r)",
