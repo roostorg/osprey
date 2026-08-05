@@ -41,6 +41,10 @@ Node identity: NodeKey = id(ast_node) — collision-free (see NodeKey definition
 
 Scoping: the prune/fold analysis runs over the chains reachable from ONE action's source
 closure, not the whole corpus — see `SpecializationIndex` and `_scoped_chains_for_action`.
+
+Scheduling: a specialization compiles its own `ExecutionPlan` from its filtered scheduling
+lists, so an action served by one keeps the array-based scheduler instead of falling back to
+the legacy TopologicalSorter — see `SpecializedExecutionGraph._build_execution_plan`.
 """
 from __future__ import annotations
 
@@ -60,12 +64,14 @@ from osprey.engine.ast_validator.source_closure import (
 from osprey.engine.executor.dependency_chain import DependencyChain
 from osprey.engine.executor.execution_context import Action, ExecutionContext, NodeResult
 from osprey.engine.executor.execution_graph import ExecutionGraph
+from osprey.engine.executor.execution_plan import ExecutionPlan
 from osprey.engine.executor.node_executor.call_executor import CallExecutor
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.stdlib.udfs.resolve_optional import ResolveOptional
 from osprey.engine.stdlib.udfs.rules import Rule, WhenRules
 from osprey.engine.udf.base import UDFBase
 from osprey.engine.utils.periodic_execution_yielder import maybe_periodic_yield
+from osprey.worker.lib.instruments import metrics
 from result import Err, Ok
 
 if TYPE_CHECKING:
@@ -717,6 +723,7 @@ class SpecializedExecutionGraph(ExecutionGraph):
         self._fold_values: Mapping[NodeKey, NodeResult] = fold_values or {}
         self._schema = schema
         self._filtered_sorted_chains = self._build_filtered_sorted_chains(full_graph)
+        self._execution_plan = self._build_execution_plan(full_graph)
 
     def _build_filtered_sorted_chains(self, full_graph: ExecutionGraph) -> Dict[Source, Sequence[DependencyChain]]:
         """Precompute every source's scheduling list once, at construction.
@@ -744,6 +751,56 @@ class SpecializedExecutionGraph(ExecutionGraph):
             # We only ever remove, so equal lengths means nothing was dropped.
             filtered[source] = original if len(kept) == len(original) else kept
         return filtered
+
+    def _build_execution_plan(self, full_graph: ExecutionGraph) -> Optional[ExecutionPlan]:
+        """Compile this specialization's array-based scheduler plan, or None to keep the legacy
+        TopologicalSorter.
+
+        Built eagerly, like `_filtered_sorted_chains`: the plan is derived purely from those lists,
+        so building it here keeps the instance read-only afterwards and pays the cost inside the
+        (yield-wrapped) specialization pass instead of on the first request for this action. Without
+        it every action served by a specialization loses the plan scheduler, which is the larger
+        win of the two.
+
+        Never fatal, and deliberately catch-all: `specialize_graph`'s callers do not guard it (see
+        `typed_contract_dispatch.load_and_register_specialized_graphs`), so a raise here would abort
+        the whole reload's specialization pass. A plan we cannot build — or one whose per-source
+        lists are not dependency-closed, which would surface at request time as a
+        LateDependencyActivationError — degrades to the legacy scheduler, i.e. exactly what every
+        specialized graph did before this existed, and emits a metric so a silent loss of the
+        scheduler win is visible.
+        """
+        shared = full_graph.get_execution_plan()
+        if shared is not None and all(
+            chains is full_graph.get_sorted_dependency_chain(source)
+            for source, chains in self._filtered_sorted_chains.items()
+        ):
+            # Nothing was filtered out of any source, so from_graph would walk the same sources over
+            # the same list objects and rebuild a structurally identical plan. Share it instead.
+            return shared
+        try:
+            plan = ExecutionPlan.from_graph(self)
+            unclosed = plan.find_unclosed_source()
+        except Exception:
+            log.exception('could not build an execution plan for %s; using the legacy scheduler', self._schema.action)
+            self._record_plan_fallback('build_failed')
+            return None
+        if unclosed is not None:
+            log.error(
+                'execution plan for %s is not schedulable (%s); using the legacy scheduler',
+                self._schema.action,
+                unclosed,
+            )
+            self._record_plan_fallback('not_schedulable')
+            return None
+        return plan
+
+    def _record_plan_fallback(self, reason: str) -> None:
+        """A specialization that cannot adopt the plan scheduler still serves traffic correctly on
+        the legacy sorter, so the only symptom is a silent loss of the CPU win. Count it."""
+        metrics.increment(
+            'osprey.typed_contracts.plan_fallback', tags=[f'action:{self._schema.action}', f'reason:{reason}']
+        )
 
     def get_sorted_dependency_chain(self, source: Source) -> Sequence[DependencyChain]:
         """Return the sorted dependency chain for a source, with pruned AND folded chains removed

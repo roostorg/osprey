@@ -26,10 +26,10 @@ def test_context_uses_plan_for_full_graph(compiled_execution_graph: ExecutionGra
     assert context._execution_plan_state is not None
 
 
-def test_specialized_graph_keeps_legacy_scheduler(compiled_execution_graph: ExecutionGraph) -> None:
-    graph = SpecializedExecutionGraph(
-        full_graph=compiled_execution_graph,
-        pruned_keys=frozenset(),
+def _specialized(full_graph: ExecutionGraph, pruned_keys: 'frozenset[int]') -> SpecializedExecutionGraph:
+    return SpecializedExecutionGraph(
+        full_graph=full_graph,
+        pruned_keys=pruned_keys,
         schema=ActionSchema(
             action='test_action',
             provides_groups=frozenset(),
@@ -39,11 +39,27 @@ def test_specialized_graph_keeps_legacy_scheduler(compiled_execution_graph: Exec
         ),
     )
 
-    context = ExecutionContext(graph, _action(), Mock(spec=UDFHelpers))
 
-    assert compiled_execution_graph.get_execution_plan() is not None
-    assert graph.get_execution_plan() is None
-    assert context._execution_plan_state is None
+def test_specialized_graph_uses_a_plan(compiled_execution_graph: ExecutionGraph) -> None:
+    full_plan = compiled_execution_graph.get_execution_plan()
+    assert full_plan is not None
+    entry_chains = compiled_execution_graph.get_sorted_dependency_chain(compiled_execution_graph.get_entry_point())
+    pruned = _specialized(compiled_execution_graph, frozenset({id(entry_chains[0].executor.node)}))
+
+    context = ExecutionContext(pruned, _action(), Mock(spec=UDFHelpers))
+
+    plan = pruned.get_execution_plan()
+    assert plan is not None and plan is not full_plan
+    assert len(plan.chains) == len(full_plan.chains) - 1
+    assert context._execution_plan_state is not None
+
+
+def test_specialization_that_filters_nothing_shares_the_full_graph_plan(
+    compiled_execution_graph: ExecutionGraph,
+) -> None:
+    graph = _specialized(compiled_execution_graph, frozenset())
+
+    assert graph.get_execution_plan() is compiled_execution_graph.get_execution_plan()
 
 
 def test_enqueue_source_retries_after_enqueue_failure() -> None:
