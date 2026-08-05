@@ -129,6 +129,28 @@ class _TupleResizeObserver:
         return chain
 
 
+class _ObservedIndex(int):
+    pass
+
+
+class _TupleResizeIndexSequence:
+    def __init__(self, indices: tuple[int, ...]) -> None:
+        self._indices = indices
+        self._held_tuples: list[tuple[object, ...]] = []
+
+    def __iter__(self) -> Iterator[int]:
+        previous: _ObservedIndex | None = None
+        for index in self._indices:
+            if previous is not None:
+                self._held_tuples.extend(
+                    referrer
+                    for referrer in gc.get_referrers(previous)
+                    if isinstance(referrer, tuple) and len(referrer) > len(self._indices)
+                )
+            previous = _ObservedIndex(index)
+            yield previous
+
+
 def test_get_ready_does_not_resize_an_observable_tuple() -> None:
     plan, (source,) = _manual_plan(predecessors=((), ()), source_indices=((0, 1),))
     state = ExecutionPlanState(plan)
@@ -140,6 +162,20 @@ def test_get_ready_does_not_resize_an_observable_tuple() -> None:
     ready = state.get_ready()
 
     assert ready == expected_ready
+
+
+def test_activate_source_does_not_resize_an_observable_tuple() -> None:
+    plan, (source,) = _manual_plan(predecessors=((), (), ()), source_indices=((0,),))
+    observed_successors = _TupleResizeIndexSequence((1, 2))
+    object.__setattr__(plan, 'successors', (observed_successors, (), ()))
+    state = ExecutionPlanState(plan)
+    state._active[1] = 1
+    state._active[2] = 1
+
+    with pytest.raises(LateDependencyActivationError) as exc_info:
+        state.activate_source(source)
+
+    assert 'active successor chain(s) (1, 2)' in str(exc_info.value)
 
 
 def test_plan_states_are_independent(compiled_execution_graph: ExecutionGraph) -> None:

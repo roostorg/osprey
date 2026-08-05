@@ -112,7 +112,8 @@ class ExecutionGraph:
             return self.get_assignment_dependency_chain(node)
 
         executor = self._get_executor_for(node)
-        dependent_on = tuple(self._build_dependency_chain(node) for node in executor.get_dependent_nodes())
+        dependent_chains = [self._build_dependency_chain(node) for node in executor.get_dependent_nodes()]
+        dependent_on = tuple(dependent_chains)
         return DependencyChain(executor=executor, dependent_on=dependent_on)
 
     def _add_validated_source(self, source: Source) -> None:

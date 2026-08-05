@@ -226,7 +226,7 @@ class ArgumentsBase:
     def __hash__(self) -> int:
         # raises TypeError('unhashable type: yada yada yada') if an argument is not hashable
         assert self._resolved, 'arguments are not comparable until resolved'
-        return hash(tuple(v for _, v in sorted(self._arguments.items())))
+        return hash(tuple([value for _, value in sorted(self._arguments.items())]))
 
     def get_call_node(self) -> grammar.Call:
         return self._call_node

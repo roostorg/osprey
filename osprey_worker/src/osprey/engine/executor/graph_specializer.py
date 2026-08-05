@@ -746,7 +746,7 @@ class SpecializedExecutionGraph(ExecutionGraph):
             if not excluded:
                 filtered[source] = original
                 continue
-            kept = tuple(chain for chain in original if _node_key_from_chain(chain) not in excluded)
+            kept = tuple([chain for chain in original if _node_key_from_chain(chain) not in excluded])
             # We only ever remove, so equal lengths means nothing was dropped.
             filtered[source] = original if len(kept) == len(original) else kept
         return filtered

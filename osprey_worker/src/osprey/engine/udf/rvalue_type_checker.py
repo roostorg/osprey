@@ -184,7 +184,7 @@ class UnionTypeChecker(GenericTypeChecker):
     def to_typing_type(self) -> type:
         # Mypy doesn't like runtime types like this
         # noinspection PyTypeChecker
-        return Union[tuple(inner.to_typing_type() for inner in self.inner_types)]  # type: ignore
+        return Union[tuple([inner.to_typing_type() for inner in self.inner_types])]  # type: ignore
 
 
 @REGISTRY.register_generic

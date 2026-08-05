@@ -307,7 +307,7 @@ class ExecutionContext:
             chainid = id(chain)
             if self._dependency_dag.already_added(chainid):
                 continue
-            live_pred_ids = tuple(id(pred) for pred in chain.dependent_on if id(pred) in known_chain_ids)
+            live_pred_ids = tuple([id(pred) for pred in chain.dependent_on if id(pred) in known_chain_ids])
             self._dependency_dag.add(chainid, *live_pred_ids)
             self._chain_by_id[chainid] = chain
 

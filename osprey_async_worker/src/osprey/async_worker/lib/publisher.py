@@ -164,13 +164,15 @@ class AsyncPubSubPublisher:
                 future.result(timeout=35)
                 metrics.increment('async_pubsub_publisher.publish.success', tags=self._metric_tags)
             except Exception as e:
-                logger.exception('Failed to publish message')
                 metrics.increment(
                     'async_pubsub_publisher.publish.failure',
                     tags=self._metric_tags + [f'error:{e.__class__.__name__}'],
                 )
                 if _is_transient_publish_error(e):
+                    logger.warning('Transient publish failure; requeuing', exc_info=True)
                     retry_messages.append(data)
+                else:
+                    logger.exception('Failed to publish message')
         return retry_messages
 
     def publish(self, data: BaseModel) -> None:

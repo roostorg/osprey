@@ -51,7 +51,7 @@ class ExecutionPlan:
         source_chain_ids: dict[Source, tuple[int, ...]] = {}
         for source in graph.validated_sources.sources:
             chains = tuple(graph.get_sorted_dependency_chain(source))
-            source_chain_ids[source] = tuple(id(chain) for chain in chains)
+            source_chain_ids[source] = tuple([id(chain) for chain in chains])
             for chain in chains:
                 chains_by_id[id(chain)] = chain
                 maybe_periodic_yield()
@@ -172,14 +172,14 @@ class ExecutionPlanState:
         self._ready: list[int] = []
 
     def activate_source(self, source: Source) -> None:
-        new_indices = tuple(index for index in self._plan.source_indices[source] if not self._active[index])
+        new_indices = tuple([index for index in self._plan.source_indices[source] if not self._active[index]])
         if not new_indices:
             return
 
         new_set = set(new_indices)
         for index in new_indices:
             active_successors = tuple(
-                successor for successor in self._plan.successors[index] if self._active[successor]
+                [successor for successor in self._plan.successors[index] if self._active[successor]]
             )
             if active_successors:
                 node = self._plan.chains[index].executor.node
@@ -191,12 +191,14 @@ class ExecutionPlanState:
                 )
 
         counts = tuple(
-            sum(
-                1
-                for predecessor in self._plan.predecessors[index]
-                if (self._active[predecessor] or predecessor in new_set) and self._remaining[predecessor] != _DONE
-            )
-            for index in new_indices
+            [
+                sum(
+                    1
+                    for predecessor in self._plan.predecessors[index]
+                    if (self._active[predecessor] or predecessor in new_set) and self._remaining[predecessor] != _DONE
+                )
+                for index in new_indices
+            ]
         )
 
         for index, count in zip(new_indices, counts):

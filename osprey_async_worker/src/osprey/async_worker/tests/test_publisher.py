@@ -72,7 +72,8 @@ def test_sync_flush_requeues_exhausted_transient_retry(mock_metrics):
 
 
 @patch('osprey.async_worker.lib.publisher.metrics')
-def test_sync_flush_returns_only_transient_failures(mock_metrics):
+@patch('osprey.async_worker.lib.publisher.logger')
+def test_sync_flush_returns_only_transient_failures(mock_logger, mock_metrics):
     publisher = _make_publisher()
     publisher._client.publish.side_effect = [
         _make_future(result='msg-id-1'),
@@ -83,6 +84,7 @@ def test_sync_flush_returns_only_transient_failures(mock_metrics):
     retry_messages = publisher._sync_flush([b'success', b'retry', b'permanent'])
 
     assert retry_messages == [b'retry']
+    mock_logger.warning.assert_called_once_with('Transient publish failure; requeuing', exc_info=True)
 
 
 @pytest.mark.asyncio
