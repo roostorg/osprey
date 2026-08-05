@@ -1,18 +1,26 @@
 import random
+from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, Iterator, List, Sequence, Tuple
 from unittest.mock import patch
 
 import pytest
 from osprey.engine.ast.grammar import Source, Span
 from osprey.engine.conftest import RunValidationFunction
 from osprey.engine.executor.dependency_chain import DependencyChain
+from osprey.engine.executor.execution_context import Action, ExecutionContext
 from osprey.engine.executor.execution_graph import ExecutionGraph, compile_execution_graph
 from osprey.engine.executor.execution_plan import (
     ExecutionPlan,
     ExecutionPlanState,
     LateDependencyActivationError,
 )
+from osprey.engine.executor.graph_specializer import SpecializedExecutionGraph
 from osprey.engine.executor.topological_sorter import TopologicalSorter
+from osprey.engine.executor.udf_execution_helpers import UDFHelpers
+from osprey.engine.schema.schema_loader import ActionSchema
+from result import Err
 
 
 @dataclass(frozen=True)
@@ -149,6 +157,20 @@ def test_activation_failure_does_not_mutate_state() -> None:
     assert (bytes(state._active), tuple(state._remaining), tuple(state._ready)) == before
 
 
+def test_find_unclosed_source_flags_exactly_what_activation_cannot_schedule() -> None:
+    """The build-time check must reject the plan shape that raises at activation time (the one
+    `test_activation_failure_does_not_mutate_state` drives) and accept its closed counterpart."""
+    unclosed, _ = _manual_plan(predecessors=((), (0,)), source_indices=((1,), (0,)))
+    closed, _ = _manual_plan(predecessors=((), (0,)), source_indices=((0, 1), (0,)))
+
+    message = unclosed.find_unclosed_source()
+    assert message is not None
+    assert "source 'source-0.sml' activates chain 1" in message
+    assert '_PlanNode at chain-1.sml:2:1' in message
+    assert 'without its predecessor chain 0' in message
+    assert closed.find_unclosed_source() is None
+
+
 def test_successors_become_ready_in_dynamic_activation_order() -> None:
     plan, (second_successor_source, first_successor_source) = _manual_plan(
         predecessors=((), (0,), (0,)),
@@ -237,3 +259,179 @@ def test_scheduler_matches_legacy_sorter_for_randomized_valid_activations() -> N
                 transitions += 1
                 if not expected and not sources_left and not outstanding:
                     break
+
+
+# ---------------------------------------------------------------------------
+# Differential over a SPECIALIZED graph, whose per-source lists are FILTERED
+# ---------------------------------------------------------------------------
+
+_FILTERED_ACTION = 'filtered_action'
+
+_FILTERED_SOURCES = {
+    # `Dup = A + A` gives a chain a DUPLICATE predecessor edge, which both schedulers must count
+    # (and decrement) twice. The cross-source name reads below need no Import because the
+    # `run_validation` fixture registers no validators; only the compiled chain graph matters here,
+    # and a globally stored name resolves to the same chain object either way.
+    'main.sml': """
+        A = 1 + 2
+        B = A + 3
+        C = B + A
+        D = C + 4
+        E = D + B
+        Dup = A + A
+    """,
+    # Both are activated dynamically, in randomized order (what runtime Requires do), and every
+    # statement reads a name defined in main.sml or the other dynamic source. Once chains are
+    # filtered out, these are the surviving chains whose `dependent_on` points at chains the plan
+    # never indexes.
+    'dynamic_one.sml': """
+        F = A + D
+        G = F + C
+        H = G + E
+        DupF = F + F
+    """,
+    'dynamic_two.sml': """
+        K = G + Dup
+        L = K + E
+        M = L + DupF
+    """,
+}
+
+
+def _filtered_specialization(
+    full_graph: ExecutionGraph, pruned: 'frozenset[int]', folded: 'frozenset[int]'
+) -> SpecializedExecutionGraph:
+    """A real SpecializedExecutionGraph with an explicit filtered set.
+
+    Choosing the pruned/folded keys directly (rather than deriving them from a schema) is what
+    lets this differential randomize the filtered set. Which chains a schema *should* filter is
+    covered by test_graph_specializer.py's golden gates.
+    """
+    return SpecializedExecutionGraph(
+        full_graph=full_graph,
+        pruned_keys=pruned,
+        schema=ActionSchema(
+            action=_FILTERED_ACTION,
+            provides_groups=frozenset(),
+            absent_groups=frozenset(),
+            provides_field_types={},
+            optional_for={},
+        ),
+        fold_values={key: Err(None) for key in folded},
+    )
+
+
+@contextmanager
+def _forced_legacy_scheduler(graph: ExecutionGraph) -> Iterator[None]:
+    """Run ``graph`` on the legacy TopologicalSorter — what every specialized graph used before
+    per-schema plans existed."""
+    plan = graph._execution_plan
+    graph._execution_plan = None
+    try:
+        yield
+    finally:
+        graph._execution_plan = plan
+
+
+def _lockstep(
+    graph: SpecializedExecutionGraph, dynamic_sources: Sequence[Source], rng: random.Random
+) -> Tuple[int, List[DependencyChain]]:
+    """Drive the plan and the legacy sorter over the SAME specialized graph in lockstep, with a
+    randomized interleaving of dynamic activations, completions and get_ready polls.
+
+    Returns (transitions, chains handed out in order). Asserts ready-order equality at every poll.
+    """
+    action = Action(action_id=1, action_name=_FILTERED_ACTION, data={}, timestamp=datetime(2020, 1, 1))
+    planned = ExecutionContext(graph, action, UDFHelpers())
+    with _forced_legacy_scheduler(graph):
+        legacy = ExecutionContext(graph, action, UDFHelpers())
+    assert planned._execution_plan_state is not None
+    assert legacy._execution_plan_state is None and legacy._dependency_dag is not None
+
+    handed_out: List[DependencyChain] = []
+    outstanding: List[DependencyChain] = []
+    pending = list(dynamic_sources)
+    rng.shuffle(pending)
+    transitions = 0
+    while True:
+        transitions += 1
+        roll = rng.random()
+        if pending and roll < 0.2:
+            source = pending.pop()
+            planned.enqueue_source(source)
+            legacy.enqueue_source(source)
+        elif outstanding and roll < 0.7:
+            chain = outstanding.pop(rng.randrange(len(outstanding)))
+            planned.set_resolved_value(chain, Err(None))
+            legacy.set_resolved_value(chain, Err(None))
+        else:
+            ready = tuple(planned.get_ready_to_execute())
+            assert ready == tuple(legacy.get_ready_to_execute()), 'plan and legacy sorter disagreed on ready order'
+            outstanding.extend(ready)
+            handed_out.extend(ready)
+            if not ready and not pending and not outstanding:
+                return transitions, handed_out
+
+
+def test_specialized_scheduler_matches_legacy_sorter_for_randomized_filtered_graphs(
+    run_validation: RunValidationFunction,
+) -> None:
+    """A filtered (pruned + constant-folded) graph must schedule exactly as the legacy
+    TopologicalSorter scheduled it, including for sources activated dynamically mid-execution, in
+    randomized order, whose surviving chains depend on filtered ones.
+
+    A filtered chain is absent from EVERY source's list, so it has no plan index, is never handed
+    out and is never marked done. ``ExecutionPlan.from_graph`` therefore drops the edge, which is
+    what ``ExecutionContext._enqueue_source_legacy``'s ``live_pred_ids`` filter does. Get this
+    wrong in the other direction and the countdown for a surviving chain never reaches zero, so
+    the strongest oracle here is that every surviving chain is still handed out exactly once.
+    """
+    validated = run_validation(_FILTERED_SOURCES)
+    full_graph = compile_execution_graph(validated)
+    entry_source = full_graph.get_entry_point()
+    dynamic_sources = [source for source in validated.sources if source.path.startswith('dynamic_')]
+    assert len(dynamic_sources) == 2 and entry_source not in dynamic_sources
+    activated_sources = [entry_source, *dynamic_sources]
+    unique_chains: Dict[int, DependencyChain] = {}
+    for source in activated_sources:
+        for chain in full_graph.get_sorted_dependency_chain(source):
+            unique_chains[id(chain)] = chain
+    all_chains = tuple(unique_chains.values())
+    assert any(len(set(map(id, chain.dependent_on))) < len(chain.dependent_on) for chain in all_chains), (
+        'fixture must contain a duplicate predecessor edge'
+    )
+
+    rng = random.Random(20260805)
+    transitions = 0
+    trials = 0
+    saw_dropped_edge = False
+    while transitions < 10_000:
+        keys = [id(chain.executor.node) for chain in all_chains]
+        rng.shuffle(keys)
+        split = rng.randrange(len(keys) // 2)
+        pruned = frozenset(keys[:split])
+        folded = frozenset(keys[split : split + rng.randrange(len(keys) // 2)])
+        filtered = pruned | folded
+        graph = _filtered_specialization(full_graph, pruned, folded)
+
+        plan = graph.get_execution_plan()
+        assert plan is not None, 'a filtered graph must still get a plan'
+        assert plan.find_unclosed_source() is None, 'filtering must preserve per-source closure'
+        for chain in plan.chains:
+            index = plan.index_by_chain_id[id(chain)]
+            # Recomputed from the filtered key set, not from the implementation. Duplicates are
+            # kept: legacy counts a repeated predecessor once per occurrence.
+            live = [predecessor for predecessor in chain.dependent_on if id(predecessor.executor.node) not in filtered]
+            assert plan.predecessors[index] == tuple(plan.index_by_chain_id[id(p)] for p in live)
+            saw_dropped_edge = saw_dropped_edge or len(live) < len(chain.dependent_on)
+
+        step, handed_out = _lockstep(graph, dynamic_sources, rng)
+        transitions += step
+        trials += 1
+
+        schedulable = {id(chain) for source in activated_sources for chain in graph.get_sorted_dependency_chain(source)}
+        assert {id(chain) for chain in handed_out} == schedulable, 'a surviving chain was never scheduled'
+        assert len(handed_out) == len(schedulable), 'a chain was handed out more than once'
+
+    assert saw_dropped_edge, 'no trial produced a surviving chain with a filtered predecessor'
+    assert trials > 1

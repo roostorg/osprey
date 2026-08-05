@@ -1,11 +1,22 @@
-"""Immutable scheduling metadata for full execution graphs.
+"""Immutable scheduling metadata for an execution graph.
 
 Each source's ``source_indices`` sequence must be a topologically ordered transitive
 closure: every predecessor of an activated chain must be activated in the same source
 or an earlier source. Full graphs satisfy this because their per-source sorted chains
-are built by recursively walking dependencies. Pruned and specialized graphs filter
-those closures, so they must keep using the legacy scheduler that explicitly drops
-pruned predecessor edges.
+are built by recursively walking dependencies.
+
+A ``SpecializedExecutionGraph`` filters chains out of those closures (pruned chains
+resolve to ``Err``, constant-folded chains are pre-seeded), so a filtered chain is absent
+from every source's list and therefore has no plan index. ``from_graph`` drops such a
+predecessor edge, treating the predecessor as pre-satisfied — it is never handed out by
+``get_ready`` and never marked ``done``, so counting it would stall its successors
+forever. That mirrors the ``live_pred_ids`` filter the legacy scheduler applies in
+``ExecutionContext._enqueue_source_legacy``. Because a chain is filtered from EVERY source
+uniformly, what survives is still closed under the edges the plan kept, so
+``find_unclosed_source`` holds for anything ``from_graph`` builds today. It exists as the
+guard for the two ways that could stop being true — a non-uniform filter, or a bug in the
+edge derivation above — and turns either into a build-time fallback to the legacy scheduler
+rather than a ``LateDependencyActivationError`` mid-request.
 
 ``ExecutionPlan`` is shared by every action using a graph. All mutable scheduling
 state remains in a per-action ``ExecutionPlanState``.
@@ -13,7 +24,7 @@ state remains in a per-action ``ExecutionPlanState``.
 
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Mapping, Tuple
+from typing import TYPE_CHECKING, Mapping, Optional, Tuple
 
 from osprey.engine.ast.grammar import Source
 from osprey.engine.utils.periodic_execution_yielder import maybe_periodic_yield
@@ -26,7 +37,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class ExecutionPlan:
-    """Precomputed chain indices and adjacency for an immutable full graph."""
+    """Precomputed chain indices and adjacency for an immutable graph."""
 
     chains: Tuple[DependencyChain, ...]
     index_by_chain_id: Mapping[int, int]
@@ -63,7 +74,15 @@ class ExecutionPlan:
 
         predecessor_lists: list[tuple[int, ...]] = []
         for chain in chains:
-            predecessor_lists.append(tuple(index_by_chain_id[id(predecessor)] for predecessor in chain.dependent_on))
+            # A predecessor with no index appears in no source's scheduling list, so a
+            # SpecializedExecutionGraph filtered it out (pruned or constant-folded). Drop the edge:
+            # it is pre-satisfied, exactly as the legacy scheduler's live_pred_ids filter makes it.
+            live_predecessors: list[int] = []
+            for predecessor_chain in chain.dependent_on:
+                predecessor_index = index_by_chain_id.get(id(predecessor_chain))
+                if predecessor_index is not None:
+                    live_predecessors.append(predecessor_index)
+            predecessor_lists.append(tuple(live_predecessors))
             maybe_periodic_yield()
         predecessors = tuple(predecessor_lists)
         del predecessor_lists
@@ -90,6 +109,33 @@ class ExecutionPlan:
             successors=successors,
             source_indices=MappingProxyType(source_indices),
         )
+
+    def find_unclosed_source(self) -> Optional[str]:
+        """Describe the first source that activates a chain without activating one of its
+        predecessors, or None when every source's activation set is closed under ``predecessors``.
+
+        ``ExecutionPlanState`` counts only predecessors that are already active or activating with
+        the current source, and raises :class:`LateDependencyActivationError` if a LATER source
+        activates a predecessor of an already-active chain. Per-source closure makes activation
+        order irrelevant, so checking it here lets a caller reject an unschedulable plan while
+        building it rather than discovering it mid-request. It holds for every plan
+        :meth:`from_graph` builds today — see the module docstring for why it is still worth
+        checking.
+        """
+        for source, indices in self.source_indices.items():
+            activated = set(indices)
+            for index in indices:
+                for predecessor in self.predecessors[index]:
+                    if predecessor not in activated:
+                        node = self.chains[index].executor.node
+                        span = node.span
+                        return (
+                            f'source {source.path!r} activates chain {index} '
+                            f'({type(node).__name__} at {span.source.path}:{span.start_line}:{span.start_pos}) '
+                            f'without its predecessor chain {predecessor}'
+                        )
+                maybe_periodic_yield()
+        return None
 
 
 _INACTIVE = -3

@@ -10,6 +10,7 @@ import json
 import os
 import tempfile
 import time
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
@@ -1980,3 +1981,156 @@ def test_specialization_pass_yields_like_the_compile_path(monkeypatch, yield_dur
         assert calls['n'] > 0, 'specialization must yield to the event loop like compilation does'
     else:
         assert calls['n'] == 0, 'no yielder must be installed when the flag is off'
+
+
+# ---------------------------------------------------------------------------
+# GOLDEN EQUIVALENCE: per-schema execution plan == the legacy scheduler
+# ---------------------------------------------------------------------------
+
+
+@contextmanager
+def _forced_legacy_scheduler(graph: SpecializedExecutionGraph):
+    """Run `graph` on the legacy TopologicalSorter — what every specialized graph used before
+    per-schema execution plans existed."""
+    plan = graph._execution_plan
+    graph._execution_plan = None
+    try:
+        yield
+    finally:
+        graph._execution_plan = plan
+
+
+def test_specialized_plan_execution_parity() -> None:
+    """LOAD-BEARING GATE for per-schema execution plans.
+
+    For every action in the golden fixture and every synthetic payload, three passes must agree:
+    the FULL graph, the specialized graph forced onto the legacy TopologicalSorter, and the same
+    specialized graph on its own plan.
+
+    legacy-vs-planned is exact — it is one graph with one set of folds and only the scheduler
+    differs, so features, effects and the error set must be indistinguishable. full-vs-specialized
+    is enforcement equivalence via `shadow_divergences`, the documented bar (pruning legitimately
+    drops an absent-group analytics feature).
+    """
+    _, graph = _compile_effect(_golden_corpus())
+    index = build_specialization_index(graph)
+
+    checked = 0
+    for action in sorted(_GOLDEN_ABSENT):
+        spec = specialize_graph(graph, _golden_schema(action), index=index)
+        plan = spec.get_execution_plan()
+        assert plan is not None, f'{action}: a specialization must carry its own plan'
+        assert plan is not graph.get_execution_plan(), f'{action}: plan must reflect the filtered lists'
+        assert plan.find_unclosed_source() is None, f'{action}: plan is not schedulable'
+        assert spec.pruned_count and spec.fold_count, f'{action}: fixture must prune AND fold'
+
+        for payload in _golden_payloads(action):
+            act = Action(action_id=1, action_name=action, data=payload, timestamp=datetime(2020, 1, 1))
+            full_result = execute(graph, UDFHelpers(), act, gevent.pool.Pool(4))
+            with _forced_legacy_scheduler(spec):
+                assert spec.get_execution_plan() is None
+                assert ExecutionContext(spec, act, UDFHelpers())._execution_plan_state is None
+                legacy_result = execute(spec, UDFHelpers(), act, gevent.pool.Pool(4))
+            assert ExecutionContext(spec, act, UDFHelpers())._execution_plan_state is not None
+            planned_result = execute(spec, UDFHelpers(), act, gevent.pool.Pool(4))
+
+            assert planned_result.extracted_features == legacy_result.extracted_features, (
+                f'{action}: features diverged between the plan and the legacy scheduler'
+            )
+            assert shadow_divergences(legacy_result, planned_result) == [], (
+                f'{action}: effects/decisions diverged between the plan and the legacy scheduler'
+            )
+            assert _error_signature(planned_result) == _error_signature(legacy_result), (
+                f'{action}: error set diverged between the plan and the legacy scheduler'
+            )
+            assert shadow_divergences(full_result, planned_result) == [], (
+                f'{action}: the planned specialization is not enforcement-equivalent to the full graph'
+            )
+            checked += 1
+
+    assert checked >= 3 * len(_GOLDEN_ABSENT), 'expected several synthetic payloads per action'
+
+
+def test_full_graph_scheduling_is_unchanged_by_specialization() -> None:
+    """Specializing must not touch the full graph's own plan: it keeps the identical plan object,
+    and a specialization that filters nothing shares it rather than rebuilding an equivalent one."""
+    _, graph = _compile_effect(_golden_corpus())
+    before = graph.get_execution_plan()
+    assert before is not None
+
+    index = build_specialization_index(graph)
+    for action in sorted(_GOLDEN_ABSENT):
+        specialize_graph(graph, _golden_schema(action), index=index)
+    assert graph.get_execution_plan() is before
+
+    empty_schema = ActionSchema(
+        action='golden_action_0',
+        provides_groups=frozenset({'user', 'flags', 'target_user', 'captcha_response'}),
+        absent_groups=frozenset(),
+        provides_field_types={},
+        optional_for={},
+    )
+    unfiltered = specialize_graph(graph, empty_schema, index=index)
+    assert not unfiltered.pruned_count and not unfiltered.fold_count
+    assert unfiltered.get_execution_plan() is before
+
+
+def test_dispatch_serves_a_planned_specialized_graph() -> None:
+    """The PRUNE branch must hand back a graph whose ExecutionContext schedules from a plan, and
+    every full-graph fallback must keep scheduling from the full graph's plan."""
+    _, graph = _compile_effect(_golden_corpus())
+    index = build_specialization_index(graph)
+    action = 'golden_action_0'
+    spec = specialize_graph(graph, _golden_schema(action), index=index)
+    payload = _golden_payloads(action)[0]
+    act = Action(action_id=1, action_name=action, data=payload, timestamp=datetime(2020, 1, 1))
+    prune_all = frozenset({'*'})
+
+    served, shadow = resolve_dispatch(action, {action: spec}, prune_all, frozenset(), graph, action_data=payload)
+    assert served is spec and shadow is None
+    assert ExecutionContext(served, act, UDFHelpers())._execution_plan_state is not None
+
+    # The presence guard (an assumed-absent group actually present) and a non-allowlisted action
+    # both fall back to the full graph, which is unaffected by any of this.
+    misclassified = dict(payload, target_user={'id': 5})
+    guarded, _ = resolve_dispatch(action, {action: spec}, prune_all, frozenset(), graph, action_data=misclassified)
+    default, _ = resolve_dispatch(action, {}, prune_all, frozenset(), graph, action_data=payload)
+    assert guarded is graph and default is graph
+    assert ExecutionContext(graph, act, UDFHelpers())._execution_plan_state is not None
+
+
+@pytest.mark.parametrize('failure', ['build_raises', 'not_schedulable'])
+def test_unplannable_specialization_falls_back_to_the_legacy_scheduler(monkeypatch, failure: str) -> None:
+    """A plan we cannot build, or one whose per-source lists are not dependency-closed, must
+    degrade to the legacy scheduler rather than break specialization or fail at request time."""
+    import osprey.engine.executor.graph_specializer as specializer
+
+    _, graph = _compile_effect(_golden_corpus())
+    index = build_specialization_index(graph)
+    action = 'golden_action_0'
+    payload = _golden_payloads(action)[0]
+    act = Action(action_id=1, action_name=action, data=payload, timestamp=datetime(2020, 1, 1))
+    expected = execute(
+        specialize_graph(graph, _golden_schema(action), index=index), UDFHelpers(), act, gevent.pool.Pool(4)
+    )
+
+    if failure == 'build_raises':
+
+        def _boom(_graph):
+            raise RuntimeError('simulated plan build failure')
+
+        monkeypatch.setattr(specializer.ExecutionPlan, 'from_graph', _boom)
+    else:
+        monkeypatch.setattr(
+            specializer.ExecutionPlan, 'find_unclosed_source', lambda _self: 'simulated closure violation'
+        )
+
+    spec = specialize_graph(graph, _golden_schema(action), index=index)
+
+    assert spec.get_execution_plan() is None
+    assert spec.pruned_count and spec.fold_count, 'specialization itself must be unaffected'
+    context = ExecutionContext(spec, act, UDFHelpers())
+    assert context._execution_plan_state is None and context._dependency_dag is not None
+    fallback = execute(spec, UDFHelpers(), act, gevent.pool.Pool(4))
+    assert fallback.extracted_features == expected.extracted_features
+    assert shadow_divergences(expected, fallback) == []
