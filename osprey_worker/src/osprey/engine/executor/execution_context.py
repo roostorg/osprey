@@ -70,7 +70,7 @@ from osprey.engine.language_types.post_execution_convertible import PostExecutio
 from osprey.engine.language_types.verdicts import VerdictEffect
 from osprey.engine.utils.types import add_slots, cached_property
 from osprey.rpc.common.v1.verdicts_pb2 import Verdicts
-from result import Result, UnwrapError
+from result import Err, Ok, Result, UnwrapError
 
 if TYPE_CHECKING:
     from osprey.engine.ast_validator.validation_context import ValidatedSources
@@ -187,6 +187,26 @@ class ExecutionContext:
         failed, will either raise a NodeFailurePropagationException (default) or return None (if
         return_none_for_failed_values is True).
         """
+        try:
+            return self.resolved_result(node).unwrap()
+        except UnwrapError:
+            if return_none_for_failed_values:
+                return None
+            else:
+                raise NodeFailurePropagationException()
+
+    def resolved_result(self, node: ASTNode) -> NodeResult:
+        """Returns the underlying NodeResult (Ok or Err) for a given node, with the `should_unwrap`
+        conversion already applied to Ok values.
+
+        Callers that need both of `resolved()`'s failure behaviors (None-on-failure and
+        raise-on-failure) can call this once and derive both from the returned NodeResult via
+        is_ok()/is_err(), instead of paying for the should_unwrap check, Name indirection, and
+        dict lookup twice.
+
+        Raises KeyError if the node has yet to be resolved and is not a pruned node, same as
+        `resolved()`.
+        """
         # We need to check this on the original node, not (say) the assignment node if this is a Name.
         should_unwrap = self._execution_graph.should_unwrap(node)
 
@@ -194,23 +214,18 @@ class ExecutionContext:
             node = self.get_name_node(node)
 
         try:
-            value = self._resolved_node_values[id(node)].unwrap()
-            if should_unwrap:
-                assert isinstance(value, PostExecutionConvertible), (value, type(value))
-                value = value.to_post_execution_value()
-            return value
-        except UnwrapError:
-            if return_none_for_failed_values:
-                return None
-            else:
-                raise NodeFailurePropagationException()
+            node_result = self._resolved_node_values[id(node)]
         except KeyError:
             if self._execution_graph.is_pruned_node(node):
-                if return_none_for_failed_values:
-                    return None
-                else:
-                    raise NodeFailurePropagationException()
+                return Err(None)
             raise
+
+        if should_unwrap and node_result.is_ok():
+            value = node_result.unwrap()
+            assert isinstance(value, PostExecutionConvertible), (value, type(value))
+            return Ok(value.to_post_execution_value())
+
+        return node_result
 
     def get_name_node(self, name: Name) -> ASTNode:
         """Returns the node that is responsible for resolving a given Loaded name."""
