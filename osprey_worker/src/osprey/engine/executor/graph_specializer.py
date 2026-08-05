@@ -542,6 +542,7 @@ class SpecializedExecutionGraph(ExecutionGraph):
         '_full_graph',
         '_pruned_keys',
         '_fold_values',
+        '_filtered_sorted_chains',
         '_schema',
     )
 
@@ -568,19 +569,42 @@ class SpecializedExecutionGraph(ExecutionGraph):
         # Keyed by NodeKey (== id(node)), so it doubles as the runtime pre-seed map.
         self._fold_values: Mapping[NodeKey, NodeResult] = fold_values or {}
         self._schema = schema
+        self._filtered_sorted_chains = self._build_filtered_sorted_chains(full_graph)
+
+    def _build_filtered_sorted_chains(self, full_graph: ExecutionGraph) -> Dict[Source, Sequence[DependencyChain]]:
+        """Precompute every source's scheduling list once, at construction.
+
+        The request path asks for these lists once per enqueued source per action, and both the
+        graph and its pruned/folded sets are immutable after construction, so filtering per call
+        was pure repeated work (one full pass over the source's chains, ~0.17ms/action for a
+        ~1k-chain source). Precomputing eagerly rather than caching lazily costs one extra O(chains)
+        pass inside specialize_graph — which already walks every chain several times — and keeps the
+        instance read-only after __init__, so there is no cache-population race to reason about.
+
+        A source whose chains are all kept maps to the full graph's own list object (identity, no
+        copy), so a specialization that prunes and folds nothing is indistinguishable from the full
+        graph and the memo costs no extra memory for untouched sources.
+        """
+        excluded = frozenset(self._pruned_keys) | frozenset(self._fold_values)
+        filtered: Dict[Source, Sequence[DependencyChain]] = {}
+        for source in full_graph._sorted_dependency_chains:
+            # Via the getter, so specializing a specialized graph keeps the inner filtering.
+            original = full_graph.get_sorted_dependency_chain(source)
+            if not excluded:
+                filtered[source] = original
+                continue
+            kept = tuple(chain for chain in original if _node_key_from_chain(chain) not in excluded)
+            # We only ever remove, so equal lengths means nothing was dropped.
+            filtered[source] = original if len(kept) == len(original) else kept
+        return filtered
 
     def get_sorted_dependency_chain(self, source: Source) -> Sequence[DependencyChain]:
         """Return the sorted dependency chain for a source, with pruned AND folded chains removed
-        (both are excluded from scheduling — pruned resolve to None/failure, folded are pre-seeded)."""
-        original = self._full_graph.get_sorted_dependency_chain(source)
-        if not self._pruned_keys and not self._fold_values:
-            return original
-        return [
-            chain
-            for chain in original
-            if _node_key_from_chain(chain) not in self._pruned_keys
-            and _node_key_from_chain(chain) not in self._fold_values
-        ]
+        (both are excluded from scheduling — pruned resolve to None/failure, folded are pre-seeded).
+
+        Precomputed in __init__; raises KeyError for an unknown source, as the base class does.
+        """
+        return self._filtered_sorted_chains[source]
 
     def is_pruned_node(self, node: ASTNode) -> bool:
         """True if this node's chain was removed from scheduling (pruned or folded). Folded nodes
