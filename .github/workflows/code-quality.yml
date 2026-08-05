@@ -85,14 +85,31 @@ jobs:
         run: mkdir -p /tmp/test-results
 
       - name: Run async worker unit tests
-        run: uv run pytest -q --junitxml=/tmp/test-results/junit-async.xml osprey_async_worker
+        run: |
+          uv run pytest -q \
+            --junitxml=/tmp/test-results/junit-async.xml \
+            --cov-config=osprey_async_worker/.coveragerc-async \
+            --cov=osprey_async_worker/src/osprey/async_worker \
+            --cov-branch \
+            --cov-report=term-missing \
+            --cov-report=xml:/tmp/test-results/coverage-async.xml \
+            osprey_async_worker
+
+      - name: Validate async worker test results
+        run: |
+          test -s /tmp/test-results/junit-async.xml
+          test -s /tmp/test-results/coverage-async.xml
+          uv run python -c 'from xml.etree import ElementTree; ElementTree.parse("/tmp/test-results/junit-async.xml"); ElementTree.parse("/tmp/test-results/coverage-async.xml")'
 
       - name: Upload async worker test results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         if: always()
         with:
           name: pytest-async-results
-          path: /tmp/test-results/junit-async.xml
+          path: |
+            /tmp/test-results/junit-async.xml
+            /tmp/test-results/coverage-async.xml
+          if-no-files-found: error
           retention-days: 30
 
   ui-quality:

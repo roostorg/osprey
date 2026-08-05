@@ -53,7 +53,7 @@ Both configurations omit `*/tests/*`, `*/test/*`, `*/conftest.py`, `*/__test__.p
 
 Collect branch coverage separately for the two execution models:
 
-- the native asyncio job measures `osprey.async_worker` and emits `/tmp/test-results/coverage-async.xml` using the async coverage configuration;
+- the native asyncio job measures the `osprey_async_worker/src/osprey/async_worker` source tree and emits `/tmp/test-results/coverage-async.xml` using the async coverage configuration;
 - the Docker/gevent suite measures `osprey.engine`, `osprey.worker`, and the `example_plugins/src` source tree and emits `/tmp/test-results/coverage-sync.xml` using the sync configuration.
 
 Both pytest invocations explicitly request `term-missing` and XML coverage reports. After pytest, each workflow asserts that its JUnit and coverage XML files are non-empty and parse as XML. Artifact uploads use `if-no-files-found: error` and contain both validated files.

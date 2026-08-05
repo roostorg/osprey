@@ -200,10 +200,10 @@ Run:
 uv sync --dev --locked
 uv run pytest -q \
   osprey_async_worker/src/osprey/async_worker/tests/test_no_gevent_imports.py \
-  --cov=osprey.async_worker
+  --cov=osprey_async_worker/src/osprey/async_worker
 ```
 
-Expected: pytest exits non-zero with `unrecognized arguments: --cov=osprey.async_worker`.
+Expected: pytest exits non-zero with `unrecognized arguments: --cov=osprey_async_worker/src/osprey/async_worker`.
 
 - [ ] **Step 2: Declare and lock pytest-cov**
 
@@ -263,7 +263,7 @@ mkdir -p /tmp/test-results
 uv run pytest -q \
   osprey_async_worker/src/osprey/async_worker/tests/test_no_gevent_imports.py \
   --cov-config=osprey_async_worker/.coveragerc-async \
-  --cov=osprey.async_worker \
+  --cov=osprey_async_worker/src/osprey/async_worker \
   --cov-branch \
   --cov-report=term-missing \
   --cov-report=xml:/tmp/test-results/coverage-async.xml
@@ -285,7 +285,7 @@ Run:
 uv run pytest -q \
   --junitxml=/tmp/test-results/junit-async.xml \
   --cov-config=osprey_async_worker/.coveragerc-async \
-  --cov=osprey.async_worker \
+  --cov=osprey_async_worker/src/osprey/async_worker \
   --cov-branch \
   --cov-report=term-missing \
   --cov-report=xml:/tmp/test-results/coverage-async.xml \
