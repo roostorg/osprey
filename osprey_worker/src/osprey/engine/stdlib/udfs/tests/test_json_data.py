@@ -59,6 +59,30 @@ def test_execute_value_not_present(execute: ExecuteFunction, execute_with_result
     assert result.extracted_features['Foo'] is None
 
 
+def test_execute_nested_path(execute: ExecuteFunction, execute_with_result: ExecuteWithResultFunction) -> None:
+    source = "Foo: str = JsonData(path='$.a.b.c', required=False)"
+
+    assert execute(source, data={'a': {'b': {'c': 'hello'}}}) == {'Foo': 'hello'}
+    # Missing leaf, missing intermediate, and a non-dict intermediate all read as absent.
+    for data in ({'a': {'b': {}}}, {'a': {}}, {'a': None}, {'a': ['b']}, {}):
+        result = execute_with_result(source, data=data)
+        assert not result.error_infos, (data, result.error_infos)
+        assert result.extracted_features['Foo'] is None
+
+
+@pytest.mark.parametrize(
+    ('path', 'data'),
+    [
+        ('$.a.*', {'a': {'k': 'x'}}),
+        ('$.a[0]', {'a': ['x']}),
+        ('$..c', {'b': {'c': 'x'}}),
+    ],
+)
+def test_execute_non_simple_path_uses_jsonpath_rw(path: str, data: dict[str, Any], execute: ExecuteFunction) -> None:
+    """Wildcard/index/descendant paths can't be specialized, so they keep the jsonpath_rw walk."""
+    assert execute(f"Foo: str = JsonData(path='{path}')", data=data) == {'Foo': 'x'}
+
+
 def test_execute_value_present_but_null(execute: ExecuteFunction) -> None:
     data = execute("Foo: str = JsonData(path='$.foo', required=False)", data={'foo': None})
 
