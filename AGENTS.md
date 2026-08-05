@@ -78,15 +78,16 @@ UI checks (in `osprey_ui/`):
 
 ```bash
 npm run format:check
+npm run build
 ```
 
-Rust checks (in `osprey_coordinator/`; requires `protoc`). CI only gates on `fmt` and `build`; `clippy` and `test` are advisory (`continue-on-error: true`):
+Rust checks (in `osprey_coordinator/`; requires `protoc`). CI gates on `fmt`, `build`, and `test`. Clippy remains advisory while the existing lint baseline is cleaned up:
 
 ```bash
 cargo fmt --check
-cargo build --verbose
 cargo clippy -- -D warnings   # advisory
-cargo test --verbose          # advisory
+cargo build --verbose
+cargo test --verbose
 ```
 
 ## Browser MCP (UI verification)
@@ -122,23 +123,41 @@ If the MCP approval prompt doesn't fire on a fresh `claude` launch, **the operat
 
 ## CI
 
-CI runs entirely via GitHub Actions on `pull_request` and `push` to `main`. Each line below is one literal CI `run:` step, in workflow order. Run them in your shell (paste-as-is — no `&&` chaining, no error suppression — so each step's exit code matches the corresponding CI step's exit code):
+CI runs entirely via GitHub Actions on `pull_request` and `push` to `main`. The commands below mirror the workflow steps in order; subshells model each job's working directory. Run them without error suppression so each step's exit code remains visible:
 
 ```bash
 # code-quality.yml → python-quality
-uv sync --dev
+uv lock --check
+uv sync --dev --locked
 uv run pre-commit install --install-hooks
 SKIP=prettier-osprey-ui uv run pre-commit run --show-diff-on-failure --color=always --all-files
 uv tool run fawltydeps --check-unused --pyenv .venv
 
+# code-quality.yml → async-unit-tests
+uv sync --dev --locked
+mkdir -p /tmp/test-results
+uv run pytest -q \
+  --junitxml=/tmp/test-results/junit-async.xml \
+  --cov-config=osprey_async_worker/.coveragerc-async \
+  --cov=osprey_async_worker/src/osprey/async_worker \
+  --cov-branch \
+  --cov-report=term-missing \
+  --cov-report=xml:/tmp/test-results/coverage-async.xml \
+  osprey_async_worker
+test -s /tmp/test-results/junit-async.xml
+test -s /tmp/test-results/coverage-async.xml
+uv run python -c 'from xml.etree import ElementTree; ElementTree.parse("/tmp/test-results/junit-async.xml"); ElementTree.parse("/tmp/test-results/coverage-async.xml")'
+
 # code-quality.yml → ui-quality (CI `working-directory: osprey_ui`)
 ( cd osprey_ui
-  npm ci
-  npm run format:check )
+  npm ci --ignore-scripts
+  npm run format:check
+  npm run build )
 
 # code-quality.yml → rust-quality (CI `working-directory: osprey_coordinator`)
-# Note: in CI the `cargo clippy` and `cargo test` steps are marked `continue-on-error: true`,
-# so they currently print failures but do not fail the job. Locally, expect the same output.
+# Only Clippy is advisory (`continue-on-error: true`) because of its existing baseline.
+sudo apt-get update
+sudo apt-get install -y protobuf-compiler
 ( cd osprey_coordinator
   cargo fmt --check
   cargo clippy -- -D warnings
@@ -146,10 +165,28 @@ uv tool run fawltydeps --check-unused --pyenv .venv
   cargo test --verbose )
 
 # integration-tests.yml
-./run-tests.sh
+mkdir -p /tmp/test-results
+docker compose -f docker-compose.yaml -f docker-compose.test.yaml --profile test pull
+docker compose -f docker-compose.yaml -f docker-compose.test.yaml --profile test build
+./run-tests.sh \
+  --junitxml=/tmp/test-results/junit-pytest.xml \
+  --cov-config=osprey_worker/.coveragerc-sync \
+  --cov=osprey_worker/src/osprey/engine \
+  --cov=osprey_worker/src/osprey/worker \
+  --cov=example_plugins/src \
+  --cov-branch \
+  --cov-report=term-missing \
+  --cov-report=xml:/tmp/test-results/coverage-sync.xml
+test -s /tmp/test-results/junit-pytest.xml
+test -s /tmp/test-results/coverage-sync.xml
+python3 -c 'from xml.etree import ElementTree; ElementTree.parse("/tmp/test-results/junit-pytest.xml"); ElementTree.parse("/tmp/test-results/coverage-sync.xml")'
+
+# mdbook.yml → build-docs
+cargo install --locked --version 0.5.2 mdbook
+mdbook build
 ```
 
-`mdbook.yml`, `publish-coordinator-image.yml`, and `release-osprey-rpc.yml` are release/deploy workflows — do not modify without human approval (see "Human-approval-required actions" below).
+The async and Docker pytest jobs upload their validated JUnit and report-only coverage XML files; neither enforces a coverage threshold. `mdbook.yml` validates documentation on pull requests and pushes to `main`; it does not deploy GitHub Pages. Do not modify `mdbook.yml` or the release/deploy workflows without human approval (see "Human-approval-required actions" below).
 
 ## Security
 
@@ -164,7 +201,7 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 - Keep diffs small and focused; split unrelated changes into separate PRs.
 - PR titles are descriptive and imperative ("Add X", "Fix Y").
 - New behavior requires a test. Bug fixes require a regression test.
-- All CI checks (above) must pass before requesting review.
+- All blocking CI checks above must pass before requesting review. Review advisory Clippy output separately against its existing baseline.
 
 ## Code style
 
@@ -177,7 +214,7 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 
 - Releases are cut by publishing a GitHub Release; the tag triggers `.github/workflows/release-osprey-rpc.yml` to build and attach the `osprey_rpc` sdist. Tags follow semver (`vMAJOR.MINOR.PATCH`).
 - Coordinator image publishes to `ghcr.io` via `.github/workflows/publish-coordinator-image.yml` on push to `main` and on release.
-- mdBook docs deploy via `.github/workflows/mdbook.yml` to GitHub Pages on push to `main`.
+- `.github/workflows/mdbook.yml` only validates that mdBook compiles. The canonical published documentation remains on the upstream ROOST site.
 - Release/deploy workflows, production Dockerfiles, and signing/tagging are restricted — see "Human-approval-required actions" below.
 
 ## Dependencies
@@ -201,6 +238,6 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 Stop and get explicit human approval before:
 
 - Changing license headers, copyright notices, or any legal text (including `LICENSE.md`).
-- Modifying release, signing, or deploy workflows: `.github/workflows/publish-coordinator-image.yml`, `.github/workflows/release-osprey-rpc.yml`, `.github/workflows/mdbook.yml`, production Dockerfiles (`osprey_coordinator/Dockerfile`, `osprey_worker/Dockerfile`, `osprey_ui/Dockerfile`), `docker-compose.yaml`, `start.sh`, or `entrypoint.sh`.
+- Modifying release, signing, or deploy workflows (`.github/workflows/publish-coordinator-image.yml`, `.github/workflows/release-osprey-rpc.yml`), the documentation workflow (`.github/workflows/mdbook.yml`), production Dockerfiles (`osprey_coordinator/Dockerfile`, `osprey_worker/Dockerfile`, `osprey_ui/Dockerfile`), `docker-compose.yaml`, `start.sh`, or `entrypoint.sh`.
 - Adding, removing, or upgrading any library or package (including transitive dependencies in `uv.lock` or `osprey_ui/package-lock.json`) — confirm licenses are compatible.
 - Editing generated code under `osprey_rpc/src/osprey/rpc/` by hand instead of regenerating via `./gen-protos.sh`.
