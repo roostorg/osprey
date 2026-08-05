@@ -262,8 +262,30 @@ async def test_permit_wait_is_measured_before_remote_execution(
     ]
     permit_options = [options for name, options in timing_options if name == 'udf_permit_wait_duration']
     assert permit_options == [
-        {'tags': ['action:test', 'udf:PermitGatedAsyncUdf'], 'sample_rate': 0.01},
-        {'tags': ['action:test', 'udf:PermitGatedAsyncUdf'], 'sample_rate': 0.01},
+        {
+            'tags': [
+                'action:test',
+                'udf:PermitGatedAsyncUdf',
+                'host:none',
+                'kube_node:none',
+                'instance-id:none',
+                'internal-hostname:none',
+                'name:none',
+            ],
+            'sample_rate': 0.01,
+        },
+        {
+            'tags': [
+                'action:test',
+                'udf:PermitGatedAsyncUdf',
+                'host:none',
+                'kube_node:none',
+                'instance-id:none',
+                'internal-hostname:none',
+                'name:none',
+            ],
+            'sample_rate': 0.01,
+        },
     ]
 
 
@@ -526,7 +548,19 @@ async def test_scheduler_wave_histograms_count_ready_and_batched_in_flight_nodes
     assert ready_depths.count(2) == 1
     assert 2 in in_flight
     assert len(ready_depths) == len(in_flight)
-    assert all(tags == ['action:test'] and sample_rate == 0.01 for _, _, tags, sample_rate in histogram_calls)
+    assert all(
+        tags
+        == [
+            'action:test',
+            'host:none',
+            'kube_node:none',
+            'instance-id:none',
+            'internal-hostname:none',
+            'name:none',
+        ]
+        and sample_rate == 0.01
+        for _, _, tags, sample_rate in histogram_calls
+    )
 
 
 @pytest.mark.asyncio

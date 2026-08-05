@@ -52,6 +52,13 @@ _UNSET_RESULT: NodeResult = Err(None)
 
 _DEFAULT_MAX_ASYNC_PER_EXECUTION = 12
 _OBSERVABILITY_SAMPLE_RATE = 0.01
+_CARDINALITY_SUPPRESSION_TAGS = (
+    'host:none',
+    'kube_node:none',
+    'instance-id:none',
+    'internal-hostname:none',
+    'name:none',
+)
 
 
 def _get_ready_sync_and_async(
@@ -87,11 +94,7 @@ def _get_metric_tags(
         f'batch_type:{batchable_udf.get_batchable_arguments_type().__name__}'
         if batchable_udf is not None
         else 'batch_type:none',
-        'host:none',
-        'kube_node:none',
-        'instance-id:none',
-        'internal-hostname:none',
-        'name:none',
+        *_CARDINALITY_SUPPRESSION_TAGS,
     ]
 
 
@@ -116,7 +119,7 @@ def _record_udf_metric(
 
 def _get_permit_metric_tags(context: ExecutionContext, udf: Optional[object] = None) -> List[str]:
     udf_name = udf.__class__.__name__ if udf is not None else 'none'
-    return [f'action:{context.get_action_name()}', f'udf:{udf_name}']
+    return [f'action:{context.get_action_name()}', f'udf:{udf_name}', *_CARDINALITY_SUPPRESSION_TAGS]
 
 
 @asynccontextmanager
@@ -453,7 +456,7 @@ async def execute(
     in_progress_batches: Dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]] = {}
 
     ready_sync, ready_async = _get_ready_sync_and_async(allow_async, context)
-    scheduler_tags = [f'action:{context.get_action_name()}']
+    scheduler_tags = [f'action:{context.get_action_name()}', *_CARDINALITY_SUPPRESSION_TAGS]
 
     while ready_sync or ready_async or in_progress_singlets or in_progress_batches:
         metrics.histogram(
