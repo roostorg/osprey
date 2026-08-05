@@ -128,7 +128,9 @@ class AsyncOspreyEngine:
         # actions run in shadow (full result used, specialized computed + diffed).
         self._prune_filter: FrozenSet[str] = pruning_action_filter()
         self._shadow_filter: FrozenSet[str] = shadow_action_filter()
-        self._load_and_register_schemas()
+        # Like the initial compile above: no periodic yields at boot, there is no
+        # in-flight work to protect and we want a fast cold start.
+        self._load_and_register_schemas(yield_during_specialize=False)
         # Freeze the boot graph out of gen-2 GC (see _freeze_resident_graph).
         # Runs AFTER schema load so the specialized graphs are frozen into the
         # permanent generation too (mirrors the reload path ordering).
@@ -239,10 +241,10 @@ class AsyncOspreyEngine:
             self._shadow_filter = shadow_action_filter()
 
             # Reload typed-action-contracts specialized graphs against the new full
-            # graph. Hoisted off the event loop because specialize_graph walks every
-            # chain in the full graph and, scaled across all schema'd actions
-            # (~hundreds), would block the bridge loop the sources-watcher trampoline
-            # runs on.
+            # graph. Hoisted off the event loop because, scaled across all schema'd
+            # actions (~hundreds), the pass would block the bridge loop the
+            # sources-watcher trampoline runs on. It also yields periodically inside
+            # (see _load_and_register_schemas) so it releases the GIL like compile does.
             await asyncio.get_running_loop().run_in_executor(self._thread_pool, self._load_and_register_schemas)
 
             self._execution_gate.clear()
@@ -330,7 +332,7 @@ class AsyncOspreyEngine:
         self._specialized_graphs[action_name] = graph
         log.info('Registered specialized graph for action %r', action_name)
 
-    def _load_and_register_schemas(self) -> None:
+    def _load_and_register_schemas(self, yield_during_specialize: bool = True) -> None:
         """Load schemas from the resolved schemas directory and register
         specialized graphs, using the current self._prune_filter / self._shadow_filter.
 
@@ -340,9 +342,14 @@ class AsyncOspreyEngine:
         OSPREY_TYPED_CONTRACT_PRUNING / _SHADOW and apply it with a no-op rules
         republish instead of a pod restart.
 
-        Synchronous, CPU-heavy: each ``specialize_graph`` call walks every
-        chain in the full graph. On the reload path this is dispatched via
-        ``run_in_executor`` to keep the bridge loop responsive.
+        Synchronous, CPU-heavy: each ``specialize_graph`` call walks the chains
+        reachable from its action's source closure. On the reload path this is
+        dispatched via ``run_in_executor`` to keep the bridge loop responsive.
+
+        ``run_in_executor`` alone is not enough — it moves the work off the loop's
+        thread but not off the GIL. ``yield_during_specialize`` gives this pass the
+        same periodic-yield duty cycle ``_compile_execution_graph_sync`` uses, under
+        the same config flag, so neither reload phase can starve the event loop.
 
         No-op if :func:`resolve_schemas_dir` returns ``None``. Mirrors
         :meth:`OspreyEngine._load_and_register_schemas` in the gevent variant.
@@ -359,6 +366,7 @@ class AsyncOspreyEngine:
             self.get_known_action_names,
             self.register_specialized_graph,
             schemas=self._execution_graph.validated_sources.sources.schemas(),
+            yield_during_specialize=yield_during_specialize and self._should_yield_during_compilation,
         )
 
     async def execute(

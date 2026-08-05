@@ -31,11 +31,16 @@ from osprey.engine.executor.execution_context import (
 from osprey.engine.executor.execution_graph import compile_execution_graph
 from osprey.engine.executor.executor import execute
 from osprey.engine.executor.graph_specializer import (
+    ClosureScopeError,
     SpecializedExecutionGraph,
+    _assert_dependency_closed,
     _collect_all_chains_recursive,
     _get_all_sorted_chains,
     _get_top_level_group,
     _node_key_from_chain,
+    _scoped_chains_for_action,
+    build_specialization_index,
+    shadow_divergences,
     specialize_graph,
 )
 from osprey.engine.executor.typed_contract_dispatch import resolve_dispatch
@@ -860,6 +865,7 @@ def test_load_and_register_schemas_populates_specialized_graphs() -> None:
         # Cached gates (set in __init__): prune-all, no shadow.
         engine._prune_filter = frozenset({"*"})
         engine._shadow_filter = frozenset()
+        engine._should_yield_during_compilation = False
 
         with patch.dict(os.environ, {"OSPREY_SCHEMAS_DIR": tmp_dir}):
             OspreyEngine._load_and_register_schemas(engine)
@@ -882,6 +888,7 @@ def test_load_and_register_schemas_noop_when_env_unset() -> None:
     engine._execution_graph = MagicMock()
     engine._prune_filter = frozenset({"*"})  # gates enabled...
     engine._shadow_filter = frozenset()
+    engine._should_yield_during_compilation = False
 
     with patch.dict(os.environ, {}, clear=False):
         os.environ.pop("OSPREY_SCHEMAS_DIR", None)
@@ -917,6 +924,7 @@ def test_load_and_register_schemas_noop_when_pruning_disabled() -> None:
         # Schema dir IS set, but both gates are empty (default) -> no registration.
         engine._prune_filter = frozenset()
         engine._shadow_filter = frozenset()
+        engine._should_yield_during_compilation = False
         with patch.dict(os.environ, {"OSPREY_SCHEMAS_DIR": tmp_dir}, clear=False):
             OspreyEngine._load_and_register_schemas(engine)
         engine.register_specialized_graph.assert_not_called()
@@ -977,6 +985,7 @@ def test_allowlist_registers_only_listed_actions() -> None:
         engine.get_known_action_names = MagicMock(return_value={"guild_joined", "message_sent"})
         engine._prune_filter = frozenset({"guild_joined"})  # only this one
         engine._shadow_filter = frozenset()
+        engine._should_yield_during_compilation = False
         with patch.dict(os.environ, {"OSPREY_SCHEMAS_DIR": tmp_dir}):
             OspreyEngine._load_and_register_schemas(engine)
         registered = [c.args[0] for c in engine.register_specialized_graph.call_args_list]
@@ -1003,6 +1012,7 @@ def test_shadow_filter_registers_so_shadow_can_run() -> None:
         engine.get_known_action_names = MagicMock(return_value={"guild_joined"})
         engine._prune_filter = frozenset()             # pruning OFF
         engine._shadow_filter = frozenset({"guild_joined"})  # shadow ON
+        engine._should_yield_during_compilation = False
         with patch.dict(os.environ, {"OSPREY_SCHEMAS_DIR": tmp_dir}):
             OspreyEngine._load_and_register_schemas(engine)
         engine.register_specialized_graph.assert_called_once()
@@ -1490,3 +1500,446 @@ def test_folded_node_resolution_parity_including_err_fold() -> None:
                 ctx.resolved(node)
             assert ctx.resolved(node, return_none_for_failed_values=True) is None
     assert checked_ok and checked_err, f'vacuous parity check: ok={checked_ok} err={checked_err}'
+
+
+# ---------------------------------------------------------------------------
+# GOLDEN EQUIVALENCE: closure-scoped specialization == corpus-scoped specialization
+# ---------------------------------------------------------------------------
+
+_GOLDEN_ACTION_COUNT = 12
+
+# Actions alternate their absent set so the fixture covers both a group that is absent for
+# every action (target_user, read from a SHARED model) and one absent for only half of them
+# (captcha_response, read inside each action's own file).
+_GOLDEN_ABSENT = {
+    f'golden_action_{i}': (['target_user'] if i % 2 == 0 else ['target_user', 'captcha_response'])
+    for i in range(_GOLDEN_ACTION_COUNT)
+}
+
+_GOLDEN_SHARED_SOURCES = {
+    # Entry point: static Imports, a literal Require, a require_if Require (both branches are
+    # walked statically), and the per-action f-string Require the closure walk narrows.
+    'main.sml': """
+        Import(rules=['models/action_name.sml', 'models/common.sml'])
+
+        Require(rule='shared/global_checks.sml')
+        Require(rule='shared/gated_checks.sml', require_if=GateEnabled)
+        Require(rule=f'actions/{ActionName}.sml')
+    """,
+    'models/action_name.sml': """
+        ActionName = GetActionName()
+        GateEnabled: bool = JsonData(path='$.flags.gate')
+    """,
+    'models/common.sml': """
+        Import(rules=['models/target.sml', 'models/user.sml'])
+    """,
+    'models/user.sml': """
+        UserId: int = JsonData(path='$.user.id')
+        UserName: Optional[str] = JsonData(path='$.user.name', required=False)
+    """,
+    # The cross-source boundary that matters. All three shapes live in ONE shared model that
+    # every action imports:
+    #   TargetId      — analytics-only everywhere            -> PRUNED for every action
+    #   TargetIsSpam  — enforcement in every action's file   -> FOLDED, protected in-closure
+    #   TargetIsEu    — enforcement in action 0's file ONLY  -> FOLDED for every action, but for
+    #                   actions 1..N the only WhenRules protecting it is OUTSIDE their closure.
+    # That last row is why `protected` stays whole-corpus: scoping it per action would prune
+    # TargetIsEu for actions 1..N where the corpus-scoped algorithm folds it.
+    'models/target.sml': """
+        TargetId: Optional[int] = JsonData(path='$.target_user.id', required=False)
+        TargetName: Optional[str] = JsonData(path='$.target_user.name', required=False)
+        TargetRegion: Optional[str] = JsonData(path='$.target_user.region', required=False)
+        TargetIsSpam: bool = TargetName == "spam"
+        TargetIsEu: bool = TargetRegion == "eu"
+    """,
+    'shared/global_checks.sml': """
+        Import(rules=['models/user.sml'])
+        UserIsRoot: bool = UserId == 1
+    """,
+    'shared/gated_checks.sml': """
+        Import(rules=['models/target.sml'])
+        GatedTargetIsKnown: bool = TargetId != 0
+    """,
+}
+
+
+def _golden_action_source(index: int) -> str:
+    # Only action 0 puts the shared TargetIsEu into enforcement; every action reads it as an
+    # analytics feature, so for actions 1..N its protection is purely cross-boundary.
+    eu_rule = (
+        f"""
+        A{index}EuRule = Rule(when_all=[TargetIsEu], description='eu {index}')
+        WhenRules(rules_any=[A{index}EuRule], then=[DeclareVerdict(verdict='eu_{index}')])
+    """
+        if index == 0
+        else ''
+    )
+    return f"""
+        Import(rules=['models/target.sml', 'models/user.sml'])
+
+        A{index}Score: Optional[int] = JsonData(path='$.captcha_response.score', required=False)
+        A{index}TargetHigh: bool = TargetId != {index}
+        A{index}EuFlag: bool = TargetIsEu
+        A{index}UserBad: bool = UserId == {1000 + index}
+        A{index}ScoreLow: bool = A{index}Score != {index}
+        A{index}Rule = Rule(when_all=[A{index}UserBad, TargetIsSpam], description='rule {index}')
+        A{index}ScoreRule = Rule(when_all=[A{index}ScoreLow], description='score rule {index}')
+        WhenRules(
+            rules_any=[A{index}Rule, A{index}ScoreRule],
+            then=[DeclareVerdict(verdict='ban_{index}')],
+        )
+{eu_rule}"""
+
+
+def _golden_corpus() -> Dict[str, str]:
+    corpus = dict(_GOLDEN_SHARED_SOURCES)
+    for i in range(_GOLDEN_ACTION_COUNT):
+        corpus[f'actions/golden_action_{i}.sml'] = _golden_action_source(i)
+    return corpus
+
+
+def _golden_schema(action: str) -> ActionSchema:
+    return ActionSchema(
+        action=action,
+        provides_groups=frozenset({'user', 'flags'})
+        | ({'captcha_response'} if 'captcha_response' not in _GOLDEN_ABSENT[action] else frozenset()),
+        absent_groups=frozenset(_GOLDEN_ABSENT[action]),
+        provides_field_types={'user.id': 'int', 'user.name': 'str', 'flags.gate': 'bool'},
+        optional_for={},
+    )
+
+
+def _fold_kinds(fold_values: Any, keys: Any = None) -> Dict[int, Any]:
+    """Normalize a fold map to {node_key: (is_ok, value_or_None)} for exact comparison."""
+    return {
+        key: (result.is_ok(), result.unwrap() if result.is_ok() else None)
+        for key, result in fold_values.items()
+        if keys is None or key in keys
+    }
+
+
+def test_closure_scoped_specialization_is_corpus_equivalent(capsys) -> None:
+    """LOAD-BEARING GATE for closure scoping.
+
+    For every action in a multi-source corpus (cross-source Imports, a literal Require, a
+    require_if Require, an f-string per-action Require, folds and prunes that cross source
+    boundaries), the closure-scoped specializer must make exactly the SAME decisions as the
+    original whole-corpus algorithm for every chain inside the closure:
+
+      * pruned_keys ∩ closure identical,
+      * fold_values identical restricted to the closure — key set AND Ok/Err kind AND value,
+      * and it must never prune or fold anything outside the closure.
+
+    Chains outside the closure are left untouched on purpose: the action can never activate
+    them (its sources are never enqueued), so a decision about them is unobservable.
+    """
+    _, graph = _compile_effect(_golden_corpus())
+    index = build_specialization_index(graph)
+    corpus_chain_count = len(_collect_all_chains_recursive(_get_all_sorted_chains(graph)))
+
+    rows = []
+    saw_scoped_action = False
+    total_pruned = 0
+    total_folded = 0
+
+    for action in sorted(_GOLDEN_ABSENT):
+        schema = _golden_schema(action)
+
+        start = time.perf_counter()
+        corpus_spec = specialize_graph(graph, schema, index=index, scope_to_action_closure=False)
+        corpus_seconds = time.perf_counter() - start
+
+        start = time.perf_counter()
+        closure_spec = specialize_graph(graph, schema, index=index, scope_to_action_closure=True)
+        closure_seconds = time.perf_counter() - start
+
+        scoped_chains, scoped_sources = _scoped_chains_for_action(graph, index, action)
+        closure_keys = {_node_key_from_chain(chain) for chain in scoped_chains}
+        assert len(scoped_chains) < corpus_chain_count, (
+            f'{action}: closure must be a strict subset of the corpus for this fixture'
+        )
+        saw_scoped_action = True
+
+        assert closure_spec._pruned_keys <= closure_keys, (
+            f'{action}: closure-scoped run pruned chains outside the closure'
+        )
+        assert set(closure_spec.get_prefolded_node_values()) <= closure_keys, (
+            f'{action}: closure-scoped run folded chains outside the closure'
+        )
+
+        assert (corpus_spec._pruned_keys & closure_keys) == (closure_spec._pruned_keys & closure_keys), (
+            f'{action}: pruned set diverged inside the closure'
+        )
+        assert _fold_kinds(corpus_spec.get_prefolded_node_values(), closure_keys) == _fold_kinds(
+            closure_spec.get_prefolded_node_values()
+        ), f'{action}: fold values diverged inside the closure'
+
+        total_pruned += closure_spec.pruned_count
+        total_folded += closure_spec.fold_count
+        rows.append(
+            (
+                action,
+                scoped_sources,
+                len(scoped_chains),
+                corpus_seconds,
+                closure_seconds,
+            )
+        )
+
+    assert saw_scoped_action, 'fixture never produced a scoped closure — gate is vacuous'
+    assert total_pruned > 0, 'fixture pruned nothing — gate is vacuous'
+    assert total_folded > 0, 'fixture folded nothing — gate is vacuous'
+
+    corpus_sources = index.corpus_source_count
+    with capsys.disabled():
+        print(
+            f'\nclosure-scoped specialization vs corpus-scoped '
+            f'({corpus_sources} sources / {corpus_chain_count} chains):'
+        )
+        print(f'{"action":<20}{"src":>8}{"chains":>9}{"corpus ms":>12}{"closure ms":>12}{"speedup":>9}')
+        for action, scoped_sources, scoped_chains_len, corpus_seconds, closure_seconds in rows:
+            print(
+                f'{action:<20}'
+                f'{scoped_sources}/{corpus_sources:<6}'
+                f'{scoped_chains_len}/{corpus_chain_count:<4}'
+                f'{corpus_seconds * 1000:>12.2f}'
+                f'{closure_seconds * 1000:>12.2f}'
+                f'{corpus_seconds / max(closure_seconds, 1e-9):>8.2f}x'
+            )
+        corpus_total = sum(row[3] for row in rows)
+        closure_total = sum(row[4] for row in rows)
+        mean_source_ratio = sum(row[1] for row in rows) / (len(rows) * corpus_sources)
+        mean_chain_ratio = sum(row[2] for row in rows) / (len(rows) * corpus_chain_count)
+        print(
+            f'TOTAL {len(rows)} actions: corpus {corpus_total * 1000:.1f}ms -> '
+            f'closure {closure_total * 1000:.1f}ms '
+            f'({corpus_total / max(closure_total, 1e-9):.2f}x); '
+            f'mean closure/corpus = {mean_source_ratio:.2f} sources, {mean_chain_ratio:.2f} chains'
+        )
+
+
+def _golden_payloads(action: str) -> List[Dict[str, Any]]:
+    """Payloads that genuinely omit every group the schema declares absent (the fold/prune
+    precondition), covering a firing and a non-firing enforcement path."""
+    index = int(action.rsplit('_', 1)[1])
+    payloads: List[Dict[str, Any]] = [
+        {'user': {'id': 1000 + index, 'name': 'bob'}, 'flags': {'gate': True}},
+        {'user': {'id': 1, 'name': 'root'}, 'flags': {'gate': False}},
+        {'user': {'id': 5}, 'flags': {'gate': True}},
+    ]
+    if 'captcha_response' not in _GOLDEN_ABSENT[action]:
+        payloads.append(
+            {'user': {'id': 5, 'name': 'eve'}, 'captcha_response': {'score': 42}, 'flags': {'gate': True}}
+        )
+    return payloads
+
+
+def _error_signature(result: Any) -> List[str]:
+    return sorted(
+        f'{type(info.error).__name__}@{info.node.span.source.path}:{info.node.span.start_line}'
+        for info in result.error_infos
+    )
+
+
+def test_closure_scoped_specialized_graph_execution_parity() -> None:
+    """Execution parity: for several synthetic actions, the FULL graph, the corpus-scoped
+    specialization and the closure-scoped specialization must agree.
+
+    corpus-vs-closure is exact (features, effects, errors — the two specializations must be
+    indistinguishable). full-vs-specialized is enforcement equivalence via
+    ``shadow_divergences``, which is the documented bar: pruning legitimately removes an
+    absent-group analytics feature but must never change an effect or a decision output.
+    """
+    _, graph = _compile_effect(_golden_corpus())
+    index = build_specialization_index(graph)
+
+    checked = 0
+    for action in sorted(_GOLDEN_ABSENT):
+        schema = _golden_schema(action)
+        corpus_spec = specialize_graph(graph, schema, index=index, scope_to_action_closure=False)
+        closure_spec = specialize_graph(graph, schema, index=index, scope_to_action_closure=True)
+
+        for payload in _golden_payloads(action):
+            assert closure_spec.absent_groups_satisfied(payload), 'payload must satisfy the fold precondition'
+            act = Action(action_id=1, action_name=action, data=payload, timestamp=datetime(2020, 1, 1))
+            full_result = execute(graph, UDFHelpers(), act, gevent.pool.Pool(4))
+            corpus_result = execute(corpus_spec, UDFHelpers(), act, gevent.pool.Pool(4))
+            closure_result = execute(closure_spec, UDFHelpers(), act, gevent.pool.Pool(4))
+
+            assert corpus_result.extracted_features == closure_result.extracted_features, (
+                f'{action}: features diverged between corpus- and closure-scoped specializations'
+            )
+            assert shadow_divergences(corpus_result, closure_result) == [], (
+                f'{action}: effects/decisions diverged between the two specializations'
+            )
+            assert _error_signature(corpus_result) == _error_signature(closure_result), (
+                f'{action}: error set diverged between the two specializations'
+            )
+            assert shadow_divergences(full_result, closure_result) == [], (
+                f'{action}: closure-scoped specialization is not enforcement-equivalent to the full graph'
+            )
+            checked += 1
+
+    assert checked >= 3 * len(_GOLDEN_ABSENT), 'expected several synthetic actions per action name'
+
+
+def test_dependency_closure_guard_rejects_a_truncated_chain_set() -> None:
+    """The guard must fire if a scoped chain set is ever NOT dependency-closed.
+
+    Today it cannot happen (each source's sorted chain is a transitive closure), so simulate the
+    invariant breaking by dropping a chain that other chains depend on.
+    """
+    _, graph = _compile_effect(_golden_corpus())
+    chains = _collect_all_chains_recursive(_get_all_sorted_chains(graph))
+    depended_on = next(dep for chain in chains for dep in chain.dependent_on)
+    truncated = [chain for chain in chains if chain is not depended_on]
+
+    _assert_dependency_closed(chains, 'golden_action_0')  # intact set is fine
+    with pytest.raises(ClosureScopeError):
+        _assert_dependency_closed(truncated, 'golden_action_0')
+
+
+def test_closure_scope_failure_falls_back_to_corpus(monkeypatch) -> None:
+    """A ClosureScopeError must degrade to whole-corpus scoping, not break the reload."""
+    import osprey.engine.executor.graph_specializer as specializer
+
+    _, graph = _compile_effect(_golden_corpus())
+    index = build_specialization_index(graph)
+    action = 'golden_action_0'
+    schema = _golden_schema(action)
+    expected = specialize_graph(graph, schema, index=index, scope_to_action_closure=False)
+
+    def _boom(*args, **kwargs):
+        raise ClosureScopeError('simulated closure/graph disagreement')
+
+    monkeypatch.setattr(specializer, '_scoped_chains_for_action', _boom)
+    fallback = specialize_graph(graph, schema, index=index, scope_to_action_closure=True)
+
+    assert fallback._pruned_keys == expected._pruned_keys
+    assert _fold_kinds(fallback.get_prefolded_node_values()) == _fold_kinds(expected.get_prefolded_node_values())
+
+
+def test_action_closure_narrows_to_the_dispatched_action() -> None:
+    """`Require(rule=f'actions/{ActionName}.sml')` resolves to exactly ONE action at runtime,
+    so the closure keeps the entry point, the shared models and both Require'd shared files,
+    and drops every OTHER action's source. Non-action glob matches are never narrowed."""
+    validated, graph = _compile_effect(_golden_corpus())
+    index = build_specialization_index(graph)
+    assert index.closure_index is not None
+
+    sources = validated.sources
+    closure = index.closure_index.reachable(
+        [sources.get_entry_point(), sources.get_by_path('actions/golden_action_3.sml')],
+        action_name='golden_action_3',
+    )
+    paths = {source.path for source in closure}
+
+    assert paths == {
+        'main.sml',
+        'models/action_name.sml',
+        'models/common.sml',
+        'models/target.sml',
+        'models/user.sml',
+        'shared/gated_checks.sml',  # reached through a require_if Require — both branches walked
+        'shared/global_checks.sml',
+        'actions/golden_action_3.sml',
+    }
+
+    # Without narrowing, the same walk is the whole corpus (the glob spans every action).
+    maximal = index.closure_index.reachable([sources.get_entry_point()])
+    assert len(maximal) == index.corpus_source_count
+
+
+def test_cross_boundary_protected_node_is_folded_not_pruned() -> None:
+    """Pins the reason `protected` stays whole-corpus.
+
+    `TargetIsEu` lives in a shared model and is enforcement input for action 0 ONLY. For every
+    other action its protecting WhenRules is outside the closure, yet it must still be FOLDED
+    (its real absent-input value injected) rather than pruned to Err — otherwise its analytics
+    consumer would vanish, and an under-approximated closure could prune an input that an
+    excluded action's enforcement still reads.
+    """
+    _, graph = _compile_effect(_golden_corpus())
+    index = build_specialization_index(graph)
+    action = 'golden_action_1'
+    scoped_chains, _ = _scoped_chains_for_action(graph, index, action)
+
+    chain_by_name = {
+        chain.executor.node.target.identifier: chain
+        for chain in scoped_chains
+        if getattr(getattr(chain.executor.node, 'target', None), 'identifier', None)
+    }
+    spec = specialize_graph(graph, _golden_schema(action), index=index)
+    folded = spec.get_prefolded_node_values()
+
+    eu_key = _node_key_from_chain(chain_by_name['TargetIsEu'])
+    assert eu_key in index.protected, 'TargetIsEu must be protected corpus-wide (via action 0)'
+    assert eu_key in folded and eu_key not in spec._pruned_keys
+    assert folded[eu_key].is_ok() and folded[eu_key].unwrap() is False  # None == "eu" -> False
+
+    # Its analytics consumer in THIS action's file is neither folded nor pruned: it executes and
+    # reads the folded value.
+    flag_key = _node_key_from_chain(chain_by_name['A1EuFlag'])
+    assert flag_key not in folded and flag_key not in spec._pruned_keys
+
+    # Contrast: TargetId, in the same shared model but analytics-only everywhere, is pruned.
+    target_id_key = _node_key_from_chain(chain_by_name['TargetId'])
+    assert target_id_key not in index.protected
+    assert target_id_key in spec._pruned_keys
+
+
+def _golden_schemas_map() -> Dict[str, str]:
+    return {
+        f'schemas/{action}.json': json.dumps(
+            {
+                '$schema': 'https://discord.dev/smite/action-schema/v1',
+                'action': action,
+                'version': 1,
+                'generated_from': {'source': 'test', 'date': '2026-08-04', 'authored_by': 'test'},
+                'provides': {'user': {'id': 'int', 'name': 'str'}, 'flags': {'gate': 'bool'}},
+                'absent': absent,
+                'types_used': {},
+                'optional_for': {},
+            }
+        )
+        for action, absent in _GOLDEN_ABSENT.items()
+    }
+
+
+@pytest.mark.parametrize('yield_during_specialize', [True, False])
+def test_specialization_pass_yields_like_the_compile_path(monkeypatch, yield_during_specialize: bool) -> None:
+    """Yield parity: the specialization pass is as CPU-bound and GIL-holding as compilation and
+    runs on the same single-worker pool, so it must run inside the same periodic-yield context
+    AND its hot loops must actually reach the yielder.
+
+    Counts yielder invocations rather than wall-clock sleeps so the assertion is deterministic
+    (and so the test does not spend 25ms per yield actually sleeping).
+    """
+    from osprey.engine.executor import typed_contract_dispatch
+    from osprey.engine.utils import periodic_execution_yielder
+
+    calls = {'n': 0}
+    monkeypatch.setattr(
+        periodic_execution_yielder.PeriodicExecutionYielder,
+        'periodic_yield',
+        lambda self: calls.__setitem__('n', calls['n'] + 1),
+    )
+
+    _, graph = _compile_effect(_golden_corpus())
+    registered: List[str] = []
+    loaded = typed_contract_dispatch.load_and_register_specialized_graphs(
+        graph,
+        prune_filter=frozenset({'*'}),
+        shadow_filter=frozenset(),
+        get_action_names=lambda: sorted(_GOLDEN_ABSENT),
+        register=lambda name, specialized: registered.append(name),
+        schemas=_golden_schemas_map(),
+        yield_during_specialize=yield_during_specialize,
+    )
+
+    assert loaded == len(_GOLDEN_ABSENT)
+    assert sorted(registered) == sorted(_GOLDEN_ABSENT)
+    if yield_during_specialize:
+        assert calls['n'] > 0, 'specialization must yield to the event loop like compilation does'
+    else:
+        assert calls['n'] == 0, 'no yielder must be installed when the flag is off'

@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import logging
 import re
-from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple
@@ -19,10 +18,15 @@ from osprey.engine.ast import grammar
 from osprey.engine.ast.ast_utils import filter_nodes
 from osprey.engine.ast.grammar import Assign, Call, Source, Span
 from osprey.engine.ast_validator.base_validator import BaseValidator, HasResult
+from osprey.engine.ast_validator.source_closure import (
+    ACTION_SOURCE_DIR,
+    ACTION_SOURCE_SUFFIX,
+    SourceClosureIndex,
+    build_source_closure_index,
+)
 from osprey.engine.ast_validator.validators.imports_must_not_have_cycles import ImportsMustNotHaveCycles
 from osprey.engine.ast_validator.validators.validate_call_kwargs import ValidateCallKwargs
 from osprey.engine.schema.schema_loader import load_schema_for_action, resolve_schemas_dir
-from osprey.engine.stdlib.udfs.require import Require
 
 try:
     import jsonpath_rw
@@ -131,14 +135,16 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
 
     _manifest: ActionManifest
     _udf_node_mapping: Dict
-    _import_graph: object
+    _closure_index: SourceClosureIndex
 
     def __init__(self, context: "ValidationContext") -> None:
         super().__init__(context)
         self._manifest = {}
         self._udf_node_mapping = context.get_validator_result(ValidateCallKwargs)
         import_result = context.get_validator_result(ImportsMustNotHaveCycles)
-        self._import_graph = import_result.import_graph
+        self._closure_index = build_source_closure_index(
+            context.sources, import_result.import_graph, self._udf_node_mapping
+        )
 
     def run(self) -> None:
         """For each action source, compute the reachable closure and collect fields.
@@ -156,7 +162,7 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
         action_sources = [
             source
             for source in self.context.sources
-            if source.path.startswith("actions/") and source.path.endswith(".sml")
+            if source.path.startswith(f"{ACTION_SOURCE_DIR}/") and source.path.endswith(ACTION_SOURCE_SUFFIX)
         ]
 
         for action_source in action_sources:
@@ -190,62 +196,12 @@ class CollectJsonDataPaths(BaseValidator, HasResult[ActionManifest]):
         return self._manifest
 
     def _reachable_sources(self, action_source: Source) -> List[Source]:
-        """BFS from action_source following both Import (static) and Require edges."""
-        visited: Set[str] = set()
-        queue: deque[Source] = deque([action_source])
-        result: List[Source] = []
+        """The maximal static Import + Require closure of ``action_source``.
 
-        while queue:
-            src = queue.popleft()
-            if src.path in visited:
-                continue
-            visited.add(src.path)
-            result.append(src)
-
-            # Static Import edges from the import graph (uses iter_edges)
-            for neighbor in self._import_graph.iter_edges(src):
-                if neighbor.path not in visited:
-                    queue.append(neighbor)
-
-            # Require edges (runtime, but we walk both branches statically)
-            for target in self._resolve_require_targets(src):
-                if target.path not in visited:
-                    queue.append(target)
-
-        return result
-
-    def _resolve_require_targets(self, source: Source) -> List[Source]:
-        """Resolve Require(rule=...) edges from a source.
-
-        Both literal string and format-string (glob) forms are resolved.
-        require_if is NOT inspected — both branches are walked statically.
+        Not action-narrowed: this manifest is advisory and wants every path an action's
+        closure *could* touch. See ``source_closure`` for the walk.
         """
-        targets: List[Source] = []
-        for call_node in filter_nodes(source.ast_root, Call):
-            if id(call_node) not in self._udf_node_mapping:
-                continue
-            udf, _ = self._udf_node_mapping[id(call_node)]
-            if not isinstance(udf, Require):
-                continue
-
-            keyword = call_node.find_argument("rule")
-            if keyword is None:
-                continue
-            # find_argument returns a Keyword node; the actual AST value is keyword.value
-            rule_ast_node = keyword.value
-
-            if isinstance(rule_ast_node, grammar.String):
-                target = self.context.sources.get_by_path(rule_ast_node.value)
-                if target:
-                    targets.append(target)
-            elif isinstance(rule_ast_node, grammar.FormatString):
-                # Convert f-string to glob pattern (same as require.py:36-44)
-                names_as_wildcards = {name.identifier: "*" for name in rule_ast_node.names}
-                glob_path = rule_ast_node.format_string.format(**names_as_wildcards)
-                for matched in self.context.sources.glob(glob_path):
-                    targets.append(matched)
-
-        return targets
+        return self._closure_index.reachable([action_source])
 
     def _build_field_declaration(
         self,

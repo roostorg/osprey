@@ -112,7 +112,8 @@ class OspreyEngine:
         # shadow (full result used + diffed).
         self._prune_filter: FrozenSet[str] = pruning_action_filter()
         self._shadow_filter: FrozenSet[str] = shadow_action_filter()
-        self._load_and_register_schemas()
+        # Like the initial compile: no periodic yields at boot, nothing in flight to protect.
+        self._load_and_register_schemas(disable_periodic_yield=True)
 
     def _compile_execution_graph(self, disable_periodic_yield: bool = False) -> ExecutionGraph:
         def _do_compile_execution_graph() -> ExecutionGraph:
@@ -145,7 +146,7 @@ class OspreyEngine:
 
         return self._execution_graph_compilation_thread_pool.apply(_do_compile_execution_graph)
 
-    def _load_and_register_schemas(self) -> None:
+    def _load_and_register_schemas(self, disable_periodic_yield: bool = False) -> None:
         """Load schemas from the resolved schemas directory and register
         specialized graphs, using the current self._prune_filter / self._shadow_filter.
 
@@ -162,6 +163,10 @@ class OspreyEngine:
         (OSPREY_TYPED_CONTRACT_PRUNING / _SHADOW); both default OFF, so shipping
         schema files on the rules path cannot change behavior on its own. The shared
         loop lives in `typed_contract_dispatch` (identical to the async engine).
+
+        Unlike compilation this runs on the caller's greenlet, so it gets the same
+        ``periodic_execution_yield`` duty cycle under the same config flag — otherwise a
+        reload's specialization pass holds the hub for the whole pass.
         """
         load_and_register_specialized_graphs(
             self._execution_graph,
@@ -170,6 +175,7 @@ class OspreyEngine:
             self.get_known_action_names,
             self.register_specialized_graph,
             schemas=self._execution_graph.validated_sources.sources.schemas(),
+            yield_during_specialize=self._should_yield_during_compilation and not disable_periodic_yield,
         )
 
     def _handle_updated_sources(self) -> None:

@@ -382,7 +382,10 @@ async def test_handle_updated_sources_reevaluates_typed_contract_filters(monkeyp
 
     monkeypatch.setattr(engine, 'get_known_action_names', lambda: {'test_action'})
     monkeypatch.setattr(dispatch, 'load_schema_for_action_from_sources', lambda action_name, schemas: object())
-    monkeypatch.setattr(dispatch, 'specialize_graph', lambda full_graph, schema: object())
+    monkeypatch.setattr(dispatch, 'specialize_graph', lambda full_graph, schema, index=None: object())
+    # The corpus-wide specialization index is a real collaborator that needs a real graph; this
+    # test asserts the reload re-reads the allowlist, so stub it out with specialize_graph.
+    monkeypatch.setattr(dispatch, 'build_specialization_index', lambda full_graph: object())
 
     # Flip the kill switch AFTER boot -- a reload must pick it up without a restart.
     monkeypatch.setenv('OSPREY_TYPED_CONTRACT_PRUNING', '*')
