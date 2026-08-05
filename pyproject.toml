@@ -278,6 +278,7 @@ warn_unreachable = false
 
 exclude = [
     "^.*/venv/.*$",
+    "^osprey_coordinator/target/.*$",
     ".*/setup\\.py$",
     ".*_pb2\\.py$",
     ".*_pb2\\.pyi$",
