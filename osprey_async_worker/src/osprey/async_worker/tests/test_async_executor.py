@@ -4,12 +4,69 @@ Validates that the async executor produces the same results as the gevent
 executor for stdlib UDFs (pure computation, no I/O).
 """
 
-from typing import Sequence
+from dataclasses import dataclass
+from typing import ClassVar, Sequence
 
 import pytest
+from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase
 from osprey.engine.ast.grammar import Source
 from osprey.engine.executor.dependency_chain import DependencyChain
+from osprey.engine.executor.execution_context import ExecutionContext
 from osprey.engine.executor.execution_graph import ExecutionGraph
+from osprey.engine.udf.arguments import ArgumentsBase
+from osprey.engine.udf.registry import UDFRegistry
+from result import Ok
+
+
+class CountingBatchableArguments(ArgumentsBase):
+    key: str
+    value: str
+
+
+@dataclass
+class CountingBatchableArgs:
+    key: str
+    value: str
+
+
+class CountingBatchableUdf(AsyncBatchableUDFBase[CountingBatchableArguments, str, CountingBatchableArgs]):
+    """A batchable async UDF that records argument resolution calls.
+
+    The explicit type getters avoid unsubstituted TypeVars for this test class.
+    """
+
+    resolve_call_count: ClassVar[int] = 0
+    raise_on_resolve: ClassVar[bool] = False
+
+    @classmethod
+    def get_arguments_type(cls):
+        return CountingBatchableArguments
+
+    @classmethod
+    def get_rvalue_type(cls):
+        return str
+
+    @classmethod
+    def get_batchable_arguments_type(cls):
+        return CountingBatchableArgs
+
+    def resolve_arguments(self, execution_context, call_executor) -> CountingBatchableArguments:
+        type(self).resolve_call_count += 1
+        if type(self).raise_on_resolve:
+            raise RuntimeError('resolve boom')
+        return super().resolve_arguments(execution_context, call_executor)
+
+    def get_batchable_arguments(self, arguments: CountingBatchableArguments) -> CountingBatchableArgs:
+        return CountingBatchableArgs(key=arguments.key, value=arguments.value)
+
+    def get_batch_routing_key(self, arguments: CountingBatchableArgs) -> str:
+        return arguments.key
+
+    async def async_execute(self, execution_context: ExecutionContext, arguments: CountingBatchableArguments) -> str:
+        return arguments.value
+
+    async def async_execute_batch(self, execution_context, udfs, arguments: Sequence[CountingBatchableArgs]):
+        return [Ok(a.value) for a in arguments]
 
 
 @pytest.mark.asyncio
@@ -218,3 +275,73 @@ async def test_parity_complex_graph(async_execute_fn):
     assert result['BUpper'] == 'HI'
     assert result['RuleA'] is True
     assert result['RuleB'] is False
+
+
+@pytest.fixture()
+def counting_batchable_udf():
+    """Registers CountingBatchableUdf and resets its call-count/raise state around the test."""
+    CountingBatchableUdf.resolve_call_count = 0
+    CountingBatchableUdf.raise_on_resolve = False
+    yield CountingBatchableUdf
+    CountingBatchableUdf.resolve_call_count = 0
+    CountingBatchableUdf.raise_on_resolve = False
+
+
+@pytest.mark.asyncio
+async def test_batch_of_one_reuses_resolved_arguments(
+    async_execute_with_result, stdlib_udf_registry: UDFRegistry, counting_batchable_udf
+):
+    """A batchable UDF alone (batch group size 1) falls through to the singleton async path.
+
+    Before the fix, this chain's arguments were resolved once to compute the routing key in
+    `_enqueue_batches`, then resolved again in `_execute_async_udf` -- a duplicate Arguments
+    construction. resolve_arguments should now only be called once.
+    """
+    stdlib_udf_registry.register(counting_batchable_udf)
+    result = await async_execute_with_result(
+        'A = CountingBatchableUdf(key="solo", value="a")', udf_registry=stdlib_udf_registry
+    )
+    assert result.extracted_features['A'] == 'a'
+    assert not result.error_infos
+    assert counting_batchable_udf.resolve_call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_batch_of_two_resolves_once_per_chain(
+    async_execute_with_result, stdlib_udf_registry: UDFRegistry, counting_batchable_udf
+):
+    """When a batch group forms (>=2 chains sharing a routing key), each chain's arguments are
+    resolved exactly once -- the batch execution path never re-resolves, so this is unchanged
+    by the fallthrough fix."""
+    stdlib_udf_registry.register(counting_batchable_udf)
+    result = await async_execute_with_result(
+        """
+        A = CountingBatchableUdf(key="shared", value="a")
+        B = CountingBatchableUdf(key="shared", value="b")
+        """,
+        udf_registry=stdlib_udf_registry,
+    )
+    assert result.extracted_features['A'] == 'a'
+    assert result.extracted_features['B'] == 'b'
+    assert not result.error_infos
+    assert counting_batchable_udf.resolve_call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_batch_of_one_resolve_failure_surfaces_once(
+    async_execute_with_result, stdlib_udf_registry: UDFRegistry, counting_batchable_udf
+):
+    """If resolve_arguments raises while computing the routing key (batch group size 1), the
+    failure is fully handled inside _enqueue_batches: the chain is resolved to Err(None) there
+    and never falls through to _execute_async_udf. resolve_arguments is therefore still only
+    attempted once, and the same exception surfaces as before the fallthrough fix."""
+    counting_batchable_udf.raise_on_resolve = True
+    stdlib_udf_registry.register(counting_batchable_udf)
+    result = await async_execute_with_result(
+        'A = CountingBatchableUdf(key="solo", value="a")', udf_registry=stdlib_udf_registry
+    )
+    assert result.extracted_features.get('A') is None
+    assert len(result.error_infos) == 1
+    assert isinstance(result.error_infos[0].error, RuntimeError)
+    assert str(result.error_infos[0].error) == 'resolve boom'
+    assert counting_batchable_udf.resolve_call_count == 1
