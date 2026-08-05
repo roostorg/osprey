@@ -69,6 +69,8 @@ _GRPC_CODE_FALLBACK = grpc.StatusCode.UNKNOWN
 # This is the name of the span that the pigeon client uses.  The Service RPC Guard uses this name
 # to avoid creating a new span for the grpc request and just adds info to the existing guard span
 PIGEON_REQUEST_SPAN_NAME = 'pigeon.request'
+_OBSERVABILITY_SAMPLE_RATE = 0.01
+_NANOSECONDS_PER_MILLISECOND = 1_000_000
 
 
 class RoutingType:
@@ -426,6 +428,28 @@ class AsyncUnaryUnaryRpcCallable(Generic[T, Request, Response]):
     method_name: str
     client: RoutedClient[T]
 
+    async def _record_retry_and_sleep(self, started_at: int, attempt: int, reason: str) -> None:
+        sleep_duration = 0.5 * attempt
+        tags = [
+            f'service:{self.service_name}',
+            f'resource_name:{self.method_name}',
+            f'reason:{reason}',
+        ]
+        metrics.increment('pigeon.retry_attempt', tags=tags, sample_rate=_OBSERVABILITY_SAMPLE_RATE)
+        metrics.timing(
+            'pigeon.retry_elapsed_duration',
+            (time_ns() - started_at) / _NANOSECONDS_PER_MILLISECOND,
+            tags=tags,
+            sample_rate=_OBSERVABILITY_SAMPLE_RATE,
+        )
+        metrics.timing(
+            'pigeon.retry_sleep_duration',
+            sleep_duration * 1000,
+            tags=tags,
+            sample_rate=_OBSERVABILITY_SAMPLE_RATE,
+        )
+        await asyncio.sleep(sleep_duration)
+
     async def __call__(
         self,
         message: Request,
@@ -439,6 +463,7 @@ class AsyncUnaryUnaryRpcCallable(Generic[T, Request, Response]):
         retry_policy = retry_policy or self.client._default_retry_policy
         try_count = 0
         last_exception = None
+        started_at = time_ns()
         while True:
             try:
                 instances_to_skip = try_count
@@ -459,7 +484,7 @@ class AsyncUnaryUnaryRpcCallable(Generic[T, Request, Response]):
                 if retry_policy and try_count < retry_policy['max_secondaries_to_retry']:
                     # Retry ServiceUnavailable (empty ring at startup) with backoff
                     try_count += 1
-                    await asyncio.sleep(0.5 * try_count)
+                    await self._record_retry_and_sleep(started_at, try_count, 'service_unavailable')
                     continue
 
                 raise e
@@ -472,7 +497,7 @@ class AsyncUnaryUnaryRpcCallable(Generic[T, Request, Response]):
                     and try_count < retry_policy['max_secondaries_to_retry']
                 ):
                     try_count += 1
-                    await asyncio.sleep(0.5 * try_count)
+                    await self._record_retry_and_sleep(started_at, try_count, f'grpc.{error_code.name.lower()}')
                     continue
 
                 raise e
