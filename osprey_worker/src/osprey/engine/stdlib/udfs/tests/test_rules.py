@@ -2,6 +2,7 @@ import dataclasses
 import json
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, List, Mapping, Sequence
+from unittest.mock import MagicMock
 
 import pytest
 from osprey.engine.ast_validator.validators.unique_stored_names import UniqueStoredNames
@@ -25,6 +26,7 @@ from osprey.engine.udf.base import UDFBase
 from osprey.engine.udf.registry import UDFRegistry
 from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation, LabelStatus
 from osprey.worker.sinks.sink.output_sink import _get_label_effects_from_result
+from pytest_mock import MockFixture
 
 
 class FailingUdf(UDFBase[ArgumentsBase, bool]):
@@ -262,6 +264,48 @@ def test_when_rules(execute_with_result: ExecuteWithResultFunction) -> None:
 
     label_effects = _get_label_effects_from_result(result)
     assert _compare_effects(actual=label_effects, expected=expected)
+
+
+@pytest.mark.parametrize(
+    ('rule_value', 'rules_any', 'expected_is_degraded', 'expected_gap_tags'),
+    [
+        pytest.param(True, '[R]', False, [['action:test', 'gap:true']], id='matched-rule'),
+        pytest.param(False, '[R]', False, [], id='unmatched-rule'),
+        pytest.param(True, '[R, RFailed]', True, [], id='degraded-rules'),
+    ],
+)
+def test_enforcement_gap_requires_matched_non_degraded_rules(
+    execute_with_result: ExecuteWithResultFunction,
+    mocker: MockFixture,
+    rule_value: bool,
+    rules_any: str,
+    expected_is_degraded: bool,
+    expected_gap_tags: List[List[str]],
+) -> None:
+    increment: MagicMock = mocker.patch('osprey.engine.stdlib.udfs.rules.metrics.increment')
+
+    result = execute_with_result(
+        {
+            'main.sml': f"""
+                R = Rule(when_all=[{rule_value}], description='rule')
+                RFailed = Rule(when_all=[FailingUdf()], description='failed rule')
+                E = Entity(type='MyEntity', id=FailingString())
+                WhenRules(
+                    rules_any={rules_any},
+                    then=[LabelAdd(entity=E, label='foo')],
+                )
+            """,
+            'config.yaml': json.dumps({'labels': {'foo': {'valid_for': ['MyEntity']}}}),
+        }
+    )
+
+    assert len(result.rule_audit_entries) == 1
+    entry = result.rule_audit_entries[0]
+    assert entry.effects_failed == 1
+    assert entry.is_degraded is expected_is_degraded
+    assert [
+        call.kwargs['tags'] for call in increment.call_args_list if call.args[0] == 'osprey.enforcement_gap'
+    ] == expected_gap_tags
 
 
 def test_when_rules_apply_if(execute_with_result: ExecuteWithResultFunction) -> None:

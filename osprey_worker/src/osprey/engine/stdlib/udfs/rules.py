@@ -14,6 +14,8 @@ from ._prelude import ArgumentsBase, ExecutionContext, UDFBase, ValidationContex
 from .categories import UdfCategories
 
 _HAS_FORMAT_STRING_RE = re.compile(r'\{([^\d\W]\w*)\}')
+_ENFORCEMENT_GAP_METRIC = 'osprey.enforcement_gap'
+_ENFORCEMENT_GAP_TRUE_TAG = 'gap:true'
 
 
 class RuleArguments(ArgumentsBase):
@@ -201,15 +203,15 @@ class WhenRules(UDFBase[WhenRulesArguments, None]):
             rules_failed=failed_rule_names,
             effects_emitted=effects_emitted,
             effects_failed=then_failed,
-            is_degraded=len(failed_rule_names) > 0 or then_failed > 0,
+            is_degraded=len(failed_rule_names) > 0,
         )
         execution_context.add_rule_audit_entry(entry)
 
-        if entry.effects_failed > 0:
-            has_gap = not entry.is_degraded
+        has_gap = bool(passing_rules) and entry.effects_failed > 0 and not entry.is_degraded
+        if has_gap:
             metrics.increment(
-                'osprey.enforcement_gap',
-                tags=[f'action:{execution_context.get_action_name()}', f'gap:{has_gap}'],
+                _ENFORCEMENT_GAP_METRIC,
+                tags=[f'action:{execution_context.get_action_name()}', _ENFORCEMENT_GAP_TRUE_TAG],
             )
 
         if not passing_rules:
