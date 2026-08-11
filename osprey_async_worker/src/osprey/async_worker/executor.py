@@ -228,7 +228,13 @@ async def _execute_async_udf(
     context: ExecutionContext,
     error_info_: list[NodeErrorInfo],
 ) -> NodeResult:
-    """Execute a native async UDF. Awaited directly on the event loop."""
+    """Execute a native async UDF. Awaited directly on the event loop.
+
+    Timeout enforcement: asyncio.timeout() enforces udf.timeout only around
+    async_execute() after semaphore admission. TimeoutError is converted to
+    NodeErrorInfo through the existing exception handler, preserving current
+    failure handling and Sentry capture behavior without modification.
+    """
     async with semaphore:
         call_executor: CallExecutor = chain.executor  # type: ignore
         udf: AsyncUDFBase[Any, Any] = call_executor._udf  # type: ignore
@@ -239,7 +245,8 @@ async def _execute_async_udf(
         try:
             resolved_arguments = udf.resolve_arguments(context, call_executor)
             with metrics.timed('udf_execution_duration', tags=metric_tags, sample_rate=0.01):
-                result = await udf.async_execute(context, resolved_arguments)
+                async with asyncio.timeout(udf.timeout):
+                    result = await udf.async_execute(context, resolved_arguments)
             execution_result = Ok(udf.check_result_type(result))
         except Exception as e:
             if not isinstance(e, NodeFailurePropagationException):
@@ -259,15 +266,26 @@ async def _execute_async_batch(
     context: ExecutionContext,
     error_info_: list[NodeErrorInfo],
 ) -> Sequence[NodeResult]:
-    """Execute a batch of native async batchable UDFs."""
+    """Execute a batch of native async batchable UDFs.
+
+    Timeout enforcement: the shared batch deadline is computed as
+    max(udf.timeout for udf in udfs). asyncio.timeout() enforces this
+    deadline only around async_execute_batch() after semaphore admission.
+    TimeoutError is converted to NodeErrorInfo through the existing exception
+    handler, preserving current failure handling and Sentry capture behavior.
+    """
     async with semaphore:
         assert len(udfs) == len(nodes) == len(batchable_args)
         num_executions = len(udfs)
         metric_tags = _get_metric_tags(context, udfs[0])
 
+        # Compute the shared deadline using the maximum timeout from all UDFs
+        batch_timeout = max(udf.timeout for udf in udfs)
+
         try:
             with metrics.timed('udf_execution_batch_duration', tags=metric_tags, sample_rate=0.01):
-                results = await udfs[0].async_execute_batch(context, udfs, batchable_args)
+                async with asyncio.timeout(batch_timeout):
+                    results = await udfs[0].async_execute_batch(context, udfs, batchable_args)
             assert len(results) == num_executions
         except Exception as e:
             if not isinstance(e, NodeFailurePropagationException):

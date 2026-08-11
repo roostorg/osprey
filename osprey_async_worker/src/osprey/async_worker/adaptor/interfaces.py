@@ -38,6 +38,7 @@ class AsyncUDFBase(UDFBase[Arguments, RValue]):
 
     execute_async: ClassVar[bool] = True
     is_native_async: ClassVar[bool] = True
+    timeout: ClassVar[float] = 2.0
 
     def __init__(self, validation_context, arguments):
         super().__init__(validation_context, arguments)
@@ -78,6 +79,7 @@ class AsyncBatchableUDFBase(BatchableUDFBase[Arguments, RValue, BatchableArgumen
     """
 
     is_native_async: ClassVar[bool] = True
+    timeout: ClassVar[float] = 2.0
 
     def execute(self, execution_context: ExecutionContext, arguments: Arguments) -> RValue:
         raise RuntimeError(
