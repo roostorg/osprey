@@ -74,6 +74,11 @@ class FailingLabelsService(AsyncExternalService[EntityT[Any], EntityLabels]):
         raise ValueError(f'labels service failed for {entity.type}/{entity.id}')
 
 
+class FailOpenLabelsService(FailingLabelsService):
+    def handle_read_error(self, entity: EntityT[Any], error: Exception) -> EntityLabels:
+        return EntityLabels(labels={})
+
+
 class FakeResolver:
     async def query_dns(self, domain: str, query_type: str) -> SimpleNamespace:
         if query_type == 'MX':
@@ -219,6 +224,51 @@ async def test_label_service_failure_reaches_executor_error_handling(
     assert len(result.error_infos) == 1
     error = result.error_infos[0].error
     assert isinstance(error, ValueError)
+
+
+@pytest.mark.asyncio
+async def test_label_service_can_translate_read_failure(
+    async_execute_with_result, async_udf_registry: UDFRegistry
+) -> None:
+    """use the helper fallback after a failed labels read"""
+    service = FailOpenLabelsService()
+    helpers = UDFHelpers().set_udf_helper(AsyncHasLabel, service)
+
+    result = await async_execute_with_result(
+        sources_dict=_source_with_labels_config(
+            'Result = HasLabel(entity=Entity(type="User", id="u1"), label="trusted")',
+            {'trusted'},
+        ),
+        data={},
+        udf_helpers=helpers,
+        udf_registry=async_udf_registry,
+    )
+
+    assert result.error_infos == []
+    assert result.extracted_features['Result'] is False
+
+
+@pytest.mark.asyncio
+async def test_label_service_can_translate_batched_read_failure(
+    async_execute_with_result, async_udf_registry: UDFRegistry
+) -> None:
+    """use the helper fallback for a same-entity batch"""
+    service = FailOpenLabelsService()
+    helpers = UDFHelpers().set_udf_helper(AsyncHasLabel, service)
+
+    result = await async_execute_with_result(
+        sources_dict=_source_with_labels_config(
+            'First = HasLabel(entity=Entity(type="User", id="u1"), label="trusted")\nSecond = HasLabel(entity=Entity(type="User", id="u1"), label="trusted")',
+            {'trusted'},
+        ),
+        data={},
+        udf_helpers=helpers,
+        udf_registry=async_udf_registry,
+    )
+
+    assert result.error_infos == []
+    assert result.extracted_features['First'] is False
+    assert result.extracted_features['Second'] is False
 
 
 def test_native_has_label_preserves_sync_metadata_validation_and_routing(

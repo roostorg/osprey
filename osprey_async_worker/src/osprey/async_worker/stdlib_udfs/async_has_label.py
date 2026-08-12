@@ -7,6 +7,7 @@ from typing import Any, Sequence, cast
 from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase
 from osprey.async_worker.lib.external_service import AsyncExternalService
 from osprey.engine.executor.execution_context import ExecutionContext
+from osprey.engine.language_types.entities import EntityT
 from osprey.engine.stdlib.udfs.labels import (
     BatchableHasLabelArguments,
     HasLabelArguments,
@@ -29,14 +30,23 @@ class HasLabel(AsyncBatchableUDFBase[HasLabelArguments, bool, BatchableHasLabelA
         """resolve async-first mro type variables"""
         return (HasLabelArguments, bool, BatchableHasLabelArguments)
 
+    async def _read_labels(
+        self,
+        execution_context: ExecutionContext,
+        label_provider: AsyncExternalService[EntityT[Any], EntityLabels],
+        entity: EntityT[Any],
+    ) -> EntityLabels:
+        accessor = execution_context.get_async_external_service_accessor(label_provider)
+        try:
+            return await accessor.get(entity)
+        except Exception as error:
+            return label_provider.handle_read_error(entity, error)
+
     async def async_execute(self, execution_context: ExecutionContext, arguments: HasLabelArguments) -> bool:
         """look up labels for one entity"""
-        label_provider = execution_context.get_udf_helper(self)
         # async plugins bind this class to an async service
-        accessor = execution_context.get_async_external_service_accessor(
-            cast(AsyncExternalService[Any, EntityLabels], label_provider)
-        )
-        entity_labels = await accessor.get(arguments.entity)
+        label_provider = cast(AsyncExternalService[EntityT[Any], EntityLabels], execution_context.get_udf_helper(self))
+        entity_labels = await self._read_labels(execution_context, label_provider, arguments.entity)
         return self._execute(execution_context, self.get_batchable_arguments(arguments), entity_labels)
 
     async def async_execute_batch(
@@ -51,12 +61,8 @@ class HasLabel(AsyncBatchableUDFBase[HasLabelArguments, bool, BatchableHasLabelA
         if len(unique_entities) != 1:
             raise NotImplementedError(f'batch received {len(unique_entities)} unique entities; expected 1')
 
-        label_provider = execution_context.get_udf_helper(self)
-        accessor = execution_context.get_async_external_service_accessor(
-            cast(AsyncExternalService[Any, EntityLabels], label_provider)
-        )
-
-        entity_labels = await accessor.get(unique_entities.pop())
+        label_provider = cast(AsyncExternalService[EntityT[Any], EntityLabels], execution_context.get_udf_helper(self))
+        entity_labels = await self._read_labels(execution_context, label_provider, unique_entities.pop())
         output: list[Result[bool, Exception]] = []
         for args in arguments:
             try:
