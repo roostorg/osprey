@@ -8,12 +8,22 @@ import asyncio
 from typing import ClassVar, Sequence
 
 import pytest
-from osprey.async_worker.adaptor.interfaces import AsyncUDFBase
+from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase, AsyncUDFBase
 from osprey.engine.executor.execution_context import ExecutionContext
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import BatchableUDFBase, UDFBase
 from osprey.engine.udf.registry import UDFRegistry
 from result import Ok, Result
+
+
+@pytest.fixture(autouse=True)
+def reset_udf_timeouts():
+    """reset both async udf base timeouts to 2.0 before and after each test."""
+    AsyncUDFBase.timeout = 2.0
+    AsyncBatchableUDFBase.timeout = 2.0
+    yield
+    AsyncUDFBase.timeout = 2.0
+    AsyncBatchableUDFBase.timeout = 2.0
 
 
 @pytest.mark.asyncio
@@ -212,8 +222,6 @@ class TimeoutTestArguments(ArgumentsBase):
 @pytest.mark.asyncio
 async def test_native_udf_base_exposes_timeout():
     """AC1.1: AsyncUDFBase and AsyncBatchableUDFBase expose timeout = 2.0."""
-    from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase
-
     assert hasattr(AsyncUDFBase, 'timeout')
     assert AsyncUDFBase.timeout == 2.0
     assert hasattr(AsyncBatchableUDFBase, 'timeout')
@@ -440,8 +448,6 @@ async def test_batch_mixed_timeout_uses_highest(async_execute_with_result):
     - Batch sleeps 0.3s which would timeout at 0.2s but succeeds at 1.0s
     - Verifies executor uses max(0.2, 1.0) = 1.0s timeout for the batch
     """
-    from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase
-
     # Isolated capture state for this test execution
     captured_timeouts: list[float] = []
 
@@ -501,7 +507,6 @@ async def test_batch_mixed_timeout_uses_highest(async_execute_with_result):
 @pytest.mark.asyncio
 async def test_batch_within_deadline_retains_results(async_execute_with_result):
     """AC3.2: Batch within shared deadline retains each result with no errors."""
-    from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase
 
     class FastBatchUDF(AsyncBatchableUDFBase[BatchTestArgs, str, BatchTestArgs]):
         timeout: ClassVar[float] = 0.5
@@ -550,8 +555,6 @@ async def test_batch_over_deadline_fails_all_nodes(async_execute_with_result):
     Direct assertion: async_execute_batch() receives asyncio.CancelledError
     when the batch timeout fires, confirming the coroutine is cancelled.
     """
-    from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase
-
     # Isolated flag to capture cancellation signal
     batch_received_cancellation = False
 

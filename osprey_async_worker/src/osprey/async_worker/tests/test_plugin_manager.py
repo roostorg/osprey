@@ -10,12 +10,14 @@ from __future__ import annotations
 
 import pytest
 from osprey.async_worker.adaptor import plugin_manager as pm
+from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase, AsyncUDFBase
 from osprey.async_worker.stdlib_udfs import _async_stdlib_plugin
 from osprey.async_worker.stdlib_udfs.async_mx_lookup import MXLookup as AsyncMXLookup
 from osprey.engine.stdlib.udfs.json_data import JsonData
 from osprey.engine.stdlib.udfs.labels import HasLabel as SyncHasLabel
 from osprey.engine.stdlib.udfs.mx_lookup import MXLookup as SyncMXLookup
 from osprey.engine.stdlib.udfs.rules import Rule
+from osprey.worker.lib.config import Config
 
 
 @pytest.fixture(autouse=True)
@@ -24,12 +26,17 @@ def reset_plugin_manager():
 
     plugin_manager is a module-level singleton. Without this, state from
     one test (e.g. a registered plugin) leaks into the next.
+    Restore both native base timeouts to 2.0 before and after each test.
     """
     pm.load_all_async_plugins.cache_clear()
+    AsyncUDFBase.timeout = 2.0
+    AsyncBatchableUDFBase.timeout = 2.0
     yield
     pm.load_all_async_plugins.cache_clear()
     if pm.plugin_manager.is_registered(_async_stdlib_plugin):
         pm.plugin_manager.unregister(_async_stdlib_plugin)
+    AsyncUDFBase.timeout = 2.0
+    AsyncBatchableUDFBase.timeout = 2.0
 
 
 def test_async_stdlib_plugin_returns_async_mx_lookup() -> None:
@@ -152,9 +159,9 @@ def test_bootstrap_applies_register_udf_helpers_bindings() -> None:
     plugin = _UDFHelpersPlugin(_StubUDF, helper, captured)
     pm.plugin_manager.register(plugin)
     try:
-        fake_config = object()
-        _registry, helpers = pm.bootstrap_async_udfs(config=fake_config)  # type: ignore[arg-type]
-        assert captured == [fake_config], 'register_udf_helpers must receive the config'
+        bound_config = Config({})
+        _registry, helpers = pm.bootstrap_async_udfs(config=bound_config)
+        assert captured == [bound_config], 'register_udf_helpers must receive the config'
         # UDFHelpers.get_udf_helper expects an instance (it calls type()).
         # Inspect the underlying dict directly since _StubUDF is not instantiable.
         assert helpers._helpers[_StubUDF] is helper
@@ -188,8 +195,8 @@ def test_bootstrap_swallows_exceptions_from_register_udf_helpers() -> None:
     plugin = _BrokenPlugin()
     pm.plugin_manager.register(plugin)
     try:
-        fake_config = object()
-        registry, _helpers = pm.bootstrap_async_udfs(config=fake_config)  # type: ignore[arg-type]
+        bound_config = Config({})
+        registry, _helpers = pm.bootstrap_async_udfs(config=bound_config)
         # Standard UDFs still resolved despite the broken hook.
         assert registry.get('JsonData') is JsonData
     finally:
@@ -203,3 +210,98 @@ def test_no_residual_register_labels_service_or_provider_hookspec() -> None:
     assert not hasattr(pm.plugin_manager.hook, 'register_labels_service_or_provider'), (
         'register_labels_service_or_provider should be removed in favor of register_udf_helpers'
     )
+
+
+# AC4.1 test: absent configuration keeps both inherited native udf defaults at 2.0
+def test_ac41_absent_config_keeps_defaults_at_two() -> None:
+    """bootstrap with config=None and Config({}) leaves both native base defaults at 2.0."""
+    # config=None case
+    pm.bootstrap_async_udfs(config=None)
+    assert AsyncUDFBase.timeout == 2.0
+    assert AsyncBatchableUDFBase.timeout == 2.0
+
+    # Config({}) case (initialized config with no timeout key)
+    pm.bootstrap_async_udfs(config=Config({}))
+    assert AsyncUDFBase.timeout == 2.0
+    assert AsyncBatchableUDFBase.timeout == 2.0
+
+
+# AC4.2 test: positive finite OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT changes both defaults
+def test_ac42_positive_finite_config_changes_defaults() -> None:
+    """a numeric string under OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT becomes the timeout on both native bases."""
+    config = Config({'OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT': '3.5'})
+    pm.bootstrap_async_udfs(config=config)
+    assert AsyncUDFBase.timeout == 3.5
+    assert AsyncBatchableUDFBase.timeout == 3.5
+
+
+# AC4.3 test: direct and inherited udf class timeout overrides continue to win over the configured default
+def test_ac43_direct_and_inherited_overrides_win() -> None:
+    """define one direct override and one concrete udf inheriting an override from an
+    intermediate plugin base; bootstrap with a different configured default and assert
+    both overrides remain unchanged."""
+
+    class DirectOverrideUDF(AsyncUDFBase):
+        timeout = 1.5
+
+    class PluginBaseUDF(AsyncUDFBase):
+        timeout = 2.5
+
+    class InheritedOverrideUDF(PluginBaseUDF):
+        pass  # Inherits timeout = 2.5
+
+    config = Config({'OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT': '5.0'})
+    pm.bootstrap_async_udfs(config=config)
+
+    # Native base defaults changed to 5.0
+    assert AsyncUDFBase.timeout == 5.0
+    assert AsyncBatchableUDFBase.timeout == 5.0
+
+    # But direct and inherited overrides remain unchanged
+    assert DirectOverrideUDF.timeout == 1.5
+    assert InheritedOverrideUDF.timeout == 2.5
+
+
+# AC4.4 test: malformed, non-positive, or non-finite configured values fail bootstrap
+@pytest.mark.parametrize(
+    'config_value,expected_exception',
+    [
+        ('not_a_number', TypeError),
+        ('0', ValueError),
+        ('-1.5', ValueError),
+        ('nan', ValueError),
+        ('inf', ValueError),
+        ('-inf', ValueError),
+    ],
+)
+def test_ac44_invalid_timeout_values_fail_bootstrap(config_value: str, expected_exception: type) -> None:
+    """malformed, zero, negative, nan, inf, and -inf values fail bootstrap with appropriate errors."""
+    config = Config({'OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT': config_value})
+    with pytest.raises(expected_exception, match='OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT'):
+        pm.bootstrap_async_udfs(config=config)
+    # Verify state unchanged
+    assert AsyncUDFBase.timeout == 2.0
+    assert AsyncBatchableUDFBase.timeout == 2.0
+
+
+# AC4.5 test: repeated bootstrap resets without leaking a prior value
+def test_ac45_repeated_bootstrap_resets_without_leaking() -> None:
+    """bootstrap with one configured value, then another, then config=None;
+    assert each call replaces only the inherited base defaults solely through bootstrap behavior."""
+
+    # First bootstrap with 3.0
+    config1 = Config({'OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT': '3.0'})
+    pm.bootstrap_async_udfs(config=config1)
+    assert AsyncUDFBase.timeout == 3.0
+    assert AsyncBatchableUDFBase.timeout == 3.0
+
+    # Second bootstrap with 4.5 (no manual reset; bootstrap must replace 3.0 with 4.5)
+    config2 = Config({'OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT': '4.5'})
+    pm.bootstrap_async_udfs(config=config2)
+    assert AsyncUDFBase.timeout == 4.5
+    assert AsyncBatchableUDFBase.timeout == 4.5
+
+    # Final bootstrap with config=None (no manual reset; bootstrap must restore 2.0)
+    pm.bootstrap_async_udfs(config=None)
+    assert AsyncUDFBase.timeout == 2.0
+    assert AsyncBatchableUDFBase.timeout == 2.0
