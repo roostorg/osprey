@@ -1,5 +1,3 @@
-# pattern: Imperative Shell
-
 """native async `HasLabel`"""
 
 from typing import Any, Sequence, cast
