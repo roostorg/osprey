@@ -212,8 +212,8 @@ def test_no_residual_register_labels_service_or_provider_hookspec() -> None:
     )
 
 
-# AC4.1 test: absent configuration keeps both inherited native udf defaults at 2.0
-def test_ac41_absent_config_keeps_defaults_at_two() -> None:
+# Absent configuration keeps both inherited native UDF defaults at 2.0
+def test_absent_config_keeps_native_udf_defaults_at_two() -> None:
     """bootstrap with config=None and Config({}) leaves both native base defaults at 2.0."""
     # config=None case
     pm.bootstrap_async_udfs(config=None)
@@ -226,8 +226,8 @@ def test_ac41_absent_config_keeps_defaults_at_two() -> None:
     assert AsyncBatchableUDFBase.timeout == 2.0
 
 
-# AC4.2 test: positive finite OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT changes both defaults
-def test_ac42_positive_finite_config_changes_defaults() -> None:
+# A positive finite configured timeout changes both inherited defaults
+def test_positive_finite_config_changes_native_udf_defaults() -> None:
     """a numeric string under OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT becomes the timeout on both native bases."""
     config = Config({'OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT': '3.5'})
     pm.bootstrap_async_udfs(config=config)
@@ -235,8 +235,8 @@ def test_ac42_positive_finite_config_changes_defaults() -> None:
     assert AsyncBatchableUDFBase.timeout == 3.5
 
 
-# AC4.3 test: direct and inherited udf class timeout overrides continue to win over the configured default
-def test_ac43_direct_and_inherited_overrides_win() -> None:
+# Direct and inherited UDF timeout overrides win over the configured default
+def test_direct_and_inherited_udf_timeout_overrides_win() -> None:
     """define one direct override and one concrete udf inheriting an override from an
     intermediate plugin base; bootstrap with a different configured default and assert
     both overrides remain unchanged."""
@@ -262,7 +262,7 @@ def test_ac43_direct_and_inherited_overrides_win() -> None:
     assert InheritedOverrideUDF.timeout == 2.5
 
 
-# AC4.4 test: malformed, non-positive, or non-finite configured values fail bootstrap
+# Malformed, non-positive, and non-finite timeout values fail before mutation
 @pytest.mark.parametrize(
     'config_value,expected_exception',
     [
@@ -274,7 +274,7 @@ def test_ac43_direct_and_inherited_overrides_win() -> None:
         ('-inf', ValueError),
     ],
 )
-def test_ac44_invalid_timeout_values_fail_bootstrap(config_value: str, expected_exception: type) -> None:
+def test_invalid_timeout_config_fails_before_mutation(config_value: str, expected_exception: type) -> None:
     """malformed, zero, negative, nan, inf, and -inf values fail bootstrap with appropriate errors."""
     config = Config({'OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT': config_value})
     with pytest.raises(expected_exception, match='OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT'):
@@ -284,8 +284,8 @@ def test_ac44_invalid_timeout_values_fail_bootstrap(config_value: str, expected_
     assert AsyncBatchableUDFBase.timeout == 2.0
 
 
-# AC4.5 test: repeated bootstrap resets without leaking a prior value
-def test_ac45_repeated_bootstrap_resets_without_leaking() -> None:
+# Repeated bootstrap replaces prior timeout defaults without leaking state
+def test_repeated_bootstrap_replaces_prior_timeout_default() -> None:
     """bootstrap with one configured value, then another, then config=None;
     assert each call replaces only the inherited base defaults solely through bootstrap behavior."""
 

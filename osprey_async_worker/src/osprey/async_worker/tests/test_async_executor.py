@@ -216,12 +216,12 @@ class TimeoutTestArguments(ArgumentsBase):
     value: str
 
 
-# Tests for timeout acceptance criteria
+# Timeout behavior
 
 
 @pytest.mark.asyncio
 async def test_native_udf_base_exposes_timeout():
-    """AC1.1: AsyncUDFBase and AsyncBatchableUDFBase expose timeout = 2.0."""
+    """Native async UDF bases expose a two-second timeout."""
     assert hasattr(AsyncUDFBase, 'timeout')
     assert AsyncUDFBase.timeout == 2.0
     assert hasattr(AsyncBatchableUDFBase, 'timeout')
@@ -234,7 +234,7 @@ async def test_native_udf_base_exposes_timeout():
 
 @pytest.mark.asyncio
 async def test_subclass_timeout_override_used(async_execute_with_result):
-    """AC1.2: Positive subclass timeout override is enforced by executor."""
+    """The executor enforces a positive subclass timeout override."""
 
     class CustomTimeoutUDF(AsyncUDFBase[TimeoutTestArguments, str]):
         timeout: ClassVar[float] = 0.1  # Short override
@@ -262,7 +262,7 @@ async def test_subclass_timeout_override_used(async_execute_with_result):
 
 @pytest.mark.asyncio
 async def test_udf_completes_within_deadline(async_execute_with_result):
-    """AC2.1: UDF completing before deadline retains result with no errors."""
+    """A UDF completing before its deadline retains its result without errors."""
 
     class ControlledAsyncUDF(AsyncUDFBase[TimeoutTestArguments, str]):
         """Async UDF controlled by an event for testing."""
@@ -308,7 +308,7 @@ async def test_udf_completes_within_deadline(async_execute_with_result):
 
 @pytest.mark.asyncio
 async def test_udf_timeout_recorded_as_error(async_execute_with_result):
-    """AC2.2: UDF exceeding deadline is cancelled and TimeoutError recorded."""
+    """A UDF exceeding its deadline records a TimeoutError."""
     release_event = asyncio.Event()
 
     class ShortTimeoutUDF(AsyncUDFBase[TimeoutTestArguments, str]):
@@ -342,7 +342,7 @@ async def test_udf_timeout_recorded_as_error(async_execute_with_result):
 
 @pytest.mark.asyncio
 async def test_semaphore_wait_not_counted_against_deadline(async_execute_with_result):
-    """AC2.3: Semaphore wait time does not consume UDF execution deadline.
+    """Semaphore wait time does not consume the UDF execution deadline.
 
     Coordination:
     1. First (blocking) acquires semaphore and signals block_event
@@ -441,7 +441,7 @@ class BatchTestArgs(ArgumentsBase):
 
 @pytest.mark.asyncio
 async def test_batch_mixed_timeout_uses_highest(async_execute_with_result):
-    """AC3.1: Mixed-timeout batch uses highest collected timeout, grouping unchanged.
+    """A mixed-timeout batch uses the highest timeout without changing grouping.
 
     Tests that a batch with mixed timeouts uses the MAX timeout:
     - Both UDFs batch together (grouping unchanged)
@@ -506,7 +506,7 @@ async def test_batch_mixed_timeout_uses_highest(async_execute_with_result):
 
 @pytest.mark.asyncio
 async def test_batch_within_deadline_retains_results(async_execute_with_result):
-    """AC3.2: Batch within shared deadline retains each result with no errors."""
+    """A batch within its shared deadline retains every result without errors."""
 
     class FastBatchUDF(AsyncBatchableUDFBase[BatchTestArgs, str, BatchTestArgs]):
         timeout: ClassVar[float] = 0.5
@@ -550,7 +550,7 @@ async def test_batch_within_deadline_retains_results(async_execute_with_result):
 
 @pytest.mark.asyncio
 async def test_batch_over_deadline_fails_all_nodes(async_execute_with_result):
-    """AC3.3: Batch exceeding shared deadline records timeout and fails all nodes.
+    """A batch exceeding its shared deadline records timeout and fails every node.
 
     Direct assertion: async_execute_batch() receives asyncio.CancelledError
     when the batch timeout fires, confirming the coroutine is cancelled.
@@ -598,7 +598,7 @@ async def test_batch_over_deadline_fails_all_nodes(async_execute_with_result):
         udf_registry=registry,
     )
 
-    # Direct assertion: AC3.3 batch coroutine receives CancelledError
+    # The batch coroutine receives cancellation before node errors are recorded
     assert batch_received_cancellation, 'async_execute_batch() did not receive CancelledError'
 
     # Both results should have failed with TimeoutError in the batch
