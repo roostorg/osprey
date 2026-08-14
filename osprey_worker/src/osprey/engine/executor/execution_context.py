@@ -54,7 +54,7 @@ from osprey.engine.language_types.post_execution_convertible import PostExecutio
 from osprey.engine.language_types.verdicts import VerdictEffect
 from osprey.engine.utils.types import add_slots, cached_property
 from osprey.rpc.common.v1.verdicts_pb2 import Verdicts
-from result import Result, UnwrapError
+from result import Ok, Result, UnwrapError
 
 if TYPE_CHECKING:
     from osprey.engine.ast_validator.validation_context import ValidatedSources
@@ -173,23 +173,29 @@ class ExecutionContext:
         failed, will either raise a NodeFailurePropagationException (default) or return None (if
         return_none_for_failed_values is True).
         """
-        # We need to check this on the original node, not (say) the assignment node if this is a Name.
+        try:
+            return self.resolved_result(node).unwrap()
+        except UnwrapError:
+            if return_none_for_failed_values:
+                return None
+            raise NodeFailurePropagationException()
+
+    def resolved_result(self, node: ASTNode) -> NodeResult:
+        """Return the resolved result for a node after post-execution conversion."""
+        # Check the original node before Name resolution.
         should_unwrap = self._execution_graph.should_unwrap(node)
 
         if isinstance(node, Name):
             node = self.get_name_node(node)
 
-        try:
-            value = self._resolved_node_values[id(node)].unwrap()
-            if should_unwrap:
-                assert isinstance(value, PostExecutionConvertible), (value, type(value))
-                value = value.to_post_execution_value()
-            return value
-        except UnwrapError:
-            if return_none_for_failed_values:
-                return None
-            else:
-                raise NodeFailurePropagationException()
+        node_result = self._resolved_node_values[id(node)]
+
+        if should_unwrap and node_result.is_ok():
+            value = node_result.unwrap()
+            assert isinstance(value, PostExecutionConvertible), (value, type(value))
+            return Ok(value.to_post_execution_value())
+
+        return node_result
 
     def get_name_node(self, name: Name) -> ASTNode:
         """Returns the node that is responsible for resolving a given Loaded name."""
