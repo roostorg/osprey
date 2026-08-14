@@ -418,6 +418,10 @@ class Call(Expression, Statement):
         return None
 
     def argument_dict(self) -> dict[str, Expression]:
+        return self._argument_dict_cached
+
+    @cached_property
+    def _argument_dict_cached(self) -> dict[str, Expression]:
         return {arg.name: arg.value for arg in self.arguments}
 
     @property
