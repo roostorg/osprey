@@ -56,10 +56,21 @@ build_kafka_command() {
     echo "$cmd"
 }
 
+# FIFO used to stream messages into a single long-lived producer process
+FIFO="$(mktemp -u /tmp/kafka_producer_fifo.XXXXXX)"
+producer_pid=""
+
 # Function to handle cleanup on script termination
 cleanup() {
     echo
     echo "Stopping data generation..."
+    # Close our write end of the FIFO so the producer sees EOF and exits
+    exec 3>&- 2>/dev/null
+    if [ -n "$producer_pid" ] && kill -0 "$producer_pid" 2>/dev/null; then
+        kill "$producer_pid" 2>/dev/null
+        wait "$producer_pid" 2>/dev/null
+    fi
+    rm -f "$FIFO"
     exit 0
 }
 
@@ -78,11 +89,21 @@ echo
 # Build the kafka command
 kafka_cmd=$(build_kafka_command)
 
+# Start a single long-lived producer reading from the FIFO, instead of
+# spawning a brand-new JVM producer process per message.
+mkfifo "$FIFO"
+eval "$kafka_cmd" < "$FIFO" &
+producer_pid=$!
+
+# Open the FIFO for writing on fd 3 and keep it open for the life of the
+# script, so the producer never sees EOF between messages.
+exec 3> "$FIFO"
+
 # Infinite loop to generate and send actions
 while true; do
     action=$(generate_action)
     echo -e "Sending $action"
-    echo -e "$action" | $kafka_cmd
+    echo -e "$action" >&3
 
     # Increment action_id in the main shell
     ((action_id++))
