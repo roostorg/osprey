@@ -269,3 +269,96 @@ where
         self.next_flush = Instant::now() + self.pending_ack_flush_interval;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{collections::HashSet, time::Instant as StdInstant};
+
+    use tokio::time::{advance, Instant as TokioInstant};
+
+    use super::*;
+
+    const LEASE_DELAY: Duration = Duration::from_secs(30);
+
+    fn queue(capacity: usize, chunk_size: usize) -> MessageAckQueue<String> {
+        MessageAckQueue::new(capacity, chunk_size, Duration::from_millis(100))
+    }
+
+    fn insert_due(queue: &mut MessageAckQueue<String>, count: usize) -> Vec<AckId> {
+        let renew_at = TokioInstant::now();
+        (0..count)
+            .map(|index| {
+                queue.transform_and_store_ack_id(
+                    format!("server-{index}"),
+                    StdInstant::now(),
+                    renew_at,
+                )
+            })
+            .collect()
+    }
+
+    fn renew_one_tick(queue: &mut MessageAckQueue<String>, chunk_size: usize) -> Vec<String> {
+        queue
+            .collect_ack_ids_that_need_to_be_renewed(chunk_size, LEASE_DELAY)
+            .into_iter()
+            .map(|(_, ack_id)| ack_id)
+            .collect()
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn renewal_tick_caps_work_and_preserves_remaining_messages() {
+        let mut queue = queue(8_000, 2_500);
+        insert_due(&mut queue, 5_001);
+        advance(Duration::from_secs(1)).await;
+
+        let first_batch = renew_one_tick(&mut queue, 2_500);
+
+        assert_eq!(first_batch.len(), 2_500);
+        advance(Duration::from_secs(1)).await;
+        assert_eq!(renew_one_tick(&mut queue, 2_500).len(), 2_500);
+        advance(Duration::from_secs(1)).await;
+        assert_eq!(renew_one_tick(&mut queue, 2_500).len(), 1);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn renewal_ticks_cover_due_messages_once_without_starvation() {
+        let mut queue = queue(8_000, 2_500);
+        insert_due(&mut queue, 5_001);
+        advance(Duration::from_secs(1)).await;
+
+        let mut renewed = renew_one_tick(&mut queue, 2_500);
+        advance(Duration::from_secs(1)).await;
+        renewed.extend(renew_one_tick(&mut queue, 2_500));
+        advance(Duration::from_secs(1)).await;
+        renewed.extend(renew_one_tick(&mut queue, 2_500));
+        let unique: HashSet<_> = renewed.iter().collect();
+
+        assert_eq!(renewed.len(), 5_001);
+        assert_eq!(unique.len(), 5_001);
+        assert!(renew_one_tick(&mut queue, 2_500).is_empty());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn acknowledged_messages_are_excluded_from_renewal() {
+        let mut queue = queue(10, 10);
+        let ack_ids = insert_due(&mut queue, 5);
+        queue.remove_ack_id(&ack_ids[2]);
+        advance(Duration::from_secs(1)).await;
+
+        let renewed = renew_one_tick(&mut queue, 10);
+
+        assert_eq!(renewed.len(), 4);
+        assert!(!renewed.iter().any(|ack_id| ack_id == "server-2"));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn renewal_recurs_after_each_lease_window() {
+        let mut queue = queue(10, 10);
+        insert_due(&mut queue, 3);
+        advance(Duration::from_secs(1)).await;
+
+        assert_eq!(renew_one_tick(&mut queue, 10).len(), 3);
+        advance(Duration::from_secs(31)).await;
+        assert_eq!(renew_one_tick(&mut queue, 10).len(), 3);
+    }
+}
