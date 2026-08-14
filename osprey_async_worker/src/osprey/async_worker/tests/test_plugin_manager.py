@@ -13,6 +13,7 @@ from osprey.async_worker.adaptor import plugin_manager as pm
 from osprey.async_worker.stdlib_udfs import _async_stdlib_plugin
 from osprey.async_worker.stdlib_udfs.async_mx_lookup import MXLookup as AsyncMXLookup
 from osprey.engine.stdlib.udfs.json_data import JsonData
+from osprey.engine.stdlib.udfs.labels import HasLabel as SyncHasLabel
 from osprey.engine.stdlib.udfs.mx_lookup import MXLookup as SyncMXLookup
 from osprey.engine.stdlib.udfs.rules import Rule
 
@@ -44,8 +45,8 @@ def test_async_stdlib_plugin_overrides_share_class_name() -> None:
     _deduplicate_udfs matches by __name__, so the async override class must
     have the same __name__ as the sync class it replaces.
     """
-    for async_udf in _async_stdlib_plugin.register_udfs():
-        assert async_udf.__name__ == 'MXLookup'  # currently the only override
+    override_names = {async_udf.__name__ for async_udf in _async_stdlib_plugin.register_udfs()}
+    assert override_names == {'MXLookup', 'HasLabel'}
 
 
 def test_bootstrap_resolves_mx_lookup_to_async_version() -> None:
@@ -69,6 +70,37 @@ def test_bootstrap_preserves_non_overridden_stdlib_udfs() -> None:
     registry, _helpers = pm.bootstrap_async_udfs(config=None)
     assert registry.get('JsonData') is JsonData
     assert registry.get('Rule') is Rule
+
+
+def test_bootstrap_resolves_in_tree_async_udfs_to_native_classes() -> None:
+    """bootstrap resolves in-tree async udfs to native classes"""
+    registry, _helpers = pm.bootstrap_async_udfs(config=None)
+    mx_lookup = registry.get('MXLookup')
+    assert mx_lookup is AsyncMXLookup, f'expected AsyncMXLookup, got {mx_lookup!r}'
+    assert hasattr(mx_lookup, 'is_native_async') and mx_lookup.is_native_async
+    has_label = registry.get('HasLabel')
+    assert has_label is not None, 'HasLabel not found'
+    assert hasattr(has_label, 'is_native_async') and has_label.is_native_async
+
+
+def test_merged_registry_excludes_replaced_sync_udfs() -> None:
+    """merged registry excludes replaced sync udfs"""
+    registry, _helpers = pm.bootstrap_async_udfs(config=None)
+    for udf in registry.iter_functions():
+        assert udf is not SyncMXLookup, 'sync MXLookup leaked into async registry'
+        assert udf is not SyncHasLabel, 'sync HasLabel leaked into async registry'
+    override_names = {udf.__name__ for udf in _async_stdlib_plugin.register_udfs()}
+    assert override_names == {'MXLookup', 'HasLabel'}
+
+
+def test_sync_stdlib_registration_keeps_sync_has_label() -> None:
+    """sync stdlib registration keeps sync HasLabel"""
+    from osprey.engine.udf.registry import UDFRegistry
+    from osprey.worker._stdlibplugin.udf_register import register_udfs
+
+    registry = UDFRegistry.with_udfs(*register_udfs())
+    has_label = registry.get('HasLabel')
+    assert has_label is SyncHasLabel, f'expected sync HasLabel, got {has_label!r}'
 
 
 def test_bootstrap_registers_internal_plugin() -> None:

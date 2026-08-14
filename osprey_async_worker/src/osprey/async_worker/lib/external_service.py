@@ -49,6 +49,10 @@ class AsyncExternalService(ABC, Generic[KeyT, ValueT]):
         """
         return False
 
+    def handle_read_error(self, key: KeyT, error: Exception) -> ValueT:
+        """translate a failed read to a fallback value; re-raise by default"""
+        raise error
+
 
 class ExternalServiceAccessor(Generic[KeyT, ValueT]):
     """Facilitates accessing an async external service in a way that caches and debounces requests based on a key."""
@@ -113,6 +117,7 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
                 future.set_result(cast(ValueT, None))
             else:
                 future.set_exception(e)
+                future.exception()
             raise
 
         return await future
