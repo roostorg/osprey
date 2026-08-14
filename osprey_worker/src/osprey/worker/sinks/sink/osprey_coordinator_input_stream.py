@@ -214,9 +214,9 @@ class OspreyCoordinatorInputStream(BaseInputStream[BaseAckingContext[OspreyEngin
     def _create_osprey_engine_action(
         self, osprey_coordinator_action: OspreyCoordinatorAction
     ) -> Optional[OspreyEngineAction]:
+        tags = [f'action_name:{osprey_coordinator_action.action_name}']
+        has_secret_data = osprey_coordinator_action.HasField('json_secret_data')
         try:
-            tags = [f'action_name:{osprey_coordinator_action.action_name}']
-
             secret_data: Dict[str, Any] = {}
             which_of_action_data = osprey_coordinator_action.WhichOneof('action_data')
             if which_of_action_data == 'json_action_data':
@@ -233,6 +233,7 @@ class OspreyCoordinatorInputStream(BaseInputStream[BaseAckingContext[OspreyEngin
                     data = json.loads(osprey_coordinator_action.json_action_data)
                     if osprey_coordinator_action.HasField('json_secret_data'):
                         secret_data = json.loads(osprey_coordinator_action.json_secret_data)
+                        osprey_coordinator_action.ClearField('json_secret_data')
                 encoding = 'json'
 
             elif which_of_action_data == 'proto_action_data':
@@ -277,13 +278,31 @@ class OspreyCoordinatorInputStream(BaseInputStream[BaseAckingContext[OspreyEngin
                 timestamp=osprey_coordinator_action.timestamp.ToDatetime(tzinfo=pytz.utc),
                 encoding=encoding,
             )
-        except Exception:
-            logger.exception('Error while generating input message')
-            sentry_sdk.capture_exception()
-            metrics.increment(
-                'osprey_coordinator_input_stream.deserialize_message_failure',
-                tags=tags + ['failure:unknown_exc'],
-            )
+        except Exception as e:
+            if has_secret_data:
+                # The coordinator stream contains decrypted secret data. Remove it from the
+                # protobuf and local variables before emitting telemetry, and never capture the
+                # original traceback because JSON decoder frames can retain the plaintext bytes.
+                try:
+                    osprey_coordinator_action.ClearField('json_secret_data')
+                except Exception:
+                    pass
+                secret_data = {}
+                try:
+                    logger.warning('Error while generating input message containing secret data: %s', type(e).__name__)
+                    metrics.increment(
+                        'osprey_coordinator_input_stream.deserialize_message_failure',
+                        tags=tags + ['failure:unknown_exc'],
+                    )
+                except Exception:
+                    pass
+            else:
+                logger.exception('Error while generating input message')
+                sentry_sdk.capture_exception()
+                metrics.increment(
+                    'osprey_coordinator_input_stream.deserialize_message_failure',
+                    tags=tags + ['failure:unknown_exc'],
+                )
             return None
 
     def _gen(self) -> Iterator[NoopAckingContext[OspreyEngineAction]]:

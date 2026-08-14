@@ -11,6 +11,10 @@ message ProcessActionRequest {
   string action_name = 2;
   string action_data_json = 3;
   google.protobuf.Timestamp timestamp = 5;
+
+  oneof secret_data {
+    bytes encrypted_json_secret_data = 6;
+  }
 }
 
 message ProcessActionResponse {

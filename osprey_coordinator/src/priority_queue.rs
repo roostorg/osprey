@@ -155,6 +155,13 @@ pub struct PriorityQueueReceiver {
     async_receiver: async_channel::Receiver<AckableAction>,
 }
 
+fn dropped_nack_message(action: &proto::OspreyCoordinatorAction) -> String {
+    format!(
+        "tried to nack action_id={} ack_id={} and the nacking receiver was dropped",
+        action.action_id, action.ack_id
+    )
+}
+
 impl PriorityQueueReceiver {
     fn new(
         sync_receiver: async_channel::Receiver<AckableAction>,
@@ -216,10 +223,7 @@ impl PriorityQueueReceiver {
             match receiver.try_recv() {
                 Ok(action) => match action.acking_oneshot_sender.send(AckOrNack::Nack) {
                     Ok(_) => (),
-                    Err(_) => println!(
-                        "tried to nack {:?} and the nacking receiver was dropped",
-                        action.action
-                    ),
+                    Err(_) => println!("{}", dropped_nack_message(&action.action)),
                 },
                 Err(_) => return,
             }
@@ -262,4 +266,38 @@ pub fn spawn_priority_queue_metrics_worker(
     });
 
     AbortOnDrop::new(join_handle)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::dropped_nack_message;
+    use crate::proto;
+
+    #[test]
+    fn dropped_nack_message_excludes_action_payloads() {
+        let action = proto::OspreyCoordinatorAction {
+            ack_id: 456,
+            action_id: 123,
+            action_data: Some(
+                proto::osprey_coordinator_action::ActionData::JsonActionData(
+                    b"public-data-sentinel".to_vec(),
+                ),
+            ),
+            secret_data: Some(
+                proto::osprey_coordinator_action::SecretData::JsonSecretData(
+                    b"private-secret-sentinel".to_vec(),
+                ),
+            ),
+            ..Default::default()
+        };
+
+        let message = dropped_nack_message(&action);
+
+        assert_eq!(
+            message,
+            "tried to nack action_id=123 ack_id=456 and the nacking receiver was dropped"
+        );
+        assert!(!message.contains("public-data-sentinel"));
+        assert!(!message.contains("private-secret-sentinel"));
+    }
 }

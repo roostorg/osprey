@@ -21,8 +21,10 @@ class ProcessActionRequest(google.protobuf.message.Message):
     ACTION_NAME_FIELD_NUMBER: builtins.int
     ACTION_DATA_JSON_FIELD_NUMBER: builtins.int
     TIMESTAMP_FIELD_NUMBER: builtins.int
+    ENCRYPTED_JSON_SECRET_DATA_FIELD_NUMBER: builtins.int
     action_name: builtins.str
     action_data_json: builtins.str
+    encrypted_json_secret_data: builtins.bytes
     @property
     def action_id(self) -> google.protobuf.wrappers_pb2.UInt64Value: ...
     @property
@@ -34,9 +36,11 @@ class ProcessActionRequest(google.protobuf.message.Message):
         action_name: builtins.str = ...,
         action_data_json: builtins.str = ...,
         timestamp: google.protobuf.timestamp_pb2.Timestamp | None = ...,
+        encrypted_json_secret_data: builtins.bytes = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["action_id", b"action_id", "timestamp", b"timestamp"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["action_data_json", b"action_data_json", "action_id", b"action_id", "action_name", b"action_name", "timestamp", b"timestamp"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["action_id", b"action_id", "encrypted_json_secret_data", b"encrypted_json_secret_data", "secret_data", b"secret_data", "timestamp", b"timestamp"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["action_data_json", b"action_data_json", "action_id", b"action_id", "action_name", b"action_name", "encrypted_json_secret_data", b"encrypted_json_secret_data", "secret_data", b"secret_data", "timestamp", b"timestamp"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing.Literal["secret_data", b"secret_data"]) -> typing.Literal["encrypted_json_secret_data"] | None: ...
 
 global___ProcessActionRequest = ProcessActionRequest
 

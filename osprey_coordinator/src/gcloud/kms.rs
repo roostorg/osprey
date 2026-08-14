@@ -56,6 +56,22 @@ pub struct AesGcmEnvelope {
     base64_encoded: bool,
 }
 
+fn split_envelope_ciphertext(ciphertext: &[u8]) -> Result<(&[u8], &[u8])> {
+    if ciphertext.len() < 4 {
+        return Err(anyhow!(
+            "envelope ciphertext is missing the encrypted DEK length"
+        ));
+    }
+
+    let enc_dek_len = u32::from_be_bytes(ciphertext[..4].try_into()?) as usize;
+    let ciphertext = &ciphertext[4..];
+    if ciphertext.len() < enc_dek_len {
+        return Err(anyhow!("envelope ciphertext has a truncated encrypted DEK"));
+    }
+
+    Ok(ciphertext.split_at(enc_dek_len))
+}
+
 impl AesGcmEnvelope {
     // TODO: implement encrypt
 
@@ -71,11 +87,7 @@ impl AesGcmEnvelope {
             .map(Vec::as_slice)
             .unwrap_or(ciphertext);
 
-        let enc_dek_len = u32::from_be_bytes(ciphertext[..4].try_into()?) as usize;
-        let ciphertext = &ciphertext[4..];
-
-        let encrypted_dek = &ciphertext[..enc_dek_len];
-        let payload = &ciphertext[enc_dek_len..];
+        let (encrypted_dek, payload) = split_envelope_ciphertext(ciphertext)?;
 
         let decrypt_req = proto::DecryptRequest {
             name: self.key_uri.clone(),
@@ -94,5 +106,38 @@ impl AesGcmEnvelope {
         Ok(aes_gcm
             .decrypt(payload, &self.associated_data)
             .map_err(|e| anyhow!("failed decrypting payload: {:#?}", e))?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::split_envelope_ciphertext;
+
+    #[test]
+    fn rejects_missing_encrypted_dek_length() {
+        assert_eq!(
+            split_envelope_ciphertext(b"abc").unwrap_err().to_string(),
+            "envelope ciphertext is missing the encrypted DEK length"
+        );
+    }
+
+    #[test]
+    fn rejects_truncated_encrypted_dek() {
+        let ciphertext = [0, 0, 0, 3, 1, 2];
+        assert_eq!(
+            split_envelope_ciphertext(&ciphertext)
+                .unwrap_err()
+                .to_string(),
+            "envelope ciphertext has a truncated encrypted DEK"
+        );
+    }
+
+    #[test]
+    fn splits_encrypted_dek_and_payload() {
+        let ciphertext = [0, 0, 0, 2, 1, 2, 3, 4];
+        let (encrypted_dek, payload) = split_envelope_ciphertext(&ciphertext).unwrap();
+
+        assert_eq!(encrypted_dek, [1, 2]);
+        assert_eq!(payload, [3, 4]);
     }
 }

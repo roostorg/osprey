@@ -16,7 +16,7 @@ from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__
 from google.protobuf import wrappers_pb2 as google_dot_protobuf_dot_wrappers__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n:osprey/rpc/osprey_coordinator/sync_action/v1/service.proto\x12,osprey.rpc.osprey_coordinator.sync_action.v1\x1a#osprey/rpc/common/v1/verdicts.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xa5\x01\n\x14ProcessActionRequest\x12/\n\taction_id\x18\x01 \x01(\x0b\x32\x1c.google.protobuf.UInt64Value\x12\x13\n\x0b\x61\x63tion_name\x18\x02 \x01(\t\x12\x18\n\x10\x61\x63tion_data_json\x18\x03 \x01(\t\x12-\n\ttimestamp\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"I\n\x15ProcessActionResponse\x12\x30\n\x08verdicts\x18\x02 \x01(\x0b\x32\x1e.osprey.rpc.common.v1.Verdicts2\xbf\x01\n\"OspreyCoordinatorSyncActionService\x12\x98\x01\n\rProcessAction\x12\x42.osprey.rpc.osprey_coordinator.sync_action.v1.ProcessActionRequest\x1a\x43.osprey.rpc.osprey_coordinator.sync_action.v1.ProcessActionResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n:osprey/rpc/osprey_coordinator/sync_action/v1/service.proto\x12,osprey.rpc.osprey_coordinator.sync_action.v1\x1a#osprey/rpc/common/v1/verdicts.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xda\x01\n\x14ProcessActionRequest\x12/\n\taction_id\x18\x01 \x01(\x0b\x32\x1c.google.protobuf.UInt64Value\x12\x13\n\x0b\x61\x63tion_name\x18\x02 \x01(\t\x12\x18\n\x10\x61\x63tion_data_json\x18\x03 \x01(\t\x12-\n\ttimestamp\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12$\n\x1a\x65ncrypted_json_secret_data\x18\x06 \x01(\x0cH\x00\x42\r\n\x0bsecret_data\"I\n\x15ProcessActionResponse\x12\x30\n\x08verdicts\x18\x02 \x01(\x0b\x32\x1e.osprey.rpc.common.v1.Verdicts2\xbf\x01\n\"OspreyCoordinatorSyncActionService\x12\x98\x01\n\rProcessAction\x12\x42.osprey.rpc.osprey_coordinator.sync_action.v1.ProcessActionRequest\x1a\x43.osprey.rpc.osprey_coordinator.sync_action.v1.ProcessActionResponseb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'osprey.rpc.osprey_coordinator.sync_action.v1.service_pb2', globals())
@@ -24,9 +24,9 @@ if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
   _PROCESSACTIONREQUEST._serialized_start=211
-  _PROCESSACTIONREQUEST._serialized_end=376
-  _PROCESSACTIONRESPONSE._serialized_start=378
-  _PROCESSACTIONRESPONSE._serialized_end=451
-  _OSPREYCOORDINATORSYNCACTIONSERVICE._serialized_start=454
-  _OSPREYCOORDINATORSYNCACTIONSERVICE._serialized_end=645
+  _PROCESSACTIONREQUEST._serialized_end=429
+  _PROCESSACTIONRESPONSE._serialized_start=431
+  _PROCESSACTIONRESPONSE._serialized_end=504
+  _OSPREYCOORDINATORSYNCACTIONSERVICE._serialized_start=507
+  _OSPREYCOORDINATORSYNCACTIONSERVICE._serialized_end=698
 # @@protoc_insertion_point(module_scope)
