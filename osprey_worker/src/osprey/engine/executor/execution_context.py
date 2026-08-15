@@ -269,7 +269,8 @@ class ExecutionContext:
             chainid = id(chain)
             if self._dependency_dag.already_added(chainid):
                 continue
-            self._dependency_dag.add(chainid, *(id(pred) for pred in chain.dependent_on))
+            predecessor_ids = [id(predecessor) for predecessor in chain.dependent_on]
+            self._dependency_dag.add(chainid, *predecessor_ids)
             self._chain_by_id[chainid] = chain
 
         self._dependency_dag.prepare()

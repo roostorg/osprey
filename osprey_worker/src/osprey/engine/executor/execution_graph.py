@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Hashable, Iterator, Sequence
 from typing import TYPE_CHECKING, Any, TypeVar
 
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
 
 
 T = TypeVar('T', bound=Hashable)
+logger = logging.getLogger(__name__)
 
 
 class ExecutionGraph:
@@ -105,7 +107,8 @@ class ExecutionGraph:
             return self.get_assignment_dependency_chain(node)
 
         executor = self._get_executor_for(node)
-        dependent_on = tuple(self._build_dependency_chain(node) for node in executor.get_dependent_nodes())
+        dependent_chains = [self._build_dependency_chain(node) for node in executor.get_dependent_nodes()]
+        dependent_on = tuple(dependent_chains)
         return DependencyChain(executor=executor, dependent_on=dependent_on)
 
     def _add_validated_source(self, source: Source) -> None:
@@ -159,7 +162,12 @@ def compile_execution_graph(
         instance._add_sorted_dependency_chain(source, sorted_dependency_chain)
         maybe_periodic_yield()
 
-    instance._execution_plan = ExecutionPlan.from_graph(instance)
+    execution_plan = ExecutionPlan.from_graph(instance)
+    plan_error = execution_plan.find_unclosed_source()
+    if plan_error is None:
+        instance._execution_plan = execution_plan
+    else:
+        logger.error('Execution plan is invalid. The graph scheduler will run: %s', plan_error)
     return instance
 
 

@@ -1,13 +1,16 @@
+import gc
 import random
+from collections.abc import Iterator
 from dataclasses import dataclass
 from types import MappingProxyType
 from unittest.mock import patch
 
+import pytest
 from osprey.engine.ast.grammar import Source, Span
 from osprey.engine.conftest import RunValidationFunction
 from osprey.engine.executor.dependency_chain import DependencyChain
 from osprey.engine.executor.execution_graph import ExecutionGraph, compile_execution_graph
-from osprey.engine.executor.execution_plan import ExecutionPlan, ExecutionPlanState
+from osprey.engine.executor.execution_plan import ExecutionPlan, ExecutionPlanState, LateDependencyActivationError
 from osprey.engine.executor.topological_sorter import TopologicalSorter
 
 
@@ -97,6 +100,112 @@ def _manual_plan(
 
 def _ready_indices(state: ExecutionPlanState, plan: ExecutionPlan) -> tuple[int, ...]:
     return tuple([plan.index_by_chain_id[id(chain)] for chain in state.get_ready()])
+
+
+class _TupleResizeObserver:
+    def __init__(self, chains: tuple[DependencyChain, ...]) -> None:
+        self._chains = chains
+        self._previous: DependencyChain | None = None
+        self._held_tuples: list[tuple[object, ...]] = []
+
+    def __getitem__(self, index: int) -> DependencyChain:
+        if self._previous is not None:
+            self._held_tuples.extend(
+                referrer
+                for referrer in gc.get_referrers(self._previous)
+                if isinstance(referrer, tuple) and len(referrer) > len(self._chains)
+            )
+        chain = self._chains[index]
+        self._previous = chain
+        return chain
+
+
+class _ObservedIndex(int):
+    pass
+
+
+class _TupleResizeIndexSequence:
+    def __init__(self, indices: tuple[int, ...]) -> None:
+        self._indices = indices
+        self._held_tuples: list[tuple[object, ...]] = []
+
+    def __iter__(self) -> Iterator[int]:
+        previous: _ObservedIndex | None = None
+        for index in self._indices:
+            if previous is not None:
+                self._held_tuples.extend(
+                    referrer
+                    for referrer in gc.get_referrers(previous)
+                    if isinstance(referrer, tuple) and len(referrer) > len(self._indices)
+                )
+            previous = _ObservedIndex(index)
+            yield previous
+
+
+def test_get_ready_does_not_resize_an_observable_tuple() -> None:
+    plan, (source,) = _manual_plan(predecessors=((), ()), source_indices=((0, 1),))
+    state = ExecutionPlanState(plan)
+    expected_ready = plan.chains
+    observed_chains = _TupleResizeObserver(expected_ready)
+    object.__setattr__(plan, 'chains', observed_chains)
+    state.activate_source(source)
+
+    ready = state.get_ready()
+
+    assert ready == expected_ready
+    assert observed_chains._held_tuples == []
+
+
+def test_activate_source_reports_all_active_successors_without_tuple_resize() -> None:
+    plan, (source,) = _manual_plan(predecessors=((), (), ()), source_indices=((0,),))
+    observed_successors = _TupleResizeIndexSequence((1, 2))
+    object.__setattr__(plan, 'successors', (observed_successors, (), ()))
+    state = ExecutionPlanState(plan)
+    state._active[1] = 1
+    state._active[2] = 1
+
+    with pytest.raises(LateDependencyActivationError) as exc_info:
+        state.activate_source(source)
+
+    assert 'active successor chains (1, 2)' in str(exc_info.value)
+    assert observed_successors._held_tuples == []
+
+
+def test_invalid_plan_reports_source_and_chain() -> None:
+    plan, _ = _manual_plan(predecessors=((), (0,)), source_indices=((1,),))
+
+    assert plan.find_unclosed_source() == (
+        "source 'source-0.sml' activates chain 1 (_PlanNode at chain-1.sml:2:1) without predecessor chain 0"
+    )
+
+
+def test_graph_falls_back_when_plan_is_invalid(
+    run_validation: RunValidationFunction, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    validated = run_validation('Value = 1')
+    invalid_plan, _ = _manual_plan(predecessors=((), (0,)), source_indices=((1,),))
+    monkeypatch.setattr(ExecutionPlan, 'from_graph', lambda _graph: invalid_plan)
+
+    graph = compile_execution_graph(validated)
+
+    assert graph.get_execution_plan() is None
+    assert "Execution plan is invalid. The graph scheduler will run: source 'source-0.sml'" in caplog.text
+
+
+def test_activation_failure_does_not_mutate_state() -> None:
+    plan, (dependent_source, predecessor_source) = _manual_plan(
+        predecessors=((), (0,)),
+        source_indices=((1,), (0,)),
+    )
+    state = ExecutionPlanState(plan)
+    state.activate_source(dependent_source)
+    before = (bytes(state._active), tuple(state._remaining), tuple(state._ready))
+
+    with pytest.raises(LateDependencyActivationError) as exc_info:
+        state.activate_source(predecessor_source)
+
+    assert "source 'source-1.sml'" in str(exc_info.value)
+    assert (bytes(state._active), tuple(state._remaining), tuple(state._ready)) == before
 
 
 def test_plan_states_are_independent(compiled_execution_graph: ExecutionGraph) -> None:

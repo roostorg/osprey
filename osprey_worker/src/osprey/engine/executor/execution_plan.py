@@ -56,8 +56,8 @@ class ExecutionPlan:
 
         predecessor_tuples: list[tuple[int, ...]] = []
         for chain in chains:
-            predecessor_indices = [index_by_chain_id[id(predecessor)] for predecessor in chain.dependent_on]
-            predecessor_tuples.append(tuple(predecessor_indices))
+            chain_predecessor_indices = [index_by_chain_id[id(predecessor)] for predecessor in chain.dependent_on]
+            predecessor_tuples.append(tuple(chain_predecessor_indices))
             maybe_periodic_yield()
         predecessors = tuple(predecessor_tuples)
         del predecessor_tuples
@@ -85,6 +85,23 @@ class ExecutionPlan:
             source_indices=MappingProxyType(source_indices),
         )
 
+    def find_unclosed_source(self) -> str | None:
+        """Return a diagnostic if a source omits a predecessor."""
+        for source, indices in self.source_indices.items():
+            activated = set(indices)
+            for index in indices:
+                for predecessor in self.predecessors[index]:
+                    if predecessor not in activated:
+                        node = self.chains[index].executor.node
+                        span = node.span
+                        return (
+                            f'source {source.path!r} activates chain {index} '
+                            f'({type(node).__name__} at {span.source.path}:{span.start_line}:{span.start_pos}) '
+                            f'without predecessor chain {predecessor}'
+                        )
+                maybe_periodic_yield()
+        return None
+
 
 _INACTIVE = -3
 _OUT = -1
@@ -109,22 +126,33 @@ class ExecutionPlanState:
         self._ready: list[int] = []
 
     def activate_source(self, source: Source) -> None:
-        new_indices = tuple(index for index in self._plan.source_indices[source] if not self._active[index])
+        new_indices = tuple([index for index in self._plan.source_indices[source] if not self._active[index]])
         if not new_indices:
             return
 
         new_set = set(new_indices)
         for index in new_indices:
-            if any(self._active[successor] for successor in self._plan.successors[index]):
-                raise LateDependencyActivationError(f'chain {index} became active after a successor')
+            active_successors = tuple(
+                [successor for successor in self._plan.successors[index] if self._active[successor]]
+            )
+            if active_successors:
+                node = self._plan.chains[index].executor.node
+                span = node.span
+                raise LateDependencyActivationError(
+                    f'source {source.path!r} would activate chain {index} '
+                    f'({type(node).__name__} at {span.source.path}:{span.start_line}:{span.start_pos}) '
+                    f'after active successor chains {active_successors}'
+                )
 
         counts = tuple(
-            sum(
-                1
-                for predecessor in self._plan.predecessors[index]
-                if (self._active[predecessor] or predecessor in new_set) and self._remaining[predecessor] != _DONE
-            )
-            for index in new_indices
+            [
+                sum(
+                    1
+                    for predecessor in self._plan.predecessors[index]
+                    if (self._active[predecessor] or predecessor in new_set) and self._remaining[predecessor] != _DONE
+                )
+                for index in new_indices
+            ]
         )
 
         for index, count in zip(new_indices, counts):
@@ -142,7 +170,8 @@ class ExecutionPlanState:
         self._ready.clear()
         for index in indices:
             self._remaining[index] = _OUT
-        return tuple(self._plan.chains[index] for index in indices)
+        ready_chains = [self._plan.chains[index] for index in indices]
+        return tuple(ready_chains)
 
     def done(self, chain: DependencyChain) -> None:
         index = self._plan.index_by_chain_id[id(chain)]
