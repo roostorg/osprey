@@ -11,6 +11,7 @@ from .dependency_chain import DependencyChain
 if TYPE_CHECKING:
     from osprey.engine.ast_validator.validation_context import ValidatedSources
 
+    from .execution_plan import ExecutionPlan
     from .node_executor._base_node_executor import BaseNodeExecutor
     from .node_executor_registry import NodeExecutorRegistry
 
@@ -30,6 +31,7 @@ class ExecutionGraph:
         '_validated_sources',
         '_sorted_dependency_chains',
         '_nodes_to_unwrap',
+        '_execution_plan',
     )
 
     _root_node_executor_mapping: dict[int, DependencyChain]
@@ -51,6 +53,9 @@ class ExecutionGraph:
     _nodes_to_unwrap: set[int]
     """ID's for nodes that need to be unwrapped to its inner type when used."""
 
+    _execution_plan: 'ExecutionPlan | None'
+    """An immutable schedule plan for this graph."""
+
     def __init__(
         self, node_executor_registry: 'NodeExecutorRegistry', sources: 'ValidatedSources', nodes_to_unwrap: set[int]
     ):
@@ -60,6 +65,7 @@ class ExecutionGraph:
         self._validated_sources = sources
         self._sorted_dependency_chains = {}
         self._nodes_to_unwrap = nodes_to_unwrap
+        self._execution_plan = None
 
     @property
     def validated_sources(self) -> 'ValidatedSources':
@@ -86,6 +92,9 @@ class ExecutionGraph:
     def should_unwrap(self, node: ASTNode) -> bool:
         """Whether we need to unwrap the value that is represented by this node before using it."""
         return id(node) in self._nodes_to_unwrap
+
+    def get_execution_plan(self) -> 'ExecutionPlan | None':
+        return self._execution_plan
 
     def _get_executor_for(self, node: ASTNode) -> 'BaseNodeExecutor[Any, Any]':
         return self._node_executor_registry.construct_executor_for(node, validated_sources=self._validated_sources)
@@ -119,6 +128,7 @@ def compile_execution_graph(
     from osprey.engine.ast_validator.validators.imports_must_not_have_cycles import ImportsMustNotHaveCycles
     from osprey.engine.ast_validator.validators.validate_static_types import ValidateStaticTypes
 
+    from .execution_plan import ExecutionPlan
     from .node_executor_registry import NodeExecutorRegistry
 
     node_executor_registry = node_executor_registry or NodeExecutorRegistry.get_instance()
@@ -149,6 +159,7 @@ def compile_execution_graph(
         instance._add_sorted_dependency_chain(source, sorted_dependency_chain)
         maybe_periodic_yield()
 
+    instance._execution_plan = ExecutionPlan.from_graph(instance)
     return instance
 
 
