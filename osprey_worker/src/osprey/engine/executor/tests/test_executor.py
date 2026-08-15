@@ -12,8 +12,11 @@ import pytest
 from osprey.engine.ast_validator.validation_context import ValidationContext
 from osprey.engine.conftest import ExecuteFunction, ExecuteWithResultFunction
 from osprey.engine.executor.execution_context import ExecutionContext, ExpectedUdfException
+from osprey.engine.executor.execution_graph import ExecutionGraph
 from osprey.engine.language_types.post_execution_convertible import PostExecutionConvertible
 from osprey.engine.stdlib.udfs.import_ import Import
+from osprey.engine.stdlib.udfs.json_data import JsonData
+from osprey.engine.stdlib.udfs.require import Require
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import BatchableUDFBase, UDFBase
 from osprey.engine.udf.registry import UDFRegistry
@@ -470,6 +473,25 @@ def test_errors_propagate_to_dependencies_only(udf_registry: UDFRegistry, execut
     assert data == {'A': None, 'B': 5, 'C': None, 'D': 11}
 
 
+def test_plan_matches_legacy_failure_propagation(
+    udf_registry: UDFRegistry, execute: ExecuteFunction, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    udf_registry.register(FailingUdf)
+    sources = """
+        Failed = FailingUdf()
+        Dependent = Failed + 1
+        Independent = 2 + 3
+    """
+
+    with monkeypatch.context() as legacy:
+        legacy.setattr(ExecutionGraph, 'get_execution_plan', lambda _graph: None)
+        legacy_data = execute(sources, allow_errors=True)
+
+    planned_data = execute(sources, allow_errors=True)
+
+    assert planned_data == legacy_data == {'Failed': None, 'Dependent': None, 'Independent': 5}
+
+
 def test_errors_propagate_to_dependencies_only_with_batching(
     udf_registry: UDFRegistry, batch_failing_udf: Type[BatchFailingUdf], execute: ExecuteFunction
 ) -> None:
@@ -491,6 +513,26 @@ def test_errors_propagate_to_dependencies_only_with_batching(
     assert data == {'A': None, 'B': None, 'C': None, 'D': 7, 'E': 13}
     # Make sure that everything was actually batched properly
     assert batch_failing_udf.order_called() == [[1, 2]]
+
+
+def test_plan_matches_legacy_batch_groups(
+    batch_recording_udf: Type[BatchRecordingUdf], execute: ExecuteFunction, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sources = """
+        A = BatchRecordingUdf(id="a", routing_key="shared")
+        B = BatchRecordingUdf(id="b", routing_key="shared")
+    """
+
+    with monkeypatch.context() as legacy:
+        legacy.setattr(ExecutionGraph, 'get_execution_plan', lambda _graph: None)
+        legacy_data = execute(sources, async_pool=gevent.pool.Pool(2))
+    legacy_calls = list(batch_recording_udf.order_called())
+    batch_recording_udf.order_called().clear()
+
+    planned_data = execute(sources, async_pool=gevent.pool.Pool(2))
+
+    assert planned_data == legacy_data == {'A': 'a', 'B': 'b'}
+    assert batch_recording_udf.order_called() == legacy_calls == [['a', 'b']]
 
 
 def test_errors_propagate_through_features(
@@ -795,6 +837,35 @@ def test_dependent_node_imported_after_parent_node_executed(
         }
     )
     assert data == {'Child': 8}
+
+
+def test_plan_matches_legacy_source_loading_and_dynamic_selection(
+    udf_registry: UDFRegistry, execute: ExecuteFunction, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for udf_type in (Import, JsonData, Require):
+        udf_registry.register(udf_type)
+    sources = {
+        'main.sml': """
+            ActionName: str = JsonData(path="$.action_name", coerce_type=True)
+            Require(rule=f"actions/{ActionName}.sml")
+        """,
+        'actions/a.sml': """
+            Import(rules=["shared.sml"])
+            A = 40 + Shared
+        """,
+        'actions/b.sml': 'B = 99',
+        'shared.sml': 'Shared = 2',
+    }
+
+    with monkeypatch.context() as legacy:
+        legacy.setattr(ExecutionGraph, 'get_execution_plan', lambda _graph: None)
+        legacy_data = execute(sources, data={'action_name': 'a'})
+
+    planned_data = execute(sources, data={'action_name': 'a'})
+
+    assert planned_data == legacy_data
+    assert planned_data['A'] == 42
+    assert 'B' not in planned_data
 
 
 def _sole_call_for_metric(mock: MagicMock, metric_name: str) -> Any:

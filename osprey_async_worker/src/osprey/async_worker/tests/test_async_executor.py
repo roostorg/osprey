@@ -4,15 +4,25 @@ Validates that the async executor produces the same results as the gevent
 executor for stdlib UDFs (pure computation, no I/O).
 """
 
+import asyncio
+from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from textwrap import dedent
 from typing import ClassVar, Sequence
 
 import pytest
-from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase
+from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase, AsyncUDFBase
+from osprey.async_worker.executor import execute
 from osprey.engine.ast.grammar import Source
-from osprey.engine.executor.dependency_chain import DependencyChain
-from osprey.engine.executor.execution_context import ExecutionContext
-from osprey.engine.executor.execution_graph import ExecutionGraph
+from osprey.engine.ast.sources import Sources
+from osprey.engine.ast_validator import validate_sources
+from osprey.engine.ast_validator.validator_registry import ValidatorRegistry
+from osprey.engine.executor.execution_context import Action, ExecutionContext
+from osprey.engine.executor.execution_graph import ExecutionGraph, compile_execution_graph
+from osprey.engine.executor.execution_plan import ExecutionPlanState
+from osprey.engine.executor.udf_execution_helpers import UDFHelpers
+from osprey.engine.stdlib import get_config_registry
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.registry import UDFRegistry
 from result import Ok
@@ -69,18 +79,35 @@ class CountingBatchableUdf(AsyncBatchableUDFBase[CountingBatchableArguments, str
         return [Ok(a.value) for a in arguments]
 
 
+class GatedArguments(ArgumentsBase):
+    value: str
+
+
+class GatedAsyncUdf(AsyncUDFBase[GatedArguments, str]):
+    entered = 0
+    both_entered: asyncio.Event
+    release: asyncio.Event
+
+    async def async_execute(self, execution_context: ExecutionContext, arguments: GatedArguments) -> str:
+        type(self).entered += 1
+        if type(self).entered == 2:
+            type(self).both_entered.set()
+        await type(self).release.wait()
+        return arguments.value
+
+
 @pytest.mark.asyncio
-async def test_execute_skips_duplicate_import_and_require_source_activation(
+async def test_planned_execute_activates_each_imported_or_required_source_once(
     async_execute_fn, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    looked_up_sources: list[str] = []
-    get_sorted_dependency_chain = ExecutionGraph.get_sorted_dependency_chain
+    activated_sources: list[str] = []
+    activate_source = ExecutionPlanState.activate_source
 
-    def record_lookup(self: ExecutionGraph, source: Source) -> Sequence[DependencyChain]:
-        looked_up_sources.append(source.path)
-        return get_sorted_dependency_chain(self, source)
+    def record_activation(self: ExecutionPlanState, source: Source) -> None:
+        activated_sources.append(source.path)
+        activate_source(self, source)
 
-    monkeypatch.setattr(ExecutionGraph, 'get_sorted_dependency_chain', record_lookup)
+    monkeypatch.setattr(ExecutionPlanState, 'activate_source', record_activation)
 
     result = await async_execute_fn(
         {
@@ -91,7 +118,73 @@ async def test_execute_skips_duplicate_import_and_require_source_activation(
     )
 
     assert result == {'Shared': 1}
-    assert looked_up_sources == ['main.sml', 'branch.sml', 'shared.sml']
+    assert activated_sources == ['main.sml', 'branch.sml', 'shared.sml']
+
+
+@pytest.mark.asyncio
+async def test_concurrent_actions_isolate_dynamic_source_activation(
+    stdlib_udf_registry: UDFRegistry, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    registry = stdlib_udf_registry
+    registry.register(GatedAsyncUdf)
+    sources = Sources.from_dict(
+        {
+            'main.sml': dedent(
+                """
+                ActionName: str = JsonData(path="$.action_name", coerce_type=True)
+                Require(rule=f"actions/{ActionName}.sml")
+                """
+            ),
+            'actions/a.sml': 'A = GatedAsyncUdf(value="a")',
+            'actions/b.sml': 'B = GatedAsyncUdf(value="b")',
+        }
+    )
+    validator_registry = ValidatorRegistry.get_instance().instance_with_additional_validators(
+        get_config_registry().get_validator()
+    )
+    graph = compile_execution_graph(validate_sources(sources, registry, validator_registry))
+    sources_by_action: dict[str, list[str]] = defaultdict(list)
+    original_enqueue_source = ExecutionContext.enqueue_source
+
+    def record_enqueue_source(context: ExecutionContext, source: Source) -> None:
+        sources_by_action[context.get_action_name()].append(source.path)
+        original_enqueue_source(context, source)
+
+    monkeypatch.setattr(ExecutionContext, 'enqueue_source', record_enqueue_source)
+    GatedAsyncUdf.entered = 0
+    GatedAsyncUdf.both_entered = asyncio.Event()
+    GatedAsyncUdf.release = asyncio.Event()
+    timestamp = datetime(2026, 8, 4, tzinfo=timezone.utc)
+    tasks = [
+        asyncio.create_task(
+            execute(
+                graph,
+                UDFHelpers(),
+                Action(action_id=index, action_name=name, data={'action_name': name}, timestamp=timestamp),
+            )
+        )
+        for index, name in enumerate(('a', 'b'), start=1)
+    ]
+
+    try:
+        await asyncio.wait_for(GatedAsyncUdf.both_entered.wait(), timeout=5)
+        assert not any(task.done() for task in tasks)
+        GatedAsyncUdf.release.set()
+        result_a, result_b = await asyncio.gather(*tasks)
+    finally:
+        GatedAsyncUdf.release.set()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    assert result_a.extracted_features['A'] == 'a'
+    assert 'B' not in result_a.extracted_features
+    assert result_b.extracted_features['B'] == 'b'
+    assert 'A' not in result_b.extracted_features
+    assert not result_a.error_infos
+    assert not result_b.error_infos
+    assert sources_by_action == {
+        'a': ['main.sml', 'actions/a.sml'],
+        'b': ['main.sml', 'actions/b.sml'],
+    }
 
 
 @pytest.mark.asyncio
@@ -325,6 +418,41 @@ async def test_batch_of_two_resolves_once_per_chain(
     assert result.extracted_features['B'] == 'b'
     assert not result.error_infos
     assert counting_batchable_udf.resolve_call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_plan_matches_legacy_native_async_batch(
+    async_execute_with_result,
+    stdlib_udf_registry: UDFRegistry,
+    counting_batchable_udf,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    stdlib_udf_registry.register(counting_batchable_udf)
+    sources = """
+        A = CountingBatchableUdf(key="shared", value="a")
+        B = CountingBatchableUdf(key="shared", value="b")
+    """
+    action_time = datetime(2026, 8, 4, tzinfo=timezone.utc)
+
+    with monkeypatch.context() as legacy:
+        legacy.setattr(ExecutionGraph, 'get_execution_plan', lambda _graph: None)
+        legacy_result = await async_execute_with_result(
+            sources,
+            udf_registry=stdlib_udf_registry,
+            action_time=action_time,
+        )
+    legacy_resolve_count = counting_batchable_udf.resolve_call_count
+    counting_batchable_udf.resolve_call_count = 0
+
+    planned_result = await async_execute_with_result(
+        sources,
+        udf_registry=stdlib_udf_registry,
+        action_time=action_time,
+    )
+
+    assert planned_result.extracted_features == legacy_result.extracted_features
+    assert planned_result.error_infos == legacy_result.error_infos == []
+    assert counting_batchable_udf.resolve_call_count == legacy_resolve_count == 2
 
 
 @pytest.mark.asyncio
