@@ -19,8 +19,9 @@ class _DummyExecutor:
 def test_chain_equals_itself() -> None:
     executor = _DummyExecutor()
     chain = DependencyChain(executor=executor, dependent_on=())
+    same_chain = chain
 
-    assert chain == chain
+    assert chain == same_chain
     assert chain in {chain}
     assert {chain: 'value'}[chain] == 'value'
 

@@ -110,7 +110,10 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
                 else:
                     future.set_exception(cast(BaseException, result.value))
         except asyncio.CancelledError:
-            for future in futures:
+            for key, future in zip(keys, futures):
+                cache_entry = self._cache.get(key)
+                if cache_entry is not None and cache_entry[0] is future:
+                    del self._cache[key]
                 if not future.done():
                     future.cancel()
             raise

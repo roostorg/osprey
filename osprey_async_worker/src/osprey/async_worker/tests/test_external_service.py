@@ -208,7 +208,7 @@ async def test_cancelling_get_without_cache_does_not_cancel_shared_get():
 
     owner.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await owner
+        _ = await owner
     service.release.set()
 
     assert await accessor.get('foo') == 'value_foo'
@@ -234,7 +234,7 @@ async def test_cancelling_waiter_does_not_cancel_shared_get():
 
     waiter.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await waiter
+        _ = await waiter
 
     service.release.set()
     assert await owner == 'value_foo'
@@ -251,7 +251,7 @@ async def test_cancelling_owner_does_not_cancel_shared_get():
 
     owner.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await owner
+        _ = await owner
 
     service.release.set()
     assert await survivor == 'value_foo'
@@ -289,7 +289,7 @@ async def test_failed_task_does_not_evict_replacement():
 
     service.first_release.set()
     with pytest.raises(ValueError):
-        await first
+        _ = await first
     service.second_release.set()
 
     assert await replacement == 'value_foo'
@@ -308,7 +308,7 @@ async def test_count_error_once_with_concurrent_waiter():
     service.release.set()
 
     with pytest.raises(ValueError):
-        await creator
+        _ = await creator
     assert await waiter is None
     assert await accessor.get('foo') is None
     assert service.call_count == 1
@@ -323,9 +323,9 @@ async def test_count_error_once_does_not_apply_to_get_without_cache():
     service.release.set()
 
     with pytest.raises(ValueError, match='service fails'):
-        await creator
+        _ = await creator
     with pytest.raises(ValueError, match='service fails'):
-        await accessor.get('foo')
+        _ = await accessor.get('foo')
     assert service.call_count == 1
 
 
@@ -367,8 +367,25 @@ async def test_batch_get_deduplicates_duplicate_keys():
 
 
 @pytest.mark.asyncio
+async def test_cancelled_batch_loader_evicts_its_cache_entries():
+    service = GatedBatchService()
+    accessor = ExternalServiceAccessor(service)
+    batch = asyncio.create_task(accessor.batch_get(['a']))
+    await service.started.wait()
+
+    loader = next(iter(accessor._active_batch_loaders))
+    loader.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await batch
+    service.release.set()
+
+    assert await accessor.batch_get(['a']) == [Ok('batch_a')]
+    assert service.batch_call_count == 2
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize('raise_exception', [False, True])
-async def test_batch_error_is_not_cached(raise_exception: bool):
+async def test_batch_error_is_cached(raise_exception: bool):
     service = FailOnceBatchService(raise_exception)
     accessor = ExternalServiceAccessor(service)
     first = await accessor.batch_get(['a'])
@@ -398,7 +415,7 @@ async def test_cancelling_batch_owner_does_not_cancel_shared_get():
 
     batch.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await batch
+        _ = await batch
     service.release.set()
 
     assert await survivor == 'batch_a'
@@ -416,7 +433,7 @@ async def test_cancelled_batch_owner_keeps_loader_alive_through_garbage_collecti
 
     batch.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await batch
+        _ = await batch
     gc.collect()
     service.release.set()
 
@@ -438,7 +455,7 @@ async def test_cancelled_failed_batch_consumes_future_exceptions():
 
         batch.cancel()
         with pytest.raises(asyncio.CancelledError):
-            await batch
+            _ = await batch
         service.release.set()
         await asyncio.sleep(0)
         await asyncio.sleep(0)

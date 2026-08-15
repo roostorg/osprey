@@ -232,7 +232,7 @@ def _wrapped_execution(
     finally:
         # If this is a call node which executed a UDF, push the results of the execution to the datadog metrics.
         if call_node is not None:
-            if execution_result.is_ok() and chain.executor and chain.executor.execute_async:
+            if execution_result.is_ok() and call_node.execute_async:
                 metrics.increment('udf_execution', tags=_get_tags() + ['exc_name:none', 'result:success'])
 
             # Ignore some well-known "unexpected" exceptions that are spammy.

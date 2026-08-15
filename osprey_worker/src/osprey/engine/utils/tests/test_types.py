@@ -1,6 +1,5 @@
 import builtins
 from types import GeneratorType
-from typing import Any
 
 import osprey.engine.utils.types as types_module
 
@@ -52,7 +51,7 @@ def test_add_slots_does_not_pass_a_generator_to_tuple(monkeypatch) -> None:
 
     @types_module.dataclasses.dataclass
     class Value:
-        value: Any
+        value: object
 
     monkeypatch.setattr(types_module.dataclasses, 'fields', lambda _: Fields())
 

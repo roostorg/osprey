@@ -73,6 +73,7 @@ def _manual_plan(
         dependent_on = tuple([chains[predecessor] for predecessor in chain_predecessors])
         chains.append(
             DependencyChain(
+                # The plan only reads executor.node, which this test stub provides.
                 executor=_PlanExecutor(  # type: ignore[arg-type]
                     node=_PlanNode(span=Span(source=node_source, start_line=index + 1, start_pos=index))
                 ),

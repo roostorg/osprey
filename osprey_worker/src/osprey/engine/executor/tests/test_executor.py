@@ -2,7 +2,7 @@ import abc
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Type
+from typing import Any, Protocol, Type, cast
 from unittest.mock import MagicMock
 
 import gevent
@@ -868,12 +868,17 @@ def test_plan_matches_legacy_source_loading_and_dynamic_selection(
     assert 'B' not in planned_data
 
 
-def _sole_call_for_metric(mock: MagicMock, metric_name: str) -> Any:
+class _MetricCall(Protocol):
+    args: tuple[object, ...]
+    kwargs: dict[str, object]
+
+
+def _sole_call_for_metric(mock: MagicMock, metric_name: str) -> _MetricCall:
     """`execute()` also emits an unrelated `osprey.action_health` increment; isolate the call
     for the metric under test, asserting there's exactly one."""
     matching = [call for call in mock.call_args_list if call.args[0] == metric_name]
     assert len(matching) == 1, f'expected exactly one {metric_name!r} call, got {matching}'
-    return matching[0]
+    return cast(_MetricCall, matching[0])
 
 
 def test_metric_tags_on_sync_call_exception(
@@ -893,7 +898,7 @@ def test_metric_tags_on_sync_call_exception(
     assert len(result.error_infos) == 1
     metrics.timed.assert_not_called()
     call = _sole_call_for_metric(metrics.increment, 'udf_execution')
-    assert call.kwargs['tags'] == [
+    assert cast(list[str], call.kwargs['tags']) == [
         *base_tags,
         'udf:FailingUdf',
         'exc_name:ValueError',
@@ -916,8 +921,8 @@ def test_metric_tags_on_async_udf_success(
     assert result.error_infos == []
     timed_call = _sole_call_for_metric(metrics.timed, 'udf_execution_duration')
     assert timed_call.kwargs['sample_rate'] == 0.01
-    timed_tags = timed_call.kwargs['tags']
+    timed_tags = cast(list[str], timed_call.kwargs['tags'])
     assert timed_tags == [*base_tags, 'udf:BlockingUdf']
 
     inc_call = _sole_call_for_metric(metrics.increment, 'udf_execution')
-    assert inc_call.kwargs['tags'] == [*timed_tags, 'exc_name:none', 'result:success']
+    assert cast(list[str], inc_call.kwargs['tags']) == [*timed_tags, 'exc_name:none', 'result:success']
