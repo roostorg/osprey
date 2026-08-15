@@ -84,3 +84,79 @@ class ExecutionPlan:
             successors=successors,
             source_indices=MappingProxyType(source_indices),
         )
+
+
+_INACTIVE = -3
+_OUT = -1
+_DONE = -2
+
+
+class LateDependencyActivationError(RuntimeError):
+    """Report a source activation that violates the plan dependency order."""
+
+
+class ExecutionPlanState:
+    """Store the compact schedule state for one action."""
+
+    __slots__ = ('_plan', '_active', '_remaining', '_activation_rank', '_next_rank', '_ready')
+
+    def __init__(self, plan: ExecutionPlan) -> None:
+        self._plan = plan
+        self._active = bytearray(len(plan.chains))
+        self._remaining = [_INACTIVE] * len(plan.chains)
+        self._activation_rank = [_INACTIVE] * len(plan.chains)
+        self._next_rank = 0
+        self._ready: list[int] = []
+
+    def activate_source(self, source: Source) -> None:
+        new_indices = tuple(index for index in self._plan.source_indices[source] if not self._active[index])
+        if not new_indices:
+            return
+
+        new_set = set(new_indices)
+        for index in new_indices:
+            if any(self._active[successor] for successor in self._plan.successors[index]):
+                raise LateDependencyActivationError(f'chain {index} became active after a successor')
+
+        counts = tuple(
+            sum(
+                1
+                for predecessor in self._plan.predecessors[index]
+                if (self._active[predecessor] or predecessor in new_set) and self._remaining[predecessor] != _DONE
+            )
+            for index in new_indices
+        )
+
+        for index, count in zip(new_indices, counts):
+            self._active[index] = 1
+            self._remaining[index] = count
+            self._activation_rank[index] = self._next_rank
+            self._next_rank += 1
+            if count == 0:
+                self._ready.append(index)
+
+        self._ready.sort(key=self._activation_rank.__getitem__)
+
+    def get_ready(self) -> tuple[DependencyChain, ...]:
+        indices = tuple(self._ready)
+        self._ready.clear()
+        for index in indices:
+            self._remaining[index] = _OUT
+        return tuple(self._plan.chains[index] for index in indices)
+
+    def done(self, chain: DependencyChain) -> None:
+        index = self._plan.index_by_chain_id[id(chain)]
+        if self._remaining[index] != _OUT:
+            raise ValueError(f'chain {index} was not passed out')
+
+        self._remaining[index] = _DONE
+        newly_ready: list[int] = []
+        for successor in self._plan.successors[index]:
+            if not self._active[successor] or self._remaining[successor] < 0:
+                continue
+            self._remaining[successor] -= 1
+            if self._remaining[successor] == 0:
+                newly_ready.append(successor)
+
+        newly_ready.sort(key=self._activation_rank.__getitem__)
+        self._ready.extend(newly_ready)
