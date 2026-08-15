@@ -376,7 +376,7 @@ async def test_cancelled_batch_loader_evicts_its_cache_entries():
     loader = next(iter(accessor._active_batch_loaders))
     loader.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await batch
+        _ = await batch
     service.release.set()
 
     assert await accessor.batch_get(['a']) == [Ok('batch_a')]
@@ -479,7 +479,7 @@ async def test_cancelling_batch_waiter_does_not_cancel_shared_get():
 
     batch.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await batch
+        _ = await batch
     service.release.set()
 
     assert await owner == 'value_a'

@@ -9,9 +9,11 @@ import osprey.engine.utils.types as types_module
 class _StatefulValue(Protocol):
     value: object
 
-    def __getstate__(self) -> Sequence[object]: ...
+    def __getstate__(self) -> Sequence[object]:
+        pass
 
-    def __setstate__(self, state: Sequence[object]) -> None: ...
+    def __setstate__(self, state: Sequence[object]) -> None:
+        pass
 
 
 def _record_tuple_inputs(monkeypatch) -> list[object]:
