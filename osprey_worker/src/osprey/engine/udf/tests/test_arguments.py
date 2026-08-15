@@ -31,6 +31,7 @@ def test_arguments_items_cache_is_scoped_to_each_subclass() -> None:
     SecondArguments.items()
 
     assert FirstArguments.items() is first_items
+    assert FirstArguments.items.cache_info().maxsize is not None
 
 
 def test_arguments_can_be_none() -> None:
@@ -65,6 +66,25 @@ def test_arguments_can_be_none_is_cached() -> None:
     assert Arguments.kwarg_can_be_none('string') is False
 
     assert Arguments.kwarg_can_be_none.cache_info().hits == hits_before + 2
+    assert Arguments.kwarg_can_be_none.cache_info().maxsize is not None
+
+
+def test_extra_argument_metadata_is_cached() -> None:
+    class Arguments(ArgumentsBase):
+        extra_arguments: dict[str, int]
+
+    allowed_hits_before = Arguments.is_extra_arguments_allowed.cache_info().hits
+    value_type_hits_before = Arguments.get_extra_arguments_values_type.cache_info().hits
+
+    assert Arguments.is_extra_arguments_allowed() is True
+    assert Arguments.get_extra_arguments_values_type() is int
+    assert Arguments.is_extra_arguments_allowed() is True
+    assert Arguments.get_extra_arguments_values_type() is int
+
+    assert Arguments.is_extra_arguments_allowed.cache_info().hits >= allowed_hits_before + 2
+    assert Arguments.get_extra_arguments_values_type.cache_info().hits == value_type_hits_before + 1
+    assert Arguments.is_extra_arguments_allowed.cache_info().maxsize is not None
+    assert Arguments.get_extra_arguments_values_type.cache_info().maxsize is not None
 
 
 def test_arguments_hash_does_not_pass_a_generator_to_tuple(monkeypatch) -> None:

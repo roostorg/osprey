@@ -1,7 +1,17 @@
 import builtins
+from collections.abc import Sequence
 from types import GeneratorType
+from typing import Protocol, cast
 
 import osprey.engine.utils.types as types_module
+
+
+class _StatefulValue(Protocol):
+    value: object
+
+    def __getstate__(self) -> Sequence[object]: ...
+
+    def __setstate__(self, state: Sequence[object]) -> None: ...
 
 
 def _record_tuple_inputs(monkeypatch) -> list[object]:
@@ -22,6 +32,7 @@ def test_add_state_functions_does_not_pass_a_generator_to_tuple(monkeypatch) -> 
 
     types_module._add_state_functions(cls_dict, ('value',))
 
+    assert tuple_inputs
     assert all(not isinstance(values, GeneratorType) for values in tuple_inputs)
 
 
@@ -35,7 +46,17 @@ def test_slots_getstate_does_not_pass_a_generator_to_tuple(monkeypatch) -> None:
         value = object()
 
     assert callable(getstate)
-    assert len(getstate(Instance())) == 1
+    instance = Instance()
+    state = getstate(instance)
+    assert state == (instance.value,)
+
+    restored = Instance()
+    restored.value = object()
+    setstate = cls_dict['__setstate__']
+    assert callable(setstate)
+    setstate(restored, state)
+    assert restored.value is instance.value
+    assert tuple_inputs
     assert all(not isinstance(values, GeneratorType) for values in tuple_inputs)
 
 
@@ -55,6 +76,14 @@ def test_add_slots_does_not_pass_a_generator_to_tuple(monkeypatch) -> None:
 
     monkeypatch.setattr(types_module.dataclasses, 'fields', lambda _: Fields())
 
-    types_module.add_slots(Value)
+    slotted_value_cls = types_module.add_slots(Value)
+    instance = cast(_StatefulValue, slotted_value_cls(value=object()))
+    state = instance.__getstate__()
+    restored = cast(_StatefulValue, slotted_value_cls(value=object()))
+    restored.__setstate__(state)
 
+    assert 'value' in getattr(slotted_value_cls, '__slots__')
+    assert state == (instance.value,)
+    assert restored.value is instance.value
+    assert tuple_inputs
     assert all(not isinstance(values, GeneratorType) for values in tuple_inputs)
