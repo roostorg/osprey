@@ -19,6 +19,6 @@ def test_call_argument_dict_cannot_be_mutated() -> None:
     arguments = call.argument_dict()
 
     with pytest.raises(TypeError):
-        arguments['a'] = arguments['b']
+        arguments['a'] = arguments['b']  # type: ignore[index]  # This assignment verifies the runtime mutation guard.
 
     assert call.argument_dict()['a'] is arguments['a']
