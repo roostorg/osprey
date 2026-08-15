@@ -1,3 +1,8 @@
+import builtins
+from types import GeneratorType
+from typing import cast
+
+import osprey.engine.udf.arguments as arguments_module
 from osprey.engine.udf.arguments import ArgumentsBase, ConstExpr
 
 StrConstExpr = ConstExpr[str]  # This being inside the below function is causing mypy to crash
@@ -60,3 +65,30 @@ def test_arguments_can_be_none_is_cached() -> None:
     assert Arguments.kwarg_can_be_none('string') is False
 
     assert Arguments.kwarg_can_be_none.cache_info().hits == hits_before + 2
+
+
+def test_arguments_hash_does_not_pass_a_generator_to_tuple(monkeypatch) -> None:
+    tuple_inputs: list[object] = []
+
+    def recording_tuple(values):
+        tuple_inputs.append(values)
+        return builtins.tuple(values)
+
+    class Arguments(ArgumentsBase):
+        value: object
+
+    class CallNode:
+        def argument_dict(self) -> dict[str, object]:
+            return {}
+
+    monkeypatch.setattr(arguments_module, 'tuple', recording_tuple, raising=False)
+
+    arguments = Arguments(
+        call_node=cast(arguments_module.grammar.Call, CallNode()),
+        arguments={'value': object()},
+        resolved=True,
+    )
+
+    hash(arguments)
+
+    assert all(not isinstance(values, GeneratorType) for values in tuple_inputs)
