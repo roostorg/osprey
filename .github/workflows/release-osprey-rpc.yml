@@ -25,7 +25,7 @@ jobs:
 
       - name: Build osprey-rpc sdist
         working-directory: osprey_rpc
-        run: uv build --sdist
+        run: uv build --sdist --out-dir dist
 
       - name: Create zip from sdist
         working-directory: osprey_rpc/dist
