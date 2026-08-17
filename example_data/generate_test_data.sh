@@ -45,19 +45,20 @@ generate_action() {
     eval "$cmd" "$SCRIPT_DIR/template.json"
 }
 
-# Function to build kafka-console-producer command
+# Function to build kafka-console-producer command as an array (avoids
+# eval'ing environment-controlled values as shell code)
 build_kafka_command() {
-    local cmd="kafka-console-producer --broker-list $KAFKA_BROKER --topic $KAFKA_TOPIC"
+    kafka_cmd=(kafka-console-producer --broker-list "$KAFKA_BROKER" --topic "$KAFKA_TOPIC")
 
     if [ -n "$KAFKA_CONFIG_FILE" ]; then
-        cmd="$cmd --producer.config $KAFKA_CONFIG_FILE"
+        kafka_cmd+=(--producer.config "$KAFKA_CONFIG_FILE")
     fi
-
-    echo "$cmd"
 }
 
-# FIFO used to stream messages into a single long-lived producer process
-FIFO="$(mktemp -u /tmp/kafka_producer_fifo.XXXXXX)"
+# Directory + FIFO used to stream messages into a single long-lived producer
+# process. Using our own mktemp -d directory avoids writing into shared /tmp.
+FIFO_DIR="$(mktemp -d)"
+FIFO="$FIFO_DIR/kafka_producer_fifo"
 producer_pid=""
 
 # Function to handle cleanup on script termination
@@ -66,11 +67,18 @@ cleanup() {
     echo "Stopping data generation..."
     # Close our write end of the FIFO so the producer sees EOF and exits
     exec 3>&- 2>/dev/null
-    if [ -n "$producer_pid" ] && kill -0 "$producer_pid" 2>/dev/null; then
-        kill "$producer_pid" 2>/dev/null
+    if [ -n "$producer_pid" ]; then
+        # Give the producer a chance to exit on its own after seeing EOF
+        for _ in $(seq 1 20); do
+            kill -0 "$producer_pid" 2>/dev/null || break
+            sleep 0.1
+        done
+        if kill -0 "$producer_pid" 2>/dev/null; then
+            kill "$producer_pid" 2>/dev/null
+        fi
         wait "$producer_pid" 2>/dev/null
     fi
-    rm -f "$FIFO"
+    rm -rf "$FIFO_DIR"
     exit 0
 }
 
@@ -86,13 +94,13 @@ fi
 echo "Press Ctrl+C to stop..."
 echo
 
-# Build the kafka command
-kafka_cmd=$(build_kafka_command)
+# Build the kafka command (populates the kafka_cmd array)
+build_kafka_command
 
 # Start a single long-lived producer reading from the FIFO, instead of
 # spawning a brand-new JVM producer process per message.
-mkfifo "$FIFO"
-eval "$kafka_cmd" < "$FIFO" &
+mkfifo "$FIFO" || { echo "Failed to create FIFO at $FIFO" >&2; exit 1; }
+"${kafka_cmd[@]}" < "$FIFO" &
 producer_pid=$!
 
 # Open the FIFO for writing on fd 3 and keep it open for the life of the
