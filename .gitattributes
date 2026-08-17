@@ -1,12 +1,2 @@
-# Shell scripts must keep LF endings even when checked out on Windows.
-#
-# With core.autocrlf=true these get CRLF on checkout, which turns the shebang
-# into `#!/bin/bash\r`. Linux containers then fail to exec them with the very
-# unhelpful "no such file or directory" -- entrypoint.sh, the Druid spec
-# submitter and the MinIO bucket init all break this way.
-*.sh text eol=lf
-
-# Same reasoning: these are executed inside containers.
-Dockerfile text eol=lf
-Dockerfile.* text eol=lf
-*.dockerfile text eol=lf
+# Normalize line-endings for text files
+* text=auto eol=lf
