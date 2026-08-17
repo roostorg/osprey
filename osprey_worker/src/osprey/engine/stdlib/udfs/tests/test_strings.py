@@ -272,6 +272,26 @@ def test_string_normalization(s: Scenario, execute: ExecuteFunction) -> None:
 
 
 @pytest.mark.parametrize(
+    's,expected',
+    [
+        ('Κνωσός', 'Knwsos'),  # Greek -> Latin transliteration (ω -> w per Greek romanization)
+        ('René', 'Rene'),  # accented Latin
+        ('日本語', 'RiBenYu'),  # CJK characters (anyascii does not insert spaces between characters)
+        ('Москва', 'Moskva'),  # Cyrillic
+        ('hello', 'hello'),  # pure ASCII passes through unchanged
+        ('café', 'cafe'),  # common accented word
+    ],
+)
+def test_string_clean_unidecode(s: str, expected: str, execute: ExecuteFunction) -> None:
+    data = execute(
+        f"""
+        S = StringClean(s="{s}", unidecode=True)
+        """
+    )
+    assert data['S'] == expected
+
+
+@pytest.mark.parametrize(
     'text,expected_result',
     [
         (f'https://{QUICK_BROWN_FOX_DOMAIN_1}', [QUICK_BROWN_FOX_DOMAIN_1]),  # simple domain

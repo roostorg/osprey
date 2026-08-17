@@ -4,11 +4,11 @@ The Manage section provides visibility into your Osprey configuration: the rules
 
 ## Rules Visualizer
 
-The Rules Visualizer shows how labels, rules, and other labels relate to one another in a dependency graph. It's useful for understanding what will fire when a particular label is applied, or what conditions must be true for a label to be produced.
+The Rules Visualizer shows how rules and labels relate to one another in a dependency graph. It's useful for understanding what will fire when a particular label is applied, or what conditions must be true for a label to be produced.
 
-![Rules Visualizer](../images/rules-visualizer.png)
+![The Rules Visualizer page with its search box open, offering Actions and Labels categories, before anything is selected](../images/rules-visualizer.png)
 
-To use it, select a feature or label from the search interface. A graph appears showing the upstream and downstream relationships for your selection. You can toggle upstream and downstream visibility independently.
+To use it, search for an action or label in the search box. A graph appears showing the upstream and downstream relationships for your selection. You can toggle upstream and downstream visibility independently.
 
 Node types in the graph:
 - **Red ellipse**: a label that is upstream of a rule (an input condition)
@@ -21,7 +21,7 @@ Hovering over a node shows its source file path. The graph supports zoom and pan
 
 The UDF Registry is an auto-generated API reference for every user-defined function (UDF) available in Osprey. It updates dynamically as UDFs are added or modified in code, so it always reflects what's actually available.
 
-![UDF Documentation](../images/udf-documentation.png)
+![The UDF Registry listing available functions with type signatures and descriptions, grouped by category](../images/udf-documentation.png)
 
 UDFs are organized by category and are searchable. Each entry shows:
 - Function signature with syntax highlighting
@@ -29,11 +29,11 @@ UDFs are organized by category and are searchable. Each entry shows:
 - Parameter names, types, and descriptions
 - Return type
 
-Use this page as your reference when writing queries or rules: especially to confirm a function's exact name and parameter order before using it. (Querying a UDF that doesn't exist causes a silent 500 error.)
+Use this page as your reference when writing rules, to confirm a function's exact name and parameter order. Note that most UDFs are for rules only: the query box supports just four functions (`RegexMatch`, `DidAddLabel`, `DidRemoveLabel`, `DidDeclareVerdict`), so using any other UDF in a query currently fails with a silent 500 error.
 
-## Features
+## Features Registry
 
-The Features page lists every feature defined in your Osprey deployment. Features are named variables extracted from events; they're what you query against and what rules operate on.
+The Features Registry lists every feature defined in your Osprey deployment. Features are named variables extracted from events; they're what you query against and what rules operate on.
 
 The list is paginated (50 per page) and can be filtered and sorted:
 
@@ -45,9 +45,9 @@ The list is paginated (50 per page) and can be filtered and sorted:
 
 Each row shows the feature's name, category, extraction function(s), reference count (how many rules use it), description, owner, and last modified date.
 
-## Rules
+## Rules Registry
 
-The Rules page lists every rule loaded in your Osprey deployment.
+The Rules Registry lists every rule loaded in your Osprey deployment.
 
 The list is paginated (50 per page) and can be filtered and sorted:
 
