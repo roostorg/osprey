@@ -262,6 +262,47 @@ def test_direct_and_inherited_udf_timeout_overrides_win() -> None:
     assert InheritedOverrideUDF.timeout == 2.5
 
 
+@pytest.mark.parametrize(
+    'udf_base,timeout_value,inherits_override',
+    [
+        (AsyncUDFBase, 0.0, False),
+        (AsyncBatchableUDFBase, float('inf'), False),
+        (AsyncUDFBase, float('nan'), True),
+        (AsyncBatchableUDFBase, -1.0, True),
+    ],
+)
+def test_invalid_registered_udf_timeout_override_fails_bootstrap(
+    udf_base: type,
+    timeout_value: float,
+    inherits_override: bool,
+) -> None:
+    if inherits_override:
+
+        class PluginTimeoutBase(udf_base):
+            timeout = timeout_value
+
+        class InvalidTimeoutUDF(PluginTimeoutBase):
+            pass
+
+    else:
+
+        class InvalidTimeoutUDF(udf_base):
+            timeout = timeout_value
+
+    class InvalidTimeoutPlugin:
+        @pm.hookimpl_osprey_async
+        def register_udfs(self):
+            return [InvalidTimeoutUDF]
+
+    plugin = InvalidTimeoutPlugin()
+    pm.plugin_manager.register(plugin)
+    try:
+        with pytest.raises(ValueError, match='InvalidTimeoutUDF.timeout'):
+            pm.bootstrap_async_udfs(config=Config({}))
+    finally:
+        pm.plugin_manager.unregister(plugin)
+
+
 # Malformed, non-positive, and non-finite timeout values fail before mutation
 @pytest.mark.parametrize(
     'config_value,expected_exception',
