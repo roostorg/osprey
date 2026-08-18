@@ -77,7 +77,7 @@ def _validate_udf_timeout(value: object, source: str) -> None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(f'{source} must be a positive finite number, got {value!r}')
     if not math.isfinite(value) or value <= 0:
-        raise ValueError(f'{source} must be positive and finite, got {value}')
+        raise ValueError(f'{source} must be a positive finite number, got {value}')
 
 
 def bootstrap_async_udfs(config: 'Config | None' = None) -> tuple[UDFRegistry, UDFHelpers]:

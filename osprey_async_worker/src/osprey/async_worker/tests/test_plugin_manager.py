@@ -12,6 +12,7 @@ import pytest
 from osprey.async_worker.adaptor import plugin_manager as pm
 from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase, AsyncUDFBase
 from osprey.async_worker.stdlib_udfs import _async_stdlib_plugin
+from osprey.async_worker.stdlib_udfs.async_mx_lookup import _DNS_TIMEOUT
 from osprey.async_worker.stdlib_udfs.async_mx_lookup import MXLookup as AsyncMXLookup
 from osprey.engine.stdlib.udfs.json_data import JsonData
 from osprey.engine.stdlib.udfs.labels import HasLabel as SyncHasLabel
@@ -63,6 +64,11 @@ def test_bootstrap_resolves_mx_lookup_to_async_version() -> None:
         f'Expected MXLookup to resolve to AsyncMXLookup, got {resolved!r} '
         f'from module {resolved.__module__ if resolved else None}'
     )
+
+
+def test_mx_lookup_deadline_covers_sequential_dns_queries() -> None:
+    """MX lookup allows both resolver calls plus scheduling overhead."""
+    assert AsyncMXLookup.timeout > _DNS_TIMEOUT * 2
 
 
 def test_bootstrap_does_not_register_sync_mx_lookup() -> None:

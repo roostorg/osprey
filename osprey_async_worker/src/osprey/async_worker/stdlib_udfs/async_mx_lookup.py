@@ -33,6 +33,7 @@ class MXLookup(AsyncUDFBase[Arguments, str]):  # type: ignore[misc]
     """Async MXLookup — uses aiodns for non-blocking DNS resolution."""
 
     category = SyncMXLookup.category
+    timeout = (_DNS_TIMEOUT * 2) + 1.0
 
     @classmethod
     def _get_udf_base_args(cls):
