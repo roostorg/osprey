@@ -269,11 +269,13 @@ def test_direct_and_inherited_udf_timeout_overrides_win() -> None:
         (AsyncBatchableUDFBase, float('inf'), False),
         (AsyncUDFBase, float('nan'), True),
         (AsyncBatchableUDFBase, -1.0, True),
+        (AsyncUDFBase, '5', False),
+        (AsyncBatchableUDFBase, True, True),
     ],
 )
 def test_invalid_registered_udf_timeout_override_fails_bootstrap(
     udf_base: type,
-    timeout_value: float,
+    timeout_value: object,
     inherits_override: bool,
 ) -> None:
     if inherits_override:

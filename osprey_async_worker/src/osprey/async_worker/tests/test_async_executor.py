@@ -261,6 +261,34 @@ async def test_subclass_timeout_override_used(async_execute_with_result):
 
 
 @pytest.mark.asyncio
+async def test_instance_timeout_shadow_does_not_bypass_class_deadline(async_execute_with_result):
+    """The validated class deadline wins over an instance attribute shadow."""
+
+    class InstanceShadowUDF(AsyncUDFBase[TimeoutTestArguments, str]):
+        timeout: ClassVar[float] = 0.1
+
+        def __init__(self, validation_context, arguments):
+            super().__init__(validation_context, arguments)
+            setattr(self, 'timeout', float('inf'))
+
+        @classmethod
+        def _get_udf_base_args(cls):
+            return (TimeoutTestArguments, str)
+
+        async def async_execute(self, execution_context: ExecutionContext, arguments: TimeoutTestArguments) -> str:
+            await asyncio.sleep(0.5)
+            return arguments.value
+
+    result = await async_execute_with_result(
+        'Result = InstanceShadowUDF(value="test")',
+        data={},
+        udf_registry=UDFRegistry.with_udfs(InstanceShadowUDF),
+    )
+
+    assert isinstance(result.error_infos[0].error, TimeoutError)
+
+
+@pytest.mark.asyncio
 async def test_udf_completes_within_deadline(async_execute_with_result):
     """A UDF completing before its deadline retains its result without errors."""
 
@@ -502,6 +530,66 @@ async def test_batch_mixed_timeout_uses_highest(async_execute_with_result):
     assert result.extracted_features['Short'] == 'result-short'
     assert result.extracted_features['Long'] == 'result-long'
     assert len(result.error_infos) == 0
+
+
+@pytest.mark.asyncio
+async def test_native_and_legacy_batches_with_same_route_execute_separately(async_execute_with_result):
+    """Native and legacy batch implementations never share one execution batch."""
+
+    class NativeBatchUDF(AsyncBatchableUDFBase[BatchTestArgs, str, BatchTestArgs]):
+        @classmethod
+        def _get_udf_base_args(cls):
+            return (BatchTestArgs, str, BatchTestArgs)
+
+        def get_batchable_arguments(self, arguments: BatchTestArgs) -> BatchTestArgs:
+            return arguments
+
+        async def async_execute(self, execution_context: ExecutionContext, arguments: BatchTestArgs) -> str:
+            return f'native-{arguments.id}'
+
+        async def async_execute_batch(
+            self,
+            execution_context: ExecutionContext,
+            udfs: Sequence,
+            arguments: Sequence[BatchTestArgs],
+        ) -> Sequence[Result[str, Exception]]:
+            return [Ok(f'native-{arg.id}') for arg in arguments]
+
+    class LegacyBatchUDF(BatchableUDFBase[BatchTestArgs, str, BatchTestArgs]):
+        @classmethod
+        def _get_udf_base_args(cls):
+            return (BatchTestArgs, str, BatchTestArgs)
+
+        def get_batchable_arguments(self, arguments: BatchTestArgs) -> BatchTestArgs:
+            return arguments
+
+        def execute(self, execution_context: ExecutionContext, arguments: BatchTestArgs) -> str:
+            return f'legacy-{arguments.id}'
+
+        def execute_batch(
+            self,
+            execution_context: ExecutionContext,
+            udfs: Sequence,
+            arguments: Sequence[BatchTestArgs],
+        ) -> Sequence[Result[str, Exception]]:
+            return [Ok(f'legacy-{arg.id}') for arg in arguments]
+
+    result = await async_execute_with_result(
+        """
+        Native1 = NativeBatchUDF(id="one", routing_key="shared")
+        Legacy1 = LegacyBatchUDF(id="one", routing_key="shared")
+        Native2 = NativeBatchUDF(id="two", routing_key="shared")
+        Legacy2 = LegacyBatchUDF(id="two", routing_key="shared")
+        """,
+        data={},
+        udf_registry=UDFRegistry.with_udfs(NativeBatchUDF, LegacyBatchUDF),
+    )
+
+    assert result.extracted_features['Native1'] == 'native-one'
+    assert result.extracted_features['Legacy1'] == 'legacy-one'
+    assert result.extracted_features['Native2'] == 'native-two'
+    assert result.extracted_features['Legacy2'] == 'legacy-two'
+    assert result.error_infos == []
 
 
 @pytest.mark.asyncio

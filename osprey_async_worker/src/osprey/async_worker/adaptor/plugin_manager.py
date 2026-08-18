@@ -69,11 +69,13 @@ def _deduplicate_udfs(
     return deduplicated
 
 
-def _validate_udf_timeout(value: float, source: str) -> None:
+def _validate_udf_timeout(value: object, source: str) -> None:
     """Validate a timeout value.
 
     Raises ValueError naming the source and value when not finite or non-positive.
     """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f'{source} must be a positive finite number, got {value!r}')
     if not math.isfinite(value) or value <= 0:
         raise ValueError(f'{source} must be positive and finite, got {value}')
 

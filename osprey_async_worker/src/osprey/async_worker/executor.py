@@ -245,7 +245,7 @@ async def _execute_async_udf(
         try:
             resolved_arguments = udf.resolve_arguments(context, call_executor)
             with metrics.timed('udf_execution_duration', tags=metric_tags, sample_rate=0.01):
-                async with asyncio.timeout(udf.timeout):
+                async with asyncio.timeout(type(udf).timeout):
                     result = await udf.async_execute(context, resolved_arguments)
             execution_result = Ok(udf.check_result_type(result))
         except Exception as e:
@@ -280,7 +280,7 @@ async def _execute_async_batch(
         metric_tags = _get_metric_tags(context, udfs[0])
 
         # Compute the shared deadline using the maximum timeout from all UDFs
-        batch_timeout = max(udf.timeout for udf in udfs)
+        batch_timeout = max(type(udf).timeout for udf in udfs)
 
         try:
             with metrics.timed('udf_execution_batch_duration', tags=metric_tags, sample_rate=0.01):
@@ -343,7 +343,7 @@ async def _enqueue_batches(
 
     Returns (remaining non-batched chains, dict of batch tasks -> chains).
     """
-    batch_chains: dict[tuple[type, str], list[tuple[DependencyChain, Any]]] = defaultdict(list)
+    batch_chains: dict[tuple[type, str, bool], list[tuple[DependencyChain, Any]]] = defaultdict(list)
     chains_to_remove: list[DependencyChain] = []
 
     for async_chain in ready_async:
@@ -355,11 +355,12 @@ async def _enqueue_batches(
         udf = call_executor._udf
 
         batch_type = udf.get_batchable_arguments_type()
+        is_native = isinstance(udf, AsyncBatchableUDFBase)
         try:
             resolved_arguments = udf.resolve_arguments(context, call_executor)
             batchable_arguments = udf.get_batchable_arguments(resolved_arguments)
             routing_key = udf.get_batch_routing_key(batchable_arguments)
-            batch_chains[(batch_type, routing_key)].append((async_chain, batchable_arguments))
+            batch_chains[(batch_type, routing_key, is_native)].append((async_chain, batchable_arguments))
         except Exception as e:
             if not isinstance(e, NodeFailurePropagationException):
                 error_infos.append(NodeErrorInfo(e, call_executor.node))
