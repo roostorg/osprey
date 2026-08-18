@@ -5,7 +5,11 @@ from collections.abc import Sequence
 from datetime import timedelta
 
 import pytest
-from osprey.async_worker.lib.external_service import AsyncExternalService, ExternalServiceAccessor
+from osprey.async_worker.lib.external_service import (
+    AsyncExternalService,
+    ExternalServiceAccessor,
+    ExternalServiceReadCancelledError,
+)
 from result import Ok, Result
 
 
@@ -73,6 +77,37 @@ class BatchService(AsyncExternalService[str, str]):
         return [Ok(f'batch_{key}') for key in keys]
 
 
+class BlockingService(AsyncExternalService[str, str]):
+    def __init__(self):
+        self.call_count = 0
+        self.started = asyncio.Event()
+        self.release = asyncio.Event()
+
+    async def get_from_service(self, key: str) -> str:
+        self.call_count += 1
+        if self.call_count == 1:
+            self.started.set()
+            await self.release.wait()
+        return f'value_{key}'
+
+
+class BlockingBatchService(AsyncExternalService[str, str]):
+    def __init__(self):
+        self.batch_call_count = 0
+        self.started = asyncio.Event()
+        self.release = asyncio.Event()
+
+    async def get_from_service(self, key: str) -> str:
+        return f'value_{key}'
+
+    async def batch_get_from_service(self, keys: Sequence[str]) -> Sequence[Result[str, Exception]]:
+        self.batch_call_count += 1
+        if self.batch_call_count == 1:
+            self.started.set()
+            await self.release.wait()
+        return [Ok(f'batch_{key}') for key in keys]
+
+
 # --- Cache tests ---
 
 
@@ -135,6 +170,63 @@ async def test_concurrent_get_deduplicates():
     )
     assert all(r == 'value_foo' for r in results)
     assert service.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_cancelled_cache_waiter_does_not_cancel_shared_read():
+    service = BlockingService()
+    accessor = ExternalServiceAccessor(service)
+    owner = asyncio.create_task(accessor.get('foo'))
+    await asyncio.wait_for(service.started.wait(), timeout=1)
+    waiter = asyncio.create_task(accessor.get('foo'))
+    await asyncio.sleep(0)
+
+    waiter.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await waiter
+
+    service.release.set()
+    assert await owner == 'value_foo'
+    assert await accessor.get('foo') == 'value_foo'
+    assert service.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_cancelled_get_wakes_waiters_and_allows_retry():
+    service = BlockingService()
+    accessor = ExternalServiceAccessor(service)
+    owner = asyncio.create_task(accessor.get('foo'))
+    await asyncio.wait_for(service.started.wait(), timeout=1)
+    waiter = asyncio.create_task(accessor.get('foo'))
+    await asyncio.sleep(0)
+
+    owner.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await owner
+    with pytest.raises(ExternalServiceReadCancelledError):
+        await asyncio.wait_for(waiter, timeout=0.05)
+
+    assert await accessor.get('foo') == 'value_foo'
+    assert service.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_cancelled_get_without_cache_wakes_waiters_and_allows_retry():
+    service = BlockingService()
+    accessor = ExternalServiceAccessor(service)
+    owner = asyncio.create_task(accessor.get_without_cache('foo'))
+    await asyncio.wait_for(service.started.wait(), timeout=1)
+    waiter = asyncio.create_task(accessor.get('foo'))
+    await asyncio.sleep(0)
+
+    owner.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await owner
+    with pytest.raises(ExternalServiceReadCancelledError):
+        await asyncio.wait_for(waiter, timeout=0.05)
+
+    assert await accessor.get('foo') == 'value_foo'
+    assert service.call_count == 2
 
 
 # --- Error handling ---
@@ -218,4 +310,43 @@ async def test_batch_get_uses_cache():
     # Second batch with overlap — 'a' and 'b' cached, only 'c' fetched
     results = await accessor.batch_get(['a', 'b', 'c'])
     assert len(results) == 3
+    assert service.batch_call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_cancelled_batch_waiter_does_not_cancel_shared_read():
+    service = BlockingBatchService()
+    accessor = ExternalServiceAccessor(service)
+    owner = asyncio.create_task(accessor.batch_get(['a', 'b']))
+    await asyncio.wait_for(service.started.wait(), timeout=1)
+    waiter = asyncio.create_task(accessor.batch_get(['a', 'b']))
+    await asyncio.sleep(0)
+
+    waiter.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await waiter
+
+    service.release.set()
+    expected = [Ok('batch_a'), Ok('batch_b')]
+    assert await owner == expected
+    assert await accessor.batch_get(['a', 'b']) == expected
+    assert service.batch_call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_cancelled_batch_get_wakes_waiters_and_allows_retry():
+    service = BlockingBatchService()
+    accessor = ExternalServiceAccessor(service)
+    owner = asyncio.create_task(accessor.batch_get(['a', 'b']))
+    await asyncio.wait_for(service.started.wait(), timeout=1)
+    waiter = asyncio.create_task(accessor.get('a'))
+    await asyncio.sleep(0)
+
+    owner.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await owner
+    with pytest.raises(ExternalServiceReadCancelledError):
+        await asyncio.wait_for(waiter, timeout=0.05)
+
+    assert await accessor.batch_get(['a', 'b']) == [Ok('batch_a'), Ok('batch_b')]
     assert service.batch_call_count == 2

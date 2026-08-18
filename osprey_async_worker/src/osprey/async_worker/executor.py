@@ -248,7 +248,7 @@ async def _execute_async_udf(
             caught_exception = e
         finally:
             _record_udf_metric(metric_tags, execution_result, caught_exception)
-            return execution_result
+        return execution_result
 
 
 async def _execute_async_batch(
@@ -412,69 +412,76 @@ async def execute(
 
     ready_sync, ready_async = _get_ready_sync_and_async(allow_async, context)
 
-    while ready_sync or ready_async or in_progress_singlets or in_progress_batches:
-        # Check for already-finished tasks (non-blocking)
-        finished_singlets = [t for t in in_progress_singlets if t.done()]
-        finished_batches = [t for t in in_progress_batches if t.done()]
+    try:
+        while ready_sync or ready_async or in_progress_singlets or in_progress_batches:
+            # Check for already-finished tasks (non-blocking)
+            finished_singlets = [t for t in in_progress_singlets if t.done()]
+            finished_batches = [t for t in in_progress_batches if t.done()]
 
-        if not ready_sync and not ready_async and not finished_singlets and not finished_batches:
-            # Block until at least one async task finishes
-            all_pending: set[asyncio.Task[Any]] = set(in_progress_singlets.keys()) | set(in_progress_batches.keys())
-            if all_pending:
-                with tracer.start_span('osprey.rules.async_wait_nodes', child_of=parent_tracer_span):
-                    done, _ = await asyncio.wait(all_pending, return_when=asyncio.FIRST_COMPLETED)
-                finished_singlets = [t for t in done if t in in_progress_singlets]
-                finished_batches = [t for t in done if t in in_progress_batches]
+            if not ready_sync and not ready_async and not finished_singlets and not finished_batches:
+                # Block until at least one async task finishes
+                all_pending: set[asyncio.Task[Any]] = set(in_progress_singlets.keys()) | set(in_progress_batches.keys())
+                if all_pending:
+                    with tracer.start_span('osprey.rules.async_wait_nodes', child_of=parent_tracer_span):
+                        done, _ = await asyncio.wait(all_pending, return_when=asyncio.FIRST_COMPLETED)
+                    finished_singlets = [t for t in done if t in in_progress_singlets]
+                    finished_batches = [t for t in done if t in in_progress_batches]
 
-        # Process finished singlets
-        for task in finished_singlets:
-            chain = in_progress_singlets.pop(task)
-            context.set_resolved_value(chain, task.result())
+            # Process finished singlets
+            for task in finished_singlets:
+                chain = in_progress_singlets.pop(task)
+                context.set_resolved_value(chain, task.result())
 
-        # Process finished batches
-        # Distinct loop variable from the singlet `task` above: the two dicts hold
-        # tasks with different result types (Task[NodeResult] vs Task[Sequence[NodeResult]]),
-        # and reusing one name would unify them to the singlet type.
-        for batch_task in finished_batches:
-            chains = in_progress_batches.pop(batch_task)
-            results = batch_task.result()
-            for i, chain in enumerate(chains):
-                context.set_resolved_value(chain, results[i])
+            # Process finished batches
+            # Distinct loop variable from the singlet `task` above: the two dicts hold
+            # tasks with different result types (Task[NodeResult] vs Task[Sequence[NodeResult]]),
+            # and reusing one name would unify them to the singlet type.
+            for batch_task in finished_batches:
+                chains = in_progress_batches.pop(batch_task)
+                results = batch_task.result()
+                for i, chain in enumerate(chains):
+                    context.set_resolved_value(chain, results[i])
 
-        # Enqueue async tasks
-        if allow_async and ready_async:
-            with tracer.start_span('osprey.rules.try_enqueue_batches', child_of=parent_tracer_span):
-                remaining_ready_async, new_batch_tasks = await _enqueue_batches(
-                    loop, semaphore, context, error_infos, ready_async
-                )
-            in_progress_batches.update(new_batch_tasks)
-
-            for async_chain in remaining_ready_async:
-                # Native async UDF → await on event loop
-                if isinstance(async_chain.executor, CallExecutor) and isinstance(
-                    async_chain.executor._udf, (AsyncUDFBase, AsyncBatchableUDFBase)
-                ):
-                    task = asyncio.create_task(_execute_async_udf(semaphore, async_chain, context, error_infos))
-                else:
-                    # Legacy sync UDF with execute_async=True → thread pool fallback
-                    task = asyncio.create_task(
-                        _execute_legacy_in_executor(loop, semaphore, async_chain, context, error_infos)
+            # Enqueue async tasks
+            if allow_async and ready_async:
+                with tracer.start_span('osprey.rules.try_enqueue_batches', child_of=parent_tracer_span):
+                    remaining_ready_async, new_batch_tasks = await _enqueue_batches(
+                        loop, semaphore, context, error_infos, ready_async
                     )
-                in_progress_singlets[task] = async_chain
+                in_progress_batches.update(new_batch_tasks)
 
-        # Execute sync chains inline (pure computation, fast, no I/O).
-        # Only yield deep into a long sync round when async tasks are in flight.
-        # Each sleep(0) triggers a full event loop cycle including gRPC C-core polling,
-        # so unnecessary yields cause significant context-switch overhead.
-        # Short rounds (<100 chains) skip yielding entirely — the asyncio.wait() at the
-        # top of the loop provides natural yield points between rounds.
-        for i, sync_chain in enumerate(ready_sync):
-            if (in_progress_singlets or in_progress_batches) and i > 0 and i % 100 == 0:
-                await asyncio.sleep(0)
-            result = _execute_sync(sync_chain, context, error_infos)
-            context.set_resolved_value(sync_chain, result)
+                for async_chain in remaining_ready_async:
+                    # Native async UDF → await on event loop
+                    if isinstance(async_chain.executor, CallExecutor) and isinstance(
+                        async_chain.executor._udf, (AsyncUDFBase, AsyncBatchableUDFBase)
+                    ):
+                        task = asyncio.create_task(_execute_async_udf(semaphore, async_chain, context, error_infos))
+                    else:
+                        # Legacy sync UDF with execute_async=True → thread pool fallback
+                        task = asyncio.create_task(
+                            _execute_legacy_in_executor(loop, semaphore, async_chain, context, error_infos)
+                        )
+                    in_progress_singlets[task] = async_chain
 
-        ready_sync, ready_async = _get_ready_sync_and_async(allow_async, context)
+            # Execute sync chains inline (pure computation, fast, no I/O).
+            # Only yield deep into a long sync round when async tasks are in flight.
+            # Each sleep(0) triggers a full event loop cycle including gRPC C-core polling,
+            # so unnecessary yields cause significant context-switch overhead.
+            # Short rounds (<100 chains) skip yielding entirely — the asyncio.wait() at the
+            # top of the loop provides natural yield points between rounds.
+            for i, sync_chain in enumerate(ready_sync):
+                if (in_progress_singlets or in_progress_batches) and i > 0 and i % 100 == 0:
+                    await asyncio.sleep(0)
+                result = _execute_sync(sync_chain, context, error_infos)
+                context.set_resolved_value(sync_chain, result)
+
+            ready_sync, ready_async = _get_ready_sync_and_async(allow_async, context)
+    except BaseException:
+        owned_tasks = [*in_progress_singlets, *in_progress_batches]
+        for owned_task in owned_tasks:
+            owned_task.cancel()
+        await asyncio.gather(*owned_tasks, return_exceptions=True)
+        raise
 
     # --- Build result ---
 
