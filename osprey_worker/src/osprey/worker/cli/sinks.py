@@ -37,7 +37,7 @@ from osprey.worker.lib.bulk_label import TaskStatus
 from osprey.worker.lib.config import Config
 from osprey.worker.lib.osprey_engine import bootstrap_engine, bootstrap_engine_with_helpers, get_sources_provider
 from osprey.worker.lib.osprey_shared.logging import get_logger
-from osprey.worker.lib.publisher import PubSubPublisher
+from osprey.worker.lib.publisher import KafkaPublisher, PubSubPublisher
 from osprey.worker.lib.singletons import CONFIG, LABELS_PROVIDER
 from osprey.worker.lib.storage import postgres
 from osprey.worker.lib.storage.bigtable import osprey_bigtable
@@ -69,6 +69,40 @@ def gevent_liveliness_watcher() -> None:
     while True:
         with instruments.metrics.timed('gevent_tick_duration', use_ms=True, sample_rate=0.1):
             gevent.sleep(1 / 60.0)
+
+
+def get_analytics_publisher() -> PubSubPublisher | KafkaPublisher:
+    config = init_config()
+    with open('/sys/class/dmi/id/product_name', 'r') as pn:
+        if 'Google' in pn:
+            analytics_pubsub_project_id = config.get_str('PUBSUB_DATA_PROJECT_ID', 'osprey-dev')
+            analytics_pubsub_topic_id = config.get_str('PUBSUB_ANALYTICS_EVENT_TOPIC_ID', 'osprey-analytics')
+            analytics_publisher = PubSubPublisher(analytics_pubsub_project_id, analytics_pubsub_topic_id)
+            return analytics_publisher
+
+    bootstrap_servers = config.get_str_list('OSPREY_KAFKA_BOOTSTRAP_SERVERS', ['localhost'])
+    client_id = config.get_str('OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID', 'localhost')
+    topic = config.get_str('OSPREY_KAFKA_ANALYTICS_TOPIC', 'osprey-analytics')
+    publisher = KafkaPublisher(bootstrap_servers, client_id, topic)
+
+    return publisher
+
+
+def get_webhooks_publisher() -> PubSubPublisher | KafkaPublisher:
+    config = init_config()
+    with open('/sys/class/dmi/id/product_name', 'r') as pn:
+        if 'Google' in pn:
+            osprey_webhook_pubsub_project = config.get_str('PUBSUB_OSPREY_WEBHOOKS_PROJECT_ID', 'osprey-dev')
+            osprey_webhook_pubsub_topic = config.get_str('PUBSUB_OSPREY_WEBHOOKS_TOPIC_ID', 'osprey-webhooks')
+            webhooks_publisher = PubSubPublisher(osprey_webhook_pubsub_project, osprey_webhook_pubsub_topic)
+            return webhooks_publisher
+
+    bootstrap_servers = config.get_str_list('OSPREY_KAFKA_BOOTSTRAP_SERVERS', ['localhost'])
+    client_id = config.get_str('OSPREY_KAFKA_INPUT_STREAM_CLIENT_ID', 'localhost')
+    topic = config.get_str('OSPREY_KAFKA_ANALYTICS_TOPIC', 'osprey-webhooks')
+    publisher = KafkaPublisher(bootstrap_servers, client_id, topic)
+
+    return publisher
 
 
 @click.group()
@@ -261,9 +295,7 @@ def run_bulk_label_sink(pooled: bool) -> None:
 
     engine = bootstrap_engine()
 
-    analytics_pubsub_project_id = config.get_str('PUBSUB_DATA_PROJECT_ID', 'osprey-dev')
-    analytics_pubsub_topic_id = config.get_str('PUBSUB_ANALYTICS_EVENT_TOPIC_ID', 'osprey-analytics')
-    analytics_publisher = PubSubPublisher(analytics_pubsub_project_id, analytics_pubsub_topic_id)
+    analytics_publisher = get_analytics_publisher()
 
     def factory() -> BulkLabelSink:
         # NOTE: It's very important the input stream is created per-webhook sink
@@ -297,18 +329,12 @@ def run_bulk_label_sink(pooled: bool) -> None:
 @click.option('--include-ids-from-file', type=click.File('r'))
 def rollback_bulk_label_effects(ctx: click.Context, task_id: int, include_ids_from_file: TextIO | None = None) -> None:
     # TODO: Clean up this copy pasta.
-    config = init_config()
     postgres.init_from_config('osprey_db')
 
     engine = bootstrap_engine()
 
-    analytics_pubsub_project_id = config.get_str('PUBSUB_DATA_PROJECT_ID', 'osprey-dev')
-    analytics_pubsub_topic_id = config.get_str('PUBSUB_ANALYTICS_EVENT_TOPIC_ID', 'osprey-analytics')
-    analytics_publisher = PubSubPublisher(analytics_pubsub_project_id, analytics_pubsub_topic_id)
-
-    osprey_webhook_pubsub_project = config.get_str('PUBSUB_OSPREY_WEBHOOKS_PROJECT_ID', 'osprey-dev')
-    osprey_webhook_pubsub_topic = config.get_str('PUBSUB_OSPREY_WEBHOOKS_TOPIC_ID', 'osprey-webhooks')
-    webhooks_publisher = PubSubPublisher(osprey_webhook_pubsub_project, osprey_webhook_pubsub_topic)
+    analytics_publisher = get_analytics_publisher()
+    webhooks_publisher = get_webhooks_publisher()
 
     task = BulkLabelTask.get_one(task_id)
     if task is None:
