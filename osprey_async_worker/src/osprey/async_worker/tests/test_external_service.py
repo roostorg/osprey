@@ -183,7 +183,7 @@ async def test_cancelled_cache_waiter_does_not_cancel_shared_read():
 
     waiter.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await waiter
+        await asyncio.wait_for(waiter, timeout=1)
 
     service.release.set()
     assert await owner == 'value_foo'
@@ -202,7 +202,7 @@ async def test_cancelled_get_wakes_waiters_and_allows_retry():
 
     owner.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await owner
+        await asyncio.wait_for(owner, timeout=1)
     with pytest.raises(ExternalServiceReadCancelledError):
         await asyncio.wait_for(waiter, timeout=0.05)
 
@@ -221,7 +221,7 @@ async def test_cancelled_get_without_cache_wakes_waiters_and_allows_retry():
 
     owner.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await owner
+        await asyncio.wait_for(owner, timeout=1)
     with pytest.raises(ExternalServiceReadCancelledError):
         await asyncio.wait_for(waiter, timeout=0.05)
 
@@ -324,7 +324,7 @@ async def test_cancelled_batch_waiter_does_not_cancel_shared_read():
 
     waiter.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await waiter
+        await asyncio.wait_for(waiter, timeout=1)
 
     service.release.set()
     expected = [Ok('batch_a'), Ok('batch_b')]
@@ -344,7 +344,7 @@ async def test_cancelled_batch_get_wakes_waiters_and_allows_retry():
 
     owner.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await owner
+        await asyncio.wait_for(owner, timeout=1)
     with pytest.raises(ExternalServiceReadCancelledError):
         await asyncio.wait_for(waiter, timeout=0.05)
 

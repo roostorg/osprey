@@ -311,7 +311,7 @@ async def test_cancelled_execution_cancels_owned_udf_tasks(async_execute_with_re
     execution.cancel()
     try:
         with pytest.raises(asyncio.CancelledError):
-            await execution
+            await asyncio.wait_for(execution, timeout=1)
         assert singlet_cancelled.is_set()
         assert batch_cancelled.is_set()
     finally:
