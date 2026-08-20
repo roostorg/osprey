@@ -14,7 +14,12 @@ from typing import TYPE_CHECKING, Any, List, Type, cast
 import pluggy
 from osprey.async_worker.adaptor import hookspecs as async_hookspecs
 from osprey.async_worker.adaptor.constants import OSPREY_ASYNC_ADAPTOR
-from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink, AsyncBatchableUDFBase, AsyncUDFBase
+from osprey.async_worker.adaptor.interfaces import (
+    DEFAULT_ASYNC_UDF_TIMEOUT,
+    AsyncBaseOutputSink,
+    AsyncBatchableUDFBase,
+    AsyncUDFBase,
+)
 from osprey.async_worker.sinks.sink.output_sink import AsyncMultiOutputSink
 from osprey.engine.ast_validator import ValidatorRegistry
 from osprey.engine.executor.udf_execution_helpers import HasHelper, UDFHelpers
@@ -98,7 +103,11 @@ def bootstrap_async_udfs(config: 'Config | None' = None) -> tuple[UDFRegistry, U
     from osprey.worker._stdlibplugin.udf_register import register_udfs as stdlib_register_udfs
 
     # Resolve and validate the configured timeout before any mutations
-    resolved_timeout = 2.0 if config is None else config.get_float(OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT, 2.0)
+    resolved_timeout = (
+        DEFAULT_ASYNC_UDF_TIMEOUT
+        if config is None
+        else config.get_float(OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT, DEFAULT_ASYNC_UDF_TIMEOUT)
+    )
     _validate_udf_timeout(resolved_timeout, f'config[{OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT!r}]')
 
     load_all_async_plugins()
