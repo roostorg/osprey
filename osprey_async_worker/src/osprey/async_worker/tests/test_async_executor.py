@@ -5,14 +5,82 @@ executor for stdlib UDFs (pure computation, no I/O).
 """
 
 import asyncio
-from typing import Sequence
+from collections import defaultdict
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from textwrap import dedent
+from typing import ClassVar, Sequence
 
 import pytest
 from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase, AsyncUDFBase
-from osprey.engine.executor.execution_context import ExecutionContext
+from osprey.async_worker.executor import execute
+from osprey.engine.ast.grammar import Source
+from osprey.engine.ast.sources import Sources
+from osprey.engine.ast_validator import validate_sources
+from osprey.engine.ast_validator.validator_registry import ValidatorRegistry
+from osprey.engine.executor.execution_context import Action, ExecutionContext
+from osprey.engine.executor.execution_graph import ExecutionGraph, compile_execution_graph
+from osprey.engine.executor.execution_plan import ExecutionPlanState
+from osprey.engine.executor.udf_execution_helpers import UDFHelpers
+from osprey.engine.stdlib import get_config_registry
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.registry import UDFRegistry
 from result import Ok, Result
+
+
+class CountingBatchableArguments(ArgumentsBase):
+    key: str
+    value: str
+
+
+@dataclass
+class CountingBatchableArgs:
+    key: str
+    value: str
+
+
+class CountingBatchableUdf(AsyncBatchableUDFBase[CountingBatchableArguments, str, CountingBatchableArgs]):
+    """A batchable async UDF that records argument resolution calls.
+
+    The explicit type getters avoid unsubstituted TypeVars for this test class.
+    """
+
+    resolve_call_count: ClassVar[int] = 0
+    raise_on_resolve: ClassVar[bool] = False
+
+    @classmethod
+    def get_arguments_type(cls):
+        return CountingBatchableArguments
+
+    @classmethod
+    def get_rvalue_type(cls):
+        return str
+
+    @classmethod
+    def get_batchable_arguments_type(cls):
+        return CountingBatchableArgs
+
+    def resolve_arguments(self, execution_context, call_executor) -> CountingBatchableArguments:
+        type(self).resolve_call_count += 1
+        if type(self).raise_on_resolve:
+            raise RuntimeError('resolve boom')
+        return super().resolve_arguments(execution_context, call_executor)
+
+    def get_batchable_arguments(self, arguments: CountingBatchableArguments) -> CountingBatchableArgs:
+        return CountingBatchableArgs(key=arguments.key, value=arguments.value)
+
+    def get_batch_routing_key(self, arguments: CountingBatchableArgs) -> str:
+        return arguments.key
+
+    async def async_execute(self, execution_context: ExecutionContext, arguments: CountingBatchableArguments) -> str:
+        return arguments.value
+
+    async def async_execute_batch(self, execution_context, udfs, arguments: Sequence[CountingBatchableArgs]):
+        return [Ok(a.value) for a in arguments]
+
+
+class GatedArguments(ArgumentsBase):
+    value: str
 
 
 class CancellationArguments(ArgumentsBase):
@@ -22,6 +90,110 @@ class CancellationArguments(ArgumentsBase):
 class BatchCancellationArguments(ArgumentsBase):
     id: str
     routing_key: str
+
+
+class GatedAsyncUdf(AsyncUDFBase[GatedArguments, str]):
+    entered = 0
+    both_entered: asyncio.Event
+    release: asyncio.Event
+
+    async def async_execute(self, execution_context: ExecutionContext, arguments: GatedArguments) -> str:
+        type(self).entered += 1
+        if type(self).entered == 2:
+            type(self).both_entered.set()
+        await type(self).release.wait()
+        return arguments.value
+
+
+@pytest.mark.asyncio
+async def test_planned_execute_activates_each_imported_or_required_source_once(
+    async_execute_fn, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    activated_sources: list[str] = []
+    activate_source = ExecutionPlanState.activate_source
+
+    def record_activation(self: ExecutionPlanState, source: Source) -> None:
+        activated_sources.append(source.path)
+        activate_source(self, source)
+
+    monkeypatch.setattr(ExecutionPlanState, 'activate_source', record_activation)
+
+    result = await async_execute_fn(
+        {
+            'main.sml': "Import(rules=['branch.sml', 'shared.sml'])",
+            'branch.sml': "Require(rule='shared.sml')",
+            'shared.sml': 'Shared = 1 + 0',
+        }
+    )
+
+    assert result == {'Shared': 1}
+    assert activated_sources == ['main.sml', 'branch.sml', 'shared.sml']
+
+
+@pytest.mark.asyncio
+async def test_concurrent_actions_isolate_dynamic_source_activation(
+    stdlib_udf_registry: UDFRegistry, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    registry = stdlib_udf_registry
+    registry.register(GatedAsyncUdf)
+    sources = Sources.from_dict(
+        {
+            'main.sml': dedent(
+                """
+                ActionName: str = JsonData(path="$.action_name", coerce_type=True)
+                Require(rule=f"actions/{ActionName}.sml")
+                """
+            ),
+            'actions/a.sml': 'A = GatedAsyncUdf(value="a")',
+            'actions/b.sml': 'B = GatedAsyncUdf(value="b")',
+        }
+    )
+    validator_registry = ValidatorRegistry.get_instance().instance_with_additional_validators(
+        get_config_registry().get_validator()
+    )
+    graph = compile_execution_graph(validate_sources(sources, registry, validator_registry))
+    sources_by_action: dict[str, list[str]] = defaultdict(list)
+    original_enqueue_source = ExecutionContext.enqueue_source
+
+    def record_enqueue_source(context: ExecutionContext, source: Source) -> None:
+        sources_by_action[context.get_action_name()].append(source.path)
+        original_enqueue_source(context, source)
+
+    monkeypatch.setattr(ExecutionContext, 'enqueue_source', record_enqueue_source)
+    GatedAsyncUdf.entered = 0
+    GatedAsyncUdf.both_entered = asyncio.Event()
+    GatedAsyncUdf.release = asyncio.Event()
+    timestamp = datetime(2026, 8, 4, tzinfo=timezone.utc)
+    tasks = [
+        asyncio.create_task(
+            execute(
+                graph,
+                UDFHelpers(),
+                Action(action_id=index, action_name=name, data={'action_name': name}, timestamp=timestamp),
+            )
+        )
+        for index, name in enumerate(('a', 'b'), start=1)
+    ]
+
+    try:
+        await asyncio.wait_for(GatedAsyncUdf.both_entered.wait(), timeout=5)
+        assert not any(task.done() for task in tasks)
+        GatedAsyncUdf.release.set()
+        result_a, result_b = await asyncio.gather(*tasks)
+    finally:
+        GatedAsyncUdf.release.set()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    assert result_a.extracted_features['A'] == 'a'
+    assert 'B' not in result_a.extracted_features
+    assert result_b.extracted_features['B'] == 'b'
+    assert 'A' not in result_b.extracted_features
+    assert not result_a.error_infos
+    assert not result_b.error_infos
+    assert sources_by_action == {
+        'a': ['main.sml', 'actions/a.sml'],
+        'b': ['main.sml', 'actions/b.sml'],
+    }
 
 
 @pytest.mark.asyncio
@@ -207,6 +379,111 @@ async def test_parity_complex_graph(async_execute_fn):
     assert result['RuleB'] is False
 
 
+@pytest.fixture()
+def counting_batchable_udf():
+    """Registers CountingBatchableUdf and resets its call-count/raise state around the test."""
+    CountingBatchableUdf.resolve_call_count = 0
+    CountingBatchableUdf.raise_on_resolve = False
+    yield CountingBatchableUdf
+    CountingBatchableUdf.resolve_call_count = 0
+    CountingBatchableUdf.raise_on_resolve = False
+
+
+@pytest.mark.asyncio
+async def test_batch_of_one_reuses_resolved_arguments(
+    async_execute_with_result, stdlib_udf_registry: UDFRegistry, counting_batchable_udf
+):
+    """A batchable UDF alone (batch group size 1) falls through to the singleton async path.
+
+    Before the fix, this chain's arguments were resolved once to compute the routing key in
+    `_enqueue_batches`, then resolved again in `_execute_async_udf` -- a duplicate Arguments
+    construction. resolve_arguments should now only be called once.
+    """
+    stdlib_udf_registry.register(counting_batchable_udf)
+    result = await async_execute_with_result(
+        'A = CountingBatchableUdf(key="solo", value="a")', udf_registry=stdlib_udf_registry
+    )
+    assert result.extracted_features['A'] == 'a'
+    assert not result.error_infos
+    assert counting_batchable_udf.resolve_call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_batch_of_two_resolves_once_per_chain(
+    async_execute_with_result, stdlib_udf_registry: UDFRegistry, counting_batchable_udf
+):
+    """When a batch group forms (>=2 chains sharing a routing key), each chain's arguments are
+    resolved exactly once -- the batch execution path never re-resolves, so this is unchanged
+    by the fallthrough fix."""
+    stdlib_udf_registry.register(counting_batchable_udf)
+    result = await async_execute_with_result(
+        """
+        A = CountingBatchableUdf(key="shared", value="a")
+        B = CountingBatchableUdf(key="shared", value="b")
+        """,
+        udf_registry=stdlib_udf_registry,
+    )
+    assert result.extracted_features['A'] == 'a'
+    assert result.extracted_features['B'] == 'b'
+    assert not result.error_infos
+    assert counting_batchable_udf.resolve_call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_plan_matches_legacy_native_async_batch(
+    async_execute_with_result,
+    stdlib_udf_registry: UDFRegistry,
+    counting_batchable_udf,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    stdlib_udf_registry.register(counting_batchable_udf)
+    sources = """
+        A = CountingBatchableUdf(key="shared", value="a")
+        B = CountingBatchableUdf(key="shared", value="b")
+    """
+    action_time = datetime(2026, 8, 4, tzinfo=timezone.utc)
+
+    with monkeypatch.context() as legacy:
+        legacy.setattr(ExecutionGraph, 'get_execution_plan', lambda _graph: None)
+        legacy_result = await async_execute_with_result(
+            sources,
+            udf_registry=stdlib_udf_registry,
+            action_time=action_time,
+        )
+    legacy_resolve_count = counting_batchable_udf.resolve_call_count
+    counting_batchable_udf.resolve_call_count = 0
+
+    planned_result = await async_execute_with_result(
+        sources,
+        udf_registry=stdlib_udf_registry,
+        action_time=action_time,
+    )
+
+    assert planned_result.extracted_features == legacy_result.extracted_features
+    assert planned_result.error_infos == legacy_result.error_infos == []
+    assert counting_batchable_udf.resolve_call_count == legacy_resolve_count == 2
+
+
+@pytest.mark.asyncio
+async def test_batch_of_one_resolve_failure_surfaces_once(
+    async_execute_with_result, stdlib_udf_registry: UDFRegistry, counting_batchable_udf
+):
+    """If resolve_arguments raises while computing the routing key (batch group size 1), the
+    failure is fully handled inside _enqueue_batches: the chain is resolved to Err(None) there
+    and never falls through to _execute_async_udf. resolve_arguments is therefore still only
+    attempted once, and the same exception surfaces as before the fallthrough fix."""
+    counting_batchable_udf.raise_on_resolve = True
+    stdlib_udf_registry.register(counting_batchable_udf)
+    result = await async_execute_with_result(
+        'A = CountingBatchableUdf(key="solo", value="a")', udf_registry=stdlib_udf_registry
+    )
+    assert result.extracted_features.get('A') is None
+    assert len(result.error_infos) == 1
+    assert isinstance(result.error_infos[0].error, RuntimeError)
+    assert str(result.error_infos[0].error) == 'resolve boom'
+    assert counting_batchable_udf.resolve_call_count == 1
+
+
 @pytest.mark.asyncio
 async def test_cancelled_udf_task_cancels_execution(async_execute_with_result):
     started = asyncio.Event()
@@ -317,21 +594,6 @@ async def test_cancelled_execution_cancels_owned_udf_tasks(async_execute_with_re
     finally:
         singlet_release.set()
         batch_release.set()
-        owned_tasks = [
-            task
-            for task in asyncio.all_tasks()
-            if (
-                task is not asyncio.current_task()
-                and (
-                    getattr(task.get_coro(), '__name__', '') == '_execute_async_udf'
-                    or getattr(task.get_coro(), '__name__', '') == '_execute_async_batch'
-                )
-            )
-        ]
-        for task in owned_tasks:
-            task.cancel()
-        if owned_tasks:
-            await asyncio.gather(*owned_tasks, return_exceptions=True)
 
 
 @pytest.mark.asyncio
