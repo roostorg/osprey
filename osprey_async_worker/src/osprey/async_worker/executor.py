@@ -47,6 +47,9 @@ from result import Err, Ok
 
 logger = get_logger(__name__)
 
+# Shared placeholder for the "make mypy happy" default below; always overwritten before use.
+_UNSET_RESULT: NodeResult = Err(None)
+
 _DEFAULT_MAX_ASYNC_PER_EXECUTION = 12
 
 
@@ -119,7 +122,7 @@ def _execute_sync(
     error_info_: list[NodeErrorInfo],
 ) -> NodeResult:
     """Execute a sync UDF inline. For pure computation only — no I/O."""
-    execution_result: NodeResult = Err(None)
+    execution_result: NodeResult = _UNSET_RESULT
     try:
         execution_result = Ok(chain.executor.execute(execution_context=context))
     except Exception as e:
@@ -148,7 +151,7 @@ def _execute_legacy_sync(
         call_node: CallExecutor = chain.executor
         metric_tags += [f'udf:{call_node._udf.__class__.__name__}']
 
-    execution_result: NodeResult = Err(None)
+    execution_result: NodeResult = _UNSET_RESULT
     try:
         with metrics.timed('udf_execution_duration', tags=metric_tags, sample_rate=0.01):
             execution_result = Ok(chain.executor.execute(execution_context=context))
@@ -227,8 +230,12 @@ async def _execute_async_udf(
     chain: DependencyChain,
     context: ExecutionContext,
     error_info_: list[NodeErrorInfo],
+    pre_resolved_arguments: Any | None = None,
 ) -> NodeResult:
     """Execute a native async UDF. Awaited directly on the event loop.
+
+    `pre_resolved_arguments`, when given, is the Arguments already computed for this same
+    chain while checking whether a batch would form, so execution does not resolve it twice.
 
     Timeout enforcement: asyncio.timeout() enforces udf.timeout only around
     async_execute() after semaphore admission. TimeoutError is converted to
@@ -241,9 +248,13 @@ async def _execute_async_udf(
         metric_tags = _get_metric_tags(context) + [f'udf:{udf.__class__.__name__}']
 
         caught_exception: Exception | None = None
-        execution_result: NodeResult = Err(None)
+        execution_result: NodeResult = _UNSET_RESULT
         try:
-            resolved_arguments = udf.resolve_arguments(context, call_executor)
+            resolved_arguments = (
+                pre_resolved_arguments
+                if pre_resolved_arguments is not None
+                else udf.resolve_arguments(context, call_executor)
+            )
             with metrics.timed('udf_execution_duration', tags=metric_tags, sample_rate=0.01):
                 async with asyncio.timeout(type(udf).timeout):
                     result = await udf.async_execute(context, resolved_arguments)
@@ -338,12 +349,15 @@ async def _enqueue_batches(
     context: ExecutionContext,
     error_infos: list[NodeErrorInfo],
     ready_async: Sequence[DependencyChain],
-) -> tuple[Sequence[DependencyChain], dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]]]:
-    """Collect batchable async chains and launch them as tasks.
+) -> tuple[
+    Sequence[tuple[DependencyChain, Any | None]],
+    dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]],
+]:
+    """Launch batches and return the chains that remain.
 
-    Returns (remaining non-batched chains, dict of batch tasks -> chains).
+    A native async chain can include arguments that this function resolved. Legacy chains include `None`.
     """
-    batch_chains: dict[tuple[type, str, bool], list[tuple[DependencyChain, Any]]] = defaultdict(list)
+    batch_chains: dict[tuple[type, str, bool], list[tuple[DependencyChain, Any, Any]]] = defaultdict(list)
     chains_to_remove: list[DependencyChain] = []
 
     for async_chain in ready_async:
@@ -360,7 +374,9 @@ async def _enqueue_batches(
             resolved_arguments = udf.resolve_arguments(context, call_executor)
             batchable_arguments = udf.get_batchable_arguments(resolved_arguments)
             routing_key = udf.get_batch_routing_key(batchable_arguments)
-            batch_chains[(batch_type, routing_key, is_native)].append((async_chain, batchable_arguments))
+            batch_chains[(batch_type, routing_key, is_native)].append(
+                (async_chain, resolved_arguments, batchable_arguments)
+            )
         except Exception as e:
             if not isinstance(e, NodeFailurePropagationException):
                 error_infos.append(NodeErrorInfo(e, call_executor.node))
@@ -368,12 +384,17 @@ async def _enqueue_batches(
             context.set_resolved_value(async_chain, Err(None))
 
     new_batch_tasks: dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]] = {}
+    pre_resolved_by_chain: dict[DependencyChain, Any] = {}
 
     for _, chains_and_args in batch_chains.items():
         if len(chains_and_args) < 2:
+            # Reuse native async arguments when a batch does not form.
+            for chain, resolved_arguments, _ in chains_and_args:
+                if isinstance(chain.executor, CallExecutor) and isinstance(chain.executor._udf, AsyncBatchableUDFBase):
+                    pre_resolved_by_chain[chain] = resolved_arguments
             continue
 
-        chains, args = zip(*chains_and_args)
+        chains, _resolved_args, args = zip(*chains_and_args)
         chains_to_remove.extend(chains)
 
         batch_udfs = [chain.executor._udf for chain in chains]
@@ -394,7 +415,7 @@ async def _enqueue_batches(
             )
         new_batch_tasks[task] = chains
 
-    remaining = [chain for chain in ready_async if chain not in chains_to_remove]
+    remaining = [(chain, pre_resolved_by_chain.get(chain)) for chain in ready_async if chain not in chains_to_remove]
     return remaining, new_batch_tasks
 
 
@@ -468,12 +489,14 @@ async def execute(
                 )
             in_progress_batches.update(new_batch_tasks)
 
-            for async_chain in remaining_ready_async:
+            for async_chain, pre_resolved_arguments in remaining_ready_async:
                 # Native async UDF → await on event loop
                 if isinstance(async_chain.executor, CallExecutor) and isinstance(
                     async_chain.executor._udf, (AsyncUDFBase, AsyncBatchableUDFBase)
                 ):
-                    task = asyncio.create_task(_execute_async_udf(semaphore, async_chain, context, error_infos))
+                    task = asyncio.create_task(
+                        _execute_async_udf(semaphore, async_chain, context, error_infos, pre_resolved_arguments)
+                    )
                 else:
                     # Legacy sync UDF with execute_async=True → thread pool fallback
                     task = asyncio.create_task(

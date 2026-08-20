@@ -20,6 +20,7 @@ _dummy_span = grammar.Span(source=grammar.Source(path='<NOT A REAL PATH>', conte
 # will be collected in it. The arguments will be typechecked against the value type, e.g. extra_args: dict[str, int]
 # would require all extra arguments to be ints
 EXTRA_ARGS_ATTR = 'extra_arguments'
+ARGUMENT_METADATA_CACHE_SIZE = 1024
 
 
 class ConstExpr(Generic[T]):
@@ -227,7 +228,7 @@ class ArgumentsBase:
     def __hash__(self) -> int:
         # raises TypeError('unhashable type: yada yada yada') if an argument is not hashable
         assert self._resolved, 'arguments are not comparable until resolved'
-        return hash(tuple(v for _, v in sorted(self._arguments.items())))
+        return hash(tuple([value for _, value in sorted(self._arguments.items())]))
 
     def get_call_node(self) -> grammar.Call:
         return self._call_node
@@ -265,7 +266,7 @@ class ArgumentsBase:
         return list(ordered_mro)
 
     @classmethod
-    @lru_cache(1)
+    @lru_cache(maxsize=ARGUMENT_METADATA_CACHE_SIZE)
     def items(cls) -> dict[str, type]:
         fields: dict[str, type] = {}
 
@@ -315,12 +316,12 @@ class ArgumentsBase:
         return cls.get_generic_param() is not None
 
     @classmethod
-    @lru_cache(1)
+    @lru_cache(maxsize=ARGUMENT_METADATA_CACHE_SIZE)
     def is_extra_arguments_allowed(cls) -> bool:
         return EXTRA_ARGS_ATTR in cls.items()
 
     @classmethod
-    @lru_cache(1)
+    @lru_cache(maxsize=ARGUMENT_METADATA_CACHE_SIZE)
     def get_extra_arguments_values_type(cls) -> type:
         """returns the type allowed by unexpected kwargs"""
         assert cls.is_extra_arguments_allowed(), 'check if is_extra_arguments_allowed() first'
@@ -332,6 +333,7 @@ class ArgumentsBase:
         return val_type
 
     @classmethod
+    @lru_cache(maxsize=ARGUMENT_METADATA_CACHE_SIZE)
     def kwarg_can_be_none(cls, name: str) -> bool:
         """Whether or not the kwarg can accept None as an input.
 
