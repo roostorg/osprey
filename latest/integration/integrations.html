@@ -37,7 +37,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-a91683c5.js";
+            window.path_to_searchindex_js = "../searchindex-9f3c288a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-bf5bb2f8.js"></script>
@@ -237,6 +237,7 @@ class TextContains(UDFBase[TextContainsArguments, bool]):
 <p>UDFs can also produce <strong>effects</strong>: structured outputs that downstream systems act on, such as banning a user or flagging content. Effects are expressed using <code>EffectBase</code> as the return type. See <a href="https://github.com/roostorg/osprey/blob/main/example_plugins/src/udfs/ban_user.py"><code>example_plugins/src/udfs/ban_user.py</code></a> for an example.</p>
 <h3 id="async-udfs"><a class="header" href="#async-udfs">Async UDFs</a></h3>
 <p>UDFs that perform I/O (e.g. network calls or database reads) should subclass <code>AsyncUDFBase</code> when used in the async worker; see <a href="https://github.com/roostorg/osprey/blob/main/osprey_async_worker/src/osprey/async_worker/stdlib_udfs/async_mx_lookup.py"><code>osprey_async_worker/src/osprey/async_worker/stdlib_udfs/async_mx_lookup.py</code></a> for an example. Pure-computation UDFs like <code>TextContains</code> can be reused in both workers without modification.</p>
+<p>Native async UDFs time out after two seconds by default. Set <code>OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT</code> to change the process default. A UDF can set its own numeric <code>timeout</code> class attribute in seconds, which takes precedence over the process default. Values must be greater than zero and can’t be NaN or infinity. Async UDFs must not suppress <code>asyncio.CancelledError</code>; catch it only to clean up, then re-raise it.</p>
 <h3 id="registering-udfs"><a class="header" href="#registering-udfs">Registering UDFs</a></h3>
 <p>Return your UDF classes from the <code>register_udfs</code> hook; for example:</p>
 <pre><code class="language-python">from osprey.worker.adaptor.plugin_manager import hookimpl_osprey
