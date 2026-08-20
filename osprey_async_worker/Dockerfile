@@ -45,7 +45,7 @@ ADD osprey_rpc/pyproject.toml /osprey/osprey_rpc/pyproject.toml
 ADD osprey_worker/pyproject.toml /osprey/osprey_worker/pyproject.toml
 ADD osprey_async_worker/pyproject.toml /osprey/osprey_async_worker/pyproject.toml
 ADD example_plugins/pyproject.toml /osprey/example_plugins/pyproject.toml
-ADD example_atproto_plugins/pyproject.toml /osprey/example_atproto_plugins/pyproject.toml
+COPY example_atproto_plugins/pyproject.toml /osprey/example_atproto_plugins/pyproject.toml
 
 # Create minimal package structure required by uv
 RUN mkdir -p /osprey/osprey_worker /osprey/osprey_async_worker /osprey/osprey_rpc /osprey/example_plugins/src /osprey/example_atproto_plugins/src/atproto_plugin && \
@@ -66,7 +66,7 @@ ADD osprey_worker /osprey/osprey_worker
 ADD osprey_async_worker /osprey/osprey_async_worker
 ADD osprey_rpc /osprey/osprey_rpc
 ADD example_plugins /osprey/example_plugins
-ADD example_atproto_plugins /osprey/example_atproto_plugins
+COPY example_atproto_plugins /osprey/example_atproto_plugins
 
 COPY entrypoint.sh /osprey/entrypoint.sh
 
