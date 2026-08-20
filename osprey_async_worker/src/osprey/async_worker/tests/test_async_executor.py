@@ -693,6 +693,7 @@ async def test_cancellation_during_child_cancellation_cleanup_preserves_request(
             try:
                 await asyncio.sleep(0)
             except asyncio.CancelledError:
+                # Preserve the stale cancellation count for this test
                 pass
         return await async_execute_with_result(
             'Cancelled = CancelledUDF(value="cancelled")\nSlow = SlowUDF(value="slow")',
