@@ -12,7 +12,7 @@ import asyncio
 import os
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import Any
 
 import sentry_sdk
 from ddtrace import tracer
@@ -425,7 +425,9 @@ async def execute(
     - Legacy UDFBase with execute_async=True: run in thread pool via run_in_executor
       (may fail on gevent calls, errors captured gracefully)
     """
-    execution_task = cast(asyncio.Task[Any], asyncio.current_task())
+    execution_task = asyncio.current_task()
+    if execution_task is None:
+        raise RuntimeError('async executor requires a running task')
     entry_cancelling_count = execution_task.cancelling()
 
     if parent_tracer_span:

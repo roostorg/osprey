@@ -306,6 +306,7 @@ async def test_count_error_once_with_concurrent_waiter():
     waiter_started = asyncio.Event()
 
     async def wait_for_cached_get():
+        # Do not suspend before the cached future is attached below
         waiter_started.set()
         return await accessor.get('foo')
 
@@ -497,6 +498,7 @@ async def test_cancelling_batch_waiter_does_not_cancel_shared_get():
     batch_started = asyncio.Event()
 
     async def wait_for_cached_batch():
+        # Do not suspend before the cached future is attached below
         batch_started.set()
         return await accessor.batch_get(['a'])
 
