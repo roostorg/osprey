@@ -12,7 +12,7 @@ import asyncio
 import os
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 import sentry_sdk
 from ddtrace import tracer
@@ -40,6 +40,7 @@ from osprey.engine.executor.execution_graph import ExecutionGraph
 from osprey.engine.executor.node_executor.call_executor import CallExecutor
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.stdlib.udfs.json_utils import MissingJsonPath
+from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import BatchableUDFBase
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
@@ -51,6 +52,7 @@ logger = get_logger(__name__)
 _UNSET_RESULT: NodeResult = Err(None)
 
 _DEFAULT_MAX_ASYNC_PER_EXECUTION = 12
+_OWNED_TASK_CLEANUP_SECONDS = 10.0
 
 
 def _get_ready_sync_and_async(
@@ -230,7 +232,7 @@ async def _execute_async_udf(
     chain: DependencyChain,
     context: ExecutionContext,
     error_info_: list[NodeErrorInfo],
-    pre_resolved_arguments: Any | None = None,
+    pre_resolved_arguments: ArgumentsBase | None = None,
 ) -> NodeResult:
     """Execute a native async UDF. Awaited directly on the event loop.
 
@@ -334,14 +336,14 @@ async def _enqueue_batches(
     error_infos: list[NodeErrorInfo],
     ready_async: Sequence[DependencyChain],
 ) -> tuple[
-    Sequence[tuple[DependencyChain, Any | None]],
+    Sequence[tuple[DependencyChain, ArgumentsBase | None]],
     dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]],
 ]:
     """Launch batches and return the chains that remain.
 
     A native async chain can include arguments that this function resolved. Legacy chains include `None`.
     """
-    batch_chains: dict[tuple[type, str], list[tuple[DependencyChain, Any, Any]]] = defaultdict(list)
+    batch_chains: dict[tuple[type, str], list[tuple[DependencyChain, ArgumentsBase, Any]]] = defaultdict(list)
     chains_to_remove: list[DependencyChain] = []
 
     for async_chain in ready_async:
@@ -365,7 +367,7 @@ async def _enqueue_batches(
             context.set_resolved_value(async_chain, Err(None))
 
     new_batch_tasks: dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]] = {}
-    pre_resolved_by_chain: dict[DependencyChain, Any] = {}
+    pre_resolved_by_chain: dict[DependencyChain, ArgumentsBase] = {}
 
     for _, chains_and_args in batch_chains.items():
         if len(chains_and_args) < 2:
@@ -403,6 +405,10 @@ async def _enqueue_batches(
 # --- Main executor ---
 
 
+async def _drain_owned_tasks(owned_tasks: Sequence[asyncio.Task[Any]]) -> None:
+    await asyncio.gather(*owned_tasks, return_exceptions=True)
+
+
 async def execute(
     execution_graph: ExecutionGraph,
     udf_helpers: UDFHelpers,
@@ -419,6 +425,9 @@ async def execute(
     - Legacy UDFBase with execute_async=True: run in thread pool via run_in_executor
       (may fail on gevent calls, errors captured gracefully)
     """
+    execution_task = cast(asyncio.Task[Any], asyncio.current_task())
+    entry_cancelling_count = execution_task.cancelling()
+
     if parent_tracer_span:
         parent_tracer_span.set_tag('action-name', action.action_name)
 
@@ -499,16 +508,62 @@ async def execute(
                 context.set_resolved_value(sync_chain, result)
 
             ready_sync, ready_async = _get_ready_sync_and_async(allow_async, context)
-    except BaseException:
+    except GeneratorExit:
+        for owned_task in [*in_progress_singlets, *in_progress_batches]:
+            if owned_task.done():
+                if not owned_task.cancelled():
+                    owned_task.exception()
+            elif not loop.is_closed():
+                owned_task.cancel()
+        raise
+    except BaseException as execution_error:
         owned_tasks = [*in_progress_singlets, *in_progress_batches]
         for owned_task in owned_tasks:
             owned_task.cancel()
+        cleanup_waiter = execution_task
+        initial_cancelling_count = cleanup_waiter.cancelling()
+        self_cancellation = (
+            isinstance(execution_error, asyncio.CancelledError) and initial_cancelling_count > entry_cancelling_count
+        )
+        cancellation_during_cleanup: asyncio.CancelledError | None = None
         if owned_tasks:
-            cleanup = asyncio.gather(*owned_tasks, return_exceptions=True)
-            try:
-                await asyncio.shield(cleanup)
-            except asyncio.CancelledError:
-                await cleanup
+            cleanup = asyncio.create_task(_drain_owned_tasks(owned_tasks))
+            cleanup_deadline = loop.time() + _OWNED_TASK_CLEANUP_SECONDS
+            while not cleanup.done():
+                remaining = cleanup_deadline - loop.time()
+                if remaining <= 0:
+                    break
+                try:
+                    done, _ = await asyncio.wait({cleanup}, timeout=remaining)
+                    if not done:
+                        break
+                except asyncio.CancelledError as cleanup_cancellation:
+                    if self_cancellation:
+                        while cleanup_waiter.cancelling() > initial_cancelling_count:
+                            cleanup_waiter.uncancel()
+                    else:
+                        cancellation_during_cleanup = cleanup_cancellation
+                    continue
+            if not cleanup.done():
+                unfinished_count = sum(not owned_task.done() for owned_task in owned_tasks)
+                logger.warning(
+                    'Owned task cleanup exceeded %ss; cancelling %d unfinished tasks',
+                    _OWNED_TASK_CLEANUP_SECONDS,
+                    unfinished_count,
+                )
+                cleanup.cancel()
+        if self_cancellation:
+            while cleanup_waiter.cancelling() > initial_cancelling_count:
+                cleanup_waiter.uncancel()
+        else:
+            if cancellation_during_cleanup is None and cleanup_waiter.cancelling() > initial_cancelling_count:
+                cancellation_during_cleanup = asyncio.CancelledError()
+            if cancellation_during_cleanup is not None:
+                logger.warning(
+                    'Cancellation requested while cleaning up execution failure',
+                    exc_info=(type(execution_error), execution_error, execution_error.__traceback__),
+                )
+                raise cancellation_during_cleanup from execution_error
         raise
 
     # --- Build result ---
