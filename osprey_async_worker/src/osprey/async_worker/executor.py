@@ -480,7 +480,12 @@ async def execute(
         owned_tasks = [*in_progress_singlets, *in_progress_batches]
         for owned_task in owned_tasks:
             owned_task.cancel()
-        await asyncio.gather(*owned_tasks, return_exceptions=True)
+        if owned_tasks:
+            cleanup = asyncio.gather(*owned_tasks, return_exceptions=True)
+            try:
+                await asyncio.shield(cleanup)
+            except asyncio.CancelledError:
+                await cleanup
         raise
 
     # --- Build result ---

@@ -146,6 +146,7 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
         return await future
 
     async def batch_get(self, keys: Sequence[KeyT]) -> Sequence[Result[ValueT, Exception]]:
+        new_entries: dict[KeyT, tuple[asyncio.Future[ValueT], datetime | None]] = {}
         cached_entries = [self._cache.get(key) for key in keys]
         non_cached_keys = [
             key
@@ -153,7 +154,6 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
             if cache_entry is None or self._is_past_cache_expiration(cache_entry[1])
         ]
         if non_cached_keys:
-            new_entries: dict[KeyT, tuple[asyncio.Future[ValueT], datetime | None]] = {}
             for key in non_cached_keys:
                 cache_entry = (self._make_future(), self._get_cache_expiration_datetime())
                 self._cache[key] = cache_entry
@@ -161,21 +161,23 @@ class ExternalServiceAccessor(Generic[KeyT, ValueT]):
             try:
                 result = await self._service.batch_get_from_service(non_cached_keys)
                 for i, key in enumerate(non_cached_keys):
+                    owned_future = new_entries[key][0]
                     if result[i].is_ok():
-                        self._cache[key][0].set_result(result[i].unwrap())
+                        owned_future.set_result(result[i].unwrap())
                     else:
-                        self._cache[key][0].set_exception(cast(BaseException, result[i].value))
+                        owned_future.set_exception(cast(BaseException, result[i].value))
             except asyncio.CancelledError:
                 for key, cache_entry in new_entries.items():
                     self._discard_cancelled_entry(key, cache_entry)
                 raise
             except Exception as e:
-                for key in non_cached_keys:
-                    self._cache[key][0].set_exception(e)
+                for cache_entry in new_entries.values():
+                    if not cache_entry[0].done():
+                        cache_entry[0].set_exception(e)
 
         results: list[Result[ValueT, Exception]] = []
         for key in keys:
-            future = self._cache[key][0]
+            future = new_entries.get(key, self._cache[key])[0]
             try:
                 value = await asyncio.shield(future)
                 results.append(Ok(value))

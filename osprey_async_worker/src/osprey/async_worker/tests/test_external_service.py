@@ -314,6 +314,20 @@ async def test_batch_get_uses_cache():
 
 
 @pytest.mark.asyncio
+async def test_batch_get_resolves_its_owned_future_after_cache_replacement():
+    service = BlockingBatchService()
+    accessor = ExternalServiceAccessor(service)
+    batch_get = asyncio.create_task(accessor.batch_get(['a']))
+    await asyncio.wait_for(service.started.wait(), timeout=1)
+
+    assert await accessor.get_without_cache('a') == 'value_a'
+    service.release.set()
+
+    assert await asyncio.wait_for(batch_get, timeout=1) == [Ok('batch_a')]
+    assert await accessor.get('a') == 'value_a'
+
+
+@pytest.mark.asyncio
 async def test_cancelled_batch_waiter_does_not_cancel_shared_read():
     service = BlockingBatchService()
     accessor = ExternalServiceAccessor(service)
