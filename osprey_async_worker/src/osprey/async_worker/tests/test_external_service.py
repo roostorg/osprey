@@ -204,7 +204,7 @@ async def test_cancelling_get_without_cache_does_not_cancel_shared_get():
     service = CancelOnceService()
     accessor = ExternalServiceAccessor(service)
     owner = asyncio.create_task(accessor.get_without_cache('foo'))
-    await service.started.wait()
+    await asyncio.wait_for(service.started.wait(), timeout=1)
 
     owner.cancel()
     with pytest.raises(asyncio.CancelledError):
@@ -229,7 +229,7 @@ async def test_cancelling_waiter_does_not_cancel_shared_get():
     service = CancelOnceService()
     accessor = ExternalServiceAccessor(service)
     owner = asyncio.create_task(accessor.get('foo'))
-    await service.started.wait()
+    await asyncio.wait_for(service.started.wait(), timeout=1)
     waiter = asyncio.create_task(accessor.get('foo'))
 
     waiter.cancel()
@@ -246,7 +246,7 @@ async def test_cancelling_owner_does_not_cancel_shared_get():
     service = CancelOnceService()
     accessor = ExternalServiceAccessor(service)
     owner = asyncio.create_task(accessor.get('foo'))
-    await service.started.wait()
+    await asyncio.wait_for(service.started.wait(), timeout=1)
     survivor = asyncio.create_task(accessor.get('foo'))
 
     owner.cancel()
@@ -283,9 +283,9 @@ async def test_failed_task_does_not_evict_replacement():
     service = ReplacementService()
     accessor = ExternalServiceAccessor(service)
     first = asyncio.create_task(accessor.get('foo'))
-    await service.first_started.wait()
+    await asyncio.wait_for(service.first_started.wait(), timeout=1)
     replacement = asyncio.create_task(accessor.get_without_cache('foo'))
-    await service.second_started.wait()
+    await asyncio.wait_for(service.second_started.wait(), timeout=1)
 
     service.first_release.set()
     with pytest.raises(ValueError):
@@ -302,9 +302,16 @@ async def test_count_error_once_with_concurrent_waiter():
     service = CountErrorOnceGatedService()
     accessor = ExternalServiceAccessor(service)
     creator = asyncio.create_task(accessor.get('foo'))
-    await service.started.wait()
-    waiter = asyncio.create_task(accessor.get('foo'))
-    await asyncio.sleep(0)
+    await asyncio.wait_for(service.started.wait(), timeout=1)
+    waiter_started = asyncio.Event()
+
+    async def wait_for_cached_get():
+        # Do not suspend before the cached future is attached below
+        waiter_started.set()
+        return await accessor.get('foo')
+
+    waiter = asyncio.create_task(wait_for_cached_get())
+    await asyncio.wait_for(waiter_started.wait(), timeout=1)
     service.release.set()
 
     with pytest.raises(ValueError):
@@ -319,7 +326,7 @@ async def test_count_error_once_does_not_apply_to_get_without_cache():
     service = CountErrorOnceGatedService()
     accessor = ExternalServiceAccessor(service)
     creator = asyncio.create_task(accessor.get_without_cache('foo'))
-    await service.started.wait()
+    await asyncio.wait_for(service.started.wait(), timeout=1)
     service.release.set()
 
     with pytest.raises(ValueError, match='service fails'):
@@ -367,11 +374,25 @@ async def test_batch_get_deduplicates_duplicate_keys():
 
 
 @pytest.mark.asyncio
+async def test_batch_get_resolves_its_owned_future_after_cache_replacement():
+    service = GatedBatchService()
+    accessor = ExternalServiceAccessor(service)
+    batch_get = asyncio.create_task(accessor.batch_get(['a']))
+    await asyncio.wait_for(service.started.wait(), timeout=1)
+
+    assert await accessor.get_without_cache('a') == 'value_a'
+    service.release.set()
+
+    assert await asyncio.wait_for(batch_get, timeout=1) == [Ok('batch_a')]
+    assert await accessor.get('a') == 'value_a'
+
+
+@pytest.mark.asyncio
 async def test_cancelled_batch_loader_evicts_its_cache_entries():
     service = GatedBatchService()
     accessor = ExternalServiceAccessor(service)
     batch = asyncio.create_task(accessor.batch_get(['a']))
-    await service.started.wait()
+    await asyncio.wait_for(service.started.wait(), timeout=1)
 
     loader = next(iter(accessor._active_batch_loaders))
     loader.cancel()
@@ -410,7 +431,7 @@ async def test_cancelling_batch_owner_does_not_cancel_shared_get():
     service = GatedBatchService()
     accessor = ExternalServiceAccessor(service)
     batch = asyncio.create_task(accessor.batch_get(['a']))
-    await service.started.wait()
+    await asyncio.wait_for(service.started.wait(), timeout=1)
     survivor = asyncio.create_task(accessor.get('a'))
 
     batch.cancel()
@@ -428,7 +449,7 @@ async def test_cancelled_batch_owner_keeps_loader_alive_through_garbage_collecti
     service = GatedBatchService()
     accessor = ExternalServiceAccessor(service)
     batch = asyncio.create_task(accessor.batch_get(['a']))
-    await service.started.wait()
+    await asyncio.wait_for(service.started.wait(), timeout=1)
     survivor = asyncio.create_task(accessor.get('a'))
 
     batch.cancel()
@@ -451,14 +472,14 @@ async def test_cancelled_failed_batch_consumes_future_exceptions():
     loop.set_exception_handler(lambda _loop, context: contexts.append(context))
     try:
         batch = asyncio.create_task(accessor.batch_get(['a']))
-        await service.started.wait()
+        await asyncio.wait_for(service.started.wait(), timeout=1)
+        loader = next(iter(accessor._active_batch_loaders))
 
         batch.cancel()
         with pytest.raises(asyncio.CancelledError):
             _ = await batch
         service.release.set()
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
+        await asyncio.wait_for(asyncio.shield(loader), timeout=1)
         accessor._cache.clear()
         gc.collect()
         await asyncio.sleep(0)
@@ -473,9 +494,16 @@ async def test_cancelling_batch_waiter_does_not_cancel_shared_get():
     service = CancelOnceService()
     accessor = ExternalServiceAccessor(service)
     owner = asyncio.create_task(accessor.get('a'))
-    await service.started.wait()
-    batch = asyncio.create_task(accessor.batch_get(['a']))
-    await asyncio.sleep(0)
+    await asyncio.wait_for(service.started.wait(), timeout=1)
+    batch_started = asyncio.Event()
+
+    async def wait_for_cached_batch():
+        # Do not suspend before the cached future is attached below
+        batch_started.set()
+        return await accessor.batch_get(['a'])
+
+    batch = asyncio.create_task(wait_for_cached_batch())
+    await asyncio.wait_for(batch_started.wait(), timeout=1)
 
     batch.cancel()
     with pytest.raises(asyncio.CancelledError):

@@ -9,9 +9,10 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from textwrap import dedent
-from typing import ClassVar, Sequence
+from typing import Any, ClassVar, Sequence
 
 import pytest
+from osprey.async_worker import executor as async_executor
 from osprey.async_worker.adaptor.interfaces import (
     DEFAULT_ASYNC_UDF_TIMEOUT,
     AsyncBatchableUDFBase,
@@ -96,6 +97,15 @@ class CountingBatchableUdf(AsyncBatchableUDFBase[CountingBatchableArguments, str
 
 class GatedArguments(ArgumentsBase):
     value: str
+
+
+class CancellationArguments(ArgumentsBase):
+    value: str
+
+
+class BatchCancellationArguments(ArgumentsBase):
+    id: str
+    routing_key: str
 
 
 class GatedAsyncUdf(AsyncUDFBase[GatedArguments, str]):
@@ -974,3 +984,351 @@ async def test_batch_of_one_resolve_failure_surfaces_once(
     assert isinstance(result.error_infos[0].error, RuntimeError)
     assert str(result.error_infos[0].error) == 'resolve boom'
     assert counting_batchable_udf.resolve_call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_cancelled_udf_task_cancels_execution(async_execute_with_result):
+    started = asyncio.Event()
+    cancelled = asyncio.Event()
+
+    class SlowUDF(AsyncUDFBase[CancellationArguments, str]):
+        @classmethod
+        def _get_udf_base_args(cls):
+            return (CancellationArguments, str)
+
+        async def async_execute(self, execution_context: ExecutionContext, arguments: CancellationArguments) -> str:
+            started.set()
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                cancelled.set()
+                raise
+            raise AssertionError('unreachable')
+
+    execution = asyncio.create_task(
+        async_execute_with_result(
+            'Result = SlowUDF(value="test")',
+            udf_registry=UDFRegistry.with_udfs(SlowUDF),
+        )
+    )
+    await asyncio.wait_for(started.wait(), timeout=1)
+
+    udf_tasks = [
+        task
+        for task in asyncio.all_tasks()
+        if task is not asyncio.current_task() and getattr(task.get_coro(), '__name__', '') == '_execute_async_udf'
+    ]
+    assert len(udf_tasks) == 1
+    udf_tasks[0].cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await asyncio.wait_for(execution, timeout=1)
+    assert cancelled.is_set()
+
+
+@pytest.mark.asyncio
+async def test_cancelled_execution_cancels_owned_udf_tasks(async_execute_with_result):
+    singlet_started = asyncio.Event()
+    singlet_cancelled = asyncio.Event()
+    singlet_release = asyncio.Event()
+    batch_started = asyncio.Event()
+    batch_cancelled = asyncio.Event()
+    batch_release = asyncio.Event()
+
+    class SlowSingletUDF(AsyncUDFBase[CancellationArguments, str]):
+        @classmethod
+        def _get_udf_base_args(cls):
+            return (CancellationArguments, str)
+
+        async def async_execute(self, execution_context: ExecutionContext, arguments: CancellationArguments) -> str:
+            singlet_started.set()
+            try:
+                await singlet_release.wait()
+            except asyncio.CancelledError:
+                singlet_cancelled.set()
+                raise
+            return arguments.value
+
+    class SlowBatchUDF(AsyncBatchableUDFBase[BatchCancellationArguments, str, BatchCancellationArguments]):
+        @classmethod
+        def _get_udf_base_args(cls):
+            return (BatchCancellationArguments, str, BatchCancellationArguments)
+
+        def get_batchable_arguments(self, arguments: BatchCancellationArguments) -> BatchCancellationArguments:
+            return arguments
+
+        async def async_execute(
+            self, execution_context: ExecutionContext, arguments: BatchCancellationArguments
+        ) -> str:
+            return arguments.id
+
+        async def async_execute_batch(
+            self,
+            execution_context: ExecutionContext,
+            udfs: Sequence[UDFBase[Any, Any]],
+            arguments: Sequence[BatchCancellationArguments],
+        ) -> Sequence[Result[str, Exception]]:
+            batch_started.set()
+            try:
+                await batch_release.wait()
+            except asyncio.CancelledError:
+                batch_cancelled.set()
+                raise
+            return [Ok(argument.id) for argument in arguments]
+
+    execution = asyncio.create_task(
+        async_execute_with_result(
+            """
+            Single = SlowSingletUDF(value="single")
+            Batch1 = SlowBatchUDF(id="one", routing_key="shared")
+            Batch2 = SlowBatchUDF(id="two", routing_key="shared")
+            """,
+            udf_registry=UDFRegistry.with_udfs(SlowSingletUDF, SlowBatchUDF),
+        )
+    )
+
+    await asyncio.wait_for(asyncio.gather(singlet_started.wait(), batch_started.wait()), timeout=1)
+    execution.cancel()
+    try:
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(execution, timeout=1)
+        assert singlet_cancelled.is_set()
+        assert batch_cancelled.is_set()
+    finally:
+        singlet_release.set()
+        batch_release.set()
+
+
+@pytest.mark.asyncio
+async def test_repeated_cancellation_waits_for_owned_task_cleanup(async_execute_with_result):
+    started = asyncio.Event()
+    work_release = asyncio.Event()
+    cleanup_started = asyncio.Event()
+    cleanup_release = asyncio.Event()
+
+    class SlowUDF(AsyncUDFBase[CancellationArguments, str]):
+        @classmethod
+        def _get_udf_base_args(cls):
+            return (CancellationArguments, str)
+
+        async def async_execute(self, execution_context: ExecutionContext, arguments: CancellationArguments) -> str:
+            started.set()
+            try:
+                await work_release.wait()
+            except asyncio.CancelledError:
+                cleanup_started.set()
+                await cleanup_release.wait()
+                raise
+            raise AssertionError('unreachable')
+
+    execution = asyncio.create_task(
+        async_execute_with_result(
+            'Result = SlowUDF(value="test")',
+            udf_registry=UDFRegistry.with_udfs(SlowUDF),
+        )
+    )
+    await asyncio.wait_for(started.wait(), timeout=1)
+
+    try:
+        execution.cancel()
+        await asyncio.wait_for(cleanup_started.wait(), timeout=1)
+        for _ in range(3):
+            execution.cancel()
+        for _ in range(10):
+            await asyncio.sleep(0)
+
+        assert not execution.done()
+        cleanup_release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(execution, timeout=1)
+        assert execution.cancelling() == 1
+    finally:
+        work_release.set()
+        cleanup_release.set()
+        await asyncio.wait_for(asyncio.gather(execution, return_exceptions=True), timeout=1)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(('stale_cancelling_count', 'expected_cancelling_count'), [(False, 1), (True, 2)])
+async def test_cancellation_during_child_cancellation_cleanup_preserves_request(
+    async_execute_with_result, stale_cancelling_count: bool, expected_cancelling_count: int
+):
+    cancelled_started = asyncio.Event()
+    cancelled_release = asyncio.Event()
+    slow_started = asyncio.Event()
+    work_release = asyncio.Event()
+    cleanup_started = asyncio.Event()
+    cleanup_release = asyncio.Event()
+
+    class CancelledUDF(AsyncUDFBase[CancellationArguments, str]):
+        @classmethod
+        def _get_udf_base_args(cls):
+            return (CancellationArguments, str)
+
+        async def async_execute(self, execution_context: ExecutionContext, arguments: CancellationArguments) -> str:
+            cancelled_started.set()
+            await cancelled_release.wait()
+            raise asyncio.CancelledError
+
+    class SlowUDF(AsyncUDFBase[CancellationArguments, str]):
+        @classmethod
+        def _get_udf_base_args(cls):
+            return (CancellationArguments, str)
+
+        async def async_execute(self, execution_context: ExecutionContext, arguments: CancellationArguments) -> str:
+            slow_started.set()
+            try:
+                await work_release.wait()
+            except asyncio.CancelledError:
+                cleanup_started.set()
+                await cleanup_release.wait()
+                raise
+            raise AssertionError('unreachable')
+
+    async def run_execution():
+        if stale_cancelling_count:
+            current_task = asyncio.current_task()
+            assert current_task is not None
+            current_task.cancel()
+            try:
+                await asyncio.sleep(0)
+            except asyncio.CancelledError:
+                # Preserve the stale cancellation count for this test
+                pass
+        return await async_execute_with_result(
+            'Cancelled = CancelledUDF(value="cancelled")\nSlow = SlowUDF(value="slow")',
+            udf_registry=UDFRegistry.with_udfs(CancelledUDF, SlowUDF),
+        )
+
+    execution = asyncio.create_task(run_execution())
+    await asyncio.wait_for(asyncio.gather(cancelled_started.wait(), slow_started.wait()), timeout=1)
+
+    try:
+        cancelled_release.set()
+        await asyncio.wait_for(cleanup_started.wait(), timeout=1)
+        execution.cancel()
+        cleanup_release.set()
+
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(execution, timeout=1)
+        assert execution.cancelling() == expected_cancelling_count
+    finally:
+        cancelled_release.set()
+        work_release.set()
+        cleanup_release.set()
+        await asyncio.wait_for(asyncio.gather(execution, return_exceptions=True), timeout=1)
+
+
+@pytest.mark.asyncio
+async def test_owned_task_cleanup_timeout_does_not_block_cancellation(
+    async_execute_with_result, monkeypatch: pytest.MonkeyPatch
+):
+    started = asyncio.Event()
+    work_release = asyncio.Event()
+    cleanup_started = asyncio.Event()
+    cleanup_release = asyncio.Event()
+    cleanup_finished = asyncio.Event()
+    monkeypatch.setattr(async_executor, '_OWNED_TASK_CLEANUP_SECONDS', 0.01)
+
+    class SlowUDF(AsyncUDFBase[CancellationArguments, str]):
+        @classmethod
+        def _get_udf_base_args(cls):
+            return (CancellationArguments, str)
+
+        async def async_execute(self, execution_context: ExecutionContext, arguments: CancellationArguments) -> str:
+            started.set()
+            try:
+                await work_release.wait()
+            except asyncio.CancelledError:
+                cleanup_started.set()
+                try:
+                    await cleanup_release.wait()
+                finally:
+                    cleanup_finished.set()
+                raise
+            raise AssertionError('unreachable')
+
+    execution = asyncio.create_task(
+        async_execute_with_result(
+            'Result = SlowUDF(value="test")',
+            udf_registry=UDFRegistry.with_udfs(SlowUDF),
+        )
+    )
+    await asyncio.wait_for(started.wait(), timeout=1)
+
+    execution.cancel()
+    try:
+        await asyncio.wait_for(cleanup_started.wait(), timeout=1)
+        done, _ = await asyncio.wait({execution}, timeout=1)
+
+        assert execution in done
+        with pytest.raises(asyncio.CancelledError):
+            execution.result()
+        await asyncio.wait_for(cleanup_finished.wait(), timeout=1)
+    finally:
+        work_release.set()
+        cleanup_release.set()
+        await asyncio.wait_for(cleanup_finished.wait(), timeout=1)
+        await asyncio.wait_for(asyncio.gather(execution, return_exceptions=True), timeout=1)
+
+
+@pytest.mark.asyncio
+async def test_cancellation_during_error_cleanup_supersedes_original_error(async_execute_with_result):
+    class FatalError(BaseException):
+        pass
+
+    fatal_started = asyncio.Event()
+    fatal_release = asyncio.Event()
+    slow_started = asyncio.Event()
+    work_release = asyncio.Event()
+    cleanup_started = asyncio.Event()
+    cleanup_release = asyncio.Event()
+
+    class FatalUDF(AsyncUDFBase[CancellationArguments, str]):
+        @classmethod
+        def _get_udf_base_args(cls):
+            return (CancellationArguments, str)
+
+        async def async_execute(self, execution_context: ExecutionContext, arguments: CancellationArguments) -> str:
+            fatal_started.set()
+            await fatal_release.wait()
+            raise FatalError
+
+    class SlowUDF(AsyncUDFBase[CancellationArguments, str]):
+        @classmethod
+        def _get_udf_base_args(cls):
+            return (CancellationArguments, str)
+
+        async def async_execute(self, execution_context: ExecutionContext, arguments: CancellationArguments) -> str:
+            slow_started.set()
+            try:
+                await work_release.wait()
+            except asyncio.CancelledError:
+                cleanup_started.set()
+                await cleanup_release.wait()
+                raise
+            raise AssertionError('unreachable')
+
+    execution = asyncio.create_task(
+        async_execute_with_result(
+            'Fatal = FatalUDF(value="fatal")\nSlow = SlowUDF(value="slow")',
+            udf_registry=UDFRegistry.with_udfs(FatalUDF, SlowUDF),
+        )
+    )
+    await asyncio.wait_for(asyncio.gather(fatal_started.wait(), slow_started.wait()), timeout=1)
+
+    try:
+        fatal_release.set()
+        await asyncio.wait_for(cleanup_started.wait(), timeout=1)
+        execution.cancel()
+        cleanup_release.set()
+
+        with pytest.raises(asyncio.CancelledError) as exc_info:
+            await asyncio.wait_for(execution, timeout=1)
+        assert execution.cancelling() == 1
+        assert isinstance(exc_info.value.__cause__, FatalError)
+    finally:
+        fatal_release.set()
+        work_release.set()
+        cleanup_release.set()
+        await asyncio.wait_for(asyncio.gather(execution, return_exceptions=True), timeout=1)
