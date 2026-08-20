@@ -10,8 +10,12 @@ from __future__ import annotations
 
 import pytest
 from osprey.async_worker.adaptor import plugin_manager as pm
-from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase, AsyncUDFBase
-from osprey.async_worker.stdlib_udfs import _async_stdlib_plugin, async_mx_lookup
+from osprey.async_worker.adaptor.interfaces import (
+    DEFAULT_ASYNC_UDF_TIMEOUT,
+    AsyncBatchableUDFBase,
+    AsyncUDFBase,
+)
+from osprey.async_worker.stdlib_udfs import _async_stdlib_plugin
 from osprey.async_worker.stdlib_udfs.async_mx_lookup import MXLookup as AsyncMXLookup
 from osprey.engine.stdlib.udfs.json_data import JsonData
 from osprey.engine.stdlib.udfs.labels import HasLabel as SyncHasLabel
@@ -26,17 +30,17 @@ def reset_plugin_manager():
 
     plugin_manager is a module-level singleton. Without this, state from
     one test (e.g. a registered plugin) leaks into the next.
-    Restore both native base timeouts to 2.0 before and after each test.
+    Restore both native base timeouts before and after each test.
     """
     pm.load_all_async_plugins.cache_clear()
-    AsyncUDFBase.timeout = 2.0
-    AsyncBatchableUDFBase.timeout = 2.0
+    AsyncUDFBase.timeout = DEFAULT_ASYNC_UDF_TIMEOUT
+    AsyncBatchableUDFBase.timeout = DEFAULT_ASYNC_UDF_TIMEOUT
     yield
     pm.load_all_async_plugins.cache_clear()
     if pm.plugin_manager.is_registered(_async_stdlib_plugin):
         pm.plugin_manager.unregister(_async_stdlib_plugin)
-    AsyncUDFBase.timeout = 2.0
-    AsyncBatchableUDFBase.timeout = 2.0
+    AsyncUDFBase.timeout = DEFAULT_ASYNC_UDF_TIMEOUT
+    AsyncBatchableUDFBase.timeout = DEFAULT_ASYNC_UDF_TIMEOUT
 
 
 def test_async_stdlib_plugin_returns_async_mx_lookup() -> None:
@@ -67,7 +71,7 @@ def test_bootstrap_resolves_mx_lookup_to_async_version() -> None:
 
 def test_mx_lookup_deadline_covers_sequential_dns_queries() -> None:
     """MX lookup allows every configured try for both sequential resolver calls."""
-    assert AsyncMXLookup.timeout > async_mx_lookup._DNS_TIMEOUT * async_mx_lookup._DNS_TRIES * 2
+    assert AsyncMXLookup.timeout == 31.0
 
 
 def test_bootstrap_does_not_register_sync_mx_lookup() -> None:
@@ -222,13 +226,13 @@ def test_absent_config_keeps_native_udf_defaults_at_two() -> None:
     """bootstrap with config=None and Config({}) leaves both native base defaults at 2.0."""
     # config=None case
     pm.bootstrap_async_udfs(config=None)
-    assert AsyncUDFBase.timeout == 2.0
-    assert AsyncBatchableUDFBase.timeout == 2.0
+    assert AsyncUDFBase.timeout == DEFAULT_ASYNC_UDF_TIMEOUT
+    assert AsyncBatchableUDFBase.timeout == DEFAULT_ASYNC_UDF_TIMEOUT
 
     # Config({}) case (initialized config with no timeout key)
     pm.bootstrap_async_udfs(config=Config({}))
-    assert AsyncUDFBase.timeout == 2.0
-    assert AsyncBatchableUDFBase.timeout == 2.0
+    assert AsyncUDFBase.timeout == DEFAULT_ASYNC_UDF_TIMEOUT
+    assert AsyncBatchableUDFBase.timeout == DEFAULT_ASYNC_UDF_TIMEOUT
 
 
 # A positive finite configured timeout changes both inherited defaults
@@ -284,22 +288,15 @@ def test_invalid_registered_udf_timeout_override_fails_bootstrap(
     inherits_override: bool,
 ) -> None:
     if inherits_override:
-
-        class PluginTimeoutBase(udf_base):
-            timeout = timeout_value
-
-        class InvalidTimeoutUDF(PluginTimeoutBase):
-            pass
-
+        plugin_base = type('PluginTimeoutBase', (udf_base,), {'timeout': timeout_value})
+        invalid_udf_class = type('InvalidTimeoutUDF', (plugin_base,), {})
     else:
-
-        class InvalidTimeoutUDF(udf_base):
-            timeout = timeout_value
+        invalid_udf_class = type('InvalidTimeoutUDF', (udf_base,), {'timeout': timeout_value})
 
     class InvalidTimeoutPlugin:
         @pm.hookimpl_osprey_async
         def register_udfs(self):
-            return [InvalidTimeoutUDF]
+            return [invalid_udf_class]
 
     plugin = InvalidTimeoutPlugin()
     pm.plugin_manager.register(plugin)
@@ -328,8 +325,8 @@ def test_invalid_timeout_config_fails_before_mutation(config_value: str, expecte
     with pytest.raises(expected_exception, match='OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT'):
         pm.bootstrap_async_udfs(config=config)
     # Verify state unchanged
-    assert AsyncUDFBase.timeout == 2.0
-    assert AsyncBatchableUDFBase.timeout == 2.0
+    assert AsyncUDFBase.timeout == DEFAULT_ASYNC_UDF_TIMEOUT
+    assert AsyncBatchableUDFBase.timeout == DEFAULT_ASYNC_UDF_TIMEOUT
 
 
 # Repeated bootstrap replaces prior timeout defaults without leaking state
@@ -351,5 +348,5 @@ def test_repeated_bootstrap_replaces_prior_timeout_default() -> None:
 
     # Final bootstrap with config=None (no manual reset; bootstrap must restore 2.0)
     pm.bootstrap_async_udfs(config=None)
-    assert AsyncUDFBase.timeout == 2.0
-    assert AsyncBatchableUDFBase.timeout == 2.0
+    assert AsyncUDFBase.timeout == DEFAULT_ASYNC_UDF_TIMEOUT
+    assert AsyncBatchableUDFBase.timeout == DEFAULT_ASYNC_UDF_TIMEOUT

@@ -18,6 +18,7 @@ from osprey.engine.stdlib.udfs.mx_lookup import MXLookup as SyncMXLookup
 
 _DNS_TIMEOUT = 5.0
 _DNS_TRIES = 3
+_MX_LOOKUP_TIMEOUT = 31.0
 _resolver: aiodns.DNSResolver | None = None
 
 
@@ -34,7 +35,9 @@ class MXLookup(AsyncUDFBase[Arguments, str]):  # type: ignore[misc]
     """Async MXLookup — uses aiodns for non-blocking DNS resolution."""
 
     category = SyncMXLookup.category
-    timeout = (_DNS_TIMEOUT * _DNS_TRIES * 2) + 1.0
+    # One nameserver can consume 5s for each of 3 tries on both sequential
+    # MX and A queries; reserve one additional second for scheduling slack
+    timeout = _MX_LOOKUP_TIMEOUT
 
     @classmethod
     def _get_udf_base_args(cls):

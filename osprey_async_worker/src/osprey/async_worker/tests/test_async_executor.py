@@ -8,7 +8,11 @@ import asyncio
 from typing import ClassVar, Sequence
 
 import pytest
-from osprey.async_worker.adaptor.interfaces import AsyncBatchableUDFBase, AsyncUDFBase
+from osprey.async_worker.adaptor.interfaces import (
+    DEFAULT_ASYNC_UDF_TIMEOUT,
+    AsyncBatchableUDFBase,
+    AsyncUDFBase,
+)
 from osprey.engine.executor.execution_context import ExecutionContext
 from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import BatchableUDFBase, UDFBase
@@ -19,11 +23,11 @@ from result import Ok, Result
 @pytest.fixture(autouse=True)
 def reset_udf_timeouts():
     """reset both async udf base timeouts to 2.0 before and after each test."""
-    AsyncUDFBase.timeout = 2.0
-    AsyncBatchableUDFBase.timeout = 2.0
+    AsyncUDFBase.timeout = DEFAULT_ASYNC_UDF_TIMEOUT
+    AsyncBatchableUDFBase.timeout = DEFAULT_ASYNC_UDF_TIMEOUT
     yield
-    AsyncUDFBase.timeout = 2.0
-    AsyncBatchableUDFBase.timeout = 2.0
+    AsyncUDFBase.timeout = DEFAULT_ASYNC_UDF_TIMEOUT
+    AsyncBatchableUDFBase.timeout = DEFAULT_ASYNC_UDF_TIMEOUT
 
 
 @pytest.mark.asyncio
@@ -223,9 +227,9 @@ class TimeoutTestArguments(ArgumentsBase):
 async def test_native_udf_base_exposes_timeout():
     """Native async UDF bases expose a two-second timeout."""
     assert hasattr(AsyncUDFBase, 'timeout')
-    assert AsyncUDFBase.timeout == 2.0
+    assert AsyncUDFBase.timeout == DEFAULT_ASYNC_UDF_TIMEOUT
     assert hasattr(AsyncBatchableUDFBase, 'timeout')
-    assert AsyncBatchableUDFBase.timeout == 2.0
+    assert AsyncBatchableUDFBase.timeout == DEFAULT_ASYNC_UDF_TIMEOUT
 
     # Legacy bases should NOT have timeout
     assert not hasattr(UDFBase, 'timeout')

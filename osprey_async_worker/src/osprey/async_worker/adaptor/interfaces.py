@@ -22,6 +22,7 @@ from osprey.engine.udf.base import (
 from result import Result
 
 _T = TypeVar('_T')
+DEFAULT_ASYNC_UDF_TIMEOUT = 2.0
 
 
 class AsyncUDFBase(UDFBase[Arguments, RValue]):
@@ -42,7 +43,7 @@ class AsyncUDFBase(UDFBase[Arguments, RValue]):
 
     execute_async: ClassVar[bool] = True
     is_native_async: ClassVar[bool] = True
-    timeout: ClassVar[float] = 2.0
+    timeout: ClassVar[float] = DEFAULT_ASYNC_UDF_TIMEOUT
 
     def __init__(self, validation_context, arguments):
         super().__init__(validation_context, arguments)
@@ -85,7 +86,7 @@ class AsyncBatchableUDFBase(BatchableUDFBase[Arguments, RValue, BatchableArgumen
     """
 
     is_native_async: ClassVar[bool] = True
-    timeout: ClassVar[float] = 2.0
+    timeout: ClassVar[float] = DEFAULT_ASYNC_UDF_TIMEOUT
 
     def execute(self, execution_context: ExecutionContext, arguments: Arguments) -> RValue:
         raise RuntimeError(
