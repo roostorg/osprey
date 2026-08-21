@@ -13,17 +13,21 @@ Bulk Actions let you apply a label to every entity matching the current query; u
 
 There are two ways to start a bulk action:
 
-1. **Bulk Actions** → **Create New Job** to open the job creation modal
+1. **Bulk Actions** → **Create New Job** to create a job from an uploaded file of entities
 2. **From the Query page**: use the bulk label drawer in the chart column, which pre-fills the query from your current session
 
-![Bulk Label](../images/bulk-label.png)
+![The Bulk Edit Labels form for roughly 9,800 entities matching a query, with label name, status, reason, and expiration fields](../images/bulk-label.png)
 
 Before submitting, Osprey shows a count of how many unique entities will be labeled. Review this number carefully to understand the impact of your bulk action.
 
-Each job requires:
-- The entity type and label to apply
+> For scripted or bulk labeling from the command line (e.g., importing label lists from external sources), see `apply_label` and `bulk_apply_label` in the [CLI Reference](../development/cli-reference.md#osprey-cli-apply_label).
+
+Each labeling job takes:
+- The label to apply and its status
 - A reason (required for all labeling operations)
-- The label polarity (negative, positive, or neutral)
+- An optional expiration
+
+Standard bulk jobs are limited to 100,000 entities; the form has a checkbox to remove the limit for larger jobs.
 
 ### Monitoring jobs
 
@@ -35,7 +39,7 @@ The page polls for updates automatically; you don't need to refresh to see progr
 
 The Bulk Job History page provides a detailed view of past bulk jobs.
 
-![Bulk Job History](../images/bulk-job-history.png)
+![The empty Bulk Job History page: a task ID search field on the left and a Find Single Bulk Job panel on the right](../images/bulk-job-history.png)
 
 The page has two columns:
 - Recent bulk jobs with status, progress, and summary statistics; filterable by task ID

@@ -12,14 +12,16 @@ Top-level modules:
 - `osprey_coordinator/` — Rust gRPC coordinator (tokio, tonic, etcd, rdkafka). Rust code belongs here.
 - `proto/osprey/rpc/` — protobuf source of truth for `osprey_rpc` and `osprey_coordinator` types.
 - `example_plugins/` — reference plugins (UDFs, output sinks, labels service) using the pluggy-based plugin system. Do not add production code here.
+- `example_atproto_plugins/` — reference plugin demonstrating a custom input stream that consumes the Bluesky firehose. Stack `docker-compose.atproto.yaml` on top of the main compose file (or use `./run-atproto.sh`) to run Osprey against live ATProto traffic. Do not add production code here.
 - `example_rules/` — sample SML rules and YAML config.
+- `example_atproto_rules/` — sample SML rules paired with `example_atproto_plugins/`.
 
-Reference files: `docs/DEVELOPMENT.md` (setup), `example_plugins/src/register_plugins.py` (plugin patterns), `example_plugins/src/services/labels_service.py` (labels service example).
+Reference files: `docs/development/local.md` (setup), `example_plugins/src/register_plugins.py` (plugin patterns), `example_plugins/src/services/labels_service.py` (labels service example).
 
 ## Design
 
 - API: gRPC between `osprey_coordinator` and workers; HTTP/Flask for `osprey-ui-api` (port 5004); protobuf definitions under `proto/osprey/rpc/` are authoritative.
-- Rules: SML (Osprey's rule language) with user-defined functions registered via pluggy hooks (`@hookimpl_osprey`): `register_udfs`, `register_output_sinks`, `register_labels_service_or_provider`.
+- Rules: SML (Osprey's rule language) with user-defined functions registered via pluggy hooks (`@hookimpl_osprey`): `register_udfs`, `register_output_sinks`, `register_labels_service_or_provider`, `register_input_stream` (custom event source; see `example_atproto_plugins/`).
 - Data model conventions: Pydantic for models, SQLAlchemy for persistence (versions pinned in `pyproject.toml`).
 
 ## Build and run
@@ -157,7 +159,7 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 - Do not disable lint or type rules to silence errors. Fix the underlying issue, or use a narrowly-scoped `# noqa: <code>` / `# type: ignore[<code>]` with a comment explaining why.
 - Before adding a new dependency, check it for known CVEs and confirm the license is compatible with `LICENSE.md`.
 - Do not commit generated protobuf files from an untrusted toolchain; always regenerate via `./gen-protos.sh`.
-- Default Docker bindings are `127.0.0.1`; do not change bind addresses without explicit instruction (see `docs/DEVELOPMENT.md` §6).
+- Default Docker bindings are `127.0.0.1`; do not change bind addresses without explicit instruction (see `docs/development/local.md` §6).
 
 ## Code review
 

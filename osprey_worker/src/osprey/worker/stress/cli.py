@@ -12,9 +12,10 @@ to the input topic at rate R, consumes the resulting `ExecutionResult`s from
 the output topic, and reports drop rate + latency. Exits non-zero on threshold
 breach so it can be wired into CI as a gate.
 
-The `measure` subcommand is reserved for when #236 (jetstream input stream
-plugin) lands — it will let the same measurement layer run in open-loop mode
-against any external input source. Today it prints a stub message.
+The `measure` subcommand is a planned open-loop mode: it would run the same
+measurement layer against events produced by an external source (such as the
+JetStream input stream sample from #236) rather than synthetic ones. It is not
+implemented yet, so today it prints a stub message; use `run` in the meantime.
 """
 
 from __future__ import annotations
@@ -282,7 +283,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     measure = subparsers.add_parser(
         'measure',
-        help='Measure-only mode (open-loop). Stub until #236 lands.',
+        help='Open-loop measurement mode; not yet implemented (use `run`).',
     )
     _add_common_kafka_args(measure)
     _add_threshold_args(measure)
@@ -428,10 +429,10 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 def cmd_measure(args: argparse.Namespace) -> int:
     print(
-        '[osprey-stress] `measure` is not yet implemented. It will activate once '
-        '#236 (jetstream input stream plugin) lands so this CLI can run the '
-        'measurement layer against externally-produced events. '
-        'Use `osprey-stress run` for synthetic closed-loop testing.',
+        '[osprey-stress] `measure` (open-loop mode) is not yet implemented. It is '
+        'intended to measure against externally-produced events, such as the '
+        'JetStream input stream sample (#236). '
+        'Use `osprey-stress run` for synthetic closed-loop testing in the meantime.',
         file=sys.stderr,
     )
     return EXIT_INTERNAL_ERROR

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from pathlib import Path
 from threading import Lock
+from types import MappingProxyType
 from typing import ClassVar, TypeVar
 
 # TODO: Uncomment logging when we have a logging system
@@ -417,8 +418,12 @@ class Call(Expression, Statement):
 
         return None
 
-    def argument_dict(self) -> dict[str, Expression]:
-        return {arg.name: arg.value for arg in self.arguments}
+    def argument_dict(self) -> Mapping[str, Expression]:
+        return self._argument_dict_cached
+
+    @cached_property
+    def _argument_dict_cached(self) -> Mapping[str, Expression]:
+        return MappingProxyType({arg.name: arg.value for arg in self.arguments})
 
     @property
     def can_extract(self) -> bool:
