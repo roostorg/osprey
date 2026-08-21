@@ -49,7 +49,7 @@ body:
     attributes:
       label: Relevant logs/errors
       description: >
-        Please paste any relevant log output or error messages.
+        Please paste any relevant log output or error messages. Redact passwords, API keys, tokens, personal data, and other sensitive values before submitting.
       render: shell
     validations:
       required: false
@@ -75,6 +75,7 @@ body:
         [acceptable use policies](https://docs.github.com/en/site-policy/acceptable-use-policies).
     validations:
       required: false
+      accept: ".png,.jpg,.jpeg,.gif,.svg,.webp"
 
   - type: checkboxes
     id: checklist

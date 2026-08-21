@@ -61,6 +61,7 @@ body:
         [acceptable use policies](https://docs.github.com/en/site-policy/acceptable-use-policies).
     validations:
       required: false
+      accept: ".png,.jpg,.jpeg,.gif,.svg,.webp"
 
   - type: checkboxes
     id: checklist
