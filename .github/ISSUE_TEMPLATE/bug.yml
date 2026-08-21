@@ -1,5 +1,5 @@
-name: Bug report
-description: Create a report to help us improve
+name: Report a bug
+description: Something is broken or not working correctly
 type: bug
 body:
   - type: markdown
@@ -10,39 +10,22 @@ body:
         triage, and ultimately fix your bug.
 
   - type: textarea
-    id: description
+    id: behavior
     attributes:
-      label: Problem description
-      description: A clear and concise description of what the bug is.
-    validations:
-      required: true
-
-  - type: textarea
-    id: reproduce
-    attributes:
-      label: To reproduce
-      description: Steps to reproduce the behavior.
-      placeholder: |
-        1. Go to '...'
-        2. Click on '....'
-        3. Scroll down to '....'
-        4. See error
-    validations:
-      required: true
-
-  - type: textarea
-    id: expected
-    attributes:
-      label: Expected behavior
-      description: A clear and concise description of what you expected to happen.
+      label: What happened
+      description: >
+        …and what did you expect to happen, instead?
+      placeholder: On the Query page, when I click on…
     validations:
       required: true
 
   - type: input
-    id: os
+    id: version
     attributes:
-      label: OS
-      placeholder: e.g. macOS 14, Ubuntu 22.04
+      label: Version/commit
+      description: >
+        What version of Osprey are you running? If you’re not sure, leave it blank.
+        If you know the specific commit, include it here.
     validations:
       required: false
 
@@ -62,18 +45,34 @@ body:
         - Safari
 
   - type: textarea
-    id: screenshots
+    id: logs
     attributes:
-      label: Screenshots/recordings/logs
-      description: If applicable, add screenshots or logs to help explain your problem.
+      label: Relevant logs/errors
+      description: >
+        Please paste any relevant log output or error messages.
+      render: shell
     validations:
       required: false
 
   - type: textarea
     id: extra
     attributes:
-      label: Additional context
-      description: Add any other context about the problem here.
+      label: Anything else
+      description: >
+        Share any other information that could be helpful in reproducing,
+        triaging, or fixing your bug.
+    validations:
+      required: false
+
+  - type: upload
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: >
+        If applicable, add screenshots to help explain your problem.
+        **Please redact sensitive information** such as user content or personal
+        details before uploading. Do not share content that violates GitHub’s
+        [acceptable use policies](https://docs.github.com/en/site-policy/acceptable-use-policies).
     validations:
       required: false
 
@@ -82,9 +81,9 @@ body:
     attributes:
       label: Checklist
       description: >
-        Make sure you've completed each step and reviewed the
+        Make sure you’ve completed each step and reviewed the
         [Code of Conduct](https://github.com/roostorg/.github/blob/main/CODE_OF_CONDUCT.md)
         before submitting.
       options:
-        - label: I've reviewed and agree to follow the code of conduct
+        - label: I’ve reviewed and agree to follow the code of conduct
           required: true
