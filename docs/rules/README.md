@@ -4,6 +4,7 @@ Rules are how you teach Osprey what to look for and what to do when it finds it.
 
 See also: 
   - [Examples](examples.md) to apply all the concepts to complete, runnable rulesets
+  - [Ruleset Configuration](configuration.md) for YAML settings loaded alongside SML rules
   - [Why a Bespoke Language?](why-sml.md) for more about SML and why it exists
 
 ![A user's action flows from your production service into Osprey as an event, where rules call UDFs and produce execution output; output sinks return verdicts to your service—the user gets banned—and send features to the Osprey UI](../images/rules_architecture.png)
