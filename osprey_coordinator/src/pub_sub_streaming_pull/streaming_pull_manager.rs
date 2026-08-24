@@ -49,6 +49,51 @@ const METRICS_REPORTING_INTERVAL: Duration = Duration::from_secs(1);
 /// How often we should attempt to flush leases.
 const LEASE_RENEWAL_INTERVAL: Duration = Duration::from_secs(1);
 
+/// The first lease renewal waits for messages to form a batch.
+const INITIAL_LEASE_RENEWAL_DELAY: Duration = Duration::from_secs(1);
+
+/// The shortest renewal interval that yields to the manager loop.
+const MIN_LEASE_RENEWAL_INTERVAL: Duration = Duration::from_millis(1);
+
+fn lease_renewal_interval(
+    flow_control: &FlowControl,
+    lease_renewal_deadline: Duration,
+) -> Duration {
+    assert!(
+        flow_control.max_messages > 0,
+        "Flow control max_messages must be greater than zero"
+    );
+
+    let catch_up_window = lease_renewal_deadline
+        .checked_sub(INITIAL_LEASE_RENEWAL_DELAY)
+        .expect("Buffered lease deadline must exceed the initial renewal delay");
+    let batch_count = flow_control.max_messages.div_ceil(ACK_IDS_MAX_BATCH_SIZE);
+    let batch_count_nanos = u128::try_from(batch_count).expect("Batch count must fit in u128");
+    let minimum_catch_up_nanos = MIN_LEASE_RENEWAL_INTERVAL
+        .as_nanos()
+        .checked_mul(batch_count_nanos)
+        .expect("Lease renewal batch count exceeds the supported range");
+
+    assert!(
+        minimum_catch_up_nanos <= catch_up_window.as_nanos(),
+        "Flow control max_messages cannot renew all lease batches before the buffered deadline"
+    );
+
+    let interval_nanos =
+        (catch_up_window.as_nanos() / batch_count_nanos).min(LEASE_RENEWAL_INTERVAL.as_nanos());
+    Duration::from_nanos(
+        u64::try_from(interval_nanos).expect("Lease renewal interval must fit in u64"),
+    )
+}
+
+fn buffered_lease_renewal_duration(lease_renewal_duration_secs: u32) -> Duration {
+    let buffer = Duration::from_millis(
+        ((((lease_renewal_duration_secs * 1000) as f64) * 0.2) as u64).min(5_000),
+    );
+
+    Duration::from_secs(lease_renewal_duration_secs as _) - buffer
+}
+
 type TonicSubscriberClient<I> = SubscriberClient<InterceptedService<tonic::transport::Channel, I>>;
 
 impl FlowControl {
@@ -282,12 +327,7 @@ where
 
     /// Returns the maximum amount of time we should wait before renewing the lease on a message.
     fn get_buffered_lease_renewal_duration(&self) -> Duration {
-        // Allow for 20% buffer, or 5 seconds, which ever is greater.
-        let buffer = Duration::from_millis(
-            ((((self.message_lease_renewal_duration_secs * 1000) as f64) * 0.2) as u64).min(5_000),
-        );
-
-        Duration::from_secs(self.message_lease_renewal_duration_secs as _) - buffer
+        buffered_lease_renewal_duration(self.message_lease_renewal_duration_secs)
     }
 
     /// Recomputes `message_lease_renewal_duration_secs` based upon the p99 of message processing latency.
@@ -346,6 +386,11 @@ where
         message_handler: M,
         metrics_client_builder: MetricsClientBuilder,
     ) -> StreamingPullManagerHandle {
+        let initial_lease_renewal_duration_secs = flow_control.min_duration_per_lease_extension;
+        lease_renewal_interval(
+            &flow_control,
+            buffered_lease_renewal_duration(initial_lease_renewal_duration_secs),
+        );
         let client_id = uuid::Uuid::new_v4();
 
         let metrics = StreamingPullManagerMetrics::new();
@@ -361,7 +406,7 @@ where
             (flow_control.max_duration_per_lease_extension * 1000) as _,
             3
         ).expect("invariant: histogram creation should never fail, as the bounds are checked in FlowControl");
-        let message_lease_renewal_duration_secs = flow_control.min_duration_per_lease_extension;
+        let message_lease_renewal_duration_secs = initial_lease_renewal_duration_secs;
         let message_ack_queue = MessageAckQueue::new(
             flow_control.max_messages,
             std::cmp::min(ACK_IDS_MAX_BATCH_SIZE, flow_control.max_messages),
@@ -427,7 +472,10 @@ where
         let mut metrics_reporting_interval = interval(METRICS_REPORTING_INTERVAL);
         metrics_reporting_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
-        let mut lease_renewal_interval = interval(LEASE_RENEWAL_INTERVAL);
+        let mut lease_renewal_interval = interval(lease_renewal_interval(
+            &self.state.flow_control,
+            self.state.get_buffered_lease_renewal_duration(),
+        ));
         lease_renewal_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
         while !self.should_stop() {
@@ -598,7 +646,7 @@ where
         let received_at = Instant::now();
         // The rationale of this being 1 second from now is that we'll delay these by 1 second so that we can build
         // up a batch of lease renewals within the message ack queue's lease delay queue.
-        let lease_renew_at = tokio::time::Instant::from(received_at + Duration::from_secs(1));
+        let lease_renew_at = tokio::time::Instant::from(received_at + INITIAL_LEASE_RENEWAL_DELAY);
 
         streaming_pull_response
             .received_messages
@@ -773,66 +821,56 @@ where
             && self.state.background_tasks.is_empty()
     }
 
-    /// Issues modack requests to pub-sub in order to renew leases for messages that are either in-flight or on hold.
-    ///
-    /// Returns true if a full batch was flushed, and the next lease renewal flush should perhaps be expedited.
+    /// Renews one lease batch per tick so that the manager can receive more messages.
     fn handle_renew_leases(&mut self) {
-        loop {
-            self.state.recompute_message_lease_renewal_duration_secs();
-            let lease_renewal_duration =
-                Duration::from_secs(self.state.message_lease_renewal_duration_secs as _);
+        self.state.recompute_message_lease_renewal_duration_secs();
+        let lease_renewal_duration =
+            Duration::from_secs(self.state.message_lease_renewal_duration_secs as _);
 
-            let chunk = self
-                .state
-                .message_ack_queue
-                .collect_ack_ids_that_need_to_be_renewed(
-                    ACK_IDS_MAX_BATCH_SIZE,
-                    self.state.get_buffered_lease_renewal_duration(),
-                );
-
-            if chunk.is_empty() {
-                break;
-            }
-
-            let chunk_is_full = chunk.len() == ACK_IDS_MAX_BATCH_SIZE;
-
-            tracing::debug!(
-                {subscription = %self.state.subscription, client_id = %self.state.client_id},
-                "renewing leases for {} messages with a lease duration of {} seconds",
-                chunk.len(),
-                self.state.message_lease_renewal_duration_secs,
+        let chunk = self
+            .state
+            .message_ack_queue
+            .collect_ack_ids_that_need_to_be_renewed(
+                ACK_IDS_MAX_BATCH_SIZE,
+                self.state.get_buffered_lease_renewal_duration(),
             );
 
-            self.state
-                .metrics
-                .message_leases_renewed
-                .incr_by(chunk.len() as _);
-
-            let mut ack_ids = Vec::with_capacity(chunk.len());
-
-            for (elapsed, ack_id) in chunk {
-                if elapsed > lease_renewal_duration {
-                    self.state
-                        .message_latency_histogram
-                        .saturating_record(elapsed.as_millis() as _);
-                }
-                ack_ids.push(ack_id);
-            }
-
-            self.state.perform_request_in_background_with_retries(
-                "renew_leases",
-                make_modack_request(
-                    &self.state.subscription,
-                    ack_ids,
-                    self.state.message_lease_renewal_duration_secs,
-                ),
-                |mut c, r| async move { c.modify_ack_deadline(r).await },
-            );
-
-            if !chunk_is_full {
-                break;
-            }
+        if chunk.is_empty() {
+            return;
         }
+
+        tracing::debug!(
+            {subscription = %self.state.subscription, client_id = %self.state.client_id},
+            "renewing leases for {} messages with a lease duration of {} seconds",
+            chunk.len(),
+            self.state.message_lease_renewal_duration_secs,
+        );
+
+        self.state
+            .metrics
+            .message_leases_renewed
+            .incr_by(chunk.len() as _);
+
+        let mut ack_ids = Vec::with_capacity(chunk.len());
+
+        for (elapsed, ack_id) in chunk {
+            if elapsed > lease_renewal_duration {
+                self.state
+                    .message_latency_histogram
+                    .saturating_record(elapsed.as_millis() as _);
+            }
+            ack_ids.push(ack_id);
+        }
+
+        self.state.perform_request_in_background_with_retries(
+            "renew_leases",
+            make_modack_request(
+                &self.state.subscription,
+                ack_ids,
+                self.state.message_lease_renewal_duration_secs,
+            ),
+            |mut c, r| async move { c.modify_ack_deadline(r).await },
+        );
     }
 
     /// Flushes a chunk of acks or nacks to pub-sub server.
@@ -1044,5 +1082,168 @@ impl StreamingPullChannel {
                 StreamingPullChannel::Closed => return pending().await,
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestMessageHandler;
+
+    impl MessageHandler for TestMessageHandler {
+        fn handle_messages(&mut self, _: Vec<Message>) {}
+    }
+
+    #[derive(Clone)]
+    struct TestInterceptor;
+
+    impl Interceptor for TestInterceptor {
+        fn call(&mut self, request: tonic::Request<()>) -> Result<tonic::Request<()>, Status> {
+            Ok(request)
+        }
+    }
+
+    fn manager(
+        flow_control: FlowControl,
+    ) -> StreamingPullManager<TestInterceptor, TestMessageHandler> {
+        let channel = tonic::transport::Endpoint::from_static("http://[::]:50051").connect_lazy();
+        let client = SubscriberClient::with_interceptor(channel, TestInterceptor);
+        let (sender, receiver) = unbounded_channel();
+        let message_lease_renewal_duration_secs = flow_control.min_duration_per_lease_extension;
+        let message_latency_histogram = Histogram::new_with_max(
+            (flow_control.max_duration_per_lease_extension * 1000) as _,
+            3,
+        )
+        .unwrap();
+
+        StreamingPullManager {
+            receiver,
+            state: StreamingPullManagerState {
+                client,
+                flow_control,
+                message_lease_renewal_duration_secs,
+                messages_on_hold: Default::default(),
+                client_id: uuid::Uuid::nil(),
+                subscription: "projects/test/subscriptions/test".into(),
+                message_ack_queue: MessageAckQueue::new(
+                    25_001,
+                    ACK_IDS_MAX_BATCH_SIZE,
+                    Duration::ZERO,
+                ),
+                messages_in_flight: Default::default(),
+                graceful_stop_join_handles: None,
+                metrics: StreamingPullManagerMetrics::new(),
+                message_latency_histogram,
+                sender,
+                background_tasks: JoinSet::new(),
+                streaming_pull_channel_async_backoff: async_backoff(),
+            },
+            channel: StreamingPullChannel::Closed,
+            message_handler: TestMessageHandler,
+            _metrics_emit_worker_abort_on_drop: tokio::spawn(async {
+                futures::future::pending::<()>().await;
+            })
+            .into(),
+        }
+    }
+
+    fn insert_due(manager: &mut StreamingPullManager<TestInterceptor, TestMessageHandler>) {
+        let renew_at = tokio::time::Instant::now();
+        for index in 0..25_001 {
+            manager.state.message_ack_queue.transform_and_store_ack_id(
+                format!("server-{index}"),
+                Instant::now(),
+                renew_at,
+            );
+        }
+    }
+
+    #[test]
+    fn renewal_interval_covers_maximum_working_set_before_minimum_deadline() {
+        let buffered_deadline = buffered_lease_renewal_duration(10);
+        let catch_up_window = buffered_deadline - INITIAL_LEASE_RENEWAL_DELAY;
+        let batch_count = catch_up_window.as_nanos() / MIN_LEASE_RENEWAL_INTERVAL.as_nanos();
+        let max_messages = usize::try_from(batch_count)
+            .unwrap()
+            .checked_mul(ACK_IDS_MAX_BATCH_SIZE)
+            .unwrap();
+        let flow_control = FlowControl::new()
+            .set_max_messages(max_messages)
+            .set_duration_per_lease_extension(10, 10);
+        let interval = lease_renewal_interval(&flow_control, buffered_deadline);
+        let batches = flow_control.max_messages.div_ceil(ACK_IDS_MAX_BATCH_SIZE);
+
+        assert!(interval < LEASE_RENEWAL_INTERVAL);
+        assert!(
+            interval.as_nanos() * u128::try_from(batches).unwrap() <= catch_up_window.as_nanos()
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "max_messages must be greater than zero")]
+    fn renewal_interval_rejects_zero_max_messages() {
+        lease_renewal_interval(
+            &FlowControl::new().set_max_messages(0),
+            Duration::from_secs(8),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "cannot renew all lease batches")]
+    fn renewal_interval_rejects_one_batch_above_the_supported_limit() {
+        let max_messages = 7_001 * ACK_IDS_MAX_BATCH_SIZE;
+        let flow_control = FlowControl::new()
+            .set_max_messages(max_messages)
+            .set_duration_per_lease_extension(10, 10);
+
+        lease_renewal_interval(&flow_control, buffered_lease_renewal_duration(10));
+    }
+
+    #[test]
+    #[should_panic(expected = "cannot renew all lease batches")]
+    fn renewal_interval_rejects_a_batch_count_above_u32() {
+        let batch_count = usize::try_from(u64::from(u32::MAX))
+            .unwrap()
+            .checked_add(1)
+            .unwrap();
+        let max_messages = batch_count.checked_mul(ACK_IDS_MAX_BATCH_SIZE).unwrap();
+        let flow_control = FlowControl::new().set_max_messages(max_messages);
+
+        lease_renewal_interval(&flow_control, Duration::from_secs(8));
+    }
+
+    #[test]
+    #[should_panic(expected = "cannot renew all lease batches")]
+    fn renewal_interval_rejects_usize_max_messages() {
+        lease_renewal_interval(
+            &FlowControl::new().set_max_messages(usize::MAX),
+            Duration::from_secs(8),
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn renewal_action_sends_one_request_and_later_actions_cover_due_leases() {
+        let flow_control = FlowControl::new()
+            .set_max_messages(25_001)
+            .set_max_processing_messages(0)
+            .set_duration_per_lease_extension(10, 10);
+        let mut manager = manager(flow_control);
+        insert_due(&mut manager);
+        tokio::time::advance(Duration::from_secs(1)).await;
+
+        manager.handle_renew_leases();
+        assert_eq!(manager.state.background_tasks.len(), 1);
+
+        for _ in 1..11 {
+            manager.handle_renew_leases();
+        }
+
+        assert_eq!(manager.state.background_tasks.len(), 11);
+        assert!(manager
+            .state
+            .message_ack_queue
+            .collect_ack_ids_that_need_to_be_renewed(ACK_IDS_MAX_BATCH_SIZE, Duration::from_secs(8))
+            .is_empty());
     }
 }

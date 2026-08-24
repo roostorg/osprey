@@ -222,6 +222,7 @@ services:
     entrypoint:
       - /bin/bash
     command: ["/osprey/example_data/generate_test_data.sh"]
+    restart: unless-stopped
 
   postgres:
     hostname: postgres

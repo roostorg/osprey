@@ -1,0 +1,90 @@
+name: Report a bug
+description: Something is broken or not working correctly
+type: bug
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Thanks for taking the time to report a bug in Osprey! **Please
+        provide as much detail as you can** so we can properly confirm,
+        triage, and ultimately fix your bug.
+
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened
+      description: >
+        …and what did you expect to happen, instead?
+      placeholder: On the Query page, when I click on…
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version/commit
+      description: >
+        What version of Osprey are you running? If you’re not sure, leave it blank.
+        If you know the specific commit, include it here.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: browsers
+    attributes:
+      label: Affected browser(s)
+      description: >
+        Which browser(s) are you seeing the problem in? Leave blank if it's
+        not a front-end issue. If an affected browser is not included in this
+        list, mention it below.
+      multiple: true
+      options:
+        - Chrome
+        - Firefox
+        - Microsoft Edge
+        - Safari
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs/errors
+      description: >
+        Please paste any relevant log output or error messages. Redact passwords, API keys, tokens, personal data, and other sensitive values before submitting.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: >
+        Share any other information that could be helpful in reproducing,
+        triaging, or fixing your bug.
+    validations:
+      required: false
+
+  - type: upload
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: >
+        If applicable, add screenshots to help explain your problem.
+        **Please redact sensitive information** such as user content or personal
+        details before uploading. Do not share content that violates GitHub’s
+        [acceptable use policies](https://docs.github.com/en/site-policy/acceptable-use-policies).
+    validations:
+      required: false
+      accept: ".png,.jpg,.jpeg,.gif,.svg,.webp"
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: >
+        Make sure you’ve completed each step and reviewed the
+        [Code of Conduct](https://github.com/roostorg/.github/blob/main/CODE_OF_CONDUCT.md)
+        before submitting.
+      options:
+        - label: I’ve reviewed and agree to follow the code of conduct
+          required: true

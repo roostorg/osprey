@@ -25,7 +25,7 @@ common = [
     "googleapis-common-protos==1.70.0",
     "graphviz==0.20",
     "greenlet",
-    "grpc-google-iam-v1==0.14.2",
+    "grpc-google-iam-v1==0.14.4",
     "grpcio==1.49.1; platform_machine == 'x86_64'",
     "grpcio==1.53.*; platform_machine != 'x86_64'",
     "grpcio-health-checking==1.44.0",
@@ -72,7 +72,7 @@ common = [
     "traitlets==5.14.3",
     "typing-extensions==4.12.2",
     "typing-inspect==0.9.0",
-    "unidecode==1.3.8",
+    "anyascii==0.3.3",
     "werkzeug==1.0.1",
     # --- Type stubs (used by mypy, not imported directly) ---
     "types-cachetools==6.1.0.20250717",
@@ -125,6 +125,7 @@ osprey_rpc = { workspace = true }
 osprey_worker = { workspace = true }
 osprey_async_worker = { workspace = true }
 example_plugins = { workspace = true }
+example_atproto_plugins = { workspace = true }
 
 [tool.uv.workspace]
 members = [
@@ -132,6 +133,7 @@ members = [
     "osprey_worker",
     "osprey_async_worker",
     "example_plugins",
+    "example_atproto_plugins",
 ]
 
 
@@ -164,18 +166,20 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["osprey_worker", "osprey_async_worker", "osprey_rpc", "example_plugins"]
+known-first-party = ["osprey_worker", "osprey_async_worker", "osprey_rpc", "example_plugins", "example_atproto_plugins"]
 
 [tool.fawltydeps]
-code = ["osprey_worker/src", "osprey_async_worker/src", "osprey_rpc/src", "example_plugins/src"]
+code = ["osprey_worker/src", "osprey_async_worker/src", "osprey_rpc/src", "example_plugins/src", "example_atproto_plugins/src"]
 # Include the workspace members so member-declared runtime deps (e.g. flask-cors on
-# osprey_worker, aiodns/pycares on osprey_async_worker) aren't reported as undeclared.
+# osprey_worker, aiodns/pycares on osprey_async_worker, websocket-client on
+# example_atproto_plugins) aren't reported as undeclared.
 deps = [
     "pyproject.toml",
     "osprey_rpc/pyproject.toml",
     "osprey_worker/pyproject.toml",
     "osprey_async_worker/pyproject.toml",
     "example_plugins/pyproject.toml",
+    "example_atproto_plugins/pyproject.toml",
 ]
 ignore_undeclared = [
     # First-party: example_plugins uses a flat src layout, so these are its own
@@ -239,7 +243,7 @@ ignore_unused = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["osprey_worker", "example_plugins"]
+testpaths = ["osprey_worker", "example_plugins", "example_atproto_plugins"]
 asyncio_mode = "auto"
 
 [tool.mypy]
@@ -254,6 +258,7 @@ mypy_path = [
     "osprey_worker/src",
     "osprey_async_worker/src",
     "example_plugins/src",
+    "example_atproto_plugins/src",
 ]
 
 # Strict mode includes the following flags. When these are all True, they can be replaced with strict mode.

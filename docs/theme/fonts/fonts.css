@@ -7,13 +7,10 @@
   font-style: normal;
 }
 
+
 h1, h2, h3, h4, h5, h6 {
   font-family: "Funnel Display", sans-serif;
   font-optical-sizing: auto;
   font-weight: 700;
   font-style: normal;
-}
-
-.content a {
-  text-decoration: underline;
 }
