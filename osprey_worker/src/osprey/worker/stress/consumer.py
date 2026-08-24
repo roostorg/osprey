@@ -4,9 +4,9 @@ Subscribes to the `osprey.execution_results` Kafka topic and records the
 wall-clock receive time per `ActionId` so the reporter can pair every input
 event with its output and compute end-to-end latency.
 
-Producer-agnostic: the same consumer works against synthetic load (#324),
-jetstream-driven load (once #236 lands), or any other input source. The
-optional `action_id_filter` decides whether we're in closed-loop matching mode
+Producer-agnostic: the same consumer works against synthetic load (#324), an
+external source such as the JetStream input stream, or any other input source.
+The optional `action_id_filter` decides whether we're in closed-loop matching mode
 (only count IDs we know about) or open-loop throughput mode (count everything).
 """
 
