@@ -9,6 +9,13 @@
 # 'models/enrichment.sml' to main.sml's imports and add Handle / DisplayName to
 # config/ui_config.yaml. See the plugin README for how to extend it with more
 # profile fields (account age, follower counts, existing labels).
+#
+# Note the difference between a UDF being registered and being invoked. The plugin
+# registers AtprotoHandle / AtprotoDisplayName whenever it is installed, the same
+# as every other example UDF, so the compiler can resolve them. That registration
+# is inert: it makes no API calls. The getProfile lookups happen only when a rule
+# references the UDFs, which happens only through this file. So leaving it out of
+# main.sml's imports is what keeps enrichment off; there is no separate switch.
 
 Did: str = JsonData(
   path='$.did',

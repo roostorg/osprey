@@ -67,7 +67,11 @@ Account events, commits for collections not in `COLLECTION_NAMES`, and commits w
 
 JetStream events identify the actor only by DID, which isn't searchable the way a handle or display name is. The plugin ships two UDFs, `AtprotoHandle` and `AtprotoDisplayName`, that resolve a DID to those fields via Bluesky's public, unauthenticated AppView (`app.bsky.actor.getProfile`). Results are cached per DID and lookups fail soft (the feature is simply absent) when the API errors or rate-limits. The whole profile is fetched once per DID: because async UDFs run concurrently, a rule that reads both fields would otherwise fire two `getProfile` calls at once, so a fetch already in progress for a DID is shared rather than duplicated. Cached entries expire after an hour since handles and display names change; the fuller approach is to bust a DID's entry when an identity or profile-update event comes through JetStream, left out here to keep the example focused.
 
-**It is off by default.** Each unique DID costs an external API call, which is fine for a demo but is exactly the kind of dependency you don't want in a load test — so the default rules run against the raw firehose with no outbound calls. To turn enrichment on:
+**It is off by default.** Each unique DID costs an external API call, which is fine for a demo but is exactly the kind of dependency you don't want in a load test — so the default rules run against the raw firehose with no outbound calls.
+
+Being "off" here means not invoked, not unregistered. The plugin registers `AtprotoHandle` / `AtprotoDisplayName` whenever it is installed (the same as every other example UDF), so the SML compiler can resolve them, but registration is inert and makes no API calls. A `getProfile` lookup happens only when a rule references a UDF, which happens only through `models/enrichment.sml`. So the import list in `main.sml` is the only switch, and by default it is off. Registration can't be gated on the import instead, since the compiler has to know the UDF exists before it can resolve the reference.
+
+To turn enrichment on:
 
 1. Import `models/enrichment.sml` in `example_atproto_rules/main.sml`. Imports must stay lexicographically sorted, so the list becomes:
 
