@@ -2,7 +2,7 @@
 
 Labels are annotations you apply to entities: users, IP addresses, emails, and other tracked objects. They're the bridge between human judgment and Osprey's automated rule system; a label you apply manually can feed into rules that act on future events automatically.
 
-Labels have three polarities:
+Labels have one of three connotations:
 
 - **Negative**: harmful or problematic (e.g. `spammer`, `bot`, `banned`, `suspicious`)
 - **Positive**: trusted or verified (e.g. `verified`, `trusted`, `premium_user`)
@@ -14,7 +14,7 @@ A reason is required whenever you apply a label.
 
 Selecting an entity anywhere in the UI navigates to an entity view showing every label that has ever been applied to that entity, grouped by label name.
 
-![User Entity](../../images/osprey-user-entity.png)
+![The entity view for a user, listing their negative labels—including identity_evasion with its description and an automatically added RapidHandleChange entry—beside the query page's charts and event stream](../../images/osprey-user-entity.png)
 
 Each label entry shows:
 - The label value and type
@@ -26,12 +26,12 @@ Each label entry shows:
 
 From a Top N table, hover over an entity row and select **Edit Labels**:
 
-![Add Labels](../../images/add-labels.png)
+![The label popup for a PostText entity in a Top N table, with keyboard hints for adding the entity to the query and an Edit Labels button](../../images/add-labels.png)
 
 From the event stream, select any entity to open its label drawer.
 
-![Empty Label](../../images/empty-label.png)
+![The label drawer for a user entity, with a label name search, reason and expiration fields, and empty negative, positive, and neutral label sections](../../images/empty-label.png)
 
-![Complete Label](../../images/complete-label.png)
+![An entity view with negative labels applied, one expanded to show its description and the rule event that produced it, plus neutral labels below; identifying values are redacted](../../images/complete-label.png)
 
-For more about how labels are used, see [Writing Rules → Labels](../../rules.md#labels).
+For more about how labels are used, see [Writing Rules → Labels](../../rules/#labels).

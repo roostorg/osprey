@@ -50,6 +50,7 @@ def bootstrap_stdlib_engine(rules_path: str) -> tuple[AsyncOspreyEngine, UDFHelp
     """Bootstrap engine with only stdlib UDFs — no external plugins, no Postgres, no labels.
 
     This avoids loading example_plugins or any third-party plugins that require database connections.
+    It registers no native async UDFs, so native timeout configuration does not apply.
     """
     from osprey.engine.ast_validator import ValidatorRegistry
     from osprey.worker._stdlibplugin.udf_register import register_udfs as stdlib_register_udfs

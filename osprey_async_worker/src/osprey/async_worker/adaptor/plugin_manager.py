@@ -7,13 +7,19 @@ All UDFs with I/O must have native async implementations — no sync fallbacks.
 from __future__ import annotations
 
 import logging
+import math
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, List, Type, cast
 
 import pluggy
 from osprey.async_worker.adaptor import hookspecs as async_hookspecs
 from osprey.async_worker.adaptor.constants import OSPREY_ASYNC_ADAPTOR
-from osprey.async_worker.adaptor.interfaces import AsyncBaseOutputSink
+from osprey.async_worker.adaptor.interfaces import (
+    DEFAULT_ASYNC_UDF_TIMEOUT,
+    AsyncBaseOutputSink,
+    AsyncBatchableUDFBase,
+    AsyncUDFBase,
+)
 from osprey.async_worker.sinks.sink.output_sink import AsyncMultiOutputSink
 from osprey.engine.ast_validator import ValidatorRegistry
 from osprey.engine.executor.udf_execution_helpers import HasHelper, UDFHelpers
@@ -23,6 +29,8 @@ from osprey.worker.lib.action_proto_deserializer import ActionProtoDeserializer
 
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
+
+OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT = 'OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT'
 
 hookimpl_osprey_async: pluggy.HookimplMarker = pluggy.HookimplMarker(OSPREY_ASYNC_ADAPTOR)
 
@@ -66,6 +74,17 @@ def _deduplicate_udfs(
     return deduplicated
 
 
+def _validate_udf_timeout(value: object, source: str) -> None:
+    """Validate a timeout value.
+
+    Raises ValueError naming the source and value when not finite or non-positive.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f'{source} must be a positive finite number, got {value!r}')
+    if not math.isfinite(value) or value <= 0:
+        raise ValueError(f'{source} must be a positive finite number, got {value}')
+
+
 def bootstrap_async_udfs(config: 'Config | None' = None) -> tuple[UDFRegistry, UDFHelpers]:
     """Bootstrap UDFs from async plugins + stdlib.
 
@@ -76,8 +95,20 @@ def bootstrap_async_udfs(config: 'Config | None' = None) -> tuple[UDFRegistry, U
     `_async_stdlib_plugin`, which registers through the same `register_udfs`
     hook as third-party plugins. No sync fallbacks — all I/O UDFs must be
     native async.
+
+    Resolves the default UDF timeout from OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT config key,
+    defaulting to 2.0. Each call replaces the process-wide inherited default and
+    must finish before UDF execution starts. Validation completes before mutation.
     """
     from osprey.worker._stdlibplugin.udf_register import register_udfs as stdlib_register_udfs
+
+    # Resolve and validate the configured timeout before any mutations
+    resolved_timeout = (
+        DEFAULT_ASYNC_UDF_TIMEOUT
+        if config is None
+        else config.get_float(OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT, DEFAULT_ASYNC_UDF_TIMEOUT)
+    )
+    _validate_udf_timeout(resolved_timeout, f'config[{OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT!r}]')
 
     load_all_async_plugins()
     udf_helpers = UDFHelpers()
@@ -85,6 +116,13 @@ def bootstrap_async_udfs(config: 'Config | None' = None) -> tuple[UDFRegistry, U
     stdlib_udfs = list(stdlib_register_udfs())
     plugin_udfs = _flatten(plugin_manager.hook.register_udfs())
     all_udfs = _deduplicate_udfs(stdlib_udfs, plugin_udfs)
+
+    for udf in all_udfs:
+        if issubclass(udf, (AsyncUDFBase, AsyncBatchableUDFBase)):
+            _validate_udf_timeout(udf.timeout, f'{udf.__name__}.timeout')
+
+    AsyncUDFBase.timeout = resolved_timeout
+    AsyncBatchableUDFBase.timeout = resolved_timeout
 
     # Auto-register helpers for UDFs that extend HasHelper
     for udf in all_udfs:

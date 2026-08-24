@@ -13,7 +13,7 @@ export const Routes = {
   BULK_ACTION: '/bulk-action',
 };
 
-export const DATE_FORMAT = 'M/D/YYYY h:mm:ssa zz';
+export const DATE_FORMAT = 'M/D/YYYY h:mm:ssa z';
 
 // These should mirror the `--status-primary` colors in Colors.module.css
 export const StatusColors = {

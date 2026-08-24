@@ -16,7 +16,7 @@ Top-level modules:
 - `example_rules/` — sample SML rules and YAML config.
 - `example_atproto_rules/` — sample SML rules paired with `example_atproto_plugins/`.
 
-Reference files: `docs/DEVELOPMENT.md` (setup), `example_plugins/src/register_plugins.py` (plugin patterns), `example_plugins/src/services/labels_service.py` (labels service example).
+Reference files: `docs/development/local.md` (setup), `example_plugins/src/register_plugins.py` (plugin patterns), `example_plugins/src/services/labels_service.py` (labels service example).
 
 ## Design
 
@@ -159,7 +159,7 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 - Do not disable lint or type rules to silence errors. Fix the underlying issue, or use a narrowly-scoped `# noqa: <code>` / `# type: ignore[<code>]` with a comment explaining why.
 - Before adding a new dependency, check it for known CVEs and confirm the license is compatible with `LICENSE.md`.
 - Do not commit generated protobuf files from an untrusted toolchain; always regenerate via `./gen-protos.sh`.
-- Default Docker bindings are `127.0.0.1`; do not change bind addresses without explicit instruction (see `docs/DEVELOPMENT.md` §6).
+- Default Docker bindings are `127.0.0.1`; do not change bind addresses without explicit instruction (see `docs/development/local.md` §6).
 
 ## Code review
 
