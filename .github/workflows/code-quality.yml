@@ -51,8 +51,8 @@ jobs:
           uv run pre-commit install --install-hooks
           uv run pre-commit run --show-diff-on-failure --color=always --all-files
 
-      - name: Check for unused dependencies
-        run: uv tool run fawltydeps --check-unused --pyenv .venv
+      - name: Check for unused and undeclared dependencies
+        run: uv tool run fawltydeps --pyenv .venv
 
   ui-quality:
     runs-on: ubuntu-24.04
