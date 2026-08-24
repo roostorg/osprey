@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Fixed
+
+- demo.sh waits for the osprey-worker container before printing Demo Ready, so a dead worker fails the wait instead of opening an empty UI ([#433](https://github.com/roostorg/osprey/issues/433))
+
 ## [1.1.0] - 2026-07-22
 
 ### Added

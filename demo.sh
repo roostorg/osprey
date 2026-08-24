@@ -267,6 +267,7 @@ wait_for_http_service "Druid Broker" "http://localhost:8082/status" 180 || exit 
 # Wait for osprey services (HTTP check)
 wait_for_http_service "Osprey UI API" "http://localhost:5004/config" 120 || exit 1
 wait_for_http_service "Osprey UI" "http://localhost:5002" 90 || exit 1
+wait_for_container "osprey-worker" 90 || exit 1
 
 echo ""
 echo -e "${GREEN}✓ All services are ready${NC}"
