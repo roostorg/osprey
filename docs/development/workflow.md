@@ -1,92 +1,37 @@
 # Development Workflow
 
-## Branch Management
+Branch from `main` and name your branch `github_username/short-description` (e.g. `caidanw/fix-database-timeout`).
 
-- **Branch naming convention**: Use `github_username/description` format (e.g., `caidanw/feature-auth`, `caidanw/fix-database-timeout`)
-- **Base branch**: Always branch from `main`
-- **Create new branch**: `git checkout -b username/feature-name`
+## What runs on every commit
 
-## Code Quality Standards
+Pre-commit hooks run automatically when you commit; the config is `.pre-commit-config.yaml` at the repo root. The hooks check for filename case conflicts, leftover merge-conflict markers, and forgotten Python debugger calls; validate JSON and TOML; normalize line endings to LF; lint and format Python with Ruff; and type-check with mypy. Changes under `osprey_ui/` also go through Prettier and ESLint.
 
-### Automated Checks
+Hooks stop at the first failure, and several fix files in place—if a hook modifies a file, re-stage it and commit again.
 
-Every commit automatically runs:
+## Checking your work before you push
 
-1. **Trailing whitespace removal**
-2. **End-of-file fixing**
-3. **YAML/JSON/TOML validation**
-4. **Ruff linting and formatting**
-
-### Manual Checks
-
-Before pushing, run:
+CI runs the same hooks against the whole repo, so you can catch failures ahead of time with:
 
 ```bash
-# Comprehensive linting check
-uv run ruff check
-
-# Format all code
-uv run ruff format
-
-# Type checking (on specific files/modules)
-uv run mypy osprey_worker/src/osprey_worker/lib
-# Or you can type check every module (this will happen in CI)
-uv run mypy .
-
-# Run all pre-commit hooks
 uv run pre-commit run --all-files
 ```
 
-## Commit Standards
+Or run the individual tools directly:
 
-Follow [Conventional Commits](https://www.conventionalcommits.org/) format:
+```bash
+# Lint and format
+uv run ruff check
+uv run ruff format
+
+# Type check a specific module, or everything with `uv run mypy .`
+uv run mypy osprey_worker/src/osprey/worker/lib
+```
+
+## Commit messages
+
+Follow the [Conventional Commits](https://www.conventionalcommits.org/) format. Real examples from this repo's history:
 
 ```
-feat: add user authentication system
-fix: resolve database connection timeout
-docs: update API documentation
-refactor: simplify rule evaluation logic
+fix(ui): show the event-stream timezone once, not twice
+build(deps): remove unused Discord-era Python dependencies
 ```
-
-**Examples:**
-
-- `feat:` - New features
-- `fix:` - Bug fixes
-- `docs:` - Documentation changes
-- `refactor:` - Code refactoring
-- `test:` - Adding or updating tests
-- `chore:` - Maintenance tasks
-
-## Making Changes
-
-1. **Create a new branch:**
-
-   ```bash
-   git checkout -b username/feature-name
-   ```
-
-2. **Make your changes**
-
-3. **Run quality checks:**
-
-   ```bash
-   uv run ruff check --fix
-   uv run ruff format
-   ```
-
-4. **Test your changes** (if tests exist)
-
-5. **Commit your changes:**
-
-   ```bash
-   git add .
-   git commit -m "feat: descriptive commit message"
-   ```
-
-   Pre-commit hooks will run automatically and may fix formatting issues.
-
-6. **Push your branch:**
-
-   ```bash
-   git push origin username/feature-name
-   ```

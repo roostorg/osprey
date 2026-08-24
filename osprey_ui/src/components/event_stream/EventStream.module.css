@@ -18,6 +18,34 @@
   outline: none;
 }
 
+/* react-virtualized renders a scrolling div with class `ReactVirtualized__List`.
+   On macOS the default scrollbar auto-hides until you're actively scrolling,
+   which makes it hard to skim long result sets — flagged in PR #367. Force a
+   thin always-visible bar in the theme colors. */
+.virtualizedList :global(.ReactVirtualized__List) {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-light-secondary) var(--background-secondary);
+}
+
+.virtualizedList :global(.ReactVirtualized__List)::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.virtualizedList :global(.ReactVirtualized__List)::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+}
+
+.virtualizedList :global(.ReactVirtualized__List)::-webkit-scrollbar-thumb {
+  background-color: var(--text-light-secondary);
+  border-radius: 5px;
+  border: 2px solid var(--background-secondary);
+}
+
+.virtualizedList :global(.ReactVirtualized__List)::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-light-primary);
+}
+
 .iconText {
   margin-right: 8px;
 }

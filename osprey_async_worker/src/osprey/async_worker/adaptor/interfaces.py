@@ -22,6 +22,7 @@ from osprey.engine.udf.base import (
 from result import Result
 
 _T = TypeVar('_T')
+DEFAULT_ASYNC_UDF_TIMEOUT = 2.0
 
 
 class AsyncUDFBase(UDFBase[Arguments, RValue]):
@@ -34,10 +35,15 @@ class AsyncUDFBase(UDFBase[Arguments, RValue]):
 
     The sync execute() raises so it can't accidentally be called in the
     async executor's sync path.
+
+    `timeout` sets the maximum runtime in seconds. Plugins may override it for
+    a UDF. `async_execute()` must not suppress `asyncio.CancelledError`; catch it
+    only to clean up, then re-raise it.
     """
 
     execute_async: ClassVar[bool] = True
     is_native_async: ClassVar[bool] = True
+    timeout: ClassVar[float] = DEFAULT_ASYNC_UDF_TIMEOUT
 
     def __init__(self, validation_context, arguments):
         super().__init__(validation_context, arguments)
@@ -74,10 +80,13 @@ class AsyncBatchableUDFBase(BatchableUDFBase[Arguments, RValue, BatchableArgumen
     """Native async batchable UDF base class.
 
     Same as AsyncUDFBase but for batchable UDFs. The async executor detects
-    these and awaits async_execute_batch() directly.
+    these and awaits async_execute_batch() directly. `timeout` sets the maximum
+    batch runtime in seconds. `async_execute_batch()` must not suppress
+    `asyncio.CancelledError`; catch it only to clean up, then re-raise it.
     """
 
     is_native_async: ClassVar[bool] = True
+    timeout: ClassVar[float] = DEFAULT_ASYNC_UDF_TIMEOUT
 
     def execute(self, execution_context: ExecutionContext, arguments: Arguments) -> RValue:
         raise RuntimeError(

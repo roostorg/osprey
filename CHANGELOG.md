@@ -8,6 +8,12 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Changed
+
+- Osprey starts without GCP credentials instead of crashing: Pub/Sub publishing degrades to a noop (via a `make_publisher` factory that emits a `configuration.errors` metric) when credentials are absent, and can be disabled with `OSPREY_PUBSUB_ENABLED=false`. The GCP-backed telemetry itself (analytics, webhooks, rules-visualizer experiment metadata) stays inert until GCP or a replacement is configured ([#388](https://github.com/roostorg/osprey/pull/388) by [@julietshen](https://github.com/julietshen))
+
+## [1.1.0] - 2026-07-22
+
 ### Added
 
 - Postgres execution result store backend ([#171](https://github.com/roostorg/osprey/pull/171) by [@serendipty01](https://github.com/serendipty01))
@@ -20,10 +26,12 @@ For more information about each release including git tags and artifacts, see [R
 - `GetActionId()` stdlib UDF for retrieving the current action ID from execution context ([#327](https://github.com/roostorg/osprey/pull/327) by [@julietshen](https://github.com/julietshen))
 - `ParseInt` UDF for converting numeric strings to integers ([#190](https://github.com/roostorg/osprey/pull/190) by [@bealsbe](https://github.com/bealsbe))
 - `StringSlice` UDF for extracting substrings by index range ([#189](https://github.com/roostorg/osprey/pull/189) by [@bealsbe](https://github.com/bealsbe))
-- `InExperiment` UDF for checking experiment membership ([#203](https://github.com/roostorg/osprey/pull/203) by [@bealsbe](https://github.com/bealsbe))
+- `Experiment` and `ExperimentWhen` UDFs for checking experiment membership ([#203](https://github.com/roostorg/osprey/pull/203) by [@bealsbe](https://github.com/bealsbe))
 - Per-action health metrics in the executor ([#191](https://github.com/roostorg/osprey/pull/191) by [@cmttt](https://github.com/cmttt))
 - Option to suppress cached errors to reduce metric bloat ([#180](https://github.com/roostorg/osprey/pull/180) by [@lithium-powered](https://github.com/lithium-powered))
 - Experimental asyncio-native worker with metrics and engine/coordinator improvements ([#341](https://github.com/roostorg/osprey/pull/341) by [@cmttt](https://github.com/cmttt))
+- ATProto JetStream example plugins and rules ([#236](https://github.com/roostorg/osprey/pull/236) by [@haileyok](https://github.com/haileyok))
+- `osprey-stress` CLI: closed-loop stress harness that produces synthetic events at a configurable rate, observes their `ExecutionResult`s on the output topic, and reports drop rate and p50/p95/p99 latency, exiting non-zero on threshold breach so it can gate CI on pipeline health ([#367](https://github.com/roostorg/osprey/pull/367) by [@julietshen](https://github.com/julietshen), closes [#324](https://github.com/roostorg/osprey/issues/324))
 
 ### Changed
 
@@ -31,7 +39,7 @@ For more information about each release including git tags and artifacts, see [R
 - Event stream shows sensible defaults so first-load isn't empty ([#297](https://github.com/roostorg/osprey/pull/297) by [@haileyok](https://github.com/haileyok))
 - Replace `react-scripts` with `rsbuild`/`rspack` for UI builds ([#235](https://github.com/roostorg/osprey/pull/235) by [@chimosky](https://github.com/chimosky))
 - Migrate from npm to pnpm via Corepack ([#252](https://github.com/roostorg/osprey/pull/252) by [@haileyok](https://github.com/haileyok))
-- Osprey starts without GCP credentials instead of crashing: Pub/Sub publishing degrades to a noop (via a `make_publisher` factory that emits a `configuration.errors` metric) when credentials are absent, and can be disabled with `OSPREY_PUBSUB_ENABLED=false`. The GCP-backed telemetry itself (analytics, webhooks, rules-visualizer experiment metadata) stays inert until GCP or a replacement is configured ([#388](https://github.com/roostorg/osprey/pull/388) by [@julietshen](https://github.com/julietshen))
+- Replace `highcharts` (proprietary) with `echarts` (Apache 2.0) in the Timeseries chart ([#374](https://github.com/roostorg/osprey/issues/374))
 
 ### Fixed
 
@@ -39,6 +47,8 @@ For more information about each release including git tags and artifacts, see [R
 - Tolerate malformed URI escapes in `EntityWithPopover` UI component ([#377](https://github.com/roostorg/osprey/pull/377) by [@julietshen](https://github.com/julietshen))
 - Add retention limits to Kafka topics to prevent unbounded disk growth ([#249](https://github.com/roostorg/osprey/pull/249) by [@VINODvoid](https://github.com/VINODvoid))
 - Fix failed UDF query ([#233](https://github.com/roostorg/osprey/pull/233) by [@chimosky](https://github.com/chimosky))
+- Force a visible scrollbar on the event-stream virtualized list, which was relying on the OS auto-hide default and was easy to miss ([#367](https://github.com/roostorg/osprey/pull/367) by [@julietshen](https://github.com/julietshen))
+- Show the event-stream timezone once instead of twice; `zz` rendered a doubled abbreviation (e.g. `EDTEDT`) after the moment-to-dayjs migration ([#419](https://github.com/roostorg/osprey/pull/419) by [@julietshen](https://github.com/julietshen))
 
 ## [1.0.1] - 2026-02-27
 

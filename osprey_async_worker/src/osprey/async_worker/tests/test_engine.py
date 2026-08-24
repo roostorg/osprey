@@ -1,10 +1,11 @@
 """Tests for AsyncOspreyEngine recompile behavior on etcd updates."""
 
 import threading
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 from osprey.async_worker.engine import AsyncOspreyEngine
+from osprey.engine.ast.sources import Sources
 
 
 def _make_engine_with_stub_compile(initial_graph, recompile_graph):
@@ -63,27 +64,24 @@ async def test_handle_updated_sources_runs_compile_off_event_loop():
 
 
 @pytest.mark.asyncio
-async def test_handle_updated_sources_does_not_force_gc():
-    """We deliberately do NOT call gc.collect() after swap.
-
-    Forcing gen-2 collection promotes every surviving object to gen 2, which
-    makes subsequent automatic collections during action processing more
-    expensive. We let CPython's reference counting reclaim the old graph
-    naturally — same as the gevent engine.
-    """
+async def test_handle_updated_sources_freezes_resident_graph():
     import gc as gc_module
 
     initial = MagicMock(name='initial_graph')
     new = MagicMock(name='new_graph')
     engine = _make_engine_with_stub_compile(initial, new)
+    gc_calls = MagicMock()
 
     with (
         patch.object(engine, '_compile_execution_graph_sync', return_value=new),
         patch.object(gc_module, 'collect') as mock_collect,
+        patch.object(gc_module, 'freeze') as mock_freeze,
     ):
+        gc_calls.attach_mock(mock_collect, 'collect')
+        gc_calls.attach_mock(mock_freeze, 'freeze')
         await engine._handle_updated_sources()
 
-    assert mock_collect.call_count == 0
+    assert gc_calls.mock_calls == [call.collect(), call.freeze()]
 
 
 @pytest.mark.asyncio
@@ -142,7 +140,9 @@ async def test_handle_updated_sources_nulls_parents_on_old_graph():
             src.ast_root._test_nodes = nodes
             sources.append(src)
         validated = MagicMock()
-        validated.sources = sources
+        validated.sources = MagicMock(spec=Sources)
+        validated.sources.__iter__.side_effect = lambda: iter(sources)
+        validated.sources.hash.return_value = 'test_hash'
         graph = MagicMock(validated_sources=validated)
         return graph
 

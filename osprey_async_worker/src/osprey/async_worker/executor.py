@@ -40,6 +40,7 @@ from osprey.engine.executor.execution_graph import ExecutionGraph
 from osprey.engine.executor.node_executor.call_executor import CallExecutor
 from osprey.engine.executor.udf_execution_helpers import UDFHelpers
 from osprey.engine.stdlib.udfs.json_utils import MissingJsonPath
+from osprey.engine.udf.arguments import ArgumentsBase
 from osprey.engine.udf.base import BatchableUDFBase
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.osprey_shared.logging import get_logger
@@ -47,7 +48,11 @@ from result import Err, Ok
 
 logger = get_logger(__name__)
 
+# Shared placeholder for the "make mypy happy" default below; always overwritten before use.
+_UNSET_RESULT: NodeResult = Err(None)
+
 _DEFAULT_MAX_ASYNC_PER_EXECUTION = 12
+_OWNED_TASK_CLEANUP_SECONDS = 10.0
 
 
 def _get_ready_sync_and_async(
@@ -119,7 +124,7 @@ def _execute_sync(
     error_info_: list[NodeErrorInfo],
 ) -> NodeResult:
     """Execute a sync UDF inline. For pure computation only — no I/O."""
-    execution_result: NodeResult = Err(None)
+    execution_result: NodeResult = _UNSET_RESULT
     try:
         execution_result = Ok(chain.executor.execute(execution_context=context))
     except Exception as e:
@@ -148,7 +153,7 @@ def _execute_legacy_sync(
         call_node: CallExecutor = chain.executor
         metric_tags += [f'udf:{call_node._udf.__class__.__name__}']
 
-    execution_result: NodeResult = Err(None)
+    execution_result: NodeResult = _UNSET_RESULT
     try:
         with metrics.timed('udf_execution_duration', tags=metric_tags, sample_rate=0.01):
             execution_result = Ok(chain.executor.execute(execution_context=context))
@@ -227,19 +232,34 @@ async def _execute_async_udf(
     chain: DependencyChain,
     context: ExecutionContext,
     error_info_: list[NodeErrorInfo],
+    pre_resolved_arguments: ArgumentsBase | None = None,
 ) -> NodeResult:
-    """Execute a native async UDF. Awaited directly on the event loop."""
+    """Execute a native async UDF. Awaited directly on the event loop.
+
+    `pre_resolved_arguments`, when given, is the Arguments already computed for this same
+    chain while checking whether a batch would form, so execution does not resolve it twice.
+
+    Timeout enforcement: asyncio.timeout() enforces udf.timeout only around
+    async_execute() after semaphore admission. TimeoutError is converted to
+    NodeErrorInfo through the existing exception handler, preserving current
+    failure handling and Sentry capture behavior without modification.
+    """
     async with semaphore:
         call_executor: CallExecutor = chain.executor  # type: ignore
         udf: AsyncUDFBase[Any, Any] = call_executor._udf  # type: ignore
         metric_tags = _get_metric_tags(context) + [f'udf:{udf.__class__.__name__}']
 
         caught_exception: Exception | None = None
-        execution_result: NodeResult = Err(None)
+        execution_result: NodeResult = _UNSET_RESULT
         try:
-            resolved_arguments = udf.resolve_arguments(context, call_executor)
+            resolved_arguments = (
+                pre_resolved_arguments
+                if pre_resolved_arguments is not None
+                else udf.resolve_arguments(context, call_executor)
+            )
             with metrics.timed('udf_execution_duration', tags=metric_tags, sample_rate=0.01):
-                result = await udf.async_execute(context, resolved_arguments)
+                async with asyncio.timeout(type(udf).timeout):
+                    result = await udf.async_execute(context, resolved_arguments)
             execution_result = Ok(udf.check_result_type(result))
         except Exception as e:
             if not isinstance(e, NodeFailurePropagationException):
@@ -248,7 +268,7 @@ async def _execute_async_udf(
             caught_exception = e
         finally:
             _record_udf_metric(metric_tags, execution_result, caught_exception)
-            return execution_result
+        return execution_result
 
 
 async def _execute_async_batch(
@@ -259,15 +279,26 @@ async def _execute_async_batch(
     context: ExecutionContext,
     error_info_: list[NodeErrorInfo],
 ) -> Sequence[NodeResult]:
-    """Execute a batch of native async batchable UDFs."""
+    """Execute a batch of native async batchable UDFs.
+
+    Timeout enforcement: the shared batch deadline is computed as
+    max(udf.timeout for udf in udfs). asyncio.timeout() enforces this
+    deadline only around async_execute_batch() after semaphore admission.
+    TimeoutError is converted to NodeErrorInfo through the existing exception
+    handler, preserving current failure handling and Sentry capture behavior.
+    """
     async with semaphore:
         assert len(udfs) == len(nodes) == len(batchable_args)
         num_executions = len(udfs)
         metric_tags = _get_metric_tags(context, udfs[0])
 
+        # Compute the shared deadline using the maximum timeout from all UDFs
+        batch_timeout = max(type(udf).timeout for udf in udfs)
+
         try:
             with metrics.timed('udf_execution_batch_duration', tags=metric_tags, sample_rate=0.01):
-                results = await udfs[0].async_execute_batch(context, udfs, batchable_args)
+                async with asyncio.timeout(batch_timeout):
+                    results = await udfs[0].async_execute_batch(context, udfs, batchable_args)
             assert len(results) == num_executions
         except Exception as e:
             if not isinstance(e, NodeFailurePropagationException):
@@ -320,12 +351,15 @@ async def _enqueue_batches(
     context: ExecutionContext,
     error_infos: list[NodeErrorInfo],
     ready_async: Sequence[DependencyChain],
-) -> tuple[Sequence[DependencyChain], dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]]]:
-    """Collect batchable async chains and launch them as tasks.
+) -> tuple[
+    Sequence[tuple[DependencyChain, ArgumentsBase | None]],
+    dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]],
+]:
+    """Launch batches and return the chains that remain.
 
-    Returns (remaining non-batched chains, dict of batch tasks -> chains).
+    A native async chain can include arguments that this function resolved. Legacy chains include `None`.
     """
-    batch_chains: dict[tuple[type, str], list[tuple[DependencyChain, Any]]] = defaultdict(list)
+    batch_chains: dict[tuple[type, str, bool], list[tuple[DependencyChain, ArgumentsBase, Any]]] = defaultdict(list)
     chains_to_remove: list[DependencyChain] = []
 
     for async_chain in ready_async:
@@ -337,11 +371,14 @@ async def _enqueue_batches(
         udf = call_executor._udf
 
         batch_type = udf.get_batchable_arguments_type()
+        is_native = isinstance(udf, AsyncBatchableUDFBase)
         try:
             resolved_arguments = udf.resolve_arguments(context, call_executor)
             batchable_arguments = udf.get_batchable_arguments(resolved_arguments)
             routing_key = udf.get_batch_routing_key(batchable_arguments)
-            batch_chains[(batch_type, routing_key)].append((async_chain, batchable_arguments))
+            batch_chains[(batch_type, routing_key, is_native)].append(
+                (async_chain, resolved_arguments, batchable_arguments)
+            )
         except Exception as e:
             if not isinstance(e, NodeFailurePropagationException):
                 error_infos.append(NodeErrorInfo(e, call_executor.node))
@@ -349,12 +386,17 @@ async def _enqueue_batches(
             context.set_resolved_value(async_chain, Err(None))
 
     new_batch_tasks: dict[asyncio.Task[Sequence[NodeResult]], Sequence[DependencyChain]] = {}
+    pre_resolved_by_chain: dict[DependencyChain, ArgumentsBase] = {}
 
     for _, chains_and_args in batch_chains.items():
         if len(chains_and_args) < 2:
+            # Reuse native async arguments when a batch does not form.
+            for chain, resolved_arguments, _ in chains_and_args:
+                if isinstance(chain.executor, CallExecutor) and isinstance(chain.executor._udf, AsyncBatchableUDFBase):
+                    pre_resolved_by_chain[chain] = resolved_arguments
             continue
 
-        chains, args = zip(*chains_and_args)
+        chains, _resolved_args, args = zip(*chains_and_args)
         chains_to_remove.extend(chains)
 
         batch_udfs = [chain.executor._udf for chain in chains]
@@ -375,11 +417,15 @@ async def _enqueue_batches(
             )
         new_batch_tasks[task] = chains
 
-    remaining = [chain for chain in ready_async if chain not in chains_to_remove]
+    remaining = [(chain, pre_resolved_by_chain.get(chain)) for chain in ready_async if chain not in chains_to_remove]
     return remaining, new_batch_tasks
 
 
 # --- Main executor ---
+
+
+async def _drain_owned_tasks(owned_tasks: Sequence[asyncio.Task[Any]]) -> None:
+    await asyncio.gather(*owned_tasks, return_exceptions=True)
 
 
 async def execute(
@@ -398,6 +444,11 @@ async def execute(
     - Legacy UDFBase with execute_async=True: run in thread pool via run_in_executor
       (may fail on gevent calls, errors captured gracefully)
     """
+    execution_task = asyncio.current_task()
+    if execution_task is None:
+        raise RuntimeError('async executor requires a running task')
+    entry_cancelling_count = execution_task.cancelling()
+
     if parent_tracer_span:
         parent_tracer_span.set_tag('action-name', action.action_name)
 
@@ -412,69 +463,129 @@ async def execute(
 
     ready_sync, ready_async = _get_ready_sync_and_async(allow_async, context)
 
-    while ready_sync or ready_async or in_progress_singlets or in_progress_batches:
-        # Check for already-finished tasks (non-blocking)
-        finished_singlets = [t for t in in_progress_singlets if t.done()]
-        finished_batches = [t for t in in_progress_batches if t.done()]
+    try:
+        while ready_sync or ready_async or in_progress_singlets or in_progress_batches:
+            # Check for already-finished tasks (non-blocking)
+            finished_singlets = [t for t in in_progress_singlets if t.done()]
+            finished_batches = [t for t in in_progress_batches if t.done()]
 
-        if not ready_sync and not ready_async and not finished_singlets and not finished_batches:
-            # Block until at least one async task finishes
-            all_pending: set[asyncio.Task[Any]] = set(in_progress_singlets.keys()) | set(in_progress_batches.keys())
-            if all_pending:
-                with tracer.start_span('osprey.rules.async_wait_nodes', child_of=parent_tracer_span):
-                    done, _ = await asyncio.wait(all_pending, return_when=asyncio.FIRST_COMPLETED)
-                finished_singlets = [t for t in done if t in in_progress_singlets]
-                finished_batches = [t for t in done if t in in_progress_batches]
+            if not ready_sync and not ready_async and not finished_singlets and not finished_batches:
+                # Block until at least one async task finishes
+                all_pending: set[asyncio.Task[Any]] = set(in_progress_singlets.keys()) | set(in_progress_batches.keys())
+                if all_pending:
+                    with tracer.start_span('osprey.rules.async_wait_nodes', child_of=parent_tracer_span):
+                        done, _ = await asyncio.wait(all_pending, return_when=asyncio.FIRST_COMPLETED)
+                    finished_singlets = [t for t in done if t in in_progress_singlets]
+                    finished_batches = [t for t in done if t in in_progress_batches]
 
-        # Process finished singlets
-        for task in finished_singlets:
-            chain = in_progress_singlets.pop(task)
-            context.set_resolved_value(chain, task.result())
+            # Process finished singlets
+            for task in finished_singlets:
+                chain = in_progress_singlets.pop(task)
+                context.set_resolved_value(chain, task.result())
 
-        # Process finished batches
-        # Distinct loop variable from the singlet `task` above: the two dicts hold
-        # tasks with different result types (Task[NodeResult] vs Task[Sequence[NodeResult]]),
-        # and reusing one name would unify them to the singlet type.
-        for batch_task in finished_batches:
-            chains = in_progress_batches.pop(batch_task)
-            results = batch_task.result()
-            for i, chain in enumerate(chains):
-                context.set_resolved_value(chain, results[i])
+            # Process finished batches
+            # Distinct loop variable from the singlet `task` above: the two dicts hold
+            # tasks with different result types (Task[NodeResult] vs Task[Sequence[NodeResult]]),
+            # and reusing one name would unify them to the singlet type.
+            for batch_task in finished_batches:
+                chains = in_progress_batches.pop(batch_task)
+                results = batch_task.result()
+                for i, chain in enumerate(chains):
+                    context.set_resolved_value(chain, results[i])
 
-        # Enqueue async tasks
-        if allow_async and ready_async:
-            with tracer.start_span('osprey.rules.try_enqueue_batches', child_of=parent_tracer_span):
-                remaining_ready_async, new_batch_tasks = await _enqueue_batches(
-                    loop, semaphore, context, error_infos, ready_async
-                )
-            in_progress_batches.update(new_batch_tasks)
-
-            for async_chain in remaining_ready_async:
-                # Native async UDF → await on event loop
-                if isinstance(async_chain.executor, CallExecutor) and isinstance(
-                    async_chain.executor._udf, (AsyncUDFBase, AsyncBatchableUDFBase)
-                ):
-                    task = asyncio.create_task(_execute_async_udf(semaphore, async_chain, context, error_infos))
-                else:
-                    # Legacy sync UDF with execute_async=True → thread pool fallback
-                    task = asyncio.create_task(
-                        _execute_legacy_in_executor(loop, semaphore, async_chain, context, error_infos)
+            # Enqueue async tasks
+            if allow_async and ready_async:
+                with tracer.start_span('osprey.rules.try_enqueue_batches', child_of=parent_tracer_span):
+                    remaining_ready_async, new_batch_tasks = await _enqueue_batches(
+                        loop, semaphore, context, error_infos, ready_async
                     )
-                in_progress_singlets[task] = async_chain
+                in_progress_batches.update(new_batch_tasks)
 
-        # Execute sync chains inline (pure computation, fast, no I/O).
-        # Only yield deep into a long sync round when async tasks are in flight.
-        # Each sleep(0) triggers a full event loop cycle including gRPC C-core polling,
-        # so unnecessary yields cause significant context-switch overhead.
-        # Short rounds (<100 chains) skip yielding entirely — the asyncio.wait() at the
-        # top of the loop provides natural yield points between rounds.
-        for i, sync_chain in enumerate(ready_sync):
-            if (in_progress_singlets or in_progress_batches) and i > 0 and i % 100 == 0:
-                await asyncio.sleep(0)
-            result = _execute_sync(sync_chain, context, error_infos)
-            context.set_resolved_value(sync_chain, result)
+                for async_chain, pre_resolved_arguments in remaining_ready_async:
+                    # Native async UDF → await on event loop
+                    if isinstance(async_chain.executor, CallExecutor) and isinstance(
+                        async_chain.executor._udf, (AsyncUDFBase, AsyncBatchableUDFBase)
+                    ):
+                        task = asyncio.create_task(
+                            _execute_async_udf(semaphore, async_chain, context, error_infos, pre_resolved_arguments)
+                        )
+                    else:
+                        # Legacy sync UDF with execute_async=True → thread pool fallback
+                        task = asyncio.create_task(
+                            _execute_legacy_in_executor(loop, semaphore, async_chain, context, error_infos)
+                        )
+                    in_progress_singlets[task] = async_chain
 
-        ready_sync, ready_async = _get_ready_sync_and_async(allow_async, context)
+            # Execute sync chains inline (pure computation, fast, no I/O).
+            # Only yield deep into a long sync round when async tasks are in flight.
+            # Each sleep(0) triggers a full event loop cycle including gRPC C-core polling,
+            # so unnecessary yields cause significant context-switch overhead.
+            # Short rounds (<100 chains) skip yielding entirely — the asyncio.wait() at the
+            # top of the loop provides natural yield points between rounds.
+            for i, sync_chain in enumerate(ready_sync):
+                if (in_progress_singlets or in_progress_batches) and i > 0 and i % 100 == 0:
+                    await asyncio.sleep(0)
+                result = _execute_sync(sync_chain, context, error_infos)
+                context.set_resolved_value(sync_chain, result)
+
+            ready_sync, ready_async = _get_ready_sync_and_async(allow_async, context)
+    except GeneratorExit:
+        for owned_task in [*in_progress_singlets, *in_progress_batches]:
+            if owned_task.done():
+                if not owned_task.cancelled():
+                    owned_task.exception()
+            elif not loop.is_closed():
+                owned_task.cancel()
+        raise
+    except BaseException as execution_error:
+        owned_tasks = [*in_progress_singlets, *in_progress_batches]
+        for owned_task in owned_tasks:
+            owned_task.cancel()
+        cleanup_waiter = execution_task
+        initial_cancelling_count = cleanup_waiter.cancelling()
+        self_cancellation = (
+            isinstance(execution_error, asyncio.CancelledError) and initial_cancelling_count > entry_cancelling_count
+        )
+        cancellation_during_cleanup: asyncio.CancelledError | None = None
+        if owned_tasks:
+            cleanup = asyncio.create_task(_drain_owned_tasks(owned_tasks))
+            cleanup_deadline = loop.time() + _OWNED_TASK_CLEANUP_SECONDS
+            while not cleanup.done():
+                remaining = cleanup_deadline - loop.time()
+                if remaining <= 0:
+                    break
+                try:
+                    done, _ = await asyncio.wait({cleanup}, timeout=remaining)
+                    if not done:
+                        break
+                except asyncio.CancelledError as cleanup_cancellation:
+                    if self_cancellation:
+                        while cleanup_waiter.cancelling() > initial_cancelling_count:
+                            cleanup_waiter.uncancel()
+                    else:
+                        cancellation_during_cleanup = cleanup_cancellation
+                    continue
+            if not cleanup.done():
+                unfinished_count = sum(not owned_task.done() for owned_task in owned_tasks)
+                logger.warning(
+                    'Owned task cleanup exceeded %ss; cancelling %d unfinished tasks',
+                    _OWNED_TASK_CLEANUP_SECONDS,
+                    unfinished_count,
+                )
+                cleanup.cancel()
+        if self_cancellation:
+            while cleanup_waiter.cancelling() > initial_cancelling_count:
+                cleanup_waiter.uncancel()
+        else:
+            if cancellation_during_cleanup is None and cleanup_waiter.cancelling() > initial_cancelling_count:
+                cancellation_during_cleanup = asyncio.CancelledError()
+            if cancellation_during_cleanup is not None:
+                logger.warning(
+                    'Cancellation requested while cleaning up execution failure',
+                    exc_info=(type(execution_error), execution_error, execution_error.__traceback__),
+                )
+                raise cancellation_during_cleanup from execution_error
+        raise
 
     # --- Build result ---
 
