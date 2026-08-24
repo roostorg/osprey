@@ -126,16 +126,16 @@ def make_publisher(
 ) -> BasePublisher:
     """Build a Pub/Sub publisher, or a NullPublisher when publishing is off.
 
-    Publishing is on by default and can be turned off by setting OSPREY_PUBSUB_ENABLED
-    to false, which returns a NullPublisher. When it is on but GCP credentials cannot
-    be resolved (e.g. local dev or adopter environments without GCP), PubSubPublisher
-    construction raises; we log a warning and fall back to a NullPublisher rather than
-    crash.
+    Publishing is opt-in: off unless OSPREY_PUBSUB_ENABLED is set to true, so the
+    default (no-GCP) deployment publishes nothing. When it is on but GCP credentials
+    cannot be resolved (e.g. an adopter environment that opted in without GCP set up),
+    PubSubPublisher construction raises; we log a warning and fall back to a
+    NullPublisher rather than crash.
     """
     # Imported here to avoid pulling the config/singletons stack into this low-level module.
     from osprey.worker.lib.singletons import CONFIG
 
-    if not CONFIG.instance().get_bool('OSPREY_PUBSUB_ENABLED', True):
+    if not CONFIG.instance().get_bool('OSPREY_PUBSUB_ENABLED', False):
         return NullPublisher()
     try:
         return PubSubPublisher(

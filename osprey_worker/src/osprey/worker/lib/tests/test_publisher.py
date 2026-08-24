@@ -21,8 +21,8 @@ def test_make_publisher_returns_null_when_pubsub_not_enabled() -> None:
     ):
         pub = make_publisher('proj', 'topic')
     assert isinstance(pub, NullPublisher)
-    # On by default; explicitly disabling is not a misconfiguration, so no client and no metric.
-    config.instance.return_value.get_bool.assert_called_once_with('OSPREY_PUBSUB_ENABLED', True)
+    # Off by default; not opting in is not a misconfiguration, so no client is built.
+    config.instance.return_value.get_bool.assert_called_once_with('OSPREY_PUBSUB_ENABLED', False)
     assert not client_cls.called
     metrics_mock.increment.assert_not_called()
 
