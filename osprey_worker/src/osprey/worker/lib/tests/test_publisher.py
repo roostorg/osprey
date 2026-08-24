@@ -37,17 +37,12 @@ def test_make_publisher_returns_pubsub_when_enabled_and_creds_present() -> None:
     assert client_cls.called
 
 
-def test_make_publisher_falls_back_to_null_and_metric_when_creds_absent(caplog: pytest.LogCaptureFixture) -> None:
+def test_make_publisher_falls_back_to_null_when_creds_absent(caplog: pytest.LogCaptureFixture) -> None:
     with (
         patch('osprey.worker.lib.singletons.CONFIG', _mock_config(pubsub_enabled=True)),
         patch.object(publisher, 'BatchPubsubPublisherClient', side_effect=DefaultCredentialsError()),
-        patch.object(publisher, 'metrics') as metrics_mock,
     ):
         with caplog.at_level('WARNING', logger=publisher.logger.name):
             pub = make_publisher('proj', 'topic')
     assert isinstance(pub, NullPublisher)
     assert 'credentials errored' in caplog.text
-    metrics_mock.increment.assert_called_once_with(
-        'configuration.errors',
-        tags=['project:proj', 'topic:topic', 'reason:gcp_credentials_missing'],
-    )

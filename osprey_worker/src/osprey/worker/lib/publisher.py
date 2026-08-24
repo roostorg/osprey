@@ -129,8 +129,8 @@ def make_publisher(
     Publishing is on by default and can be turned off by setting OSPREY_PUBSUB_ENABLED
     to false, which returns a NullPublisher. When it is on but GCP credentials cannot
     be resolved (e.g. local dev or adopter environments without GCP), PubSubPublisher
-    construction raises; that is a misconfiguration, so we log, emit a one-time
-    configuration.errors metric, and fall back to a NullPublisher rather than crash.
+    construction raises; we log a warning and fall back to a NullPublisher rather than
+    crash.
     """
     # Imported here to avoid pulling the config/singletons stack into this low-level module.
     from osprey.worker.lib.singletons import CONFIG
@@ -148,8 +148,4 @@ def make_publisher(
         )
     except DefaultCredentialsError:
         logger.warning('GCP credentials errored, publishing disabled (project=%s, topic=%s)', project_id, topic_id)
-        metrics.increment(
-            'configuration.errors',
-            tags=[f'project:{project_id}', f'topic:{topic_id}', 'reason:gcp_credentials_missing'],
-        )
         return NullPublisher()

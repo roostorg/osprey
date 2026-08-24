@@ -10,7 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Changed
 
-- Osprey starts without GCP credentials instead of crashing: Pub/Sub publishing degrades to a noop (via a `make_publisher` factory that emits a `configuration.errors` metric) when credentials are absent, and can be disabled with `OSPREY_PUBSUB_ENABLED=false`. The GCP-backed telemetry itself (analytics, webhooks, rules-visualizer experiment metadata) stays inert until GCP or a replacement is configured ([#388](https://github.com/roostorg/osprey/pull/388) by [@julietshen](https://github.com/julietshen))
+- Osprey starts without GCP credentials instead of crashing: Pub/Sub publishing degrades to a noop (via a `make_publisher` factory that logs a warning) when credentials are absent, and can be disabled with `OSPREY_PUBSUB_ENABLED=false`. The GCP-backed telemetry itself (analytics, webhooks, rules-visualizer experiment metadata) stays inert until GCP or a replacement is configured ([#388](https://github.com/roostorg/osprey/pull/388) by [@julietshen](https://github.com/julietshen))
 
 ## [1.1.0] - 2026-07-22
 
