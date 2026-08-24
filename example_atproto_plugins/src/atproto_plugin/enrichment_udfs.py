@@ -146,7 +146,10 @@ class AtprotoHandle(UDFBase[DidArguments, str]):
 
     def execute(self, execution_context: ExecutionContext, arguments: DidArguments) -> str:
         handle = _profile_or_skip(arguments.did).get('handle')
-        if not handle:
+        # getProfile is untrusted JSON, so guard the type: a truthy non-string
+        # would otherwise cross the str return boundary. Treat it like a missing
+        # field and skip.
+        if not isinstance(handle, str) or not handle:
             raise ExpectedUdfException()
         return handle
 
@@ -159,6 +162,6 @@ class AtprotoDisplayName(UDFBase[DidArguments, str]):
 
     def execute(self, execution_context: ExecutionContext, arguments: DidArguments) -> str:
         display_name = _profile_or_skip(arguments.did).get('displayName')
-        if not display_name:
+        if not isinstance(display_name, str) or not display_name:
             raise ExpectedUdfException()
         return display_name
