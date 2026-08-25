@@ -1,8 +1,10 @@
 # flake8: noqa E402
 # ruff: noqa: E402
-from gevent.monkey import patch_all
+from gevent import monkey
 
-patch_all()
+# late monkey-patching corrupts locks during plain pytest collection
+if monkey.is_module_patched('socket'):
+    monkey.patch_all()
 
 import json
 
