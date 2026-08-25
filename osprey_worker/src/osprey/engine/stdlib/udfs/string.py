@@ -235,7 +235,7 @@ _EMOJI_PATTERN: re.Pattern[str] = re.compile(
 )
 
 # sub for l33t -> leet
-_L33T_THREES_SUB_PATTERN: re.Pattern[str] = re.compile(r'([A-z]?)(3+)([A-z]?)', flags=re.IGNORECASE)
+_L33T_THREES_SUB_PATTERN: re.Pattern[str] = re.compile(r'([A-Za-z]?)(3+)([A-Za-z]?)', flags=re.IGNORECASE)
 
 # sub for |7 -> 17
 _L33T_PIPE_NUMBER_SUB_PATTERN: re.Pattern[str] = re.compile(r'\|(\d)')
