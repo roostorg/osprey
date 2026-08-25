@@ -29,6 +29,10 @@ class AsyncPubSubPublisher:
 
     Messages are buffered in an asyncio.Queue and flushed either when
     the batch reaches max_messages or after max_latency_seconds.
+
+    This is a plain transport that assumes GCP is configured. A callers-side
+    factory (as on the sync side) should decide whether to build this or a noop
+    publisher once the async worker wires it into a sink.
     """
 
     def __init__(
@@ -39,15 +43,15 @@ class AsyncPubSubPublisher:
         max_latency_seconds: float = 1.0,
     ):
         self._topic_path = f'projects/{project_id}/topics/{topic_id}'
+        self._metric_tags = [f'project:{project_id}', f'topic:{topic_id}']
+        self._flush_task: asyncio.Task[None] | None = None
         self._client = pubsub_v1.PublisherClient(
             batch_settings=pubsub_v1.types.BatchSettings(max_messages=1),
         )
         self._queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._max_messages = max_messages
         self._max_latency = max_latency_seconds
-        self._flush_task: asyncio.Task[None] | None = None
         self._started = False
-        self._metric_tags = [f'project:{project_id}', f'topic:{topic_id}']
 
     def _ensure_started(self) -> None:
         """Start the background flush task on first publish."""

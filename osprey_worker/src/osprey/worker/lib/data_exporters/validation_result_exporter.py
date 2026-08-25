@@ -5,7 +5,7 @@ from osprey.engine.ast_validator.validators.validate_experiments import (
     ValidateExperiments,
 )
 from osprey.worker.lib.data_exporters.models import ospreyExperimentMetadataUpdate
-from osprey.worker.lib.publisher import BasePublisher, PubSubPublisher
+from osprey.worker.lib.publisher import BasePublisher, make_publisher
 from osprey.worker.lib.singletons import CONFIG
 
 
@@ -56,4 +56,4 @@ def get_validation_result_exporter() -> BaseValidationResultExporter:
 
     pubsub_project_id = config.get_str('PUBSUB_DATA_PROJECT_ID', 'osprey-dev')
     pubsub_topic_id = config.get_str('PUBSUB_ANALYTICS_EVENT_TOPIC_ID', 'osprey-analytics')
-    return ExperimentValidationResultExporter(publisher=PubSubPublisher(pubsub_project_id, pubsub_topic_id))
+    return ExperimentValidationResultExporter(publisher=make_publisher(pubsub_project_id, pubsub_topic_id))

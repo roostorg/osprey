@@ -1,12 +1,16 @@
 import abc
+import logging
 from typing import TypeVar
 
+from google.auth.exceptions import DefaultCredentialsError
 from google.cloud import pubsub_v1
 from osprey.worker.lib.instruments import metrics
 from osprey.worker.lib.pubsub.publisher_client import BatchPubsubPublisherClient
 from pydantic import BaseModel
 
 _PydanticModelT = TypeVar('_PydanticModelT', bound=BaseModel)
+
+logger = logging.getLogger(__name__)
 
 
 class BasePublisher(abc.ABC):
@@ -40,6 +44,13 @@ class NullPublisher(BasePublisher):
 
 
 class PubSubPublisher(BasePublisher):
+    """Publishes Pydantic models to a Google Cloud Pub/Sub topic.
+
+    This is a plain transport: it assumes GCP is configured and builds its client
+    eagerly. Callers that may run without GCP should build publishers via
+    make_publisher(), which hands back a NullPublisher when publishing is off.
+    """
+
     def __init__(
         self,
         project_id: str,
@@ -103,3 +114,38 @@ class StrPubSubPublisher(PubSubPublisher):
             attributes = {}
 
         super().publish(data, attributes)  # type: ignore[type-var]
+
+
+def make_publisher(
+    project_id: str,
+    topic_id: str,
+    raise_on_error: bool = False,
+    max_bytes: int = 2000000,
+    max_messages: int = 250,
+    max_latency: float = 1.0,
+) -> BasePublisher:
+    """Build a Pub/Sub publisher, or a NullPublisher when publishing is off.
+
+    Publishing is opt-in: off unless OSPREY_PUBSUB_ENABLED is set to true, so the
+    default (no-GCP) deployment publishes nothing. When it is on but GCP credentials
+    cannot be resolved (e.g. an adopter environment that opted in without GCP set up),
+    PubSubPublisher construction raises; we log a warning and fall back to a
+    NullPublisher rather than crash.
+    """
+    # Imported here to avoid pulling the config/singletons stack into this low-level module.
+    from osprey.worker.lib.singletons import CONFIG
+
+    if not CONFIG.instance().get_bool('OSPREY_PUBSUB_ENABLED', False):
+        return NullPublisher()
+    try:
+        return PubSubPublisher(
+            project_id,
+            topic_id,
+            raise_on_error=raise_on_error,
+            max_bytes=max_bytes,
+            max_messages=max_messages,
+            max_latency=max_latency,
+        )
+    except DefaultCredentialsError:
+        logger.warning('GCP credentials errored, publishing disabled (project=%s, topic=%s)', project_id, topic_id)
+        return NullPublisher()

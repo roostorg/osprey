@@ -8,9 +8,9 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
-### Fixed
+### Changed
 
-- demo.sh waits for the osprey-worker container before printing Demo Ready, so a dead worker fails the wait instead of opening an empty UI ([#433](https://github.com/roostorg/osprey/issues/433))
+- Osprey starts without GCP credentials instead of crashing: Pub/Sub publishing is now opt-in via `OSPREY_PUBSUB_ENABLED` (default off), so the default (no-GCP) deployment publishes nothing. When it is enabled but GCP credentials can't be resolved, a `make_publisher` factory logs a warning and degrades to a noop rather than crashing. The GCP-backed telemetry itself (analytics, webhooks, rules-visualizer experiment metadata) stays inert until GCP or a replacement is configured. **Required configuration change:** deployments that rely on Pub/Sub publishing must set `OSPREY_PUBSUB_ENABLED=true`, otherwise publishing is silently disabled ([#388](https://github.com/roostorg/osprey/pull/388) by [@julietshen](https://github.com/julietshen))
 
 ## [1.1.0] - 2026-07-22
 
@@ -39,6 +39,7 @@ For more information about each release including git tags and artifacts, see [R
 - Event stream shows sensible defaults so first-load isn't empty ([#297](https://github.com/roostorg/osprey/pull/297) by [@haileyok](https://github.com/haileyok))
 - Replace `react-scripts` with `rsbuild`/`rspack` for UI builds ([#235](https://github.com/roostorg/osprey/pull/235) by [@chimosky](https://github.com/chimosky))
 - Migrate from npm to pnpm via Corepack ([#252](https://github.com/roostorg/osprey/pull/252) by [@haileyok](https://github.com/haileyok))
+- Upgrade `grpcio` from 1.49.1/1.53.x to 1.82.1, and `typing-extensions` from 4.6.3 to 4.12.2 (required by the grpcio upgrade) ([#415](https://github.com/roostorg/osprey/pull/415) by [@reitblatt](https://github.com/reitblatt))
 - Replace `highcharts` (proprietary) with `echarts` (Apache 2.0) in the Timeseries chart ([#374](https://github.com/roostorg/osprey/issues/374))
 
 ### Fixed
