@@ -1,0 +1,76 @@
+name: Request a feature
+description: An idea or new functionality
+type: feature
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Thanks for taking the time to request a feature for Osprey! **Please
+        provide as much detail as you can** so we can fully understand,
+        triage, and address your request.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem being solved
+      description: >
+        What is the underlying thing you’re hoping is addressed by this feature?
+      placeholder: Our organization requires…
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: >
+        How do you imagine this feature would look or work?
+      placeholder: On the Query page, there should be…
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: >
+        What other possible solutions or features have you considered that would
+        address this?
+      placeholder: This could be a setting, but…
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: >
+        Share any other information that could be helpful in understanding,
+        triaging, or addressing your request.
+    validations:
+      required: false
+
+  - type: upload
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: >
+        If applicable, add screenshots or designs to help explain your request.
+        **Please redact sensitive information** such as user content or personal
+        details before uploading. Do not share content that violates GitHub’s
+        [acceptable use policies](https://docs.github.com/en/site-policy/acceptable-use-policies).
+    validations:
+      required: false
+      accept: ".png,.jpg,.jpeg,.gif,.svg,.webp"
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: >
+        Make sure you’ve completed each step and reviewed the
+        [Code of Conduct](https://github.com/roostorg/.github/blob/main/CODE_OF_CONDUCT.md)
+        before submitting.
+      options:
+        - label: I’ve reviewed and agree to follow the code of conduct
+          required: true

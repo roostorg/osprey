@@ -99,6 +99,8 @@ labels:
     description: testing label
 ```
 
+[Ruleset Configuration](configuration.md) explains how Osprey loads and validates YAML alongside SML, and what happens when either changes.
+
 **What you'll see in the UI** once events flow: each processed post appears in the Event Stream with `UserId`, `EventType`, `PostText`, and `ContainsHello` among its extracted features; querying `ContainsHello == True` filters to the posts that matched; and clicking through to a matched post's author shows the `meow` label on their `User` entity, with the `BanUser` effect recorded on the event. [Getting Started](../development/) walks through this UI tour on live demo data.
 
 ## Labels as state

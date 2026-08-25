@@ -1,8 +1,9 @@
-# Patch so we can test concurrency
+# late monkey-patching corrupts locks during plain pytest collection
 import gevent
 import gevent.monkey
 
-gevent.monkey.patch_all()
+if gevent.monkey.is_module_patched('socket'):
+    gevent.monkey.patch_all()
 
 from unittest.mock import call  # noqa: E402
 

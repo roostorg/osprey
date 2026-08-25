@@ -5,8 +5,9 @@ Set up a full local development environment for Osprey. To just get up and runni
 ## Prerequisites
 
 - **Operating System**: macOS, Linux, or Windows (with WSL recommended)
-- **[Python](https://www.python.org/) 3.11 or higher** (check with `python --version`)
 - **[Git](https://git-scm.com/)** for version control
+- **Docker** with **[Docker Compose](https://docs.docker.com/compose/) 2.24.4 or higher**
+- **[Python](https://www.python.org/) 3.11 or higher** (check with `python --version`)
 - **[uv](https://docs.astral.sh/uv/)** for Python package management
 - **[Node.js](https://nodejs.org/en/download/) 22+** for the UI (Corepack ships with Node and auto-resolves pnpm from `osprey_ui/package.json`'s `packageManager` field; no separate pnpm install needed)
 

@@ -77,6 +77,8 @@ UDFs can also produce **effects**: structured outputs that downstream systems ac
 
 UDFs that perform I/O (e.g. network calls or database reads) should subclass `AsyncUDFBase` when used in the async worker; see [`osprey_async_worker/src/osprey/async_worker/stdlib_udfs/async_mx_lookup.py`](https://github.com/roostorg/osprey/blob/main/osprey_async_worker/src/osprey/async_worker/stdlib_udfs/async_mx_lookup.py) for an example. Pure-computation UDFs like `TextContains` can be reused in both workers without modification.
 
+Native async UDFs time out after two seconds by default. Set `OSPREY_ASYNC_UDF_DEFAULT_TIMEOUT` to change the process default. A UDF can set its own numeric `timeout` class attribute in seconds, which takes precedence over the process default. Values must be greater than zero and can't be NaN or infinity. Async UDFs must not suppress `asyncio.CancelledError`; catch it only to clean up, then re-raise it.
+
 ### Registering UDFs
 
 Return your UDF classes from the `register_udfs` hook; for example:

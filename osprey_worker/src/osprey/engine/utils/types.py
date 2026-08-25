@@ -26,11 +26,11 @@ def _add_state_functions(cls_dict: dict[str, object], field_names: Sequence[str]
     # https://github.com/python-attrs/attrs/blob/33b61316f8fd97d78374818e5ecc21068cf69ae3/src/attr/_make.py#L660-L689
 
     # __weakref__ is not writable.
-    state_attr_names = tuple(name for name in field_names if name != '__weakref__')
+    state_attr_names = tuple([name for name in field_names if name != '__weakref__'])
 
     def slots_getstate(self: object) -> Sequence[object]:
         """Automatically created by slotted_dataclass."""
-        return tuple(getattr(self, name) for name in state_attr_names)
+        return tuple([getattr(self, name) for name in state_attr_names])
 
     def slots_setstate(self: object, state: Sequence[object]) -> None:
         """Automatically created by slotted_dataclass."""
@@ -59,7 +59,7 @@ def add_slots(cls: TypeT) -> TypeT:
 
     # Create a new dict for our new class.
     cls_dict = dict(cls.__dict__)
-    field_names = tuple(f.name for f in dataclasses.fields(cls))
+    field_names = tuple([field.name for field in dataclasses.fields(cls)])
 
     # Some extra things to make sure deepcopy and weakref work.
     _add_state_functions(cls_dict, field_names)
