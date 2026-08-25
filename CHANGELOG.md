@@ -40,6 +40,17 @@ For more information about each release including git tags and artifacts, see [R
 - Replace `react-scripts` with `rsbuild`/`rspack` for UI builds ([#235](https://github.com/roostorg/osprey/pull/235) by [@chimosky](https://github.com/chimosky))
 - Migrate from npm to pnpm via Corepack ([#252](https://github.com/roostorg/osprey/pull/252) by [@haileyok](https://github.com/haileyok))
 - Upgrade `grpcio` from 1.49.1/1.53.x to 1.82.1, and `typing-extensions` from 4.6.3 to 4.12.2 (required by the grpcio upgrade) ([#415](https://github.com/roostorg/osprey/pull/415) by [@reitblatt](https://github.com/reitblatt))
+- Upgrade `protobuf` from 4.25.8 to 7.35.1 ([#317](https://github.com/roostorg/osprey/issues/317), [#349](https://github.com/roostorg/osprey/pull/349) by [@reitblatt](https://github.com/reitblatt)); as a downstream consequence, also upgrade
+  - `grpcio-tools` from 1.49.1/1.53.x to 1.82.1 (to match the `grpcio` version, and required by `grpcio-tools` for protobuf 7.x support)
+  - `google-cloud-pubsub` from 2.15.2 to 2.38.0
+  - `tink` from 1.9.0 to 1.15.0
+  - `google-api-core` from 2.19.2 to 2.31.0 (older versions cap protobuf below 6.0)
+  - `googleapis-common-protos` from 1.70.0 to 1.75.0 and `grpc-google-iam-v1` from 0.14.2 to 0.14.4 (older versions cap protobuf below 7.0)
+  - `types-protobuf` from 4.24.0.1 to 7.34.1.20260518 to match the protobuf major version
+  - `google-cloud-kms` from 3.5.1 to 3.15.0 (older versions cap protobuf below 7.0), keeping the exact pin
+  - `grpcio-status` from 1.49.1/1.53.x to 1.82.1 (to match the `grpcio` version), collapsing the platform-specific pins into a single exact pin since 1.82.1 ships a universal wheel
+  - `grpcio-health-checking` and `grpcio-reflection` remain pinned at 1.44.0, still compatible with the new `grpcio`/`protobuf` versions
+  - regenerate all gRPC bindings
 - Replace `highcharts` (proprietary) with `echarts` (Apache 2.0) in the Timeseries chart ([#374](https://github.com/roostorg/osprey/issues/374))
 
 ### Fixed
