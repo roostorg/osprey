@@ -211,7 +211,7 @@ wait_for_container() {
 
     echo -e "${YELLOW}Waiting for $container...${NC}"
     while [ $attempt -le $max_attempts ]; do
-        local status=$(docker inspect --format='{{.State.Health.Status}}' "$container" 2>/dev/null || echo "not_found")
+        local status=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}not_found{{end}}' "$container" 2>/dev/null)
         if [ "$status" = "healthy" ]; then
             echo -e "${GREEN}✓ $container is ready${NC}"
             return 0
