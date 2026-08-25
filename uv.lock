@@ -86,7 +86,7 @@ common = [
     { name = "six", specifier = "==1.16.0" },
     { name = "sqlalchemy", specifier = "==1.4.54" },
     { name = "sqlalchemy-utils", specifier = "==0.41.1" },
-    { name = "tenacity", specifier = "==8.1.0" },
+    { name = "tenacity", specifier = "==9.1.4" },
     { name = "tink", specifier = "==1.9.0" },
     { name = "tld", specifier = "==0.12.7" },
     { name = "traitlets", specifier = "==5.14.3" },
@@ -2422,11 +2422,11 @@ wheels = [
 
 [[package]]
 name = "tenacity"
-version = "8.1.0"
+version = "9.1.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ae/9c/ce67f96abe7c7530173e746b4f16a0bc5b4fa962ea1080d80cc5757dd210/tenacity-8.1.0.tar.gz", hash = "sha256:e48c437fdf9340f5666b92cd7990e96bc5fc955e1298baf4a907e3972067a445", size = 37658, upload-time = "2022-09-21T12:24:13.07Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/c6/ee486fd809e357697ee8a44d3d69222b344920433d3b6666ccd9b374630c/tenacity-9.1.4.tar.gz", hash = "sha256:adb31d4c263f2bd041081ab33b498309a57c77f9acf2db65aadf0898179cf93a", size = 49413, upload-time = "2026-02-07T10:45:33.841Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a5/94/933ce16d18450ccf518a6da5bd51418611e8776b992070b9f40b2f9cedff/tenacity-8.1.0-py3-none-any.whl", hash = "sha256:35525cd47f82830069f0d6b73f7eb83bc5b73ee2fff0437952cedf98b27653ac", size = 23370, upload-time = "2022-09-21T12:24:11.567Z" },
+    { url = "https://files.pythonhosted.org/packages/d7/c1/eb8f9debc45d3b7918a32ab756658a0904732f75e555402972246b0b8e71/tenacity-9.1.4-py3-none-any.whl", hash = "sha256:6095a360c919085f28c6527de529e76a06ad89b23659fa881ae0649b867a9d55", size = 28926, upload-time = "2026-02-07T10:45:32.24Z" },
 ]
 
 [[package]]
