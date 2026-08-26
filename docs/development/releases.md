@@ -1,36 +1,36 @@
-# Release Process
+# Releases
 
-Osprey uses [Semantic Versioning](https://semver.org/) (SemVer) with a 1.x.y series. This is a lightweight, bootstrap release process so downstream users can depend on version tags instead of commit hashes. The process may evolve as project usage grows.
+Osprey follows a lightweight, bootstrap release process so downstream users can depend on version tags (e.g. `1.0.1`) instead of commit hashes. The process may evolve as project usage grows. There is currently no fixed release cadence; releases are made when:
 
-## Patch releases (1.x.y)
+- Downstream users need an updated stable version tag, or
+- Meaningful changes have accumulated and CI is green
 
-Patch releases are backward-compatible fixes or small improvements already merged to `main`.
+## Versioning
 
-Cut a patch release when:
+Osprey uses [Semantic Versioning (SemVer)](https://semver.org/) following the MAJOR.MINOR.PATCH version format. In brief:
 
-- Downstream users need a stable version tag, or
-- Meaningful fixes have accumulated and CI is green
+- **Patch releases** (x.y.**Z**): backward-compatible fixes or small improvements
+- **Minor releases** (x.**Y**.z): new functionality or substantial improvements; changes to public API are backward-compatible
+- **Major releases** (**X**.y.z): backward-incompatible changes to public API, or major feature or user interface overhauls
 
-There is no fixed cadence; releases are event-driven.
+## Creating a release
 
-## Patch release checklist
+Before cutting a release, ensure:
 
-Before cutting a release:
+- [ ] **Code quality CI is passing** for the `main` branch
+- [ ] **You understand the correct version** according to SemVer
+- [ ] **[CHANGELOG.md](https://github.com/roostorg/osprey/blob/main/CHANGELOG.md) is up-to-date**
 
-- [ ] Code quality CI passing on `main` (see [Code Quality Checks](https://github.com/roostorg/osprey/actions))
-- [ ] No breaking changes
-- [ ] [CHANGELOG.md](https://github.com/roostorg/osprey/blob/main/CHANGELOG.md) updated (if applicable)
+Then:
 
-## How to cut a release
+1. In GitHub: **Releases** → **Draft a new release**
+2. **Create a tag** in SemVer format `x.y.z` from the `main` branch
+3. **Draft the release notes**, starting from [CHANGELOG.md](https://github.com/roostorg/osprey/blob/main/CHANGELOG.md)
+4. Check **Create a discussion for this release** for at least major and minor releases
+5. **Publish** the release
 
-1. Ensure the checklist above is satisfied.
-2. In GitHub: **Releases** → **Draft a new release**.
-3. Choose or create a tag `X.Y.Z` (e.g. `1.0.1`) from `main`.
-4. Publish the release.
+Publishing a release triggers automations:
 
-Publishing the release triggers existing automation:
-
-- **osprey-rpc**: build and attach sdist (and zip) to the release ([release-osprey-rpc](https://github.com/roostorg/osprey/blob/main/.github/workflows/release-osprey-rpc.yml)).
-- **Osprey Coordinator**: build and push Docker image to GHCR with version tags ([publish-coordinator-image](https://github.com/roostorg/osprey/blob/main/.github/workflows/publish-coordinator-image.yml)).
-
-Downstreams can depend on version tags (e.g. `1.0.1`) instead of commit SHAs.
+- **osprey-rpc**: builds and attaches sdist (and zip) to the release
+- **Osprey Coordinator**: builds and pushes Docker image to GHCR with version tags
+- **Docs**: adds a folder for the release to the [index](https://roostorg.github.io/osprey/) with a snapshot of the docs  
