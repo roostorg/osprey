@@ -235,6 +235,7 @@ _EMOJI_PATTERN: re.Pattern[str] = re.compile(
 )
 
 # sub for l33t -> leet
+# with IGNORECASE this matches 3s surrounded by unicode letters like İ, ı, ſ, and K which is expected
 _L33T_THREES_SUB_PATTERN: re.Pattern[str] = re.compile(r'([A-Za-z]?)(3+)([A-Za-z]?)', flags=re.IGNORECASE)
 
 # sub for |7 -> 17
