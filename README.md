@@ -12,7 +12,7 @@ Originally developed internally at [Discord](https://discord.com/) to combat spa
 
 Rules are written in SML, Osprey's structured rule language, and extended with user-defined functions (UDFs). Osprey tracks state across events by labeling entities when you provide a labels service backend; see [labels_service.py](./example_plugins/src/services/labels_service.py) for a Postgres-backed example.
 
-Osprey is built for engineers and Trust & Safety teams who want to explore, test, and integrate it into their platform for incident response and investigations. [Read more about user research and personas]([docs/research-personas.md](https://roostorg.github.io/osprey/latest/research-personas).
+Osprey is built for engineers and Trust & Safety teams who want to explore, test, and integrate it into their platform for incident response and investigations. [Read more about user research and personas](https://roostorg.github.io/osprey/latest/research-personas).
 
 ## Quick start
 
