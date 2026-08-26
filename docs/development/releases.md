@@ -1,9 +1,10 @@
 # Releases
 
-Osprey follows a lightweight, bootstrap release process so downstream users can depend on version tags (e.g. `1.0.1`) instead of commit hashes. The process may evolve as project usage grows. There is currently no fixed release cadence; releases are made when:
+Osprey follows a lightweight release process so downstream users can depend on version tags (e.g. `1.0.1`) instead of commit hashes. The process may evolve as project usage grows. There is currently no fixed release cadence; generally, releases are made when:
 
-- Downstream users need an updated stable version tag, or
-- Meaningful changes have accumulated and CI is green
+- Downstream users need an updated stable version tag,
+- Meaningful changes have accumulated and CI is green, and/or
+- A [security advisory](https://github.com/roostorg/osprey/security/) is addressed
 
 ## Versioning
 
@@ -17,7 +18,7 @@ Osprey uses [Semantic Versioning (SemVer)](https://semver.org/) following the MA
 
 Before cutting a release, ensure:
 
-- [ ] **Code quality CI is passing** for the `main` branch
+- [ ] **CI is passing** for the `main` branch
 - [ ] **You understand the correct version** according to SemVer
 - [ ] **[CHANGELOG.md](https://github.com/roostorg/osprey/blob/main/CHANGELOG.md) is up-to-date**
 
