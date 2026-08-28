@@ -75,7 +75,7 @@ common = [
     { name = "pytest", specifier = "==9.0.3" },
     { name = "pytest-mock", specifier = "==3.14.1" },
     { name = "python-dateutil", specifier = "==2.8.0" },
-    { name = "python-json-logger", specifier = "==0.1.10" },
+    { name = "python-json-logger", specifier = "==4.2.0" },
     { name = "pytz", specifier = "==2022.1" },
     { name = "pyyaml", specifier = "==6.0.1" },
     { name = "rapidfuzz", specifier = "==3.14.5" },
@@ -2072,11 +2072,11 @@ wheels = [
 
 [[package]]
 name = "python-json-logger"
-version = "0.1.10"
+version = "4.2.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/60/c8/58af72880f3ea88419df3fbc2fd08fc47c7ec069e66b90773add12dd0f63/python-json-logger-0.1.10.tar.gz", hash = "sha256:cf2caaf34bd2eff394915b6242de4d0245de79971712439380ece6f149748cde", size = 5915, upload-time = "2018-11-07T13:45:05.927Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/21/25/5473e46b179f8e8b4ad3aeeb36773d1701b7770eaf5e5bc2025c7303b598/python_json_logger-4.2.0.tar.gz", hash = "sha256:e371ebe22ec01e289850102091a2b1f6fc9e655c7f1f5f29073936756c290afa", size = 18211, upload-time = "2026-08-15T11:36:38.232Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/84/2e/8d99d075689d9b57548586bd9f5b286f0634f8e6fdb8db57a7ffdd8f86bf/python_json_logger-0.1.10-py2.py3-none-any.whl", hash = "sha256:3e000053837500f9eb28d6228d7cb99fabfc1874d34b40c08289207292abaf2e", size = 5046, upload-time = "2018-11-07T13:45:03.267Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/55/6467fde553886cb293e41538f3a8b4e4fd4688c6df242cf982162d8367fb/python_json_logger-4.2.0-py3-none-any.whl", hash = "sha256:158a52126fcd6869e09574d2b66272666f3dc8f468c62637ef9a1fa883719cb9", size = 14988, upload-time = "2026-08-15T11:36:36.821Z" },
 ]
 
 [[package]]
