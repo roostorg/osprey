@@ -6,6 +6,8 @@ Osprey follows a lightweight release process so downstream users can depend on v
 - Meaningful changes have accumulated and CI is green, and/or
 - A [security advisory](https://github.com/roostorg/osprey/security/) is addressed
 
+We do not currently backport changes to or release patches for versions other than the latest.
+
 ## Versioning
 
 Osprey uses [Semantic Versioning (SemVer)](https://semver.org/) following the MAJOR.MINOR.PATCH version format. In brief:
