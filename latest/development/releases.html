@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Release Process - Osprey Documentation</title>
+        <title>Releases - Osprey Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -37,10 +37,10 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-11875199.js";
+            window.path_to_searchindex_js = "../searchindex-f82c37d1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-9fc3267d.js"></script>
+        <script src="../toc-7b879ac2.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -179,36 +179,42 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="release-process"><a class="header" href="#release-process">Release Process</a></h1>
-<p>Osprey uses <a href="https://semver.org/">Semantic Versioning</a> (SemVer) with a 1.x.y series. This is a lightweight, bootstrap release process so downstream users can depend on version tags instead of commit hashes. The process may evolve as project usage grows.</p>
-<h2 id="patch-releases-1xy"><a class="header" href="#patch-releases-1xy">Patch releases (1.x.y)</a></h2>
-<p>Patch releases are backward-compatible fixes or small improvements already merged to <code>main</code>.</p>
-<p>Cut a patch release when:</p>
+                        <h1 id="releases"><a class="header" href="#releases">Releases</a></h1>
+<p>Osprey follows a lightweight release process so downstream users can depend on version tags (e.g. <code>1.0.1</code>) instead of commit hashes. The process may evolve as project usage grows. There is currently no fixed release cadence; generally, releases are made when:</p>
 <ul>
-<li>Downstream users need a stable version tag, or</li>
-<li>Meaningful fixes have accumulated and CI is green</li>
+<li>Downstream users need an updated stable version tag,</li>
+<li>Meaningful changes have accumulated and CI is green, and/or</li>
+<li>A <a href="https://github.com/roostorg/osprey/security/">security advisory</a> is addressed</li>
 </ul>
-<p>There is no fixed cadence; releases are event-driven.</p>
-<h2 id="patch-release-checklist"><a class="header" href="#patch-release-checklist">Patch release checklist</a></h2>
-<p>Before cutting a release:</p>
+<p>We do not currently backport changes to or release patches for versions other than the latest.</p>
+<h2 id="versioning"><a class="header" href="#versioning">Versioning</a></h2>
+<p>Osprey uses <a href="https://semver.org/">Semantic Versioning (SemVer)</a> following the MAJOR.MINOR.PATCH version format. In brief:</p>
 <ul>
-<li><input disabled="" type="checkbox"> Code quality CI passing on <code>main</code> (see <a href="https://github.com/roostorg/osprey/actions">Code Quality Checks</a>)</li>
-<li><input disabled="" type="checkbox"> No breaking changes</li>
-<li><input disabled="" type="checkbox"> <a href="https://github.com/roostorg/osprey/blob/main/CHANGELOG.md">CHANGELOG.md</a> updated (if applicable)</li>
+<li><strong>Patch releases</strong> (x.y.<strong>Z</strong>): backward-compatible fixes or small improvements</li>
+<li><strong>Minor releases</strong> (x.<strong>Y</strong>.z): new functionality or substantial improvements; changes to public API are backward-compatible</li>
+<li><strong>Major releases</strong> (<strong>X</strong>.y.z): backward-incompatible changes to public API, or major feature or user interface overhauls</li>
 </ul>
-<h2 id="how-to-cut-a-release"><a class="header" href="#how-to-cut-a-release">How to cut a release</a></h2>
+<h2 id="creating-a-release"><a class="header" href="#creating-a-release">Creating a release</a></h2>
+<p>Before cutting a release, ensure:</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>CI is passing</strong> for the <code>main</code> branch</li>
+<li><input disabled="" type="checkbox"> <strong>You understand the correct version</strong> according to SemVer</li>
+<li><input disabled="" type="checkbox"> <strong><a href="https://github.com/roostorg/osprey/blob/main/CHANGELOG.md">CHANGELOG.md</a> is up-to-date</strong></li>
+</ul>
+<p>Then:</p>
 <ol>
-<li>Ensure the checklist above is satisfied.</li>
-<li>In GitHub: <strong>Releases</strong> → <strong>Draft a new release</strong>.</li>
-<li>Choose or create a tag <code>X.Y.Z</code> (e.g. <code>1.0.1</code>) from <code>main</code>.</li>
-<li>Publish the release.</li>
+<li>In GitHub: <strong>Releases</strong> → <strong>Draft a new release</strong></li>
+<li><strong>Create a tag</strong> in SemVer format <code>x.y.z</code> from the <code>main</code> branch</li>
+<li><strong>Draft the release notes</strong>, starting from <a href="https://github.com/roostorg/osprey/blob/main/CHANGELOG.md">CHANGELOG.md</a></li>
+<li>Check <strong>Create a discussion for this release</strong> for at least major and minor releases</li>
+<li><strong>Publish</strong> the release</li>
 </ol>
-<p>Publishing the release triggers existing automation:</p>
+<p>Publishing a release triggers automations:</p>
 <ul>
-<li><strong>osprey-rpc</strong>: build and attach sdist (and zip) to the release (<a href="https://github.com/roostorg/osprey/blob/main/.github/workflows/release-osprey-rpc.yml">release-osprey-rpc</a>).</li>
-<li><strong>Osprey Coordinator</strong>: build and push Docker image to GHCR with version tags (<a href="https://github.com/roostorg/osprey/blob/main/.github/workflows/publish-coordinator-image.yml">publish-coordinator-image</a>).</li>
+<li><strong>osprey-rpc</strong>: builds and attaches sdist (and zip) to the release</li>
+<li><strong>Osprey Coordinator</strong>: builds and pushes Docker image to GHCR with version tags</li>
+<li><strong>Docs</strong>: adds a folder for the release to the <a href="https://roostorg.github.io/osprey/">index</a> with a snapshot of the docs</li>
 </ul>
-<p>Downstreams can depend on version tags (e.g. <code>1.0.1</code>) instead of commit SHAs.</p>
 
                     </main>
 
