@@ -28,9 +28,9 @@ class KafkaOutputSink(BaseOutputSink):
         bootstrap_servers: list[str],
         output_topic: str,
         client_id: str | None,
-        auto_create_topic: bool = True,
-        num_partitions: int = 1,
-        replication_factor: int = 1,
+        auto_create_topic: bool,
+        num_partitions: int,
+        replication_factor: int,
     ) -> None:
         if len(bootstrap_servers) == 0:
             raise EmptyBootstrapServersException()
