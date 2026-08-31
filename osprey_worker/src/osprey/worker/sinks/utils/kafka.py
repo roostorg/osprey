@@ -9,6 +9,7 @@ bridge back to greenlet-land via gevent async watchers.
 from typing import Any, Optional
 
 import gevent._threading as _real_threading
+import gevent.monkey
 import gevent.queue
 import sentry_sdk
 from confluent_kafka import Consumer, KafkaException, Message, Producer
@@ -17,9 +18,6 @@ from osprey.worker.lib.osprey_shared.logging import get_logger
 logger = get_logger()
 
 _SENTINEL = object()
-
-import gevent.monkey
-
 _real_sleep = gevent.monkey.get_original('time', 'sleep')
 
 

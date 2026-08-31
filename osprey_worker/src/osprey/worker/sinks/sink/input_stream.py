@@ -431,7 +431,11 @@ class KafkaInputStream(BaseInputStream[BaseAckingContext[Action]]):
                     sentry_sdk.capture_exception(Exception(str(msg.error())))
                     continue
 
-                data = json.loads(msg.value())
+                value = msg.value()
+                if value is None:
+                    continue
+
+                data = json.loads(value)
                 timestamp = parse_go_timestamp(data['send_time'])
                 action_data = data['data']
 
