@@ -8,9 +8,22 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Added
+
+- Configurable execution timeouts for native async UDFs ([#452](https://github.com/roostorg/osprey/pull/452) by [@ayubun](https://github.com/ayubun))
+- `HasLabel` support in the asyncio worker ([#453](https://github.com/roostorg/osprey/pull/453) by [@ayubun](https://github.com/ayubun))
+
 ### Changed
 
-- Osprey starts without GCP credentials instead of crashing: Pub/Sub publishing is now opt-in via `OSPREY_PUBSUB_ENABLED` (default off), so the default (no-GCP) deployment publishes nothing. When it is enabled but GCP credentials can't be resolved, a `make_publisher` factory logs a warning and degrades to a noop rather than crashing. The GCP-backed telemetry itself (analytics, webhooks, rules-visualizer experiment metadata) stays inert until GCP or a replacement is configured. **Required configuration change:** deployments that rely on Pub/Sub publishing must set `OSPREY_PUBSUB_ENABLED=true`, otherwise publishing is silently disabled ([#388](https://github.com/roostorg/osprey/pull/388) by [@julietshen](https://github.com/julietshen))
+- Pub/Sub publishing is now opt-in via `OSPREY_PUBSUB_ENABLED` (default off), so Osprey starts without GCP credentials instead of crashing ([#388](https://github.com/roostorg/osprey/pull/388) by [@julietshen](https://github.com/julietshen))
+- Immutable execution-plan scheduler for faster engine and coordinator execution ([#454](https://github.com/roostorg/osprey/pull/454) by [@cmttt](https://github.com/cmttt))
+- Upgrade `grpcio` from 1.49.1/1.53.x to 1.82.1, and `typing-extensions` from 4.6.3 to 4.12.2 (required by the grpcio upgrade) ([#415](https://github.com/roostorg/osprey/pull/415) by [@reitblatt](https://github.com/reitblatt))
+
+### Fixed
+
+- Cancel the parent execution and drain its owned tasks when a native async UDF is cancelled ([#459](https://github.com/roostorg/osprey/pull/459) by [@ayubun](https://github.com/ayubun))
+- Retry transient Snowflake errors in the coordinator ([#448](https://github.com/roostorg/osprey/pull/448) by [@ayubun](https://github.com/ayubun))
+- Narrow overly-broad `[A-z]` regular expressions in the string UDFs and UI ([#473](https://github.com/roostorg/osprey/pull/473) by [@cassidyjames](https://github.com/cassidyjames))
 
 ## [1.1.0] - 2026-07-22
 
@@ -39,7 +52,6 @@ For more information about each release including git tags and artifacts, see [R
 - Event stream shows sensible defaults so first-load isn't empty ([#297](https://github.com/roostorg/osprey/pull/297) by [@haileyok](https://github.com/haileyok))
 - Replace `react-scripts` with `rsbuild`/`rspack` for UI builds ([#235](https://github.com/roostorg/osprey/pull/235) by [@chimosky](https://github.com/chimosky))
 - Migrate from npm to pnpm via Corepack ([#252](https://github.com/roostorg/osprey/pull/252) by [@haileyok](https://github.com/haileyok))
-- Upgrade `grpcio` from 1.49.1/1.53.x to 1.82.1, and `typing-extensions` from 4.6.3 to 4.12.2 (required by the grpcio upgrade) ([#415](https://github.com/roostorg/osprey/pull/415) by [@reitblatt](https://github.com/reitblatt))
 - Replace `highcharts` (proprietary) with `echarts` (Apache 2.0) in the Timeseries chart ([#374](https://github.com/roostorg/osprey/issues/374))
 
 ### Fixed
