@@ -119,7 +119,7 @@ default-groups = ["common", "dev"]
 [tool.uv.sources]
 greenlet = { git = "https://github.com/discord/greenlet.git", rev = "a75d78f1547c74a81134644a179467525a255466" }
 gunicorn = { git = "https://github.com/discord/gunicorn.git", rev = "979efdcb918daa536d8923668241c6e6bf1edb58" }
-jsonpath-rw = { url = "https://github.com/kennknowles/python-jsonpath-rw/archive/6f5647bb3ad2395c20f0191fef07a1df51c9fed8.tar.gz" }
+jsonpath-rw = { git = "https://github.com/kennknowles/python-jsonpath-rw.git", rev = "6f5647bb3ad2395c20f0191fef07a1df51c9fed8" }
 osprey_rpc = { workspace = true }
 osprey_worker = { workspace = true }
 osprey_async_worker = { workspace = true }

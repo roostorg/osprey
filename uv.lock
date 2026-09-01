@@ -58,7 +58,7 @@ common = [
     { name = "grpcio-tools", marker = "platform_machine == 'x86_64'", specifier = "==1.49.1" },
     { name = "gunicorn", git = "https://github.com/discord/gunicorn.git?rev=979efdcb918daa536d8923668241c6e6bf1edb58" },
     { name = "intervals", specifier = "==0.9.2" },
-    { name = "jsonpath-rw", url = "https://github.com/kennknowles/python-jsonpath-rw/archive/6f5647bb3ad2395c20f0191fef07a1df51c9fed8.tar.gz" },
+    { name = "jsonpath-rw", git = "https://github.com/kennknowles/python-jsonpath-rw.git?rev=6f5647bb3ad2395c20f0191fef07a1df51c9fed8" },
     { name = "kafka-python", specifier = "==1.4.7" },
     { name = "markupsafe", specifier = "<2.1" },
     { name = "minio", specifier = ">=7.2.16" },
@@ -1182,16 +1182,8 @@ wheels = [
 [[package]]
 name = "jsonpath-rw"
 version = "1.4.0"
-source = { url = "https://github.com/kennknowles/python-jsonpath-rw/archive/6f5647bb3ad2395c20f0191fef07a1df51c9fed8.tar.gz" }
+source = { git = "https://github.com/kennknowles/python-jsonpath-rw.git?rev=6f5647bb3ad2395c20f0191fef07a1df51c9fed8#6f5647bb3ad2395c20f0191fef07a1df51c9fed8" }
 dependencies = [
-    { name = "decorator" },
-    { name = "ply" },
-    { name = "six" },
-]
-sdist = { hash = "sha256:df5e3ee97cf486d9872b301982218ab27976647d4c2ffabe459f8b3f8d2c65c8" }
-
-[package.metadata]
-requires-dist = [
     { name = "decorator" },
     { name = "ply" },
     { name = "six" },
