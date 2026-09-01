@@ -12,6 +12,10 @@ For more information about each release including git tags and artifacts, see [R
 
 - Osprey starts without GCP credentials instead of crashing: Pub/Sub publishing is now opt-in via `OSPREY_PUBSUB_ENABLED` (default off), so the default (no-GCP) deployment publishes nothing. When it is enabled but GCP credentials can't be resolved, a `make_publisher` factory logs a warning and degrades to a noop rather than crashing. The GCP-backed telemetry itself (analytics, webhooks, rules-visualizer experiment metadata) stays inert until GCP or a replacement is configured. **Required configuration change:** deployments that rely on Pub/Sub publishing must set `OSPREY_PUBSUB_ENABLED=true`, otherwise publishing is silently disabled ([#388](https://github.com/roostorg/osprey/pull/388) by [@julietshen](https://github.com/julietshen))
 
+### Fixed
+
+- Fix postgres worker crash on first boot ([#436](https://github.com/roostorg/osprey/pull/436) by [@vedarolap](https://github.com/vedarolap), closes [#432](https://github.com/roostorg/osprey/issues/432))
+
 ## [1.1.0] - 2026-07-22
 
 ### Added
@@ -44,7 +48,6 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
-- Serialize Postgres schema creation behind an advisory lock so the worker and UI API no longer race on `CREATE TYPE` for the `job_status` enum on a fresh volume, which could crash the worker on first boot ([#436](https://github.com/roostorg/osprey/pull/436) by [@vedarolap](https://github.com/vedarolap), closes [#432](https://github.com/roostorg/osprey/issues/432))
 - Escape literal braces when parsing f-strings in the engine ([#347](https://github.com/roostorg/osprey/pull/347) by [@haileyok](https://github.com/haileyok))
 - Tolerate malformed URI escapes in `EntityWithPopover` UI component ([#377](https://github.com/roostorg/osprey/pull/377) by [@julietshen](https://github.com/julietshen))
 - Add retention limits to Kafka topics to prevent unbounded disk growth ([#249](https://github.com/roostorg/osprey/pull/249) by [@VINODvoid](https://github.com/VINODvoid))
