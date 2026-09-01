@@ -145,7 +145,8 @@ Release pre-coordinator integration. Effectively the same feature-wise as the 1.
 
 See the [1.0 release notes](#10---2026-01-28) for a full description of the core Osprey feature set.
 
-[Unreleased]: https://github.com/roostorg/osprey/compare/1.0.1...HEAD
+[Unreleased]: https://github.com/roostorg/osprey/compare/1.1.0...HEAD
+[1.1.0]: https://github.com/roostorg/osprey/compare/1.0.1...1.1.0
 [1.0.1]: https://github.com/roostorg/osprey/compare/1.0...1.0.1
 [1.0]: https://github.com/roostorg/osprey/compare/0.2...1.0
 [0.2]: https://github.com/roostorg/osprey/compare/0.1...0.2
