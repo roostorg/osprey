@@ -66,3 +66,13 @@ def test_has_result_and_result_used_in_list_literal(
     run_validation: RunValidationFunction, check_failure: CheckFailureFunction
 ) -> None:
     run_validation('Boz = Baz(qux=[1, 2, HasResult()])')
+
+
+def test_attribute_callee_is_passed_over(run_validation: RunValidationFunction) -> None:
+    """This validator has nothing to say about `Foo.Bar(...)`.
+
+    It can't resolve a UDF for an attribute callee, so `validate_call_node` returns
+    early — but it must not assert on the way past. Reporting the unsupported callee
+    is ValidateCallKwargs' job; this validator just needs to not crash.
+    """
+    run_validation('Baz = Foo.Bar(qux=1)')

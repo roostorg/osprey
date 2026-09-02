@@ -1,0 +1,5 @@
+error: calling attributes isn't supported yet
+--> main.sml:1:6
+     |
+   1 | Baz = Foo.Bar(qux=1)
+     |       ^ call a function by name, e.g. `Foo(...)`

@@ -174,3 +174,17 @@ def test_allow_unexpected_respects_type(
     with check_failure():
         extra_arguments_str = ', '.join(f'{k}={v!r}' for k, v in extra_arguments.items())
         execute(f'Ret = ValidatingUnexpectedArgsUdf({extra_arguments_str})')
+
+
+def test_attribute_callee_reports_error_rather_than_asserting(
+    run_validation: RunValidationFunction, check_failure: CheckFailureFunction
+) -> None:
+    """`Foo.Bar(...)` must surface as a validation error, not an AssertionError.
+
+    The grammar allows one level of attribute access and the parser accepts an
+    attribute callee, but no validator implements one. This validator also runs over
+    user-submitted SML from the rule-draft editor, where an uncaught assert becomes a
+    500 instead of an inline error the author can act on.
+    """
+    with check_failure():
+        run_validation('Baz = Foo.Bar(qux=1)')
