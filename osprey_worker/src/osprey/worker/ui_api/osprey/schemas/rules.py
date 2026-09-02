@@ -15,6 +15,7 @@ for every response; any conversion the UI wants is the client's to make.
 """
 
 from datetime import datetime
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field, root_validator, validator
@@ -153,6 +154,89 @@ class RuleDeployment(BaseModel):
     rule: RuleRecord
     main_sml_updated: bool = False
     path_on_disk: str
+
+
+# --------------------------------------------------------------------------- #
+# Result models — the deploy plan
+# --------------------------------------------------------------------------- #
+
+
+class SourceState(StrEnum):
+    VALID = 'valid'
+    INVALID = 'invalid'
+
+
+class RuleFileState(StrEnum):
+    #: Nothing at this path yet -- deploy creates it.
+    NEW = 'new'
+    #: The deployed file is the draft, byte for byte.
+    IDENTICAL = 'identical'
+    #: A file is there but isn't this draft: an older deploy, or an edit made on disk.
+    DIFFERS = 'differs'
+
+
+class MainSmlState(StrEnum):
+    #: main.sml doesn't require the rule yet; deploy would add the `Require` line.
+    WOULD_APPEND = 'would_append'
+    #: Already required, so a deploy leaves main.sml untouched.
+    ALREADY_REQUIRED = 'already_required'
+    #: No main.sml in the rules directory. Deploy refuses when wiring is requested.
+    MISSING = 'missing'
+    #: main.sml doesn't compile, so whether the rule is required is unanswerable.
+    #: Deploy refuses rather than appending to a file the engine can't read.
+    UNPARSEABLE = 'unparseable'
+
+
+class SourcePlan(BaseModel):
+    state: SourceState
+
+
+class RuleFilePlan(BaseModel):
+    #: Relative to the rules directory, never the absolute server path.
+    path: str
+    state: RuleFileState
+
+
+class MainSmlPlan(BaseModel):
+    state: MainSmlState
+    #: The exact line deploy would add, when `state` is `would_append`. Served so the
+    #: confirmation dialog can show what it is about to write rather than describe it.
+    require_line: str | None = None
+
+
+class DeployPlan(BaseModel):
+    """What `POST /rules/drafts/<id>/deploy` would do, without doing it.
+
+    Every reason `deployable` can be false is a named state on one of the three
+    sub-objects, so a client renders the explanation from the same fields it renders
+    the summary from, rather than parsing a separate list of reasons.
+
+    Advisory, not a promise. Nothing locks the rules directory between planning and
+    deploying, so `deploy_rule` re-checks all of this and can still refuse. Do not
+    "optimise" deploy by trusting a plan handed back by a client.
+    """
+
+    source: SourcePlan
+    rule_file: RuleFilePlan
+    main_sml: MainSmlPlan
+    #: Whether the rule file can be written: the draft still compiles, and the rules
+    #: directory is usable. Says nothing about wiring.
+    deployable: bool
+    #: Whether the `Require` line can be added, i.e. main.sml exists and parses. A
+    #: separate fact from `deployable`, and the two are independent: a broken draft with
+    #: a fine main.sml is `deployable: false, wireable_into_main: true`, and a good draft
+    #: with a broken main.sml is the reverse.
+    #:
+    #: Served alongside rather than the plan taking the wiring as a parameter, because
+    #: the UI offers it as a checkbox and one read of main.sml settles both. Toggling
+    #: re-renders instead of re-fetching, and this maps onto the control directly: the
+    #: checkbox is enabled when this is true, and Deploy when
+    #: `deployable and (not checked or wireable_into_main)`.
+    #:
+    #: Computed server-side rather than left to clients to derive from `main_sml.state`,
+    #: so a state added later disables the checkbox on an old client rather than leaving
+    #: it enabled.
+    wireable_into_main: bool
 
 
 class DraftList(BaseModel):

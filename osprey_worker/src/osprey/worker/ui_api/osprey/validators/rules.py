@@ -143,6 +143,16 @@ class DeployDraftRequest(BaseModel, ViewArgAndOptionalJsonBodyMarshaller):
     wire_into_main: bool = False
 
 
+class DeployPlanRequest(BaseModel, ViewArgAndOptionalJsonBodyMarshaller):
+    """`GET /rules/drafts/<int:draft_id>/deploy-plan`
+
+    Takes no wiring argument: the plan answers for both choices, so the dialog's
+    checkbox needs no request per toggle.
+    """
+
+    draft_id: int
+
+
 class RequestDeployRequest(BaseModel, ViewArgAndOptionalJsonBodyMarshaller):
     """`POST /rules/drafts/<int:draft_id>/request-deploy`
 

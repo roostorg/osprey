@@ -206,3 +206,178 @@ def test_deploy_404_for_unknown_draft(
     set_rules_dir(monkeypatch, tmp_path)
     res = client.post(url_for('rules.deploy_draft', draft_id=999999), json={})
     assert res.status_code == 404
+
+
+# --- Deploy plan ------------------------------------------------------------
+#
+# Every state maps onto something `deploy_draft` actually does, so each test below
+# pairs a plan with the deploy outcome it predicts. A plan that disagreed with the
+# deploy would be worse than no plan: the dialog would enable a button that 409s.
+
+
+@pytest.mark.use_rules_sources(rule_authoring_sources(DEPLOYING_ABILITIES))
+def test_plan_for_a_new_rule_with_no_wiring(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    set_rules_dir(monkeypatch, tmp_path)
+    draft_id = _create_draft(client, 'rules/planned.sml')
+
+    res = client.get(url_for('rules.deploy_plan', draft_id=draft_id))
+    assert res.status_code == 200
+    assert res.json == {
+        'source': {'state': 'valid'},
+        'rule_file': {'path': 'rules/planned.sml', 'state': 'new'},
+        # Reported even unwired, so the dialog can describe the checkbox it offers.
+        'main_sml': {'state': 'missing', 'require_line': None},
+        # Two independent facts in one response: the rule file can be written, and the
+        # Require cannot be added because there is no main.sml. The checkbox reads the
+        # second, so toggling it re-renders instead of re-requesting.
+        'deployable': True,
+        'wireable_into_main': False,
+    }
+
+
+@pytest.mark.use_rules_sources(rule_authoring_sources(DEPLOYING_ABILITIES))
+def test_plan_reports_the_require_line_it_would_append(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """`would_append` carries the exact line, so the dialog shows rather than describes.
+
+    This is the difference between "append Require(...) if not already present" and
+    "append `Require(rule='rules/wired.sml')`" -- the client cannot know which without
+    parsing main.sml itself.
+    """
+    (tmp_path / 'main.sml').write_text("Import(rules=['models/base.sml'])\n")
+    set_rules_dir(monkeypatch, tmp_path)
+    draft_id = _create_draft(client, 'rules/wired.sml')
+
+    res = client.get(url_for('rules.deploy_plan', draft_id=draft_id))
+    assert res.json is not None
+    assert res.json['main_sml'] == {
+        'state': 'would_append',
+        'require_line': "Require(rule='rules/wired.sml')",
+    }
+    assert res.json['wireable_into_main'] is True
+
+
+@pytest.mark.use_rules_sources(rule_authoring_sources(DEPLOYING_ABILITIES))
+def test_plan_reports_already_required_and_identical_after_a_deploy(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """Re-planning after a deploy reports a no-op, which is what makes it a redeploy.
+
+    `identical` is decided by comparing the stored `cid` to a hash of the file on disk,
+    so this also pins that deploy writes the source verbatim -- if it rewrote the SML in
+    any way, the hashes would diverge and this would read `differs`.
+    """
+    (tmp_path / 'main.sml').write_text("Import(rules=['models/base.sml'])\n")
+    set_rules_dir(monkeypatch, tmp_path)
+    draft_id = _create_draft(client, 'rules/deployed.sml')
+    client.post(url_for('rules.deploy_draft', draft_id=draft_id), json={'wire_into_main': True})
+
+    res = client.get(url_for('rules.deploy_plan', draft_id=draft_id))
+    assert res.json is not None
+    assert res.json['rule_file']['state'] == 'identical'
+    assert res.json['main_sml']['state'] == 'already_required'
+    assert res.json['wireable_into_main'] is True
+
+
+@pytest.mark.use_rules_sources(rule_authoring_sources(DEPLOYING_ABILITIES))
+def test_plan_reports_differs_when_the_file_was_edited_on_disk(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """An edit made outside the editor shows up as `differs`.
+
+    This is the case `cid` exists for, and the one nothing else detects: the row still
+    says `deployed`, the file is still there, and only the hash reveals that what is
+    running is no longer what the draft says.
+    """
+    set_rules_dir(monkeypatch, tmp_path)
+    draft_id = _create_draft(client, 'rules/tampered.sml')
+    client.post(url_for('rules.deploy_draft', draft_id=draft_id), json={})
+
+    (tmp_path / 'rules' / 'tampered.sml').write_text('SomeRule = Rule(when_all=[], description="edited")')
+
+    res = client.get(url_for('rules.deploy_plan', draft_id=draft_id))
+    assert res.json is not None
+    assert res.json['rule_file']['state'] == 'differs'
+    # Still deployable: overwriting is what deploying is for. The state is a warning,
+    # not a blocker.
+    assert res.json['deployable'] is True
+
+
+@pytest.mark.use_rules_sources(rule_authoring_sources(DEPLOYING_ABILITIES))
+def test_plan_is_not_deployable_when_main_sml_is_unparseable_and_wiring_is_asked_for(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """The state that would otherwise read `would_append` for a deploy that 409s.
+
+    Both halves matter: `unparseable` names the reason, and `deployable: false` saves
+    every client from re-deriving that this particular state blocks.
+    """
+    (tmp_path / 'main.sml').write_text('Import(rules=[\n')
+    set_rules_dir(monkeypatch, tmp_path)
+    draft_id = _create_draft(client, 'rules/blocked.sml')
+
+    res = client.get(url_for('rules.deploy_plan', draft_id=draft_id))
+    assert res.json is not None
+    assert res.json['main_sml']['state'] == 'unparseable'
+    assert res.json['wireable_into_main'] is False
+
+    # And the deploy it predicted really does refuse.
+    deployed = client.post(url_for('rules.deploy_draft', draft_id=draft_id), json={'wire_into_main': True})
+    assert deployed.status_code == 409
+
+
+@pytest.mark.use_rules_sources(rule_authoring_sources(DEPLOYING_ABILITIES))
+def test_plan_separates_deployability_from_wireability(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """A broken main.sml stops the wiring, not the deploy.
+
+    The two are independent facts, which is why they are two fields rather than one
+    answer parameterised by a wiring flag: the rule file here is perfectly writable and
+    only the `Require` line is impossible. One request settles both, so the dialog
+    disables its checkbox and leaves Deploy enabled without asking again.
+    """
+    (tmp_path / 'main.sml').write_text('Import(rules=[\n')
+    set_rules_dir(monkeypatch, tmp_path)
+    draft_id = _create_draft(client, 'rules/either_way.sml')
+
+    res = client.get(url_for('rules.deploy_plan', draft_id=draft_id))
+    assert res.json is not None
+    assert res.json['deployable'] is True
+    assert res.json['wireable_into_main'] is False
+
+
+@pytest.mark.use_rules_sources(rule_authoring_sources(DEPLOYING_ABILITIES))
+def test_plan_503s_when_deploy_is_not_configured(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A plan that succeeded where the deploy 503s is the mismatch this prevents."""
+    draft_id = _create_draft(client, 'rules/nodir_plan.sml')
+    unset_rules_dir(monkeypatch)
+
+    res = client.get(url_for('rules.deploy_plan', draft_id=draft_id))
+    assert res.status_code == 503
+
+
+@pytest.mark.use_rules_sources(rule_authoring_sources(DEPLOYING_ABILITIES))
+def test_plan_404s_for_an_unknown_draft(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    set_rules_dir(monkeypatch, tmp_path)
+    res = client.get(url_for('rules.deploy_plan', draft_id=999999))
+    assert res.status_code == 404
+
+
+@pytest.mark.use_rules_sources(rule_authoring_sources(AUTHORING_ABILITIES))
+def test_plan_requires_can_deploy_rules(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """The plan is gated with deploy, not editing: it is only useful to a deployer."""
+    set_rules_dir(monkeypatch, tmp_path)
+    draft_id = _create_draft(client, 'rules/plan_authz.sml')
+
+    res = client.get(url_for('rules.deploy_plan', draft_id=draft_id))
+    assert res.status_code == 401

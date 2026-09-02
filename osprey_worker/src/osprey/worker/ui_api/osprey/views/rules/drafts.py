@@ -9,13 +9,14 @@ from osprey.worker.ui_api.osprey.lib.abilities import CanDeployRules, CanEditRul
 from osprey.worker.ui_api.osprey.lib.auth import get_current_user_email
 from osprey.worker.ui_api.osprey.lib.marshal import marshal_with
 from osprey.worker.ui_api.osprey.lib.rule_builder import parse_into_builder_model
-from osprey.worker.ui_api.osprey.lib.rule_deployment import MAIN_SML_PATH, DeployError, deploy_rule
+from osprey.worker.ui_api.osprey.lib.rule_deployment import MAIN_SML_PATH, DeployError, deploy_rule, plan_deployment
 from osprey.worker.ui_api.osprey.lib.rule_validation import validate_draft_source
 from osprey.worker.ui_api.osprey.schemas.rule_validation import DraftValidation, ValidationMessage
 from osprey.worker.ui_api.osprey.schemas.rules import DraftList, DraftSummary, RuleRecord
 from osprey.worker.ui_api.osprey.validators.rules import (
     CreateDraftRequest,
     DeployDraftRequest,
+    DeployPlanRequest,
     GetDraftRequest,
     ParseIntoBuilderRequest,
     RequestDeployRequest,
@@ -210,6 +211,43 @@ def request_deploy(request_model: RequestDeployRequest) -> Any:
         return jsonify({'error': f'No draft with id {request_model.draft_id}.'}), HTTPStatus.NOT_FOUND
 
     return jsonify(RuleRecord.from_orm(draft).dict())
+
+
+@blueprint.route('/rules/drafts/<int:draft_id>/deploy-plan', methods=['GET'])
+@require_ability(CanDeployRules)
+@marshal_with(DeployPlanRequest)
+def deploy_plan(request_model: DeployPlanRequest) -> Any:
+    """What deploying this draft would do, without doing it.
+
+    Lets the confirmation dialog state what is about to happen rather than describe it
+    conditionally -- "append `Require(rule='rules/x.sml')`" instead of "append it if
+    it isn't already present" -- and lets it disable the button, with a reason, for a
+    deploy that would fail.
+
+    `CanDeployRules` rather than `CanEditRules`: the plan is only actionable to someone
+    who can deploy, and it reports server-side state (whether a file exists, whether
+    main.sml compiles) that an author has no use for.
+
+    Answers for both wiring choices in one response, so the dialog's checkbox
+    re-renders rather than re-requesting.
+
+    Advisory only. Nothing locks the rules directory between planning and deploying, so
+    `deploy_draft` re-runs every check and can still refuse.
+    """
+    draft = Rule.get_one_with_id(request_model.draft_id)
+    if draft is None:
+        return jsonify({'error': f'No draft with id {request_model.draft_id}.'}), HTTPStatus.NOT_FOUND
+
+    # Same statuses as deploy for the conditions that make planning impossible: an
+    # unconfigured rules directory (503), a path escaping it (400). A plan that
+    # succeeded where the deploy 503s would be the mismatch this exists to prevent.
+    try:
+        plan = plan_deployment(draft)
+    except DeployError as exc:
+        logger.warning('deploy plan for draft %s failed: %s', request_model.draft_id, exc)
+        return jsonify({'error': str(exc)}), exc.status
+
+    return jsonify(plan.dict())
 
 
 @blueprint.route('/rules/drafts/<int:draft_id>/deploy', methods=['POST'])

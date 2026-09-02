@@ -38,9 +38,20 @@ from osprey.engine.ast.errors import OspreySyntaxError
 from osprey.engine.ast.grammar import Call, Source, String
 from osprey.engine.ast.py_ast import transform
 from osprey.worker.lib.singletons import CONFIG
-from osprey.worker.lib.storage.rules import Rule
+from osprey.worker.lib.storage.rules import Rule, content_id
 from osprey.worker.ui_api.osprey.lib.ast_utils import get_func_identifier
-from osprey.worker.ui_api.osprey.schemas.rules import RuleDeployment, RuleRecord
+from osprey.worker.ui_api.osprey.lib.rule_validation import validate_draft_source
+from osprey.worker.ui_api.osprey.schemas.rules import (
+    DeployPlan,
+    MainSmlPlan,
+    MainSmlState,
+    RuleDeployment,
+    RuleFilePlan,
+    RuleFileState,
+    RuleRecord,
+    SourcePlan,
+    SourceState,
+)
 
 # The engine's entry point: deploy appends `Require` lines to it, and
 # `views/rules/drafts` rejects it as a draft target. Named once so those two
@@ -256,4 +267,89 @@ def deploy_rule(rule: Rule, *, wire_into_main: bool = False) -> RuleDeployment:
         # Report the path relative to the rules directory, not the absolute server
         # path (which would leak the deployment's directory layout to the client).
         path_on_disk=str(target.relative_to(directory.resolve())),
+    )
+
+
+def _require_line(rule_path: str) -> str:
+    """The `Require` statement deploy would add to main.sml for `rule_path`."""
+    return f"Require(rule='{rule_path}')"
+
+
+def _main_sml_plan(directory: Path, rule_path: str) -> MainSmlPlan:
+    """What deploying `rule_path` would do to main.sml, without doing it.
+
+    Mirrors the branches `deploy_rule` takes, so the four states line up one-to-one
+    with its outcomes: two that proceed, and the two it refuses with a 409.
+    """
+    main_path = directory / MAIN_SML_PATH
+    if not main_path.exists():
+        return MainSmlPlan(state=MainSmlState.MISSING)
+
+    try:
+        already_required = _main_requires(main_path.read_text(encoding='utf-8'), rule_path)
+    except MainSmlUnparseable:
+        return MainSmlPlan(state=MainSmlState.UNPARSEABLE)
+
+    if already_required:
+        return MainSmlPlan(state=MainSmlState.ALREADY_REQUIRED)
+    return MainSmlPlan(state=MainSmlState.WOULD_APPEND, require_line=_require_line(rule_path))
+
+
+def _rule_file_plan(target: Path, rule: Rule, relative_path: str) -> RuleFilePlan:
+    """Whether the deployed file is absent, this exact draft, or something else.
+
+    `IDENTICAL` is decided by comparing the stored `cid` against a hash of the file,
+    which works because deploy writes `sml_source` verbatim -- no second copy of the
+    text has to be kept to diff against.
+
+    `DIFFERS` covers both "an older version of this rule is deployed" and "somebody
+    edited the file on disk", which are indistinguishable from here and, for the
+    purpose of warning before an overwrite, do not need distinguishing.
+    """
+    if not target.exists():
+        return RuleFilePlan(path=relative_path, state=RuleFileState.NEW)
+
+    deployed_cid = content_id(target.read_text(encoding='utf-8'))
+    state = RuleFileState.IDENTICAL if deployed_cid == rule.cid else RuleFileState.DIFFERS
+    return RuleFilePlan(path=relative_path, state=state)
+
+
+def plan_deployment(rule: Rule) -> DeployPlan:
+    """What deploying `rule` would do, without doing it.
+
+    Runs the same checks `deploy_rule` runs and raises the same `DeployError`s for the
+    conditions that make planning itself impossible -- an unconfigured rules directory,
+    a path that escapes it -- so a plan and a deploy agree about whether the question
+    is even askable.
+
+    Answers for both wiring choices rather than taking one, because reading main.sml
+    once yields both and the UI offers wiring as a checkbox: toggling it should
+    re-render, not re-request.
+
+    Deployability folds in SML validation as well as the filesystem states, because
+    deploy re-validates and returns 422 on a draft that no longer compiles. A draft is
+    valid when saved, but validates against the engine's *current* sources, so one that
+    references a since-removed feature goes stale where it sits. Without this the plan
+    would report a deployable rule that deploy then rejects.
+    """
+    directory = rules_dir()
+
+    target = _resolve_within(directory, rule.path)
+    if target is None:
+        raise RulePathEscapesRulesDir(rule.path)
+
+    validation = validate_draft_source(rule.path, rule.sml_source)
+    source = SourcePlan(state=SourceState.VALID if validation.ok else SourceState.INVALID)
+
+    rule_file = _rule_file_plan(target, rule, str(target.relative_to(directory.resolve())))
+    main_sml = _main_sml_plan(directory, rule.path)
+
+    # A rule file in any state deploys -- `DIFFERS` means an overwrite, which is what
+    # deploying is for. Only the source failing validation blocks the write itself.
+    return DeployPlan(
+        source=source,
+        rule_file=rule_file,
+        main_sml=main_sml,
+        deployable=validation.ok,
+        wireable_into_main=main_sml.state not in (MainSmlState.MISSING, MainSmlState.UNPARSEABLE),
     )
