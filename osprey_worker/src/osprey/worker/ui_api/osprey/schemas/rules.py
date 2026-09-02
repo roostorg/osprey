@@ -64,25 +64,28 @@ class Vocabulary(BaseModel):
 # --------------------------------------------------------------------------- #
 
 
-class RuleRecord(BaseModel):
-    """One row of the rules table, as the API serves it.
+class DraftSummary(BaseModel):
+    """A row of the rules table without its SML: what `GET /rules/drafts` lists.
 
     Contrast `RuleCatalogEntry`, which is a `Rule(...)` parsed out of the engine's
     loaded sources: that one has no id and no author because nothing persisted it.
-    This is the persisted record -- id, author, status, timestamps -- and its `status`
-    says whether it is still a draft or has been deployed.
+    This is the persisted record, and `status` says whether it is still a draft or has
+    been deployed.
 
-    The single definition of that wire shape: built straight off the SQLAlchemy
-    model via `RuleRecord.from_orm(row)`. Two columns are renamed on the way out,
-    which the aliases handle — under `orm_mode` pydantic reads each field by its
-    alias, so `source` is populated from `row.sml_source`.
+    `source` is deliberately absent. Only the editor needs a draft's SML and it opens
+    one draft at a time, so putting it here would ship every rule's text on every list
+    -- growing with the size of the table rather than with what is rendered. `cid`
+    covers the case that motivates having it: a fixed 64 bytes that answers "is the
+    copy I hold still current?" without transferring the source to find out.
+
+    Built straight off the SQLAlchemy model via `from_orm(row)`. `author` is renamed on
+    the way out, which the alias handles -- under `orm_mode` pydantic reads each field
+    by its alias, so it is populated from `row.author_email`.
 
     `status` is a `RuleStatus`, a `StrEnum`, so it satisfies `str` unchanged. The
-    timestamps are isoformatted rather than left as `datetime`, because Flask's
-    JSON encoder renders a datetime as an RFC 822 string ("Tue, 01 Sep 2026
-    18:30:00 GMT") rather than ISO 8601.
-
-    A row is a draft or a deployed rule depending on `status`.
+    timestamps are isoformatted rather than left as `datetime`, because Flask's JSON
+    encoder renders a datetime as an RFC 822 string ("Tue, 01 Sep 2026 18:30:00 GMT")
+    rather than ISO 8601.
     """
 
     # str, not int, matching `Query.serialize()` elsewhere in lib/storage. Osprey mints
@@ -93,18 +96,20 @@ class RuleRecord(BaseModel):
     id: str
     path: str
     rule_name: str
-    source: str = Field(alias='sml_source')
-    summary: str
+    # Content address of the SML (SHA-256 hex). Served so a client can tell whether the
+    # draft it holds is still the one on the server, and -- because deploy writes the
+    # source verbatim -- whether a deployed file still matches the draft that produced
+    # it, without transferring the SML twice to compare it.
+    cid: str
     author: str = Field(alias='author_email')
     status: str
-    created_at: str | None = None
+    # The list is ordered by this, so it is served rather than left implicit.
     updated_at: str | None = None
-    deployed_at: str | None = None
 
     class Config:
         orm_mode = True
-        # So the model can still be built by field name (`RuleRecord(source=...)`),
-        # not only by alias, for anything constructing one without an ORM row.
+        # So the model can still be built by field name, not only by alias, for
+        # anything constructing one without an ORM row.
         allow_population_by_field_name = True
 
     # `cls`, not `self`: pydantic v1 wraps validators in `classmethod`, and rejects a
@@ -113,7 +118,27 @@ class RuleRecord(BaseModel):
     # this as "first parameter of a method is not named 'self'"; that advice is wrong
     # here, and ruff/mypy won't catch it because the signature is only invalid at
     # pydantic's runtime.
-    @validator('created_at', 'updated_at', 'deployed_at', pre=True)
+    @validator('updated_at', pre=True)
+    def _isoformat_updated_at(cls, value: object) -> object:
+        return value.isoformat() if isinstance(value, datetime) else value
+
+
+class RuleRecord(DraftSummary):
+    """A full row of the rules table: a `DraftSummary` plus the SML itself.
+
+    Served where one specific draft is the subject -- fetching it into the editor,
+    and the responses to creating or deploying it -- as opposed to the list, where the
+    source would be dead weight on every row but one.
+    """
+
+    source: str = Field(alias='sml_source')
+    summary: str
+    created_at: str | None = None
+    deployed_at: str | None = None
+
+    # See `_isoformat_updated_at` above for why this takes `cls`. `allow_reuse` because
+    # the base class already registered a validator function of the same shape.
+    @validator('created_at', 'deployed_at', pre=True, allow_reuse=True)
     def _isoformat_timestamps(cls, value: object) -> object:
         return value.isoformat() if isinstance(value, datetime) else value
 
@@ -131,9 +156,13 @@ class RuleDeployment(BaseModel):
 
 
 class DraftList(BaseModel):
-    """`GET /rules/drafts`"""
+    """`GET /rules/drafts`
 
-    drafts: list[RuleRecord] = Field(default_factory=list)
+    Carries `DraftSummary`, not `RuleRecord`: the list is for choosing a draft, and the
+    SML arrives when one is opened.
+    """
+
+    drafts: list[DraftSummary] = Field(default_factory=list)
 
 
 # --------------------------------------------------------------------------- #

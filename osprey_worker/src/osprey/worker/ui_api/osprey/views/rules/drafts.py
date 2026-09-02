@@ -12,7 +12,7 @@ from osprey.worker.ui_api.osprey.lib.rule_builder import parse_into_builder_mode
 from osprey.worker.ui_api.osprey.lib.rule_deployment import MAIN_SML_PATH, DeployError, deploy_rule
 from osprey.worker.ui_api.osprey.lib.rule_validation import validate_draft_source
 from osprey.worker.ui_api.osprey.schemas.rule_validation import DraftValidation, ValidationMessage
-from osprey.worker.ui_api.osprey.schemas.rules import DraftList, RuleRecord
+from osprey.worker.ui_api.osprey.schemas.rules import DraftList, DraftSummary, RuleRecord
 from osprey.worker.ui_api.osprey.validators.rules import (
     CreateDraftRequest,
     DeployDraftRequest,
@@ -68,13 +68,17 @@ def list_drafts() -> Any:
     """The draft rules table: every staged draft, newest-edited first.
 
     Each row is converted explicitly rather than handing `DraftList` the raw list.
-    Pydantic accepts the raw list at runtime -- `RuleRecord` sets `orm_mode`, so
+    `DraftSummary`, not `RuleRecord`: the rows carry no SML, because only the editor
+    needs it and it opens one draft at a time. `cid` is served instead, which answers
+    "is my copy current?" in 64 bytes.
+
+    Pydantic accepts the raw list at runtime -- `DraftSummary` sets `orm_mode`, so
     `BaseModel.validate` falls through to `from_orm` per item -- but the declared
-    field type is `list[RuleRecord]`, and pyright rightly rejects a `list[Rule]`.
+    field type is `list[DraftSummary]`, and pyright rightly rejects a `list[Rule]`.
     mypy's pydantic plugin lets the shortcut through, so it would pass CI and
     squiggle in the editor. Not a trade worth one saved line.
     """
-    return jsonify(DraftList(drafts=[RuleRecord.from_orm(rule) for rule in Rule.list_all()]).dict())
+    return jsonify(DraftList(drafts=[DraftSummary.from_orm(rule) for rule in Rule.list_all()]).dict())
 
 
 @blueprint.route('/rules/drafts', methods=['POST'])

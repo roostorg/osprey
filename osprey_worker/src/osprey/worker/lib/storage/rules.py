@@ -7,6 +7,7 @@
 # than leaving consumers to coerce at every call site, which is unbounded and grows.
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timezone
 from enum import StrEnum
 
@@ -21,6 +22,22 @@ from .postgres import Model, scoped_session
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def content_id(sml_source: str) -> str:
+    """A content address for a rule's SML: the SHA-256 of its UTF-8 bytes, hex encoded.
+
+    Hashes the source exactly as stored, with no normalisation. That means the id
+    answers "is this the same text?" rather than "is this the same program", so
+    reindenting a rule changes it -- which is the useful reading here, because the
+    thing being compared is a file on disk that a human may have edited.
+
+    Deploy writes `sml_source` verbatim, so `content_id(rule.sml_source)` equals the
+    SHA-256 of the deployed file. That is what makes it possible to tell a rule that is
+    deployed and current from one edited or deleted on disk since, without keeping a
+    second copy of the text to diff against.
+    """
+    return hashlib.sha256(sml_source.encode('utf-8')).hexdigest()
 
 
 class RuleNameTaken(Exception):
@@ -49,7 +66,12 @@ class RuleNameTaken(Exception):
 
 
 class RuleStatus(StrEnum):
+    #: Being worked on. The state every save lands in, including a save that edits a
+    #: draft out of either state below.
     DRAFT = 'draft'
+    #: Written into the rules directory. Says what the API did, not what is currently on
+    #: disk -- a file edited or removed since is only visible through the deploy plan's
+    #: `rule_file.state`, which compares the stored `cid` against the file.
     DEPLOYED = 'deployed'
 
 
@@ -74,6 +96,11 @@ class Rule(Model):
     # check is check-then-act, and two concurrent creates can both find nothing.
     rule_name: Mapped[str] = Column(Text, nullable=False, unique=True)
     sml_source: Mapped[str] = Column(Text, nullable=False)
+    # Content address of `sml_source`, maintained by `upsert` rather than supplied by
+    # callers so the two cannot disagree. Stored rather than computed on read so a
+    # deployed file can be compared against the text that produced it -- see
+    # `content_id`. Not unique: two paths may legitimately hold identical SML.
+    cid: Mapped[str] = Column(Text, nullable=False)
     summary: Mapped[str] = Column(Text, nullable=False, default='')
     # Osprey has no users table; identity is just an email with ACLs applied, so
     # this stores the author's email rather than a foreign key.
@@ -98,6 +125,7 @@ class Rule(Model):
             'path': self.path,
             'rule_name': self.rule_name,
             'source': self.sml_source,
+            'cid': self.cid,
             'summary': self.summary,
             'author': self.author_email,
             'status': str(self.status),
@@ -119,6 +147,7 @@ class Rule(Model):
         mutable = {
             'rule_name': rule_name,
             'sml_source': sml_source,
+            'cid': content_id(sml_source),
             'summary': summary,
             'author_email': author_email,
             'status': RuleStatus.DRAFT,

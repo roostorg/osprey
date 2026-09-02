@@ -5,11 +5,12 @@ cover the guarantees `Rule` itself makes, which a test going through the view ca
 distinguish from the view having caught something first.
 """
 
+import hashlib
 from collections.abc import Iterator
 
 import pytest
 from osprey.worker.lib.storage.postgres import scoped_session
-from osprey.worker.lib.storage.rules import Rule, RuleNameTaken, RuleStatus
+from osprey.worker.lib.storage.rules import Rule, RuleNameTaken, RuleStatus, content_id
 from sqlalchemy import UniqueConstraint
 
 
@@ -111,3 +112,44 @@ def test_editing_a_deployed_rule_returns_it_to_draft() -> None:
     # deployed_at is left alone: it records when this path was last deployed, which the
     # edit doesn't undo. Only `status` says whether the row still matches that deploy.
     assert edited.deployed_at is not None
+
+
+def test_cid_is_the_hash_of_the_stored_source() -> None:
+    """`upsert` maintains `cid` itself, so it cannot disagree with `sml_source`.
+
+    Callers never pass a cid. That is the point: a content address supplied alongside
+    the content is one someone can get wrong, and a wrong one is worse than none --
+    it would report a deployed file as modified, or as current when it isn't.
+    """
+    rule = _upsert('rules/hashed.sml', 'HashedRule')
+    assert rule.cid == content_id(rule.sml_source)
+    assert rule.cid == hashlib.sha256(rule.sml_source.encode('utf-8')).hexdigest()
+
+
+def test_cid_follows_the_source_through_an_edit() -> None:
+    """Editing a draft re-hashes it; the same text hashes back to the same cid.
+
+    The first half is what makes the cid usable for drift detection at all. The second
+    is what makes it usable as an identity: reverting an edit restores the original
+    address rather than minting a new one.
+    """
+    original = _upsert('rules/edited.sml', 'EditedRule')
+    original_cid = original.cid
+
+    edited = Rule.upsert(
+        path='rules/edited.sml',
+        rule_name='EditedRule',
+        sml_source='PostText == "different"',
+        summary='',
+        author_email='local-dev@localhost',
+    )
+    assert edited.cid != original_cid
+
+    reverted = Rule.upsert(
+        path='rules/edited.sml',
+        rule_name='EditedRule',
+        sml_source=original.sml_source,
+        summary='',
+        author_email='local-dev@localhost',
+    )
+    assert reverted.cid == original_cid

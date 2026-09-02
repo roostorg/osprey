@@ -1,3 +1,4 @@
+import hashlib
 from textwrap import dedent
 
 import pytest
@@ -187,17 +188,17 @@ def test_list_drafts_on_empty_table(client: 'FlaskClient[Response]') -> None:
 
 @pytest.mark.use_rules_sources(rule_authoring_sources())
 def test_list_drafts_serialises_a_row(client: 'FlaskClient[Response]') -> None:
-    """A stored row comes back through StoredRule with the renamed fields.
+    """A stored row comes back as a `DraftSummary`, with `author_email` renamed.
 
-    The empty-table case passes whether or not the row conversion works, so seed
-    the table directly rather than waiting for create_draft to land. This is the
-    test that pins `to_json()`'s renaming -- `sml_source` -> `source` and
-    `author_email` -> `author` -- which pydantic's orm_mode would not reproduce.
+    The empty-table case passes whether or not the row conversion works, so seed the
+    table directly rather than going through create_draft. This is the test that pins
+    the rename -- `author_email` -> `author` -- and the summary shape.
     """
+    source = "SeededRule = Rule(when_all=[PostText == 'x'], description='d')"
     Rule.upsert(
         path='rules/seeded.sml',
         rule_name='SeededRule',
-        sml_source="SeededRule = Rule(when_all=[PostText == 'x'], description='d')",
+        sml_source=source,
         summary='seeded directly',
         author_email='local-dev@localhost',
     )
@@ -211,11 +212,28 @@ def test_list_drafts_serialises_a_row(client: 'FlaskClient[Response]') -> None:
     row = drafts[0]
     assert row['path'] == 'rules/seeded.sml'
     assert row['rule_name'] == 'SeededRule'
-    assert row['source'].startswith('SeededRule =')
     assert row['author'] == 'local-dev@localhost'
-    assert row['summary'] == 'seeded directly'
     assert row['status'] == 'draft'
-    assert isinstance(row['created_at'], str)
+    assert isinstance(row['updated_at'], str)
+
+    # The whole wire shape, so a field added to `DraftSummary` fails here until it is
+    # covered rather than quietly going unasserted -- `cid` was added without this test
+    # noticing. `source` and `summary` are absent by design: the list is for choosing a
+    # draft, and shipping every row's SML would grow with the table rather than with
+    # what the page renders.
+    assert row.keys() == {
+        'id',
+        'path',
+        'rule_name',
+        'cid',
+        'author',
+        'status',
+        'updated_at',
+    }
+    # Served straight off the row, not recomputed in the view: a second implementation
+    # of the hash is one that can disagree with the stored one. This is also what makes
+    # the summary useful without `source` -- a client can compare its copy against it.
+    assert row['cid'] == hashlib.sha256(source.encode('utf-8')).hexdigest()
 
 
 @pytest.mark.use_rules_sources(rule_authoring_sources())
