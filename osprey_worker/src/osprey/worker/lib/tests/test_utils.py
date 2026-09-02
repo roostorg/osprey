@@ -2,6 +2,7 @@ import os
 import textwrap
 from collections.abc import Callable, Iterator
 from typing import TYPE_CHECKING
+from urllib.parse import urlsplit
 
 import pytest
 from flask import Flask
@@ -18,6 +19,32 @@ from sqlalchemy_utils import create_database, drop_database
 if TYPE_CHECKING:
     from _pytest.config import Config
     from _pytest.fixtures import FixtureRequest
+
+
+#: Databases this fixture is willing to destroy. Anything not named like this is
+#: assumed to belong to a human.
+_TEST_DATABASE_SUFFIX = '_test'
+
+
+def _is_disposable_database(url: str, created_by_this_run: bool) -> bool:
+    """Whether the session teardown may drop the database at `url`.
+
+    Both conditions are needed, because each alone leaves a hole. Dropping only what
+    this run created still destroys a developer's database when the run happens to be
+    the thing that created it -- a fresh Postgres volume, tests before first app start.
+    Trusting only the name still drops a `*_test` database somebody else was using.
+
+    This exists because the fixture used to drop whatever `POSTGRES_HOSTS` pointed at,
+    and the compose files pointed the tests and the dev stack at the same `osprey`
+    database. Running the suite therefore deleted the local development database, and
+    the failure surfaced later and elsewhere -- as `osprey-ui-api` refusing to start --
+    rather than as a test failure.
+    """
+    if not created_by_this_run:
+        return False
+
+    database_name = urlsplit(url).path.lstrip('/')
+    return database_name.endswith(_TEST_DATABASE_SUFFIX)
 
 
 def make_postgres_database_config_fixture() -> object:
@@ -38,6 +65,7 @@ def make_postgres_database_config_fixture() -> object:
         if url is None:
             pytest.fail('POSTGRES_HOSTS not configured')
 
+        created_by_this_run = True
         try:
             create_database(url)
         except ProgrammingError as e:
@@ -46,12 +74,16 @@ def make_postgres_database_config_fixture() -> object:
             # see: https://github.com/kvesteri/sqlalchemy-utils/issues/472
             if not isinstance(e.orig, DuplicateDatabase):
                 raise
+            created_by_this_run = False
 
         postgres.init_from_config('osprey_db')
 
         config.unconfigure_for_tests()
 
         yield
+
+        if not _is_disposable_database(url, created_by_this_run):
+            return
 
         try:
             drop_database(url)
