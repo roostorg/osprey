@@ -153,3 +153,55 @@ def test_cid_follows_the_source_through_an_edit() -> None:
         author_email='local-dev@localhost',
     )
     assert reverted.cid == original_cid
+
+
+def test_request_deploy_moves_a_draft_out_of_draft() -> None:
+    """The state an author sets when they cannot deploy it themselves."""
+    rule = _upsert('rules/ready.sml', 'ReadyRule')
+    assert rule.status == RuleStatus.DRAFT
+
+    requested = Rule.request_deploy(rule.id)
+    assert requested is not None
+    assert requested.status == RuleStatus.DEPLOY_REQUESTED
+    assert requested.deployed_at is None
+
+
+def test_editing_a_requested_draft_returns_it_to_draft() -> None:
+    """A request is for particular text, so changing the text withdraws it.
+
+    Falls out of `upsert` setting `status` unconditionally -- the same line that returns
+    a deployed draft to `DRAFT` on edit. Tested because it is the behaviour a reviewer
+    depends on: a draft in the queue is the one they were asked to look at.
+    """
+    rule = _upsert('rules/withdrawn.sml', 'WithdrawnRule')
+    Rule.request_deploy(rule.id)
+
+    edited = Rule.upsert(
+        path='rules/withdrawn.sml',
+        rule_name='WithdrawnRule',
+        sml_source='PostText == "changed"',
+        summary='',
+        author_email='local-dev@localhost',
+    )
+    assert edited.status == RuleStatus.DRAFT
+
+
+def test_request_deploy_on_a_deployed_rule_reads_as_a_redeploy_request() -> None:
+    """Requesting a deployed rule is allowed, and `deployed_at` keeps the distinction.
+
+    Worth permitting rather than refusing: a rule whose file was edited or deleted on
+    disk genuinely needs deploying again, and the row is the only place to say so.
+    """
+    rule = _upsert('rules/again.sml', 'AgainRule')
+    Rule.mark_deployed(rule.id)
+
+    requested = Rule.request_deploy(rule.id)
+    assert requested is not None
+    assert requested.status == RuleStatus.DEPLOY_REQUESTED
+    # Still carries when it was last deployed, so this is distinguishable from a first
+    # request on a never-deployed draft.
+    assert requested.deployed_at is not None
+
+
+def test_request_deploy_returns_none_for_an_unknown_draft() -> None:
+    assert Rule.request_deploy(999999) is None

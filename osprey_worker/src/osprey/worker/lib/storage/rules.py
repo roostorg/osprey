@@ -69,6 +69,16 @@ class RuleStatus(StrEnum):
     #: Being worked on. The state every save lands in, including a save that edits a
     #: draft out of either state below.
     DRAFT = 'draft'
+    #: The author considers it finished and is asking someone to deploy it.
+    #:
+    #: Exists because authoring and deploying are separate abilities: a holder of
+    #: `CAN_EDIT_RULES` alone can write a draft but not ship it, and without this there
+    #: is nothing for them to say "this is ready" *with* -- the table would show `draft`
+    #: for both work in progress and work waiting on a reviewer.
+    #:
+    #: Reachable from `DEPLOYED` as well as `DRAFT`, which reads as "a redeploy is
+    #: wanted"; `deployed_at` stays set, so the two are distinguishable.
+    DEPLOY_REQUESTED = 'deploy_requested'
     #: Written into the rules directory. Says what the API did, not what is currently on
     #: disk -- a file edited or removed since is only visible through the deploy plan's
     #: `rule_file.state`, which compares the stored `cid` against the file.
@@ -210,6 +220,29 @@ class Rule(Model):
             drafts = session.query(cls).filter(cls.rule_name == rule_name).all()
             session.expunge_all()
             return drafts
+
+    @classmethod
+    def request_deploy(cls, draft_id: int) -> 'Rule | None':
+        """Mark a draft as awaiting deployment, or `None` if there is no such draft.
+
+        Idempotent, and permitted from any state: requesting an already-requested draft
+        changes nothing, and requesting a deployed one asks for a redeploy -- worth
+        allowing, because a rule whose file was edited or deleted on disk genuinely
+        needs deploying again, and `deployed_at` survives so the two are distinguishable.
+
+        `updated_at` moves, because the column carries `onupdate` and this is an UPDATE.
+        That is the wanted behaviour rather than an accident of the mapping: the list is
+        ordered by it, so a requested draft rises to the top of the table a reviewer
+        works from.
+        """
+        with scoped_session(commit=True) as session:
+            draft = session.query(cls).filter(cls.id == draft_id).first()
+            if draft is None:
+                return None
+            draft.status = RuleStatus.DEPLOY_REQUESTED
+            session.flush()
+            session.expunge(draft)
+            return draft
 
     @classmethod
     def mark_deployed(cls, draft_id: int) -> 'Rule | None':

@@ -18,6 +18,7 @@ from osprey.worker.ui_api.osprey.validators.rules import (
     DeployDraftRequest,
     GetDraftRequest,
     ParseIntoBuilderRequest,
+    RequestDeployRequest,
     ValidateDraftRequest,
 )
 
@@ -184,6 +185,27 @@ def validate_draft(request_model: ValidateDraftRequest) -> Any:
 @marshal_with(GetDraftRequest)
 def get_draft(request_model: GetDraftRequest) -> Any:
     draft = Rule.get_one_with_id(request_model.draft_id)
+    if draft is None:
+        return jsonify({'error': f'No draft with id {request_model.draft_id}.'}), HTTPStatus.NOT_FOUND
+
+    return jsonify(RuleRecord.from_orm(draft).dict())
+
+
+@blueprint.route('/rules/drafts/<int:draft_id>/request-deploy', methods=['POST'])
+@require_ability(CanEditRules)
+@marshal_with(RequestDeployRequest)
+def request_deploy(request_model: RequestDeployRequest) -> Any:
+    """Mark a draft as ready, for someone who can deploy to pick up.
+
+    `CanEditRules`, deliberately not `CanDeployRules`: the endpoint exists precisely for
+    authors who *cannot* deploy. Splitting the two abilities gave them a draft they
+    can't ship and no way to say so, and the table showed `draft` for both "still
+    working" and "waiting on a reviewer".
+
+    Idempotent. Editing the draft afterwards returns it to `draft`, because `upsert`
+    rewrites the status: the request was for particular text, and the text changed.
+    """
+    draft = Rule.request_deploy(request_model.draft_id)
     if draft is None:
         return jsonify({'error': f'No draft with id {request_model.draft_id}.'}), HTTPStatus.NOT_FOUND
 

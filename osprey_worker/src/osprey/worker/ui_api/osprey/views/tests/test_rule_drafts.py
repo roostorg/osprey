@@ -7,6 +7,7 @@ from flask.testing import FlaskClient
 from osprey.worker.lib.storage.rules import Rule
 
 from .conftest import (
+    AUTHORING_ABILITIES,
     DEPLOYING_ABILITIES,
     RULE_AUTHORING_SML,
     VALID_DRAFT,
@@ -25,6 +26,7 @@ _DRAFT_ENDPOINTS = [
     pytest.param('get', 'rules.list_drafts', {}, None, id='list'),
     pytest.param('post', 'rules.create_draft', {}, {}, id='create'),
     pytest.param('get', 'rules.get_draft', {'draft_id': 1}, None, id='get-one'),
+    pytest.param('post', 'rules.request_deploy', {'draft_id': 1}, {}, id='request-deploy'),
     pytest.param('post', 'rules.deploy_draft', {'draft_id': 1}, {}, id='deploy'),
 ]
 
@@ -463,6 +465,60 @@ def test_parse_into_builder_does_not_alter_the_stored_draft(client: 'FlaskClient
     fetched = client.get(url_for('rules.get_draft', draft_id=created.json['id']))
     assert fetched.json is not None
     assert fetched.json['source'] == _DRAFT_WITH_COMMENTS
+
+
+# --- Requesting a deploy ----------------------------------------------------
+
+
+@pytest.mark.use_rules_sources(rule_authoring_sources(AUTHORING_ABILITIES))
+def test_request_deploy_is_available_to_an_author_who_cannot_deploy(
+    client: 'FlaskClient[Response]',
+) -> None:
+    """The endpoint exists for exactly this user: can edit, cannot deploy.
+
+    Gated on CAN_EDIT_RULES rather than CAN_DEPLOY_RULES on purpose -- gating it on
+    deploy would mean only people who can already ship a rule could ask for it to be
+    shipped, which is nobody's workflow.
+    """
+    created = client.post(
+        url_for('rules.create_draft'),
+        json={'path': 'rules/handoff.sml', 'rule_name': 'SomeRule', 'source': VALID_DRAFT, 'summary': 'please ship'},
+    )
+    assert created.json is not None
+    draft_id = created.json['id']
+    assert created.json['status'] == 'draft'
+
+    # Same user cannot deploy it...
+    deployed = client.post(url_for('rules.deploy_draft', draft_id=draft_id), json={})
+    assert deployed.status_code == 401
+
+    # ...but can say it is ready.
+    res = client.post(url_for('rules.request_deploy', draft_id=draft_id), json={})
+    assert res.status_code == 200
+    assert res.json is not None
+    assert res.json['status'] == 'deploy_requested'
+
+
+@pytest.mark.use_rules_sources(rule_authoring_sources(AUTHORING_ABILITIES))
+def test_request_deploy_is_idempotent(client: 'FlaskClient[Response]') -> None:
+    created = client.post(
+        url_for('rules.create_draft'),
+        json={'path': 'rules/twice.sml', 'rule_name': 'SomeRule', 'source': VALID_DRAFT, 'summary': ''},
+    )
+    assert created.json is not None
+    draft_id = created.json['id']
+
+    first = client.post(url_for('rules.request_deploy', draft_id=draft_id), json={})
+    second = client.post(url_for('rules.request_deploy', draft_id=draft_id), json={})
+    assert first.status_code == second.status_code == 200
+    assert second.json is not None
+    assert second.json['status'] == 'deploy_requested'
+
+
+@pytest.mark.use_rules_sources(rule_authoring_sources(AUTHORING_ABILITIES))
+def test_request_deploy_404s_for_an_unknown_draft(client: 'FlaskClient[Response]') -> None:
+    res = client.post(url_for('rules.request_deploy', draft_id=999999), json={})
+    assert res.status_code == 404
 
 
 @pytest.mark.use_rules_sources(rule_authoring_sources(DEPLOYING_ABILITIES))

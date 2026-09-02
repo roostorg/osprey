@@ -143,6 +143,16 @@ class DeployDraftRequest(BaseModel, ViewArgAndOptionalJsonBodyMarshaller):
     wire_into_main: bool = False
 
 
+class RequestDeployRequest(BaseModel, ViewArgAndOptionalJsonBodyMarshaller):
+    """`POST /rules/drafts/<int:draft_id>/request-deploy`
+
+    No body: what is being requested is fully determined by which draft it is. The
+    reason for the change already has a home in the draft's `summary`.
+    """
+
+    draft_id: int
+
+
 class GetDraftRequest(BaseModel, ViewArgAndOptionalJsonBodyMarshaller):
     """`GET /rules/drafts/<int:draft_id>`"""
 
