@@ -29,7 +29,31 @@ def test_create_query_record(app: Flask, client: 'FlaskClient[Response]') -> Non
 
 
 def test_get_queries(app: Flask, client: 'FlaskClient[Response]') -> None:
-    res = client.get(url_for('queries.get_queries'), content_type='application/json')
+    """Lists the query records this test created.
 
-    # NOTE(caidanw): the number of queries may vary based on other tests that have run, we might need to rethink this test
-    assert len(res.json) == 21
+    Previously asserted a hard-coded 21, which was a census of whatever the whole suite
+    had left in the table -- so it passed only when `lib/storage/tests` ran in the same
+    session, and failed for any subset. Creating a known number and counting those makes
+    it independent of run order and of what other modules do.
+    """
+    before = len(client.get(url_for('queries.get_queries'), content_type='application/json').json)
+
+    created = 3
+    for _ in range(created):
+        res = client.post(
+            url_for('queries.create_query_record'),
+            data=json.dumps(
+                {
+                    'query_filter': fake.pystr(),
+                    'date_range': [fake.past_datetime().isoformat(), fake.future_datetime().isoformat()],
+                    'top_n': [],
+                    'sort_order': 'DESCENDING',
+                }
+            ),
+            content_type='application/json',
+        )
+        assert res.status_code == 200
+
+    res = client.get(url_for('queries.get_queries'), content_type='application/json')
+    assert res.status_code == 200
+    assert len(res.json) == before + created
