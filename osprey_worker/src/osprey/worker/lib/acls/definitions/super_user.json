@@ -42,7 +42,15 @@
       "allow_all": true
     },
     {
-      "name": "CAN_EDIT_RULE_DRAFTS",
+      "name": "CAN_VIEW_RULES",
+      "allow_all": true
+    },
+    {
+      "name": "CAN_EDIT_RULES",
+      "allow_all": true
+    },
+    {
+      "name": "CAN_DEPLOY_RULES",
       "allow_all": true
     }
   ],

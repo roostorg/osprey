@@ -68,7 +68,6 @@ def create_app() -> Flask:
         events,
         features,
         queries,
-        rule_drafts,
         rules,
         rules_visualizer,
         saved_queries,
@@ -112,7 +111,6 @@ def create_app() -> Flask:
     _register_with_prefix(app, events.blueprint)
     _register_with_prefix(app, features.blueprint)
     _register_with_prefix(app, rules.blueprint)
-    _register_with_prefix(app, rule_drafts.blueprint)
     _register_with_prefix(app, queries.blueprint)
     _register_with_prefix(app, config.blueprint)
     _register_with_prefix(app, docs.blueprint)

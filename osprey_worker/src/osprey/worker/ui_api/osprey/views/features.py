@@ -3,9 +3,8 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from flask import Blueprint, jsonify
+from osprey.engine.ast.ast_utils import filter_nodes
 from osprey.engine.ast.grammar import (
-    Annotation,
-    AnnotationWithVariants,
     Assign,
     Attribute,
     BinaryComparison,
@@ -15,10 +14,10 @@ from osprey.engine.ast.grammar import (
     FormatString,
     UnaryOperation,
 )
+from osprey.engine.ast.printer import print_ast
 from osprey.worker.lib.singletons import ENGINE
 from osprey.worker.ui_api.osprey.lib.abilities import CanViewDocs, require_ability
-
-from ._engine_ast_utils import ast_to_string, collect_name_references, get_func_identifier
+from osprey.worker.ui_api.osprey.lib.ast_utils import collect_name_references, get_func_identifier
 
 logger = logging.getLogger(__name__)
 
@@ -46,15 +45,15 @@ _NON_FEATURE_CALLS: frozenset[str] = frozenset(
 
 
 def _format_annotation(annotation: Any) -> str | None:
-    """Format a type annotation AST node into a readable string like 'str', 'Entity[int]', 'Optional[str]'."""
+    """Format a type annotation AST node into a readable string like 'str', 'Entity[int]', 'Optional[str]'.
+
+    `ASTPrinter` already renders both `Annotation` and `AnnotationWithVariants`
+    identically to what this endpoint has always emitted, so this only handles
+    the unannotated case the printer has no node for.
+    """
     if annotation is None:
         return None
-    if isinstance(annotation, AnnotationWithVariants):
-        variant_strs = [_format_annotation(v) or str(v) for v in annotation.variants]
-        return f'{annotation.identifier}[{", ".join(variant_strs)}]'
-    if isinstance(annotation, Annotation):
-        return annotation.identifier
-    return None
+    return print_ast(annotation)
 
 
 def _derive_category(file_path: str) -> str:
@@ -85,17 +84,11 @@ def _find_assign_for_feature(sources: Any, feature_name: str, source_path: str, 
     source = sources.get_by_path(source_path)
     if source is None:
         return None
-    for statement in source.ast_root.statements:
-        if (
-            isinstance(statement, Assign)
-            and statement.target.identifier == feature_name
-            and statement.span.start_line == source_line
-        ):
-            return statement
-    for statement in source.ast_root.statements:
-        if isinstance(statement, Assign) and statement.target.identifier == feature_name:
-            return statement
-    return None
+    candidates = list(filter_nodes(source.ast_root, Assign, lambda a: a.target.identifier == feature_name))
+    for candidate in candidates:
+        if candidate.span.start_line == source_line:
+            return candidate
+    return candidates[0] if candidates else None
 
 
 def _extraction_fn_from_value(value: Any) -> str:
@@ -147,7 +140,7 @@ def _extract_features_from_engine() -> list[dict[str, Any]]:
             'category': _derive_category(loc.source_path),
             'type_annotation': _format_annotation(assign.annotation),
             'extraction_fn': extraction_fn,
-            'definition': ast_to_string(assign.value),
+            'definition': print_ast(assign.value),
             'referenced_by_rules': [],
             'referenced_by_features': [],
             'referenced_by_whenrules': 0,
@@ -170,7 +163,7 @@ def _extract_features_from_engine() -> list[dict[str, Any]]:
                 refs: set[str] = set()
                 when_all_arg = statement.value.find_argument('when_all')
                 if when_all_arg:
-                    collect_name_references(when_all_arg.value, refs)
+                    refs |= collect_name_references(when_all_arg.value)
                 for feat in refs & feature_names:
                     rule_refs.setdefault(feat, set()).add(rule_name)
                 continue
@@ -190,7 +183,7 @@ def _extract_features_from_engine() -> list[dict[str, Any]]:
                 for arg in call_node.arguments:
                     if arg.name == 'rules_any':
                         continue
-                    collect_name_references(arg.value, refs)
+                    refs |= collect_name_references(arg.value)
                 for feat in refs & feature_names:
                     whenrules_refs[feat] = whenrules_refs.get(feat, 0) + 1
                 continue
@@ -200,8 +193,7 @@ def _extract_features_from_engine() -> list[dict[str, Any]]:
                 defining_name = statement.target.identifier
                 if defining_name not in feature_names:
                     continue
-                refs = set()
-                collect_name_references(statement.value, refs)
+                refs = collect_name_references(statement.value)
                 for feat in refs & feature_names:
                     if feat == defining_name:
                         continue
