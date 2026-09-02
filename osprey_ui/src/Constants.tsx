@@ -6,6 +6,8 @@ export const Routes = {
   ENTITY: '/entity/:entityType/:entityId',
   FEATURES: '/features',
   RULES: '/rules',
+  RULES_NEW: '/rules/new',
+  RULES_EDIT: '/rules/edit',
   SAVED_QUERY: '/saved-query/:savedQueryId',
   SAVED_QUERY_LATEST: '/saved-query/:savedQueryId/latest',
   BULK_JOB_HISTORY: '/bulk-job-history',
