@@ -53,5 +53,8 @@ export async function getApplicationConfig(): Promise<ApplicationConfig> {
     knownActionNames: new Set(rawConfigData.known_action_names.sort()),
     currentUser: rawConfigData.current_user,
     ruleInfoMapping: new Map(Object.entries(rawConfigData.rule_info_mapping)),
+    ruleDeploymentEnabled: rawConfigData.rule_deployment_enabled ?? false,
+    canDeployRules: rawConfigData.can_deploy_rules ?? false,
+    canEditRules: rawConfigData.can_edit_rules ?? false,
   };
 }

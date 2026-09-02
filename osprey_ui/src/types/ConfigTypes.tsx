@@ -43,4 +43,16 @@ export interface RawUIConfig {
   label_info_mapping: RawLabelInfoMapping;
   rule_info_mapping: RawRuleInfoMapping;
   current_user: { email: string };
+  // The two independent things that both have to hold before deploying a rule draft can
+  // succeed, reported separately because they want different UI. A deployment with no
+  // rules directory has no deploy story at all and hides the control; a user without the
+  // ability is looking at a deployment that does deploy, and is better served by a
+  // disabled control that says why than by one that silently isn't there.
+  rule_deployment_enabled: boolean;
+  can_deploy_rules: boolean;
+  // Whether the current user may author drafts at all. Separate from deploying because
+  // the blast radius differs: a draft is reversible and private to the UI, a deploy is
+  // neither. There is no deployment-level counterpart the way `rule_deployment_enabled`
+  // pairs with `can_deploy_rules` — every deployment can hold drafts.
+  can_edit_rules: boolean;
 }
