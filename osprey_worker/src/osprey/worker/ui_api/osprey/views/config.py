@@ -9,7 +9,9 @@ from osprey.worker.lib.singletons import ENGINE
 from osprey.worker.lib.sources_config.subkeys.ui_config import UIConfig
 from pydantic import BaseModel
 
-from ..lib.auth import get_current_user_email
+from ..lib.abilities import CanDeployRules, CanEditRules
+from ..lib.auth import get_current_user, get_current_user_email
+from ..lib.rule_deployment import is_deploy_available
 
 blueprint = Blueprint('config', __name__)
 
@@ -29,6 +31,18 @@ class UIConfigMerged(UIConfig):
     known_action_names: set[str]
     current_user: User
     rule_info_mapping: dict[str, str]
+    # Authoring and deploying are separate grants, so the UI needs both to decide what
+    # to render: a user who may draft but not deploy gets the editor with a disabled
+    # deploy control, which neither of these flags alone can express.
+    can_edit_rules: bool
+    can_deploy_rules: bool
+    # Whether this *deployment* can deploy at all, as distinct from whether this *user*
+    # may. Reported separately from `can_deploy_rules` because they fail for different
+    # reasons and want different UI: an unconfigured deployment has no deploy story and
+    # should hide the control, while a user missing the ability is looking at a
+    # deployment that does deploy, and is better served by a disabled control that says
+    # why than by one that silently isn't there.
+    rule_deployment_enabled: bool
 
 
 _SIMPLE_TYPE_CONVERTIBLE = {str, int, bool, float}
@@ -80,4 +94,7 @@ def get_config() -> Any:
         known_action_names=engine.get_known_action_names(),
         current_user=User(email=get_current_user_email()),
         rule_info_mapping=engine.get_rule_to_info_mapping(),
+        can_edit_rules=get_current_user().has_ability(CanEditRules),
+        can_deploy_rules=get_current_user().has_ability(CanDeployRules),
+        rule_deployment_enabled=is_deploy_available(),
     )
