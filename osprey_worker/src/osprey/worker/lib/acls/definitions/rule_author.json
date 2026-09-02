@@ -1,0 +1,18 @@
+{
+  "description": "Can read and draft rules, but not deploy them. The counterpart to CAN_DEPLOY_RULES: a holder of this role stages a draft and marks it deploy_requested for someone else to publish.",
+  "acl": [
+    {
+      "name": "CAN_VIEW_DOCS",
+      "allow_all": true
+    },
+    {
+      "name": "CAN_VIEW_RULES",
+      "allow_all": true
+    },
+    {
+      "name": "CAN_EDIT_RULES",
+      "allow_all": true
+    }
+  ],
+  "ability_groups": ["CAN_VIEW_BASIC_USER_DATA"]
+}

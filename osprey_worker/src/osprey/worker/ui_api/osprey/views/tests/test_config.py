@@ -3,6 +3,7 @@ import json
 import pytest
 from flask import Response, url_for
 from flask.testing import FlaskClient
+from osprey.worker.lib.singletons import CONFIG
 
 from .conftest import (
     AUTHORING_ABILITIES,
@@ -251,3 +252,50 @@ def test_config_reports_no_authoring_for_a_viewer(
     assert res.json['rule_deployment_enabled'] is True
     assert res.json['can_edit_rules'] is False
     assert res.json['can_deploy_rules'] is False
+
+
+# --- Who the request is from ------------------------------------------------
+#
+# There is no authentication: identity is whatever the request claims. These pin the
+# two supported ways to claim it, because the tempting third way -- editing the default
+# in `lib/auth.py` -- silently fails every authz test in the suite, which all grant
+# their abilities to `local-dev@localhost`.
+
+
+@pytest.mark.use_rules_sources(rule_authoring_sources(DEPLOYING_ABILITIES))
+def test_requests_default_to_the_dev_user(client: 'FlaskClient[Response]') -> None:
+    res = client.get(url_for('config.get_config'))
+    assert res.json is not None
+    assert res.json['current_user'] == {'email': 'local-dev@localhost'}
+
+
+@pytest.mark.use_rules_sources(rule_authoring_sources(DEPLOYING_ABILITIES))
+def test_x_test_email_changes_the_caller_for_one_request(client: 'FlaskClient[Response]') -> None:
+    """Per-request identity, for driving a second role alongside a browser session."""
+    res = client.get(url_for('config.get_config'), headers={'X-Test-Email': 'someone@example.com'})
+    assert res.json is not None
+    assert res.json['current_user'] == {'email': 'someone@example.com'}
+    # An address no ACL mentions gets nothing, which is what makes the header useful
+    # for checking what a less-privileged user sees.
+    assert res.json['can_edit_rules'] is False
+
+
+@pytest.mark.use_rules_sources(rule_authoring_sources(DEPLOYING_ABILITIES))
+def test_dev_user_email_changes_the_default_for_the_process(
+    client: 'FlaskClient[Response]', monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Process-wide identity, for booting the stack as a particular user.
+
+    This is the supported alternative to editing `set_dummy_claim`, which is what the
+    header cannot do: change who the *browser* is, since it sends no header.
+    """
+    monkeypatch.setitem(CONFIG.instance()._config_dict, 'OSPREY_DEV_USER_EMAIL', 'booted-as@example.com')
+
+    res = client.get(url_for('config.get_config'))
+    assert res.json is not None
+    assert res.json['current_user'] == {'email': 'booted-as@example.com'}
+
+    # The header still wins over the configured default.
+    with_header = client.get(url_for('config.get_config'), headers={'X-Test-Email': 'local-dev@localhost'})
+    assert with_header.json is not None
+    assert with_header.json['current_user'] == {'email': 'local-dev@localhost'}
