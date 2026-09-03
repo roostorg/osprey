@@ -1,0 +1,68 @@
+/* The deploy modal renders a plan rather than a description: one row per file the deploy
+   touches, so the consequence is shown instead of narrated. */
+
+.planHeading {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-light-secondary);
+}
+
+.planList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The marker is a column of its own rather than a `list-style`, so the effect line below
+   each path aligns with the path and not with the bullet. */
+.planItem {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 2px 4px;
+  align-items: start;
+}
+
+.planItem::before {
+  content: '↳';
+  grid-row: 1;
+  color: var(--text-light-secondary);
+  line-height: 22px;
+}
+
+.planPath {
+  grid-column: 2;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.planEffect {
+  grid-column: 2;
+  font-size: 12px;
+  color: var(--text-light-secondary);
+}
+
+/* A file the deploy will leave alone. Dimmed, but the effect text says so in words too —
+   the state is never carried by colour alone. */
+.planItemInactive .planPath {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.checkboxHint {
+  margin: 4px 0 0 24px;
+  font-size: 12px;
+  color: var(--text-light-secondary);
+}
+
+.confirmLabel {
+  display: block;
+  margin-bottom: 4px;
+}

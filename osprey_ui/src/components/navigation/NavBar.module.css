@@ -1,7 +1,14 @@
+/* A fixed shell: exactly the viewport, never the document. This is what the rest of the
+   layout already assumes — `.mainColumn` sets `min-width: 0`, `.contentWrapper` sets
+   `min-height: 0`, and a dozen view roots set `height: 100%` with their own inner scroll
+   region. All of those are inert against a `min-height` wrapper, because a percentage
+   height resolves to `auto` unless its parent's height is definite, so the page scrolled
+   as one document and every inner scroll area silently grew instead of scrolling. */
 .appWrapper {
   display: flex;
   flex-direction: row;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   width: 100%;
 }
 
@@ -28,6 +35,9 @@
   align-items: center;
   justify-content: space-between;
   height: 48px;
+  /* Same reason as `.topBar`: fixed chrome in a now-bounded column, and it sits above a
+     `flex: 1 1 auto` menu that would otherwise be able to compress it. */
+  flex: 0 0 auto;
   padding: 0 12px;
   border-bottom: 1px solid var(--divider);
 }
@@ -70,6 +80,10 @@
 
 .sidebarMenu {
   flex: 1 1 auto;
+  /* The sidebar is `overflow: hidden` and now bounded to the viewport, so a nav list
+     taller than a short window would be unreachable rather than merely long. */
+  min-height: 0;
+  overflow-y: auto;
   border-right: none !important; /* Antd Menu inline mode adds a right border we don't want here */
 }
 
@@ -103,6 +117,10 @@
   align-items: center;
   justify-content: space-between;
   height: 48px;
+  /* `height` alone is a suggestion for a flex item: `flex-shrink` defaults to 1, so once
+     the shell became a bounded 100vh column this bar was free to be squeezed by whatever
+     wanted the space below it. It is fixed chrome, so it never gives any up. */
+  flex: 0 0 auto;
   padding: 0 16px;
   background-color: var(--background-primary);
   border-bottom: 1px solid var(--divider);
@@ -116,9 +134,14 @@
   min-height: 32px; /* reserve vertical space even when empty */
 }
 
+/* `auto`, not `hidden`: a view that manages its own scrolling sets `height: 100%` and
+   fills this box exactly, so no scrollbar appears here — but a view that doesn't would
+   otherwise be clipped by the shell above, with no way to reach the rest of it. This
+   keeps the shell bounded without making the bound a trap. */
 .contentWrapper {
   flex: 1 1 auto;
   min-height: 0;
+  overflow-y: auto;
 }
 
 /* Suppress browser extend-selection on antd link buttons while shift-click

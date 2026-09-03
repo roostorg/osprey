@@ -41,6 +41,14 @@ export interface ApplicationConfig {
   knownFeatureCategories: KnownFeatureCategories;
   knownActionNames: Set<string>;
   currentUser: { email?: string };
+  // Whether this deployment has a usable rules directory, and whether the current user
+  // holds CAN_DEPLOY_RULES. Kept apart rather than collapsed into one "can I deploy?"
+  // flag: the first hides the deploy control, the second disables it with a reason.
+  ruleDeploymentEnabled: boolean;
+  canDeployRules: boolean;
+  // Whether the current user may author rule drafts. Gates the authoring entry points;
+  // reading the rules catalog needs only CAN_VIEW_RULES.
+  canEditRules: boolean;
 }
 
 type ApplicationConfigStore = {
@@ -62,6 +70,10 @@ const useApplicationConfigStore = create<ApplicationConfigStore>((set) => ({
   updateApplicationConfig: (config: ApplicationConfig) => set(() => ({ ...config })),
   isRecordingClicks: false,
   currentUser: {},
+  // Off until the real config lands, so nothing offers a deploy during the first render.
+  ruleDeploymentEnabled: false,
+  canDeployRules: false,
+  canEditRules: false,
 }));
 
 export default useApplicationConfigStore;

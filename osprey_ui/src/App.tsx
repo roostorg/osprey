@@ -6,6 +6,7 @@ import { getApplicationConfig } from './actions/ConfigActions';
 import UdfDocsView from './components/docs/UdfDocsView';
 import BulkJobHistoryView from './components/bulk_job_history/BulkJobHistory';
 import { FeaturesPage } from './components/features/FeaturesPage';
+import { RuleEditorPage } from './components/rules/RuleEditorPage';
 import { RulesPage } from './components/rules/RulesPage';
 import RulesVisualizerView from './components/rules_visualizer/RulesVisualizer';
 import EntityViewBar from './components/entities/EntityViewBar';
@@ -104,6 +105,12 @@ const AppRouter: React.FC = () => {
                     </Route>
                     <Route path={Routes.FEATURES}>
                       <FeaturesPage />
+                    </Route>
+                    <Route exact path={Routes.RULES_NEW}>
+                      <RuleEditorPage />
+                    </Route>
+                    <Route exact path={Routes.RULES_EDIT}>
+                      <RuleEditorPage />
                     </Route>
                     <Route path={Routes.RULES}>
                       <RulesPage />

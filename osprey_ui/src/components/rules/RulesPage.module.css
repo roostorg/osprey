@@ -64,3 +64,54 @@
   overflow-wrap: break-word;
   margin: 0;
 }
+
+.draftRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* The path is the only part that should give up width; the tag and author keep their
+   intrinsic size, so a long path truncates rather than pushing them off the row.
+
+   Uses the app's own link token rather than antd's default, which renders #1668dc here —
+   3.35:1 against the alert panel, below WCAG AA for text. The token is themed, so it
+   stays correct in light mode where a hardcoded dark-theme blue would not.
+
+   Monospace rather than an underline. The text is a file path full of underscores, and an
+   underline sits exactly where they do, making them ambiguous. The family shift is a
+   persistent non-colour cue that this is a distinct, actionable element — which the link
+   needs, because its contrast against the surrounding prose is under the 3:1 that would
+   let colour carry that on its own — and it matches how paths are set everywhere else on
+   the page. */
+.draftRow > a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  color: var(--link-primary);
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  /* Negative margin cancels the padding, so adding a hover surface does not shift the row
+     when idle — the highlight grows outward from where the text already sits. */
+  padding: 0 3px;
+  margin: 0 -3px;
+  border-radius: 3px;
+  transition: background-color 0.18s ease;
+}
+
+/* A background tint, matching how the rest of the app marks a hovered link target
+   (`DropdownMenu`, `PropertyTable`, `CustomFeaturesFilter`). It is also the one hover cue
+   available here: the usual underline would land on the underscores in a file path, and a
+   colour shift alone would be a second thing for the eye to judge against a background
+   this link is already relying on colour to stand out from. */
+.draftRow > a:hover,
+.draftRow > a:focus-visible {
+  background-color: var(--link-light-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .draftRow > a {
+    transition: none;
+  }
+}
