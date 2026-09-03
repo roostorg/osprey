@@ -48,7 +48,20 @@ class ValidateCallKwargs(SourceValidator, HasResult[UDFNodeMapping]):
         return self._udf_node_mapping
 
     def validate_call_node(self, call_node: Call) -> None:
-        assert isinstance(call_node.func, Name), 'call nodes with attribute not yet supported.'
+        if not isinstance(call_node.func, Name):
+            # `Foo.Bar(...)`. The grammar allows one level of attribute access and the
+            # parser accepts an attribute callee, but nothing downstream implements one
+            # -- ValidateStaticTypes refuses the non-call form the same way. Report it
+            # rather than asserting: this validator also runs over user-submitted SML
+            # from the rule-draft editor, where an assert is a 500 instead of an inline
+            # error the author can act on.
+            self.context.add_error(
+                message="calling attributes isn't supported yet",
+                span=call_node.func.span,
+                hint='call a function by name, e.g. `Foo(...)`',
+            )
+            return
+
         function_name = call_node.func.identifier
 
         # Step 1) Check to see if the function is actually defined in the registry.

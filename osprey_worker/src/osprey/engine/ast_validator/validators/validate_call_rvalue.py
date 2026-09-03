@@ -13,7 +13,6 @@ class ValidateCallRValue(SourceValidator):
     def validate_source(self, source: Source) -> None:
         for call_node in filter_nodes(source.ast_root, Call):
             self.validate_call_node(source, call_node)
-            assert isinstance(call_node.func, Name)
 
     def validate_call_node(self, source: Source, node: Call) -> None:
         if not isinstance(node.func, Name):

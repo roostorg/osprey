@@ -535,6 +535,13 @@ CanBulkLabelWithNoLimit = register_ability('CAN_BULK_LABEL_WITH_NO_LIMIT')(make_
 CanViewSavedQueries = register_ability('CAN_VIEW_SAVED_QUERIES')(make_marker_ability())
 CanCreateAndEditSavedQueries = register_ability('CAN_CREATE_AND_EDIT_SAVED_QUERIES')(make_marker_ability())
 CanBulkAction = register_ability('CAN_BULK_ACTION')(make_marker_ability())
+# Rules form a read / write / publish ladder, each grant strictly more privileged than
+# the last: read the catalog and a rule's source, stage a draft in the table, publish a
+# draft into the engine's rules directory. They are separate abilities because the
+# blast radius differs -- a draft is reversible and private to the UI, a deploy is not.
+CanViewRules = register_ability('CAN_VIEW_RULES')(make_marker_ability())
+CanEditRules = register_ability('CAN_EDIT_RULES')(make_marker_ability())
+CanDeployRules = register_ability('CAN_DEPLOY_RULES')(make_marker_ability())
 
 
 def require_ability_with_request(request_model: ModelT, ability_class: Type[Ability[ModelT, ItemT]]) -> None:

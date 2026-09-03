@@ -40,6 +40,18 @@
     {
       "name": "CAN_VIEW_EVENTS_BY_ACTION",
       "allow_all": true
+    },
+    {
+      "name": "CAN_VIEW_RULES",
+      "allow_all": true
+    },
+    {
+      "name": "CAN_EDIT_RULES",
+      "allow_all": true
+    },
+    {
+      "name": "CAN_DEPLOY_RULES",
+      "allow_all": true
     }
   ],
   "ability_groups": ["CAN_VIEW_BASIC_USER_DATA"]

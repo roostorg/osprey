@@ -8,8 +8,13 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Added
+
+- Experimental in-app rule authoring: draft SML rules validate against the live engine, save to a `rules` table, and deploy into the configured rules directory. This does not currently support etcd. ([#402](https://github.com/roostorg/osprey/pull/402) by [@julietshen](https://github.com/julietshen), [@thisismissem](https://github.com/thisismissem))
+
 ### Changed
 
+- Rule access is now governed by three abilities instead of borrowing the docs one: `CAN_VIEW_RULES` (read the catalog and rule sources), `CAN_EDIT_RULES` (draft), and `CAN_DEPLOY_RULES` (publish into the rules directory). Editing and deploying are separate grants because a draft is reversible and private to the UI while a deploy is neither. **Required configuration change:** `GET /rules` previously required `CAN_VIEW_DOCS`, so ACLs granting only that ability lose the Rules Registry page until they also grant `CAN_VIEW_RULES` ([#487](https://github.com/roostorg/osprey/pull/487) by [@thisismissem](https://github.com/thisismissem))
 - Osprey starts without GCP credentials instead of crashing: Pub/Sub publishing is now opt-in via `OSPREY_PUBSUB_ENABLED` (default off), so the default (no-GCP) deployment publishes nothing. When it is enabled but GCP credentials can't be resolved, a `make_publisher` factory logs a warning and degrades to a noop rather than crashing. The GCP-backed telemetry itself (analytics, webhooks, rules-visualizer experiment metadata) stays inert until GCP or a replacement is configured. **Required configuration change:** deployments that rely on Pub/Sub publishing must set `OSPREY_PUBSUB_ENABLED=true`, otherwise publishing is silently disabled ([#388](https://github.com/roostorg/osprey/pull/388) by [@julietshen](https://github.com/julietshen))
 
 ## [1.1.0] - 2026-07-22

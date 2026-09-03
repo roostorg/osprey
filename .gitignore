@@ -307,5 +307,12 @@ Cargo.lock
 
 .claude
 
+# Local docker compose overrides (env vars, port remaps, secrets)
+docker-compose.override.yaml
+
 # docs output
 book/
+
+# Local ACL role assignments for development. Absent, every email resolves to
+# SUPER_USER; present, only the emails listed get anything at all.
+osprey_worker/src/osprey/worker/lib/acls/dev_acl_assignments.json
