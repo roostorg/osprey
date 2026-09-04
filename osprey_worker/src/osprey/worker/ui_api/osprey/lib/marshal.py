@@ -84,11 +84,22 @@ def json_object_body(flask_request: Request) -> dict[str, Any]:
 
 
 class Marshallable(Protocol):
-    @classmethod
-    def marshal(cls: Type[T], flask_request: Request) -> T: ...
+    """What `marshal_with` needs of a request model: something that can read a request.
+
+    The methods below are bodied by their docstrings rather than by `...`. Both are
+    valid, and neither ever runs -- a `Protocol` is structural, so nothing dispatches to
+    these -- but CodeQL reads a bare `...` as a statement with no effect, and a docstring
+    says what the method is for while it satisfies the checker. Not `raise
+    NotImplementedError`, which would imply a runtime dispatch that cannot happen here.
+    """
 
     @classmethod
-    def parse_obj(cls: Type[T], obj: Any) -> T: ...
+    def marshal(cls: Type[T], flask_request: Request) -> T:
+        """Build the model from `flask_request`, however this model sources its fields."""
+
+    @classmethod
+    def parse_obj(cls: Type[T], obj: Any) -> T:
+        """Validate a mapping into the model. Supplied by pydantic's `BaseModel`."""
 
 
 class MarshallableWithOverrides(Marshallable, Protocol):
@@ -100,7 +111,8 @@ class MarshallableWithOverrides(Marshallable, Protocol):
     """
 
     @classmethod
-    def overrides(cls, flask_request: Request) -> dict[str, Any]: ...
+    def overrides(cls, flask_request: Request) -> dict[str, Any]:
+        """Fields read from somewhere other than the body -- the URL, usually."""
 
 
 TOverriding = TypeVar('TOverriding', bound='MarshallableWithOverrides')
