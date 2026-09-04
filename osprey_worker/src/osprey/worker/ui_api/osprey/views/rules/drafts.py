@@ -90,7 +90,13 @@ def create_draft(request_model: CreateDraftRequest) -> Any:
     # main.sml is the engine entry point; a draft never replaces it wholesale.
     # Reported as a DraftValidation rather than an ad-hoc {'error': ...} so the editor
     # has one failure shape to render for this endpoint.
-    if request_model.path == MAIN_SML_PATH:
+    #
+    # Compared case-insensitively. `VALID_PATH` rejects non-lowercase paths, so `Main.sml`
+    # cannot reach here today -- but a reserved name that only reserves one spelling is
+    # the kind of guard that stops working silently if that ever loosens, and on a
+    # case-insensitive filesystem the file it failed to protect is the engine's entry
+    # point.
+    if request_model.path.lower() == MAIN_SML_PATH:
         return jsonify(
             DraftValidation(
                 ok=False,
@@ -168,7 +174,10 @@ def validate_draft(request_model: ValidateDraftRequest) -> Any:
     # compile if main.sml looked like this?" -- so this stays `ok`. But the editor's
     # path field is free text, so someone can type main.sml, write a whole rule, and
     # only discover at save that it can't be stored. Warn at typing time instead.
-    if request_model.path == MAIN_SML_PATH:
+    # Case-insensitive for the same reason as the guard in `create_draft`: the warning
+    # exists so the editor says "you can't save this" before a rule is written, and a
+    # warning that only recognises one spelling is worse than none.
+    if request_model.path.lower() == MAIN_SML_PATH:
         result.warnings = [
             *result.warnings,
             ValidationMessage(message=MAIN_SML_NOT_A_DRAFT_TARGET, source_path=request_model.path),

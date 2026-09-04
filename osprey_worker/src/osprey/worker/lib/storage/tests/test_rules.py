@@ -36,13 +36,31 @@ def _upsert(path: str, rule_name: str) -> Rule:
 def test_rules_table_has_exactly_one_reachable_unique_constraint() -> None:
     """`Rule.upsert` maps any UniqueViolation to RuleNameTaken. That is only sound
     while `rule_name` is the sole unique constraint that can surface: `path` is
-    absorbed by `ON CONFLICT (path) DO UPDATE` and `id` is a serial primary key.
+    absorbed by `ON CONFLICT (lower(path)) DO UPDATE` -- a row colliding on `path`
+    collides on `lower(path)` too -- and `id` is a serial primary key.
 
     Adding another unique column would silently make `upsert` report unrelated
     collisions as rule-name conflicts. This fails first, and says why.
     """
     uniques = {tuple(c.columns.keys()) for c in Rule.__table__.constraints if isinstance(c, UniqueConstraint)}
     assert uniques == {('path',), ('rule_name',)}
+
+
+def test_rules_table_has_no_unabsorbed_unique_indexes() -> None:
+    """The same argument as above, for unique *indexes*, which are a separate collection.
+
+    `Index(..., unique=True)` is not a `UniqueConstraint` -- it lives in
+    `__table__.indexes`, not `__table__.constraints` -- so the test above cannot see one
+    and would keep passing while the premise it documents became false. A unique index
+    that ON CONFLICT does not arbitrate on would surface as a `UniqueViolation` and be
+    reported to the caller as `RuleNameTaken`.
+
+    `ix_rules_lower_path_unique` is the one that exists, and `upsert` arbitrates on
+    `lower(path)`, so it is absorbed. Anything else added here needs the same treatment
+    or `upsert`'s error mapping has to stop assuming.
+    """
+    unique_indexes = {index.name for index in Rule.__table__.indexes if index.unique}
+    assert unique_indexes == {'ix_rules_lower_path_unique'}
 
 
 def test_rule_name_uniqueness_is_enforced_by_the_database() -> None:
@@ -70,7 +88,7 @@ def test_rule_name_taken_carries_the_holding_row() -> None:
 def test_upsert_keeping_its_own_rule_name_is_not_a_conflict() -> None:
     """Editing a draft in place re-writes its own rule_name to the same value.
 
-    `ON CONFLICT (path) DO UPDATE` makes that an UPDATE, and setting a unique column to
+    `ON CONFLICT (lower(path)) DO UPDATE` makes that an UPDATE, and setting a unique column to
     the value it already holds violates nothing -- which is why a rule_name conflict
     always implicates some *other* row, and why `get_all_with_rule_name` needs no
     "exclude this path" argument.
@@ -104,7 +122,7 @@ def test_editing_a_deployed_rule_returns_it_to_draft() -> None:
     assert deployed.status == RuleStatus.DEPLOYED
     assert deployed.deployed_at is not None
 
-    _upsert('rules/live.sml', 'LiveRule')  # same path -> ON CONFLICT (path) DO UPDATE
+    _upsert('rules/live.sml', 'LiveRule')  # same path -> ON CONFLICT (lower(path)) DO UPDATE
 
     edited = Rule.get_one_with_id(rule.id)
     assert edited is not None
@@ -205,3 +223,26 @@ def test_request_deploy_on_a_deployed_rule_reads_as_a_redeploy_request() -> None
 
 def test_request_deploy_returns_none_for_an_unknown_draft() -> None:
     assert Rule.request_deploy(999999) is None
+
+
+def test_paths_differing_only_in_case_are_one_draft() -> None:
+    """`spam.sml` and `Spam.sml` are one file on a case-insensitive filesystem.
+
+    Postgres compares `text` case-sensitively, so without the `lower(path)` index these
+    would be two rows -- and deploying both would write one file, silently overwriting
+    one draft with the other while the table still showed two. The upsert arbitrates on
+    `lower(path)` so the second save edits the first row instead of creating a second.
+
+    Storage-level rather than through the view, because `VALID_PATH` rejects the
+    uppercase spelling before a request ever reaches here. This is the backstop for the
+    ways into the table that do not go through the API.
+    """
+    first = _upsert('rules/spam.sml', 'SpamRule')
+    second = _upsert('rules/Spam.sml', 'SpamRule')
+
+    assert second.id == first.id
+    with scoped_session() as session:
+        assert session.query(Rule).count() == 1
+        # `path` is not in the upsert's mutable set, so the row keeps the casing it was
+        # first stored with rather than being renamed by a later save.
+        assert session.query(Rule).one().path == 'rules/spam.sml'

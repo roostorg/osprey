@@ -13,7 +13,15 @@ from osprey.worker.ui_api.osprey.lib.marshal import FlaskRequestMarshaller, Json
 from pydantic import BaseModel, Field, validator
 
 # Common regular expressions for various rule validators:
-VALID_PATH = re.compile(r'^[A-Za-z0-9_/-]+\.sml$')
+#
+# Lowercase only. A path is a filename, and two filenames differing only in case are one
+# file on a case-insensitive filesystem -- the macOS default -- while being two rows in a
+# table Postgres compares case-sensitively. Rather than reconcile the two, the set of
+# representable paths is narrowed until they cannot disagree. Every rule shipped in
+# `example_rules` is already lowercase snake_case, so this writes down the convention
+# rather than introducing one. Rule *names* are unaffected: those are SML identifiers,
+# conventionally CamelCase, and `VALID_RULE_NAME` still allows both cases.
+VALID_PATH = re.compile(r'^[a-z0-9_/-]+\.sml$')
 VALID_RULE_NAME = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
 
@@ -84,10 +92,15 @@ class _HasDraftPath(BaseModel):
     @validator('path')
     def _check_path(cls, value: str) -> str:
         value = value.strip()
+        # Reported before the general check, because "it must be lowercase" is the
+        # actionable answer and "it must contain only letters, numbers, underscores,
+        # slashes and hyphens" reads as though `Spam.sml` already satisfied it.
+        if value.lower() != value and VALID_PATH.match(value.lower()):
+            raise ValueError(f'Path {value!r} must be lowercase. Try {value.lower()!r}.')
         if not VALID_PATH.match(value):
             raise ValueError(
                 f'Path {value!r} is not a valid SML source path. It must end in .sml and contain only '
-                'letters, numbers, underscores, slashes, and hyphens.'
+                'lowercase letters, numbers, underscores, slashes, and hyphens.'
             )
         if value.startswith('/'):
             # Rule paths are relative to the rules directory; an absolute path

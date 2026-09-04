@@ -564,3 +564,42 @@ def test_a_non_object_json_body_is_ignored_rather_than_erroring(client: 'FlaskCl
     assert res.status_code == 200
     assert res.json is not None
     assert res.json['id'] == created.json['id']
+
+
+@pytest.mark.parametrize('path', ['Main.sml', 'MAIN.sml', 'mAiN.sml'])
+@pytest.mark.use_rules_sources(rule_authoring_sources(DEPLOYING_ABILITIES))
+def test_create_draft_rejects_main_sml_whatever_its_casing(client: 'FlaskClient[Response]', path: str) -> None:
+    """`main.sml` is reserved, and reserving one spelling of it reserves nothing.
+
+    On a case-insensitive filesystem -- the macOS default -- a draft saved as `Main.sml`
+    deploys to the same file as `main.sml`, so a guard matching only the lowercase
+    spelling would let an author overwrite the engine's entry point and break the next
+    rule load.
+
+    These are refused by `VALID_PATH` before the reserved-name guard is reached, which is
+    the intended layering: the path never becomes representable, so the guard never has
+    to be the only thing standing between an author and main.sml.
+    """
+    res = client.post(
+        url_for('rules.create_draft'),
+        json={'path': path, 'rule_name': 'SomeRule', 'source': VALID_DRAFT, 'summary': ''},
+    )
+
+    assert res.status_code in (400, 422), res.data
+
+
+@pytest.mark.use_rules_sources(rule_authoring_sources(DEPLOYING_ABILITIES))
+def test_create_draft_rejects_an_uppercase_path_and_says_so(client: 'FlaskClient[Response]') -> None:
+    """The error names the fix rather than restating the character class.
+
+    "must contain only lowercase letters, numbers, underscores, slashes and hyphens"
+    reads, to someone who typed `rules/SpamFilter.sml`, as though they had complied.
+    """
+    res = client.post(
+        url_for('rules.create_draft'),
+        json={'path': 'rules/SpamFilter.sml', 'rule_name': 'SpamFilter', 'source': VALID_DRAFT, 'summary': ''},
+    )
+
+    assert res.status_code == 400, res.data
+    assert b'lowercase' in res.data
+    assert b'rules/spamfilter.sml' in res.data
