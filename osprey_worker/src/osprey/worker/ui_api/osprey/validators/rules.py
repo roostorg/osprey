@@ -21,7 +21,14 @@ from pydantic import BaseModel, Field, validator
 # `example_rules` is already lowercase snake_case, so this writes down the convention
 # rather than introducing one. Rule *names* are unaffected: those are SML identifiers,
 # conventionally CamelCase, and `VALID_RULE_NAME` still allows both cases.
-VALID_PATH = re.compile(r'^[a-z0-9_/-]+\.sml$')
+#
+# Spelled as segments rather than as a character class including `/`, so no segment can
+# be empty. `rules//spam.sml` is a distinct string, and so a distinct row under `path`'s
+# unique constraint, but `Path.resolve()` collapses it to `rules/spam.sml` -- two drafts
+# claiming one file, which is the same failure the lowercase rule exists to prevent and
+# is not limited to case-insensitive filesystems. It also rejects `rules/.sml`, which
+# names no rule.
+VALID_PATH = re.compile(r'^(?:[a-z0-9_-]+/)*[a-z0-9_-]+\.sml$')
 VALID_RULE_NAME = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
 
@@ -92,22 +99,27 @@ class _HasDraftPath(BaseModel):
     @validator('path')
     def _check_path(cls, value: str) -> str:
         value = value.strip()
-        # Reported before the general check, because "it must be lowercase" is the
-        # actionable answer and "it must contain only letters, numbers, underscores,
-        # slashes and hyphens" reads as though `Spam.sml` already satisfied it.
-        if value.lower() != value and VALID_PATH.match(value.lower()):
-            raise ValueError(f'Path {value!r} must be lowercase. Try {value.lower()!r}.')
-        if not VALID_PATH.match(value):
-            raise ValueError(
-                f'Path {value!r} is not a valid SML source path. It must end in .sml and contain only '
-                'lowercase letters, numbers, underscores, slashes, and hyphens.'
-            )
+
+        # Specific failures first, general pattern last. `VALID_PATH` rejects everything
+        # the checks below reject, so running it first answers "invalid path" to
+        # questions that have better answers -- which is what previously made the
+        # parent-directory branch unreachable: `..` contains a `.`, so the pattern had
+        # already refused it and its message never appeared.
         if value.startswith('/'):
             # Rule paths are relative to the rules directory; an absolute path
             # would escape it.
             raise ValueError(f'Path {value!r} must be relative to the rules directory, not absolute.')
         if '..' in value.split('/'):
             raise ValueError(f'Path {value!r} contains a parent-directory segment.')
+        # Guarded on the lowercased form also matching, so a path that is wrong in some
+        # other way isn't told its only problem is casing.
+        if value.lower() != value and VALID_PATH.match(value.lower()):
+            raise ValueError(f'Path {value!r} must be lowercase. Try {value.lower()!r}.')
+        if not VALID_PATH.match(value):
+            raise ValueError(
+                f'Path {value!r} is not a valid SML source path. It must end in .sml, and each segment '
+                'must be non-empty and contain only lowercase letters, numbers, underscores, and hyphens.'
+            )
         return value
 
 

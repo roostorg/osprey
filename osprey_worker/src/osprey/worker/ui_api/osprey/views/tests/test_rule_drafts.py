@@ -603,3 +603,39 @@ def test_create_draft_rejects_an_uppercase_path_and_says_so(client: 'FlaskClient
     assert res.status_code == 400, res.data
     assert b'lowercase' in res.data
     assert b'rules/spamfilter.sml' in res.data
+
+
+@pytest.mark.parametrize(
+    ('path', 'expected_message'),
+    [
+        ('rules//spam.sml', b'not a valid SML source path'),
+        ('rules/.sml', b'not a valid SML source path'),
+        ('/rules/spam.sml', b'not absolute'),
+        ('rules/../spam.sml', b'parent-directory segment'),
+        ('rules/Spam.sml', b'must be lowercase'),
+    ],
+    ids=['empty-segment', 'empty-filename', 'absolute', 'parent-segment', 'uppercase'],
+)
+@pytest.mark.use_rules_sources(rule_authoring_sources(DEPLOYING_ABILITIES))
+def test_create_draft_rejects_paths_that_would_not_name_one_file(
+    client: 'FlaskClient[Response]', path: str, expected_message: bytes
+) -> None:
+    """Each rejection reports the thing that is wrong, not just that something is.
+
+    `rules//spam.sml` is the one worth spelling out: it is a distinct string, so a
+    distinct row under `path`'s unique constraint, but `Path.resolve()` collapses it to
+    `rules/spam.sml`. Two drafts would claim one file -- the same failure the lowercase
+    rule prevents, and this one is not limited to case-insensitive filesystems.
+
+    The absolute and parent-directory cases pin the check order. `VALID_PATH` refuses
+    both, so if it ran first they would answer "invalid path" and their own messages
+    would never appear -- which is exactly what used to happen to the parent-directory
+    branch.
+    """
+    res = client.post(
+        url_for('rules.create_draft'),
+        json={'path': path, 'rule_name': 'SomeRule', 'source': VALID_DRAFT, 'summary': ''},
+    )
+
+    assert res.status_code == 400, res.data
+    assert expected_message in res.data
