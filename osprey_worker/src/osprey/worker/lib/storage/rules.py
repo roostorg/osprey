@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from enum import StrEnum
 
 from psycopg2.errors import UniqueViolation
-from sqlalchemy import BigInteger, Column, DateTime, Enum, Index, Text, func, text
+from sqlalchemy import BigInteger, CheckConstraint, Column, DateTime, Enum, Text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped
@@ -99,18 +99,21 @@ class Rule(Model):
 
     __tablename__ = 'rules'
 
-    # Two paths differing only in case are one file on a case-insensitive filesystem --
-    # the macOS default, so every developer's machine -- and two rows here, because
-    # Postgres compares `text` case-sensitively. Deploying both would silently overwrite
-    # one with the other, with the table still claiming two distinct drafts.
+    # A path is a filename, and two filenames differing only in case are one file on a
+    # case-insensitive filesystem -- the macOS default, so every developer's machine --
+    # while being two rows here, because Postgres compares `text` case-sensitively.
+    # Deploying both would write one file and silently discard one of the drafts.
     #
-    # `validators.rules.VALID_PATH` already rejects non-lowercase paths, so this cannot
-    # be reached through the API. It is here because the API is not the only way to
-    # write a row, and because the invariant belongs where the data does. Note it is an
-    # `Index`, not a `UniqueConstraint`: `upsert` maps `UniqueViolation` to
-    # `RuleNameTaken`, so anything unique that is *not* absorbed by its ON CONFLICT
-    # would be misreported -- see `test_rules_table_has_no_unabsorbed_unique_indexes`.
-    __table_args__ = (Index('ix_rules_lower_path_unique', text('lower(path)'), unique=True),)
+    # Requiring paths to be lowercase is what makes the two agree, and it is stated here
+    # rather than only in `validators.rules.VALID_PATH` because the API is not the only
+    # way to write a row and the invariant belongs where the data does. Uniqueness then
+    # needs nothing special: if every path is lowercase, `path`'s existing unique
+    # constraint is already case-insensitive uniqueness.
+    #
+    # A `CheckConstraint` rather than lowercasing on write, because silently storing
+    # something other than what the caller asked for is how a row and a filename come to
+    # disagree in the first place.
+    __table_args__ = (CheckConstraint('path = lower(path)', name='ck_rules_path_is_lowercase'),)
 
     id: Mapped[int] = Column(BigInteger, primary_key=True, autoincrement=True)
     path: Mapped[str] = Column(Text, nullable=False, unique=True)
@@ -166,12 +169,10 @@ class Rule(Model):
         Editing a deployed draft moves it back to `DRAFT` so the table reflects that
         the in-flight SML no longer matches what was last deployed.
 
-        The conflict is arbitrated on `lower(path)`, not `path`, so two paths differing
-        only in case update one row rather than becoming two rows that share a file on a
-        case-insensitive filesystem. `path` is deliberately absent from `mutable`, so the
-        row keeps the casing it was first stored with; the read-back below therefore has
-        to match case-insensitively too, or it would look for a row that DO UPDATE just
-        declined to rename.
+        Paths are lowercase -- enforced by `ck_rules_path_is_lowercase` above -- so
+        arbitrating on `path` is already case-insensitive and a non-lowercase path from a
+        caller that bypassed the API fails the check rather than quietly becoming a second
+        row for the same file.
         """
         now = _now()
         mutable = {
@@ -186,7 +187,7 @@ class Rule(Model):
         statement = (
             pg_insert(cls.__table__)
             .values(path=path, created_at=now, **mutable)
-            .on_conflict_do_update(index_elements=[func.lower(cls.path)], set_=mutable)
+            .on_conflict_do_update(index_elements=[cls.path], set_=mutable)
         )
         with scoped_session(commit=True) as session:
             try:
@@ -197,17 +198,19 @@ class Rule(Model):
                 # request it isn't the session's owner either, so the caller would
                 # otherwise inherit an aborted transaction.
                 session.rollback()
-                # `path`'s unique constraint and the `lower(path)` unique index are both
-                # absorbed by ON CONFLICT (lower(path)) above -- a row colliding on
-                # `path` collides on `lower(path)` too -- and `id` is a serial primary
-                # key, so `rule_name` is the only unique thing that can surface here.
+                # `path`'s unique constraint is absorbed by ON CONFLICT (path) above and
+                # `id` is a serial primary key, so `rule_name` is the only unique
+                # constraint that can surface here. `ck_rules_path_is_lowercase` is a
+                # check, not a unique constraint, so it raises an IntegrityError that is
+                # not a UniqueViolation and falls through to the re-raise below -- which
+                # is right: a non-lowercase path is a caller error, not a name conflict.
                 # Guarded by `test_rules_table_has_exactly_one_reachable_unique_constraint`
                 # and `test_rules_table_has_no_unabsorbed_unique_indexes`.
                 # Anything else -- a NOT NULL violation, say -- is not ours to explain.
                 if isinstance(exc.orig, UniqueViolation):
                     raise RuleNameTaken(rule_name, existing=cls.get_all_with_rule_name(rule_name)) from exc
                 raise
-            draft = session.query(cls).filter(func.lower(cls.path) == path.lower()).one()
+            draft = session.query(cls).filter(cls.path == path).one()
             session.expunge(draft)
             return draft
 
