@@ -11,6 +11,8 @@ The app here is a bare `Flask`, not the osprey one: none of this needs a databas
 engine, or an authenticated user.
 """
 
+from typing import Any
+
 import pytest
 from flask import Flask, jsonify, request
 from osprey.worker.ui_api.osprey.lib.marshal import (
@@ -55,8 +57,8 @@ def _by_url_view(model: _AddressedByUrl) -> object:
     return jsonify(model.dict())
 
 
-def _read_body(**request_kwargs: object) -> dict:
-    with app.test_request_context('/', **request_kwargs):  # type: ignore[arg-type]
+def _read_body(**request_kwargs: Any) -> dict:
+    with app.test_request_context('/', **request_kwargs):
         return json_object_body(request)
 
 
