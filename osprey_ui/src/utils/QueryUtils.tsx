@@ -62,7 +62,7 @@ const renderValueWithType = (value: string | null, type: string | undefined): st
         return renderValueWithType(value, type.slice(0, type.length - 1));
       }
     } else if (type === 'str') {
-      const escapedId = value.replace(`'`, `\\'`);
+      const escapedId = value.replaceAll('\\', '\\\\').replaceAll(`'`, `\\'`);
       return `'${escapedId}'`;
     } else if (type === 'int' || type === 'float') {
       return value;
