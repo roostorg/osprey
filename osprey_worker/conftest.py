@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from gevent import monkey
+from osprey.worker.lib.tests import test_utils
 
 if TYPE_CHECKING:
     from _pytest.config import Config
@@ -31,8 +32,6 @@ _STARTED_PREPATCHED = monkey.is_module_patched('socket')
 #
 # Defined once, here: a fixture of the same name in a nearer conftest would shadow this
 # one for that package while both still ran, giving one session two database lifecycles.
-from osprey.worker.lib.tests import test_utils  # noqa: E402
-
 postgres_database_config = test_utils.make_postgres_database_config_fixture()
 
 
