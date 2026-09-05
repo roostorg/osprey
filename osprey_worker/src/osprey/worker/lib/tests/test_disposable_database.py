@@ -10,8 +10,15 @@ The function is pure, so these need no database. They still pay for one: the ses
 fixture in the root conftest is autouse for the whole repository.
 """
 
+import contextlib
+
 import pytest
-from osprey.worker.lib.tests.test_utils import _is_disposable_database
+from osprey.worker.lib.storage import postgres
+from osprey.worker.lib.tests.test_utils import _drop_database, _is_disposable_database
+from psycopg2.errors import ObjectInUse
+from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
+from sqlalchemy_utils import create_database
 
 #: The two URLs that actually appear in this repo's compose files. Named rather than
 #: inlined, because the whole point of the guard is telling these two apart.
@@ -68,3 +75,45 @@ def test_a_name_merely_containing_test_is_not_enough() -> None:
     """
     assert _is_disposable_database('postgresql://u:p@h:5432/osprey_testing') is False
     assert _is_disposable_database('postgresql://u:p@h:5432/latest') is False
+
+
+def test_dropping_a_database_that_is_in_use_is_refused() -> None:
+    """A database with a connection open is not destroyed, and the refusal is Postgres's.
+
+    This is the assertion that would catch a regression to
+    `sqlalchemy_utils.drop_database`, which does not refuse: for Postgres it runs
+    `pg_terminate_backend` against every other session and drops the database anyway,
+    so a concurrent test run would be killed and left failing with connection errors
+    that point nowhere near the cause.
+
+    Runs against a scratch database rather than the suite's own, for the obvious reason
+    that the success path here destroys whatever it is pointed at.
+    """
+    bound_engine = postgres.sessions['osprey_db'].kw['bind']
+    scratch_url = bound_engine.url.set(database='osprey_drop_guard_test').render_as_string(hide_password=False)
+
+    # Dropped first and last: a failure part way through this test would otherwise leave
+    # the scratch database behind, and the next run's `create_database` would collide
+    # with it rather than reporting whatever actually went wrong.
+    with contextlib.suppress(Exception):
+        _drop_database(scratch_url)
+
+    scratch_engine = None
+    try:
+        create_database(scratch_url)
+        scratch_engine = create_engine(scratch_url)
+
+        with scratch_engine.connect():
+            with pytest.raises(OperationalError) as excinfo:
+                _drop_database(scratch_url)
+            assert isinstance(excinfo.value.orig, ObjectInUse)
+
+        # And once nothing is attached it drops -- so the refusal is about the
+        # connection, not about the drop being broken.
+        scratch_engine.dispose()
+        _drop_database(scratch_url)
+    finally:
+        if scratch_engine is not None:
+            scratch_engine.dispose()
+        with contextlib.suppress(Exception):
+            _drop_database(scratch_url)

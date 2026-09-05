@@ -1,5 +1,6 @@
 import os
 import textwrap
+import warnings
 from collections.abc import Callable, Iterator
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit, urlunsplit
@@ -12,10 +13,11 @@ from osprey.worker.lib.singletons import CONFIG, ENGINE
 from osprey.worker.lib.sources_provider import StaticSourcesProvider
 from osprey.worker.lib.sources_publisher import validate_and_push
 from osprey.worker.lib.storage import postgres
-from psycopg2.errors import DuplicateDatabase
+from psycopg2.errors import DuplicateDatabase, InvalidCatalogName, ObjectInUse
 from sqlalchemy import create_engine, text
-from sqlalchemy.exc import ProgrammingError
-from sqlalchemy_utils import create_database, drop_database
+from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy_utils import create_database
+from sqlalchemy_utils.functions.database import quote
 
 if TYPE_CHECKING:
     from _pytest.config import Config
@@ -40,32 +42,36 @@ def _is_disposable_database(url: str) -> bool:
     created the database, which was standing in for "somebody else may be using it" --
     but the fixture now recreates an existing database at *setup* to guarantee the
     schema matches the code, and that destroys a database in use just as thoroughly as
-    dropping it at teardown would. `_sessions_on_database` checks that condition
-    directly instead, which is both stronger and honest about what it is protecting.
+    dropping it at teardown would. `_drop_database` asks Postgres to refuse instead,
+    which is stronger than either: it is atomic, so there is no window between the
+    decision and the destruction.
     """
     database_name = urlsplit(url).path.lstrip('/')
     return database_name.endswith(_TEST_DATABASE_SUFFIX)
 
 
-def _sessions_on_database(url: str) -> int:
-    """How many sessions other than ours are connected to the database at `url`.
+def _drop_database(url: str) -> None:
+    """Drop the database at `url`, refusing if anything else is connected to it.
 
-    Asked before dropping, because `sqlalchemy_utils.drop_database` does not fail when
-    a database is in use -- for Postgres it runs `pg_terminate_backend` against every
-    other session first and then drops it regardless. A second test run would be killed
-    silently and fail with connection errors that point nowhere near the cause.
+    Deliberately not `sqlalchemy_utils.drop_database`: for Postgres that runs
+    `pg_terminate_backend` against every other session and then drops the database
+    anyway. A second test run would be killed and left failing with connection errors
+    that point nowhere near the cause.
+
+    Issuing `DROP DATABASE` ourselves lets Postgres refuse instead, and refuse
+    *atomically* -- there is no window between deciding the database is unused and
+    destroying it, which a check followed by a drop would leave open.
+
+    The two failure modes arrive as different SQLAlchemy wrappers, which is easy to get
+    wrong: in use raises `OperationalError` around `psycopg2.errors.ObjectInUse`, while
+    already-gone raises `ProgrammingError` around `InvalidCatalogName`.
     """
     parts = urlsplit(url)
+    database = parts.path.lstrip('/')
     maintenance_engine = create_engine(urlunsplit(parts._replace(path='/postgres')), isolation_level='AUTOCOMMIT')
     try:
         with maintenance_engine.connect() as connection:
-            return int(
-                connection.execute(
-                    text('SELECT count(*) FROM pg_stat_activity WHERE datname = :database AND pid <> pg_backend_pid()'),
-                    {'database': parts.path.lstrip('/')},
-                ).scalar()
-                or 0
-            )
+            connection.execute(text(f'DROP DATABASE {quote(connection, database)}'))
     finally:
         maintenance_engine.dispose()
 
@@ -106,13 +112,16 @@ def make_postgres_database_config_fixture() -> object:
                     f'Refusing to run against an existing database that is not named '
                     f'*{_TEST_DATABASE_SUFFIX}. Point POSTGRES_HOSTS at a test database.'
                 )
-            in_use = _sessions_on_database(url)
-            if in_use:
+            try:
+                _drop_database(url)
+            except OperationalError as drop_error:
+                if not isinstance(drop_error.orig, ObjectInUse):
+                    raise
                 pytest.fail(
-                    f'The test database has {in_use} other session(s) connected, so it is '
-                    f'probably in use by another test run. Refusing to drop it.'
+                    'The test database is in use, so another test run probably has it. Only '
+                    'one run at a time is supported: run-tests.sh pins a single compose '
+                    'project, so concurrent runs share the containers as well as this database.'
                 )
-            drop_database(url)
             create_database(url)
 
         postgres.init_from_config('osprey_db')
@@ -126,14 +135,28 @@ def make_postgres_database_config_fixture() -> object:
         if not _is_disposable_database(url):
             return
 
-        try:
-            drop_database(url)
-        except ProgrammingError as e:
-            # Don't fail if the database is already closed
-            from psycopg2.errors import InvalidCatalogName
+        # Our own pooled connections are connections like any other, and `_drop_database`
+        # refuses rather than terminating them, so they have to go first. Whatever is
+        # still attached after this belongs to somebody else.
+        session_maker = postgres.sessions.get('osprey_db')
+        engine = session_maker.kw.get('bind') if session_maker is not None else None
+        if engine is not None:
+            engine.dispose()
 
-            if not isinstance(e.orig, InvalidCatalogName):
-                raise
+        try:
+            _drop_database(url)
+        except (OperationalError, ProgrammingError) as e:
+            if isinstance(e.orig, InvalidCatalogName):
+                return  # already gone; nothing to do
+            if isinstance(e.orig, ObjectInUse):
+                # Left behind rather than destroyed. The next run recreates it at setup,
+                # so this costs nothing but is worth saying out loud.
+                warnings.warn(
+                    f'Leaving the test database in place: something is still connected to it. {e.orig}',
+                    stacklevel=2,
+                )
+                return
+            raise
 
     return postgres_database_config
 
