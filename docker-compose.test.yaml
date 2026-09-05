@@ -8,13 +8,6 @@ services:
     container_name: !reset null
     ports: !reset []
     volumes: !reset []
-    # The container creates this at init, so it exists before any test runs. The
-    # session fixture in test_utils would otherwise create it, but that fixture is
-    # only installed in the `lib`, `sinks` and `ui_api` conftests -- and tests under
-    # `osprey/engine/` sort earlier and reach the database first, so relying on it
-    # leaves the first database-touching test with nowhere to connect.
-    environment:
-      - POSTGRES_DB=osprey_test
 
   osprey-kafka:
     container_name: !reset null

@@ -21,6 +21,21 @@ if TYPE_CHECKING:
 _STARTED_PREPATCHED = monkey.is_module_patched('socket')
 
 
+# The database is set up here, at the root, rather than in the `lib`, `sinks` and
+# `ui_api` conftests, because tests under `osprey/engine/` use it too --
+# `stdlib/udfs/tests/test_labels.py` reaches the labels storage -- and had no fixture
+# providing it. `docker-compose.test.yaml` covered that by pre-creating the database
+# via POSTGRES_DB, which meant the fixture always found one already there, never
+# considered it its own, and so never dropped it. That is why a schema change could
+# silently fail to apply.
+#
+# Defined once, here: a fixture of the same name in a nearer conftest would shadow this
+# one for that package while both still ran, giving one session two database lifecycles.
+from osprey.worker.lib.tests import test_utils  # noqa: E402
+
+postgres_database_config = test_utils.make_postgres_database_config_fixture()
+
+
 def pytest_addoption(parser: 'Parser') -> None:
     """Register custom pytest options.
 
