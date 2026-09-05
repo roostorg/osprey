@@ -10,20 +10,33 @@ The function is pure, so these need no database. They still pay for one: the ses
 fixture in the root conftest is autouse for the whole repository.
 """
 
-import contextlib
-
 import pytest
 from osprey.worker.lib.storage import postgres
 from osprey.worker.lib.tests.test_utils import _drop_database, _is_disposable_database
-from psycopg2.errors import ObjectInUse
+from psycopg2.errors import InvalidCatalogName, ObjectInUse
 from sqlalchemy import create_engine
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy_utils import create_database
 
 #: The two URLs that actually appear in this repo's compose files. Named rather than
 #: inlined, because the whole point of the guard is telling these two apart.
 DEV_URL = 'postgresql://osprey:FoolishPassword@postgres:5432/osprey'
 TEST_URL = 'postgresql://osprey:FoolishPassword@postgres:5432/osprey_test'
+
+
+def _drop_if_present(url: str) -> None:
+    """Drop the database at `url`, tolerating it not being there.
+
+    Only that. A cleanup step that swallows everything hides the failure it should be
+    reporting -- a refused connection or a missing permission would surface later as a
+    confusing `DuplicateDatabase` from the next `create_database`, pointing at the wrong
+    thing entirely.
+    """
+    try:
+        _drop_database(url)
+    except ProgrammingError as error:
+        if not isinstance(error.orig, InvalidCatalogName):
+            raise
 
 
 @pytest.mark.parametrize(
@@ -95,8 +108,7 @@ def test_dropping_a_database_that_is_in_use_is_refused() -> None:
     # Dropped first and last: a failure part way through this test would otherwise leave
     # the scratch database behind, and the next run's `create_database` would collide
     # with it rather than reporting whatever actually went wrong.
-    with contextlib.suppress(Exception):
-        _drop_database(scratch_url)
+    _drop_if_present(scratch_url)
 
     scratch_engine = None
     try:
@@ -115,5 +127,4 @@ def test_dropping_a_database_that_is_in_use_is_refused() -> None:
     finally:
         if scratch_engine is not None:
             scratch_engine.dispose()
-        with contextlib.suppress(Exception):
-            _drop_database(scratch_url)
+        _drop_if_present(scratch_url)
