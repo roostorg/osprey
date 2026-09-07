@@ -25,6 +25,10 @@ For more information about each release including git tags and artifacts, see [R
 - Retry transient Snowflake errors in the coordinator ([#448](https://github.com/roostorg/osprey/pull/448) by [@ayubun](https://github.com/ayubun))
 - Narrow overly-broad `[A-z]` regular expressions in the string UDFs and UI ([#473](https://github.com/roostorg/osprey/pull/473) by [@cassidyjames](https://github.com/cassidyjames))
 
+### Fixed
+
+- Fix postgres worker crash on first boot ([#436](https://github.com/roostorg/osprey/pull/436) by [@vedarolap](https://github.com/vedarolap), closes [#432](https://github.com/roostorg/osprey/issues/432))
+
 ## [1.1.0] - 2026-07-22
 
 ### Added
