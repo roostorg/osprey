@@ -20,6 +20,18 @@ def sqlalchemy_session() -> Iterator[Session]:
         yield session
 
 
+@pytest.fixture(autouse=True)
+def _clear_queries() -> Iterator[None]:
+    # The test database is session-scoped, so rows outlive the test that made them.
+    # Leaving them behind made `views/tests/test_queries.py::test_get_queries` pass only
+    # when this module ran first, in the same session -- it asserted on the suite's
+    # accumulated residue rather than on anything it created.
+    with scoped_session(commit=True) as session:
+        session.query(SavedQuery).delete()
+        session.query(Query).delete()
+    yield
+
+
 def _create_query(executed_by: str | None = None, parent_id: int | None = None, insert: bool | None = False) -> Query:
     query = Query()
     query.parent_id = parent_id
