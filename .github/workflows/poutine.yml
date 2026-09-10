@@ -7,14 +7,12 @@ on:
       - '.github/workflows/**'
       - '.github/actions/**'
       - '.poutine.yml'
-      - 'poutine-scan.sh'
   pull_request:
     branches: ['**']
     paths:
       - '.github/workflows/**'
       - '.github/actions/**'
       - '.poutine.yml'
-      - 'poutine-scan.sh'
   schedule:
     # Weekly drift check: new poutine rules / advisories can flag workflows
     # that were clean when they were last touched.
@@ -40,22 +38,44 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Run poutine
+      # Pinned to main@badd750a rather than the v1.1.4 tag: the latest tag
+      # still ships poutine 1.1.4, while this commit ships 1.1.6. Bump
+      # deliberately when upstream cuts a tag for it.
+      - name: poutine - GitHub Actions SAST (human-readable)
+        uses: boostsecurityio/poutine-action@badd750a259150be3b8b00823ad60849d539b96d # main @ poutine 1.1.6
+        with:
+          format: pretty
+          output: poutine.txt
+
+      - name: poutine - GitHub Actions SAST (SARIF)
+        uses: boostsecurityio/poutine-action@badd750a259150be3b8b00823ad60849d539b96d # main @ poutine 1.1.6
+        with:
+          format: sarif
+          output: poutine.sarif
+
+      # The action always exits 0, so gate here. Notes (e.g. actions from
+      # unverified creators) are reported to code scanning but do not fail
+      # CI; warnings and errors do.
+      - name: Report and gate on findings
         env:
-          # Notes (e.g. actions from unverified creators) are reported to code
-          # scanning but do not gate CI; warnings and errors do.
-          POUTINE_FAIL_LEVEL: warning
+          FAIL_LEVEL_REGEX: '^(warning|error)$'
         run: |
           {
             echo '## poutine'
             echo '```'
+            cat poutine.txt
+            echo '```'
           } >>"$GITHUB_STEP_SUMMARY"
-          set +e
-          ./poutine-scan.sh 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
-          status="${PIPESTATUS[0]}"
-          set -e
-          echo '```' >>"$GITHUB_STEP_SUMMARY"
-          exit "$status"
+
+          blocking="$(jq --arg re "$FAIL_LEVEL_REGEX" \
+            '[.runs[0].results[]? | select((.level // "warning") | test($re))] | length' \
+            poutine.sarif)"
+
+          if [ "$blocking" -gt 0 ]; then
+            echo "::error::poutine found ${blocking} finding(s) at warning level or above"
+            exit 1
+          fi
+          echo "poutine: no findings at warning level or above"
 
       - name: Upload SARIF to code scanning
         # Only on push/schedule: PRs from forks cannot push SARIF results, so
@@ -66,10 +86,12 @@ jobs:
           sarif_file: poutine.sarif
           category: poutine
 
-      - name: Upload SARIF artifact
+      - name: Upload poutine reports
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: poutine-sarif
-          path: poutine.sarif
+          name: poutine-reports
+          path: |
+            poutine.sarif
+            poutine.txt
           if-no-files-found: warn

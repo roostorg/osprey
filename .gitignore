@@ -310,5 +310,6 @@ Cargo.lock
 # docs output
 book/
 
-# poutine supply-chain scan report (see poutine-scan.sh)
+# poutine supply-chain scan reports (.github/workflows/poutine.yml)
 poutine.sarif
+poutine.txt

@@ -1,14 +1,14 @@
 # poutine <https://github.com/boostsecurityio/poutine> configuration.
-# Auto-discovered at the repo root; see also ./poutine-scan.sh and
+# Auto-discovered at the repo root by the poutine-action step in
 # .github/workflows/poutine.yml.
 
-# The scan runs offline in CI; no need for the daily release check.
+# No need for the daily release check in CI.
 disableVersionCheck: true
 
 # Nothing is suppressed today: note-level findings (currently only
 # `github_action_from_unverified_creator_used`, all of which are commit-SHA
-# pinned) are reported to code scanning but do not gate CI, because
-# poutine-scan.sh gates at level >= warning.
+# pinned) are reported to code scanning but do not gate CI. The workflow
+# gates at warning level and above.
 #
 # To permanently accept a specific note instead, add it here, e.g.:
 # skip:
