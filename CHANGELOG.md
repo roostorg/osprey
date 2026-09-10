@@ -25,6 +25,10 @@ For more information about each release including git tags and artifacts, see [R
 - Retry transient Snowflake errors in the coordinator ([#448](https://github.com/roostorg/osprey/pull/448) by [@ayubun](https://github.com/ayubun))
 - Narrow overly-broad `[A-z]` regular expressions in the string UDFs and UI ([#473](https://github.com/roostorg/osprey/pull/473) by [@cassidyjames](https://github.com/cassidyjames))
 
+### CI & infrastructure
+
+- `poutine` added to scan CI workflows for supply-chain vulnerabilities, gated on warning-level findings and reporting to code scanning ([#505](https://github.com/roostorg/osprey/pull/505) by [@reitblatt](https://github.com/reitblatt))
+
 ## [1.1.0] - 2026-07-22
 
 ### Added

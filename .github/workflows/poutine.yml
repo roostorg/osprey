@@ -6,13 +6,11 @@ on:
     paths:
       - '.github/workflows/**'
       - '.github/actions/**'
-      - '.poutine.yml'
   pull_request:
     branches: ['**']
     paths:
       - '.github/workflows/**'
       - '.github/actions/**'
-      - '.poutine.yml'
   schedule:
     # Weekly drift check: new poutine rules / advisories can flag workflows
     # that were clean when they were last touched.
@@ -38,27 +36,46 @@ jobs:
         with:
           persist-credentials: false
 
-      # Pinned to main@badd750a rather than the v1.1.4 tag: the latest tag
-      # still ships poutine 1.1.4, while this commit ships 1.1.6. Bump
-      # deliberately when upstream cuts a tag for it.
+      # Pinned to main@badd750a rather than the v1.1.4 tag: that tag still
+      # builds FROM poutine 1.1.4, while this commit builds FROM
+      # poutine:1.1.6@sha256:722a8e09..., so both the action and the scanner
+      # binary are pinned. Bump deliberately when upstream tags the 1.1.6 base.
       - name: poutine - GitHub Actions SAST (human-readable)
         uses: boostsecurityio/poutine-action@badd750a259150be3b8b00823ad60849d539b96d # main @ poutine 1.1.6
+        env:
+          POUTINE_DISABLE_VERSION_CHECK: '1'
         with:
           format: pretty
           output: poutine.txt
 
       - name: poutine - GitHub Actions SAST (SARIF)
         uses: boostsecurityio/poutine-action@badd750a259150be3b8b00823ad60849d539b96d # main @ poutine 1.1.6
+        env:
+          POUTINE_DISABLE_VERSION_CHECK: '1'
         with:
           format: sarif
           output: poutine.sarif
 
+      - name: Annotate pull request with findings
+        # PRs from forks cannot upload SARIF to code scanning, so surface
+        # findings as inline annotations instead.
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          jq -r '
+            .runs[0].results[]?
+            | (.level // "warning") as $level
+            | (if $level == "error" then "error"
+               elif $level == "note" then "notice"
+               else "warning" end) as $kind
+            | .locations[0].physicalLocation as $loc
+            | "::\($kind) file=\($loc.artifactLocation.uri),line=\($loc.region.startLine // 1),title=poutine: \(.ruleId)::"
+              + (.message.text | gsub("\\s+"; " ") | .[0:400])
+          ' poutine.sarif
+
       # The action always exits 0, so gate here. Notes (e.g. actions from
-      # unverified creators) are reported to code scanning but do not fail
-      # CI; warnings and errors do.
+      # unverified creators) are reported but do not fail CI; warnings and
+      # errors do.
       - name: Report and gate on findings
-        env:
-          FAIL_LEVEL_REGEX: '^(warning|error)$'
         run: |
           {
             echo '## poutine'
@@ -67,19 +84,18 @@ jobs:
             echo '```'
           } >>"$GITHUB_STEP_SUMMARY"
 
-          blocking="$(jq --arg re "$FAIL_LEVEL_REGEX" \
-            '[.runs[0].results[]? | select((.level // "warning") | test($re))] | length' \
-            poutine.sarif)"
+          blocking="$(jq '
+            [.runs[0].results[]? | select((.level // "warning") | test("^(warning|error)$"))]
+            | length
+          ' poutine.sarif)"
 
           if [ "$blocking" -gt 0 ]; then
-            echo "::error::poutine found ${blocking} finding(s) at warning level or above"
+            echo "::error title=poutine::${blocking} finding(s) at warning level or above"
             exit 1
           fi
           echo "poutine: no findings at warning level or above"
 
       - name: Upload SARIF to code scanning
-        # Only on push/schedule: PRs from forks cannot push SARIF results, so
-        # findings surface in the job summary above instead.
         if: ${{ always() && github.event_name != 'pull_request' }}
         uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
