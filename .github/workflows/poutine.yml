@@ -1,0 +1,75 @@
+name: Pipeline supply-chain analysis
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.poutine.yml'
+      - 'poutine-scan.sh'
+  pull_request:
+    branches: ['**']
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.poutine.yml'
+      - 'poutine-scan.sh'
+  schedule:
+    # Weekly drift check: new poutine rules / advisories can flag workflows
+    # that were clean when they were last touched.
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: poutine-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  poutine:
+    name: Run poutine
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # to upload SARIF results to code scanning
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run poutine
+        env:
+          # Notes (e.g. actions from unverified creators) are reported to code
+          # scanning but do not gate CI; warnings and errors do.
+          POUTINE_FAIL_LEVEL: warning
+        run: |
+          {
+            echo '## poutine'
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+          set +e
+          ./poutine-scan.sh 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          status="${PIPESTATUS[0]}"
+          set -e
+          echo '```' >>"$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Upload SARIF to code scanning
+        # Only on push/schedule: PRs from forks cannot push SARIF results, so
+        # findings surface in the job summary above instead.
+        if: ${{ always() && github.event_name != 'pull_request' }}
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          sarif_file: poutine.sarif
+          category: poutine
+
+      - name: Upload SARIF artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: poutine-sarif
+          path: poutine.sarif
+          if-no-files-found: warn
