@@ -74,7 +74,7 @@ common = [
     "anyascii==0.3.3",
     "werkzeug==1.0.1",
     # --- Type stubs (used by mypy, not imported directly) ---
-    "types-cachetools==6.1.0.20250717",
+    "types-cachetools==7.0.0.20260713",
     "types-click==7.1.8",
     "types-flask==1.1.6",
     "types-ipaddress==1.0.8",
