@@ -90,7 +90,7 @@ common = [
     { name = "tink", specifier = "==1.9.0" },
     { name = "tld", specifier = "==0.12.7" },
     { name = "traitlets", specifier = "==5.14.3" },
-    { name = "types-cachetools", specifier = "==6.1.0.20250717" },
+    { name = "types-cachetools", specifier = "==7.0.0.20260713" },
     { name = "types-click", specifier = "==7.1.8" },
     { name = "types-flask", specifier = "==1.1.6" },
     { name = "types-ipaddress", specifier = "==1.0.8" },
@@ -2488,11 +2488,11 @@ wheels = [
 
 [[package]]
 name = "types-cachetools"
-version = "6.1.0.20250717"
+version = "7.0.0.20260713"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5a/14/e98ea3b3fda81787659268bbf09dec56961c39db060fdca74cb521df0515/types_cachetools-6.1.0.20250717.tar.gz", hash = "sha256:4acc8e25de9f5f84dd176ea81dcffa7cb24393869bb2e59e692dfd0139a1e66f", size = 9105, upload-time = "2025-07-17T03:20:48.482Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/34/64/66d7efdb36ecf6826aca5415e59fe2df96e97d24157147e53acfbe8dda11/types_cachetools-7.0.0.20260713.tar.gz", hash = "sha256:f1acf079e9c66a81e096a897ef0b261a82117cf856834e37b4bd0c9a116a076a", size = 10199, upload-time = "2026-07-13T05:22:21.845Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/61/bb/554208964e901e9e1992a7ea0bcab1590a4b2e94d20a9e6200826110ec89/types_cachetools-6.1.0.20250717-py3-none-any.whl", hash = "sha256:bba4b8d42262460d24e570097d2d9040e60311934603caa642efd971f3658ed0", size = 8940, upload-time = "2025-07-17T03:20:47.375Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/c7/d3525c9dbdc1be7786bad46655ef051b6e7993f656d304719ec40079c91c/types_cachetools-7.0.0.20260713-py3-none-any.whl", hash = "sha256:6db9bcc7a3840d39e91c04117d85a9d0937eacc9d14d12a873e2b01a2d24a71d", size = 9615, upload-time = "2026-07-13T05:22:20.76Z" },
 ]
 
 [[package]]
