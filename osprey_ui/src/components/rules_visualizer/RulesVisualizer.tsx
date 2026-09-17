@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, Button, Card, Spin, Switch } from 'antd';
-import { AimOutlined } from '@ant-design/icons';
+import { AimOutlined, ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons';
 import shallow from 'zustand/shallow';
 import { Css, Core } from 'cytoscape';
 
@@ -11,6 +11,7 @@ import { Node, NodeType, LabelType } from '../../types/RulesVisualizerTypes';
 
 import styles from './RulesVisualizer.module.css';
 import { getGraphJson } from '../../actions/RulesVisualizerActions';
+import { GRAPH_FIT_PADDING, ZOOM_STEP_FACTOR, computeMinZoom, computeZoomPercentage } from './zoomUtils';
 
 export const DEFAULT_ANIMATE_DURATION = 1000;
 
@@ -24,6 +25,9 @@ const nodeStyle: Css.Node = {
   'background-color': (node) => getNodeColor(node.data('type'), node.data('label_type')),
   shape: (node) => typeToShape[node.data('type')],
 };
+
+// Stable reference — HierarchicalGraph rebuilds the whole graph when this identity changes.
+const layoutOptions = { padding: GRAPH_FIT_PADDING };
 
 const ToolTip = ({ node }: { node: { data: (key: string) => unknown } }) => {
   return <div>{String(node.data('file_path'))}</div>;
@@ -46,27 +50,34 @@ const RulesVisualizerView = () => {
   const [showLabelUpstream, setShowLabelUpstream] = useState(false);
   const [showLabelDownstream, setShowLabelDownstream] = useState(true);
   const [cyto, setCyto] = useState<Core | null>(null);
+  // baseZoom is the fit zoom on load; displayed percentage is relative to it, so 100% = whole graph fits.
+  const [baseZoom, setBaseZoom] = useState<number | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<number | null>(null);
 
-  const elements = {
-    nodes: (nodes || []).map((node) => ({
-      data: {
-        id: `${node.id}`,
-        label: getLabel(node),
-        type: node.type,
-        label_type: node.label_type,
-        label_name: node.label_name,
-        entity_name: node.entity_name,
-        file_path: node.file_path,
-      },
-    })),
-    edges: (edges || []).map((edge, idx) => ({
-      data: {
-        id: `edge-${idx}`,
-        source: `${edge.source}`,
-        target: `${edge.target}`,
-      },
-    })),
-  };
+  // Memoized so a re-render (e.g. the zoom display updating) doesn't rebuild the whole graph.
+  const elements = useMemo(
+    () => ({
+      nodes: (nodes || []).map((node) => ({
+        data: {
+          id: `${node.id}`,
+          label: getLabel(node),
+          type: node.type,
+          label_type: node.label_type,
+          label_name: node.label_name,
+          entity_name: node.entity_name,
+          file_path: node.file_path,
+        },
+      })),
+      edges: (edges || []).map((edge, idx) => ({
+        data: {
+          id: `edge-${idx}`,
+          source: `${edge.source}`,
+          target: `${edge.target}`,
+        },
+      })),
+    }),
+    [nodes, edges]
+  );
 
   let alert;
   if (nodes && !nodes.length) {
@@ -75,18 +86,30 @@ const RulesVisualizerView = () => {
     alert = <Alert className={styles.centered} type="error" message={`Error: ${errorMessage}. Please try again.`} />;
   }
 
-  const onGraphLoad = (cy: Core) => {
-    // View defaults to fitting whole graph within viewport. Disable zooming out past that.
-    cy.minZoom(cy.zoom());
+  const onGraphLoad = useCallback((cy: Core) => {
+    cy.minZoom(computeMinZoom(cy.zoom()));
+    setBaseZoom(cy.zoom());
+    setZoomLevel(cy.zoom());
+    cy.on('zoom', () => setZoomLevel(cy.zoom()));
     setCyto(cy);
-  };
+  }, []);
 
   const recenterOnClick = () => {
     if (cyto) {
       cyto.animate({
         easing: 'ease-in-out',
         duration: DEFAULT_ANIMATE_DURATION,
-        fit: { eles: cyto.elements(), padding: 0 },
+        fit: { eles: cyto.elements(), padding: GRAPH_FIT_PADDING },
+      });
+    }
+  };
+
+  const zoomByFactor = (factor: number) => {
+    if (cyto) {
+      // Anchor on the viewport center; a bare number would zoom from the pan origin instead.
+      cyto.zoom({
+        level: cyto.zoom() * factor,
+        renderedPosition: { x: cyto.width() / 2, y: cyto.height() / 2 },
       });
     }
   };
@@ -141,15 +164,33 @@ const RulesVisualizerView = () => {
             Show Downstream Nodes
           </Card>
         )}
-        <HierarchicalGraph elements={elements} nodeStyle={nodeStyle} onLoad={onGraphLoad} ToolTip={ToolTip} />
+        <HierarchicalGraph
+          elements={elements}
+          nodeStyle={nodeStyle}
+          layoutOptions={layoutOptions}
+          onLoad={onGraphLoad}
+          ToolTip={ToolTip}
+        />
         {nodes && !!nodes.length && (
-          <Button
-            className={styles.recenterButton}
-            shape="circle"
-            icon={<AimOutlined />}
-            size="large"
-            onClick={recenterOnClick}
-          />
+          <div className={styles.zoomControls}>
+            <Button
+              type="text"
+              aria-label="Zoom out"
+              icon={<ZoomOutOutlined />}
+              onClick={() => zoomByFactor(1 / ZOOM_STEP_FACTOR)}
+            />
+            <span className={styles.zoomLabel}>
+              {zoomLevel !== null && baseZoom !== null ? `${computeZoomPercentage(zoomLevel, baseZoom)}%` : '—'}
+            </span>
+            <Button
+              type="text"
+              aria-label="Zoom in"
+              icon={<ZoomInOutlined />}
+              onClick={() => zoomByFactor(ZOOM_STEP_FACTOR)}
+            />
+            <span className={styles.zoomDivider} />
+            <Button type="text" aria-label="Recenter" icon={<AimOutlined />} onClick={recenterOnClick} />
+          </div>
         )}
       </div>
     </div>

@@ -7,14 +7,34 @@
   background-color: var(--background-primary);
 }
 
-.recenterButton {
+.zoomControls {
   position: absolute;
   bottom: 60px;
   right: 60px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 24px;
+  background-color: var(--background-primary);
   box-shadow:
     0 3px 6px -4px #0000001f,
     0 6px 16px #00000014,
     0 9px 28px 8px #0000000d;
+}
+
+.zoomLabel {
+  min-width: 44px;
+  text-align: center;
+  font-size: 13px;
+  user-select: none;
+}
+
+.zoomDivider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--divider);
+  margin: 0 2px;
 }
 
 .graphContainer {
@@ -33,11 +53,6 @@
     0 3px 6px -4px #0000001f,
     0 6px 16px #00000014,
     0 9px 28px 8px #0000001d;
-}
-
-.recenterButton:focus:not(:hover) {
-  color: unset;
-  border-color: unset;
 }
 
 .centered {

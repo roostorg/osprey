@@ -12,6 +12,7 @@ For more information about each release including git tags and artifacts, see [R
 
 - Configurable execution timeouts for native async UDFs ([#452](https://github.com/roostorg/osprey/pull/452) by [@ayubun](https://github.com/ayubun))
 - `HasLabel` support in the asyncio worker ([#453](https://github.com/roostorg/osprey/pull/453) by [@ayubun](https://github.com/ayubun))
+- Zoom controls in the Rules Visualizer (zoom in/out buttons, a zoom percentage readout, and the ability to zoom out further than the initial whole-graph fit) ([#509](https://github.com/roostorg/osprey/pull/509) by [@austin-ayers](https://github.com/austin-ayers))
 
 ### Changed
 
