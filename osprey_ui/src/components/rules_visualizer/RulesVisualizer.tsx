@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, Button, Card, Spin, Switch } from 'antd';
 import { AimOutlined, ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons';
 import shallow from 'zustand/shallow';
@@ -11,12 +11,9 @@ import { Node, NodeType, LabelType } from '../../types/RulesVisualizerTypes';
 
 import styles from './RulesVisualizer.module.css';
 import { getGraphJson } from '../../actions/RulesVisualizerActions';
+import { GRAPH_FIT_PADDING, ZOOM_STEP_FACTOR, computeMinZoom, computeZoomPercentage } from './zoomUtils';
 
 export const DEFAULT_ANIMATE_DURATION = 1000;
-// Lets users zoom out to 30% the size of the initial whole-graph fit.
-const MIN_ZOOM_FIT_MULTIPLIER = 0.3;
-// Relative amount each +/- zoom control click changes the zoom level by.
-const ZOOM_STEP_FACTOR = 1.2;
 
 const typeToShape: Record<string, Css.NodeShape> = {
   [NodeType.Label]: 'ellipse',
@@ -28,6 +25,10 @@ const nodeStyle: Css.Node = {
   'background-color': (node) => getNodeColor(node.data('type'), node.data('label_type')),
   shape: (node) => typeToShape[node.data('type')],
 };
+
+// Must be a stable reference (not created inline in JSX) since HierarchicalGraph rebuilds its
+// whole Cytoscape instance whenever this object identity changes.
+const layoutOptions = { padding: GRAPH_FIT_PADDING };
 
 const ToolTip = ({ node }: { node: { data: (key: string) => unknown } }) => {
   return <div>{String(node.data('file_path'))}</div>;
@@ -56,26 +57,33 @@ const RulesVisualizerView = () => {
   const [baseZoom, setBaseZoom] = useState<number | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number | null>(null);
 
-  const elements = {
-    nodes: (nodes || []).map((node) => ({
-      data: {
-        id: `${node.id}`,
-        label: getLabel(node),
-        type: node.type,
-        label_type: node.label_type,
-        label_name: node.label_name,
-        entity_name: node.entity_name,
-        file_path: node.file_path,
-      },
-    })),
-    edges: (edges || []).map((edge, idx) => ({
-      data: {
-        id: `edge-${idx}`,
-        source: `${edge.source}`,
-        target: `${edge.target}`,
-      },
-    })),
-  };
+  // Memoized so this object reference only changes when the underlying graph data does — a new
+  // reference on every render would make HierarchicalGraph rebuild its whole Cytoscape instance
+  // (and reset pan/zoom) any time this component re-renders for an unrelated reason, e.g. the
+  // zoom-percentage display updating as the user scrolls.
+  const elements = useMemo(
+    () => ({
+      nodes: (nodes || []).map((node) => ({
+        data: {
+          id: `${node.id}`,
+          label: getLabel(node),
+          type: node.type,
+          label_type: node.label_type,
+          label_name: node.label_name,
+          entity_name: node.entity_name,
+          file_path: node.file_path,
+        },
+      })),
+      edges: (edges || []).map((edge, idx) => ({
+        data: {
+          id: `edge-${idx}`,
+          source: `${edge.source}`,
+          target: `${edge.target}`,
+        },
+      })),
+    }),
+    [nodes, edges]
+  );
 
   let alert;
   if (nodes && !nodes.length) {
@@ -84,29 +92,36 @@ const RulesVisualizerView = () => {
     alert = <Alert className={styles.centered} type="error" message={`Error: ${errorMessage}. Please try again.`} />;
   }
 
-  const onGraphLoad = (cy: Core) => {
+  // Stable reference for the same reason as `elements` above — see HierarchicalGraph's effect deps.
+  const onGraphLoad = useCallback((cy: Core) => {
     // View defaults to fitting whole graph within viewport. Allow zooming out further
     // than that fit level so large graphs can be shrunk down more before panning is needed.
-    cy.minZoom(cy.zoom() * MIN_ZOOM_FIT_MULTIPLIER);
+    cy.minZoom(computeMinZoom(cy.zoom()));
     setBaseZoom(cy.zoom());
     setZoomLevel(cy.zoom());
     cy.on('zoom', () => setZoomLevel(cy.zoom()));
     setCyto(cy);
-  };
+  }, []);
 
   const recenterOnClick = () => {
     if (cyto) {
       cyto.animate({
         easing: 'ease-in-out',
         duration: DEFAULT_ANIMATE_DURATION,
-        fit: { eles: cyto.elements(), padding: 0 },
+        fit: { eles: cyto.elements(), padding: GRAPH_FIT_PADDING },
       });
     }
   };
 
   const zoomByFactor = (factor: number) => {
     if (cyto) {
-      cyto.zoom(cyto.zoom() * factor);
+      // Anchor the zoom on the viewport's center. Passing a bare number to cy.zoom() keeps
+      // whatever point is at the current pan origin fixed instead of the visual center, which
+      // made the +/- buttons feel like they zoomed toward an arbitrary offset point.
+      cyto.zoom({
+        level: cyto.zoom() * factor,
+        renderedPosition: { x: cyto.width() / 2, y: cyto.height() / 2 },
+      });
     }
   };
 
@@ -160,16 +175,32 @@ const RulesVisualizerView = () => {
             Show Downstream Nodes
           </Card>
         )}
-        <HierarchicalGraph elements={elements} nodeStyle={nodeStyle} onLoad={onGraphLoad} ToolTip={ToolTip} />
+        <HierarchicalGraph
+          elements={elements}
+          nodeStyle={nodeStyle}
+          layoutOptions={layoutOptions}
+          onLoad={onGraphLoad}
+          ToolTip={ToolTip}
+        />
         {nodes && !!nodes.length && (
           <div className={styles.zoomControls}>
-            <Button type="text" icon={<ZoomOutOutlined />} onClick={() => zoomByFactor(1 / ZOOM_STEP_FACTOR)} />
+            <Button
+              type="text"
+              aria-label="Zoom out"
+              icon={<ZoomOutOutlined />}
+              onClick={() => zoomByFactor(1 / ZOOM_STEP_FACTOR)}
+            />
             <span className={styles.zoomLabel}>
-              {zoomLevel !== null && baseZoom !== null ? `${Math.round((zoomLevel / baseZoom) * 100)}%` : '—'}
+              {zoomLevel !== null && baseZoom !== null ? `${computeZoomPercentage(zoomLevel, baseZoom)}%` : '—'}
             </span>
-            <Button type="text" icon={<ZoomInOutlined />} onClick={() => zoomByFactor(ZOOM_STEP_FACTOR)} />
+            <Button
+              type="text"
+              aria-label="Zoom in"
+              icon={<ZoomInOutlined />}
+              onClick={() => zoomByFactor(ZOOM_STEP_FACTOR)}
+            />
             <span className={styles.zoomDivider} />
-            <Button type="text" icon={<AimOutlined />} onClick={recenterOnClick} />
+            <Button type="text" aria-label="Recenter" icon={<AimOutlined />} onClick={recenterOnClick} />
           </div>
         )}
       </div>
