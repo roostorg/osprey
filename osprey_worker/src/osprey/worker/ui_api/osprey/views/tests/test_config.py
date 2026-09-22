@@ -55,22 +55,39 @@ def test_get_ui_config(client: 'FlaskClient[Response]') -> None:
     res = client.get(url_for('config.get_config'))
     assert 200 <= res.status_code < 300
 
-    pop = res.json.pop
-    assert pop('external_links') == _ui_config_raw['external_links']
-    assert pop('default_summary_features') == _ui_config_raw['default_summary_features']
-    assert pop('feature_name_to_entity_type_mapping') == {'UserId': 'User', 'GuildId': 'Guild'}
-    assert pop('feature_name_to_value_type_mapping') == {
+    body = res.json
+
+    # Stated as a whole rather than checked off field by field: this is the contract the
+    # UI reads, so a field added to `UIConfigMerged` should fail here until it is
+    # covered below, and a field removed should fail rather than silently stop being
+    # asserted.
+    assert body.keys() == {
+        'current_user',
+        'default_summary_features',
+        'external_links',
+        'feature_name_to_entity_type_mapping',
+        'feature_name_to_value_type_mapping',
+        'known_action_names',
+        'known_feature_locations',
+        'label_info_mapping',
+        'rule_info_mapping',
+    }
+
+    assert body['external_links'] == _ui_config_raw['external_links']
+    assert body['default_summary_features'] == _ui_config_raw['default_summary_features']
+    assert body['feature_name_to_entity_type_mapping'] == {'UserId': 'User', 'GuildId': 'Guild'}
+    assert body['feature_name_to_value_type_mapping'] == {
         'ActionName': 'str',
         'Action_DmChannelCreated_Selfbot': 'bool',
         'UserId': 'int',
         'GuildId': 'int',
         'SomeExtractLiteral': 'list<int>',
     }
-    assert pop('label_info_mapping') == _labels_raw
+    assert body['label_info_mapping'] == _labels_raw
 
     filtered = [
         {'name': item['name'], 'source_path': item['source_path'], 'source_line': item['source_line']}
-        for item in pop('known_feature_locations')
+        for item in body['known_feature_locations']
     ]
     # The source strings defined in this file with the multi-line string
     # literals have an extra newline at the beginning, so source_line seems 1
@@ -82,12 +99,11 @@ def test_get_ui_config(client: 'FlaskClient[Response]') -> None:
         {'name': 'ActionName', 'source_path': 'user_selfbot.sml', 'source_line': 2},
         {'name': 'Action_DmChannelCreated_Selfbot', 'source_path': 'user_selfbot.sml', 'source_line': 4},
     ]
-    assert set(pop('known_action_names')) == {'foo', 'bar'}
-    assert pop('current_user') == {'email': 'local-dev@localhost'}
-    assert pop('rule_info_mapping') == {
+    assert set(body['known_action_names']) == {'foo', 'bar'}
+    assert body['current_user'] == {'email': 'local-dev@localhost'}
+    assert body['rule_info_mapping'] == {
         'Action_DmChannelCreated_Selfbot': 'User joined created a dm channel with a selfbot'
     }
-    assert not res.json
 
 
 @pytest.mark.use_rules_sources(
