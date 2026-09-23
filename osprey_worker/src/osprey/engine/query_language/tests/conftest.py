@@ -12,6 +12,7 @@ from osprey.engine.ast_validator.validators.validate_static_types import Validat
 from osprey.engine.ast_validator.validators.variables_must_be_defined import VariablesMustBeDefined
 from osprey.engine.conftest import RunValidationFunction
 from osprey.engine.query_language.ast_validator import REGISTRY
+from osprey.engine.query_language.udfs.registry import UDF_REGISTRY
 from typing_extensions import Protocol
 
 
@@ -43,3 +44,15 @@ def register_ast_validators():
     REGISTRY.register(VariablesMustBeDefined)
     REGISTRY.register(ImportsMustNotHaveCycles)
     REGISTRY.register(ValidateDynamicCallsHaveAnnotatedRValue)
+
+
+@pytest.fixture(autouse=True)
+def restore_rejected_udf_registrations():
+    """Undoes any UDF_REGISTRY.rejected_registrations entries a test adds, so a test that deliberately
+    registers a broken UDF can't leak state into test_no_udf_registrations_were_rejected (or any other
+    test) that happens to run afterward. Snapshotting before and restoring to that snapshot after (not
+    just clearing) preserves anything that was already rejected at collection time, which is the actual
+    thing that test is meant to catch."""
+    snapshot = list(UDF_REGISTRY.rejected_registrations)
+    yield
+    UDF_REGISTRY.rejected_registrations[:] = snapshot
