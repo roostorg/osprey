@@ -42,27 +42,48 @@ services:
       timeout: 5s
       retries: 5
 
-  minio:
-    image: minio/minio:latest
-    container_name: minio
-    hostname: minio
-    ports:
-      - "127.0.0.1:9000:9000" # minio API
-      - "127.0.0.1:9001:9001" # minio Console
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
+  # minio/minio and minio/mc were pulled from Docker Hub; MinIO deleted both
+  # repos in 2026 when the community edition was archived. RustFS is a
+  # drop-in, S3-API-compatible replacement, so it sits behind this same
+  # "minio" service name/port/bucket contract that the worker and UI API
+  # already speak (OSPREY_MINIO_* env vars, execution-output bucket).
+  minio-volume-permission-helper:
+    image: alpine:3.22
     volumes:
       - minio_data:/data
-    command: server --console-address ":9001" /data
+    command: ["chown", "-R", "10001:10001", "/data"]
+    restart: "no"
+
+  minio:
+    image: rustfs/rustfs:1.0.0
+    container_name: minio
+    hostname: minio
+    depends_on:
+      minio-volume-permission-helper:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:9000:9000" # rustfs S3 API
+      - "127.0.0.1:9001:9001" # rustfs Console
+    environment:
+      RUSTFS_ACCESS_KEY: minioadmin
+      RUSTFS_SECRET_KEY: minioadmin123
+      RUSTFS_ADDRESS: "0.0.0.0:9000"
+      RUSTFS_CONSOLE_ADDRESS: "0.0.0.0:9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_VOLUMES: /data
+    volumes:
+      - minio_data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
       interval: 10s
       timeout: 5s
       retries: 3
 
   minio-bucket-init:
-    image: minio/mc:latest
+    # mc (the MinIO client CLI) is a generic S3 client and works against any
+    # S3-API-compatible server, including rustfs above. docker.io/minio/mc
+    # was deleted along with minio/minio; quay.io still mirrors it.
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
       minio:
         condition: service_healthy
