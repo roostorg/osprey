@@ -80,10 +80,9 @@ services:
       retries: 3
 
   minio-bucket-init:
-    # mc (the MinIO client CLI) is a generic S3 client and works against any
-    # S3-API-compatible server, including rustfs above. docker.io/minio/mc
-    # was deleted along with minio/minio; quay.io still mirrors it.
-    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    # rc (the RustFS client CLI) is a generic S3 client and works against any
+    # S3-API-compatible server, including rustfs above.
+    image: rustfs/rc:latest
     depends_on:
       minio:
         condition: service_healthy
