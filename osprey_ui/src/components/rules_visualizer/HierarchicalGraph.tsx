@@ -35,12 +35,18 @@ const defaultlayoutOptions: DagreLayoutOptions = {
 cytoscape.use(dagre);
 cytoscape.use(popper);
 
+// Stable fallbacks — inline defaults would be a fresh object each render, defeating the memo below.
+const EMPTY_NODE_STYLE: Css.Node = {};
+const EMPTY_EDGE_STYLE: Css.Edge = {};
+const EMPTY_LAYOUT_OPTIONS: Partial<DagreLayoutOptions> = {};
+const NOOP_ON_LOAD = () => {};
+
 const HierarchicalGraph = ({
   elements,
-  nodeStyle = {},
-  edgeStyle = {},
-  layoutOptions = {},
-  onLoad = () => {},
+  nodeStyle = EMPTY_NODE_STYLE,
+  edgeStyle = EMPTY_EDGE_STYLE,
+  layoutOptions = EMPTY_LAYOUT_OPTIONS,
+  onLoad = NOOP_ON_LOAD,
   ToolTip,
 }: HierarchicalGraphOptions) => {
   const containerRef = useRef(null);
@@ -131,6 +137,8 @@ function renderToolTipWithTippy(
   }
 }
 
+// `elements` is deep-compared; the rest are by reference, so pass stable values or this rebuilds
+// the whole graph on every render. `onLoad` isn't compared at all.
 export default memo(HierarchicalGraph, (prevProps, nextProps) => {
   return (
     JSON.stringify(prevProps.elements) == JSON.stringify(nextProps.elements) &&
