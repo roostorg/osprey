@@ -1,11 +1,11 @@
 import { describe, it, expect, rstest, beforeEach } from '@rstest/core';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import type { Core } from 'cytoscape';
 
 import useRulesVisualizerStore from '../../stores/RulesVisualizerStore';
 import { NodeType } from '../../types/RulesVisualizerTypes';
 import RulesVisualizerView from './RulesVisualizer';
-import { computeMinZoom } from './zoomUtils';
+import { computeMinZoom, GRAPH_FIT_PADDING } from './zoomUtils';
 
 // Cytoscape draws to a real <canvas>, unsupported by jsdom, so this fakes just enough of its API.
 // MAX_SANE_CONSTRUCTIONS guards against a render loop hanging or OOMing the test worker instead
@@ -18,7 +18,11 @@ let lastMockInstance: ReturnType<typeof buildMockCyInstance>;
 function buildMockCyInstance() {
   let zoom = 2; // arbitrary "fit" zoom cytoscape would have picked for this graph
   let minZoomValue = 0;
+  let width = 800;
+  let height = 600;
+  let fitZoom = 2; // what `fit` would compute for the current container size
   const zoomHandlers: Array<() => void> = [];
+  const resizeHandlers: Array<() => void> = [];
 
   const instance = {
     // Real Cytoscape clamps the zoom setter to [minZoom, maxZoom]; mirrored here since the min
@@ -42,6 +46,8 @@ function buildMockCyInstance() {
     on: rstest.fn((event: string, handler: () => void) => {
       if (event === 'zoom') {
         zoomHandlers.push(handler);
+      } else if (event === 'resize') {
+        resizeHandlers.push(handler);
       }
     }),
     animate: rstest.fn((opts: { fit?: { padding?: number } }) => {
@@ -51,11 +57,26 @@ function buildMockCyInstance() {
         zoomHandlers.forEach((handler) => handler());
       }
     }),
+    fit: rstest.fn((_eles: unknown, padding?: number) => {
+      if (padding === 30) {
+        zoom = Math.max(fitZoom, minZoomValue);
+        zoomHandlers.forEach((handler) => handler());
+      }
+    }),
     elements: rstest.fn(() => ({})),
     nodes: rstest.fn(() => ({ bind: rstest.fn(), unbind: rstest.fn() })),
-    width: rstest.fn(() => 800),
-    height: rstest.fn(() => 600),
+    width: rstest.fn(() => width),
+    height: rstest.fn(() => height),
     destroy: rstest.fn(),
+    // Test-only helper (not part of the real Core API): simulates cytoscape detecting the
+    // container's pixel size changed to (newWidth, newHeight), with `newFitZoom` as what a
+    // fit-to-container calculation would now compute.
+    __simulateResize: (newWidth: number, newHeight: number, newFitZoom: number) => {
+      width = newWidth;
+      height = newHeight;
+      fitZoom = newFitZoom;
+      resizeHandlers.forEach((handler) => handler());
+    },
   };
 
   return instance;
@@ -210,6 +231,60 @@ describe('RulesVisualizerView zoom controls', () => {
     expect(constructCount).toBe(1);
 
     fireEvent.click(screen.getByRole('button', { name: 'Recenter' }));
+    screen.getByText('100%');
+  });
+});
+
+describe('RulesVisualizerView resize handling', () => {
+  const simulateResize = (width: number, height: number, newFitZoom: number) => {
+    act(() => {
+      (lastMockInstance as unknown as { __simulateResize: (w: number, h: number, z: number) => void }).__simulateResize(
+        width,
+        height,
+        newFitZoom
+      );
+    });
+  };
+
+  it('re-fits and recalculates minZoom when the container is actually resized', () => {
+    seedGraph();
+    render(<RulesVisualizerView />);
+    screen.getByText('100%');
+
+    simulateResize(400, 300, 1); // smaller container → smaller fit zoom
+
+    expect(lastMockInstance.fit).toHaveBeenCalledWith(expect.anything(), 30);
+    expect(lastMockInstance.minZoom).toHaveBeenLastCalledWith(computeMinZoom(1));
+    screen.getByText('100%'); // re-fit always lands back at 100% of the new fit
+  });
+
+  it('ignores resize events that report the same size (e.g. cytoscape also fires this for unrelated container attribute changes)', () => {
+    seedGraph();
+    render(<RulesVisualizerView />);
+    const fitCallsBeforeIgnoredResize = lastMockInstance.fit.mock.calls.length;
+
+    simulateResize(800, 600, 5); // same width/height as initial load, different fit zoom
+
+    expect(lastMockInstance.fit.mock.calls.length).toBe(fitCallsBeforeIgnoredResize);
+    screen.getByText('100%');
+  });
+
+  it('skips the fit when the container is too small to fit the padding', () => {
+    seedGraph();
+    render(<RulesVisualizerView />);
+    const fitCallsBeforeTinyResize = lastMockInstance.fit.mock.calls.length;
+
+    // Exactly at the boundary (2 * padding) in both dimensions — still too small.
+    simulateResize(2 * GRAPH_FIT_PADDING, 2 * GRAPH_FIT_PADDING, 5);
+    expect(lastMockInstance.fit.mock.calls.length).toBe(fitCallsBeforeTinyResize);
+
+    // Only one dimension over the boundary is not enough — both must clear it.
+    simulateResize(2 * GRAPH_FIT_PADDING + 1, 2 * GRAPH_FIT_PADDING, 5);
+    expect(lastMockInstance.fit.mock.calls.length).toBe(fitCallsBeforeTinyResize);
+
+    // Both dimensions over the boundary allows the fit.
+    simulateResize(2 * GRAPH_FIT_PADDING + 1, 2 * GRAPH_FIT_PADDING + 1, 5);
+    expect(lastMockInstance.fit.mock.calls.length).toBe(fitCallsBeforeTinyResize + 1);
     screen.getByText('100%');
   });
 });
