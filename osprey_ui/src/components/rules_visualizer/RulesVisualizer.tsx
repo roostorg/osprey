@@ -91,6 +91,26 @@ const RulesVisualizerView = () => {
     setBaseZoom(cy.zoom());
     setZoomLevel(cy.zoom());
     cy.on('zoom', () => setZoomLevel(cy.zoom()));
+    // cytoscape also fires 'resize' for unrelated attribute changes, so only react to real ones.
+    let lastWidth = cy.width();
+    let lastHeight = cy.height();
+    cy.on('resize', () => {
+      const width = cy.width();
+      const height = cy.height();
+      if (width === lastWidth && height === lastHeight) {
+        return;
+      }
+      lastWidth = width;
+      lastHeight = height;
+      if (width <= 2 * GRAPH_FIT_PADDING || height <= 2 * GRAPH_FIT_PADDING) {
+        return; // too small to fit the padding — fit zoom would be zero or negative
+      }
+      cy.minZoom(0); // lift the old floor so it can't clip the new fit
+      cy.fit(cy.elements(), GRAPH_FIT_PADDING);
+      const fitZoom = cy.zoom();
+      cy.minZoom(computeMinZoom(fitZoom));
+      setBaseZoom(fitZoom);
+    });
     setCyto(cy);
   }, []);
 

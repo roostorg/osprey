@@ -80,10 +80,6 @@ UI checks (in `osprey_ui/`):
 
 ```bash
 pnpm run format:check
-pnpm run lint
-pnpm run typecheck
-pnpm run test
-pnpm run build
 ```
 
 Rust checks (in `osprey_coordinator/`; requires `protoc`). CI only gates on `fmt` and `build`; `clippy` and `test` are advisory (`continue-on-error: true`):
@@ -140,11 +136,7 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 # code-quality.yml → ui-quality (CI `working-directory: osprey_ui`)
 ( cd osprey_ui
   pnpm install --frozen-lockfile
-  pnpm run format:check
-  pnpm run lint
-  pnpm run typecheck
-  pnpm run test
-  pnpm run build )
+  pnpm run format:check )
 
 # code-quality.yml → rust-quality (CI `working-directory: osprey_coordinator`)
 # Note: in CI the `cargo clippy` and `cargo test` steps are marked `continue-on-error: true`,

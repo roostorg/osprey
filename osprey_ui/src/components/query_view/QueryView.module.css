@@ -36,7 +36,9 @@
   width: 420px;
   max-width: 420px;
   min-width: 420px;
-  max-height: calc(100vh - 42px);
+  /* Hardcoded .topBar height (48px), matching the existing calc(100vh - 42px) pattern in
+     QueryHistory/SavedQueries rather than introducing a shared layout-token variable. */
+  max-height: calc(100vh - 48px - 42px);
   border-right: 2px solid var(--divider);
   flex-grow: 1;
   position: sticky;
