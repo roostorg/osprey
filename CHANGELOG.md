@@ -19,6 +19,10 @@ For more information about each release including git tags and artifacts, see [R
 - Immutable execution-plan scheduler for faster engine and coordinator execution ([#454](https://github.com/roostorg/osprey/pull/454) by [@cmttt](https://github.com/cmttt))
 - Upgrade `grpcio` from 1.49.1/1.53.x to 1.82.1, and `typing-extensions` from 4.6.3 to 4.12.2 (required by the grpcio upgrade) ([#415](https://github.com/roostorg/osprey/pull/415) by [@reitblatt](https://github.com/reitblatt))
 
+### Removed
+
+- Unused-in-repo TakeData, request-caching, and Pigeon test/routing-option schemas and their published `osprey-rpc` bindings (also removes TakeData from coordinator reflection).
+
 ### Fixed
 
 - Cancel the parent execution and drain its owned tasks when a native async UDF is cancelled ([#459](https://github.com/roostorg/osprey/pull/459) by [@ayubun](https://github.com/ayubun))
