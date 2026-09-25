@@ -10,4 +10,7 @@ message Verdicts {
     string action_name = 2;
     repeated string verdicts = 3;
     google.protobuf.Timestamp timestamp = 4;
+    // DO NOT MERGE: test field for the stale-bindings CI check.
+    // Bindings deliberately not regenerated.
+    string stale_bindings_probe = 5;
 }
