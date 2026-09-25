@@ -19,6 +19,10 @@ from sqlalchemy.orm.scoping import ThreadLocalRegistry  # type: ignore # missing
 metadata = MetaData()
 Model = declarative_base(name='Model', metadata=metadata)
 
+# Arbitrary key for the Postgres advisory lock guarding schema creation (see init_from_config).
+# Any process taking this lock is guaranteed to be alone while it runs metadata.create_all().
+_SCHEMA_CREATE_LOCK_KEY = 87271
+
 if TYPE_CHECKING:
     SessionMaker = sessionmaker[Session]  # type: ignore[type-var]
 else:
@@ -34,6 +38,24 @@ def _get_or_init_session(database: str) -> SessionMaker:
     if not session_registries.get(database):
         session_registries[database] = ThreadLocalRegistry(createfunc=sessions[database])
     return sessions[database]
+
+
+def create_schema(engine: sqlalchemy.engine.Engine) -> None:
+    """Create all tables/types defined in `metadata` against `engine`.
+
+    Multiple processes (e.g. the worker and the UI API) can call this at the same time against
+    a fresh database. SQLAlchemy's enum creation is check-then-create rather than atomic, so on
+    a fresh volume both processes can see a type as missing and both issue CREATE TYPE, and the
+    loser crashes with a UniqueViolation. Take a Postgres advisory lock first so only one process
+    creates the schema at a time; by the time any other process acquires the lock, create_all's
+    own existence checks make it a no-op.
+    """
+    with engine.connect() as connection:
+        connection.execute(sqlalchemy.text('SELECT pg_advisory_lock(:key)'), {'key': _SCHEMA_CREATE_LOCK_KEY})
+        try:
+            metadata.create_all(engine)
+        finally:
+            connection.execute(sqlalchemy.text('SELECT pg_advisory_unlock(:key)'), {'key': _SCHEMA_CREATE_LOCK_KEY})
 
 
 def init_from_config(database: str) -> None:
@@ -59,8 +81,7 @@ def init_from_config(database: str) -> None:
             temporary_ability_token,
         )
 
-        # Create all tables defined in the metadata
-        metadata.create_all(new_engine)
+        create_schema(new_engine)
 
     CONFIG.instance().register_configuration_callback(_init)
 
