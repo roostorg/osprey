@@ -93,7 +93,11 @@ services:
       - OSPREY_RULES_PATH=./example_rules
       - OSPREY_DISABLE_VALIDATION_EXPORTER=true
       - DRUID_URL=http://druid-broker:8082
-      - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
+      # A database of its own, not the `osprey` one the dev stack uses. The session
+      # fixture creates this database on setup and drops it on teardown, so pointing it
+      # at `osprey` means running the tests destroys the local development database and
+      # leaves osprey-ui-api unable to start until it is recreated by hand.
+      - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey_test"}
       - ETCD_PEERS=http://etcd:2379
       - TESTING=true
     volumes:

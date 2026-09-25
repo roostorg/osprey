@@ -67,6 +67,17 @@ Pass pytest args through:
 ./run-tests.sh --junitxml=/tmp/test-results/junit-pytest.xml
 ```
 
+The dependency containers stay up between runs so they don't have to become healthy
+again each time. Stop them when you want the resources back:
+
+```bash
+./stop-tests.sh
+```
+
+Don't reach for `docker compose down` directly: without `-p osprey-test` compose derives
+the project name from the directory, which is the *dev* stack, and tears that down
+instead.
+
 Python lint / format / type-check (no Docker needed):
 
 ```bash
