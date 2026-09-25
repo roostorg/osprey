@@ -18,6 +18,17 @@ For more information about each release including git tags and artifacts, see [R
 - Pub/Sub publishing is now opt-in via `OSPREY_PUBSUB_ENABLED` (default off), so Osprey starts without GCP credentials instead of crashing ([#388](https://github.com/roostorg/osprey/pull/388) by [@julietshen](https://github.com/julietshen))
 - Immutable execution-plan scheduler for faster engine and coordinator execution ([#454](https://github.com/roostorg/osprey/pull/454) by [@cmttt](https://github.com/cmttt))
 - Upgrade `grpcio` from 1.49.1/1.53.x to 1.82.1, and `typing-extensions` from 4.6.3 to 4.12.2 (required by the grpcio upgrade) ([#415](https://github.com/roostorg/osprey/pull/415) by [@reitblatt](https://github.com/reitblatt))
+- Upgrade `protobuf` from 4.25.8 to 7.36.2 ([#317](https://github.com/roostorg/osprey/issues/317), [#349](https://github.com/roostorg/osprey/pull/349) by [@reitblatt](https://github.com/reitblatt)); as a downstream consequence, also upgrade
+  - `grpcio-tools` from 1.49.1/1.53.x to 1.82.1 (to match the `grpcio` version, and required by `grpcio-tools` for protobuf 7.x support)
+  - `google-cloud-pubsub` from 2.15.2 to 2.41.0
+  - `tink` from 1.9.0 to 1.15.0
+  - `google-api-core` from 2.19.2 to 2.38.0 (older versions cap protobuf below 6.0)
+  - `googleapis-common-protos` from 1.70.0 to 1.75.3 (older versions cap protobuf below 7.0)
+  - `types-protobuf` from 4.24.0.1 to 7.35.1.20260906 to match the protobuf major version
+  - `google-cloud-kms` from 3.5.1 to 3.15.0 (older versions cap protobuf below 7.0), keeping the exact pin
+  - `grpcio-status` from 1.49.1/1.53.x to 1.82.1 (to match the `grpcio` version), collapsing the platform-specific pins into a single exact pin since 1.82.1 ships a universal wheel
+  - `grpcio-health-checking` and `grpcio-reflection` remain pinned at 1.44.0, still compatible with the new `grpcio`/`protobuf` versions
+  - regenerate all gRPC bindings
 
 ### Removed
 
