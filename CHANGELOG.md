@@ -35,6 +35,7 @@ For more information about each release including git tags and artifacts, see [R
 - Cancel the parent execution and drain its owned tasks when a native async UDF is cancelled ([#459](https://github.com/roostorg/osprey/pull/459) by [@ayubun](https://github.com/ayubun))
 - Retry transient Snowflake errors in the coordinator ([#448](https://github.com/roostorg/osprey/pull/448) by [@ayubun](https://github.com/ayubun))
 - Narrow overly-broad `[A-z]` regular expressions in the string UDFs and UI ([#473](https://github.com/roostorg/osprey/pull/473) by [@cassidyjames](https://github.com/cassidyjames))
+- Return a clear `400` instead of an opaque `500` when a query in the Investigate UI uses an unsupported comparison (e.g. comparing two features with `>`/`<`) or calls a UDF that isn't a valid query function ([#515](https://github.com/roostorg/osprey/pull/515) by [@austin-ayers](https://github.com/austin-ayers))
 
 ## [1.1.0] - 2026-07-22
 
