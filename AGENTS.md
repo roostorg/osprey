@@ -129,6 +129,8 @@ CI runs entirely via GitHub Actions on `pull_request` and `push` to `main`. Each
 ```bash
 # code-quality.yml → python-quality
 uv sync --dev
+./gen-protos.sh
+test -z "$(git status --porcelain -- osprey_rpc/src/osprey/rpc/)"
 uv run pre-commit install --install-hooks
 SKIP=prettier-osprey-ui uv run pre-commit run --show-diff-on-failure --color=always --all-files
 uv tool run fawltydeps --check-unused --pyenv .venv
