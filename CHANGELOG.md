@@ -21,7 +21,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Removed
 
-- Unused-in-repo TakeData, request-caching, and Pigeon test/routing-option schemas and their published `osprey-rpc` bindings (also removes TakeData from coordinator reflection) ([#518](https://github.com/roostorg/osprey/pull/518) by [@ayubun](https://github.com/ayubun))
+- **Breaking (major release):** unused-in-repo TakeData, request-caching, and Pigeon test/routing-option schemas and their published `osprey-rpc` bindings; downstream imports of those modules stop working (also removes TakeData from coordinator reflection) ([#518](https://github.com/roostorg/osprey/pull/518) by [@ayubun](https://github.com/ayubun))
 
 ### Fixed
 
