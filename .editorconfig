@@ -1,0 +1,36 @@
+# https://editorconfig.org
+#
+# Mirrors the formatters that already enforce these, so an editor without the
+# relevant plugin still produces conforming files:
+#   - Python           ruff format  (pyproject.toml [tool.ruff]: line-length 120,
+#                                    indent-style space, indent-width defaults to 4)
+#   - osprey_ui/src/** prettier     (osprey_ui/.prettierrc: tabWidth 2, printWidth 120)
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+max_line_length = 120
+
+[*.py]
+indent_size = 4
+
+# SML is a Python-derived subset, but rules are written 2-space in this repo --
+# including the ones the in-app rule editor generates.
+[*.sml]
+indent_size = 2
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.md]
+# Two trailing spaces are a hard line break in Markdown.
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab
