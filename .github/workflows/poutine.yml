@@ -1,0 +1,113 @@
+name: Pipeline supply-chain analysis
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+  pull_request:
+    branches: ['**']
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+  schedule:
+    # Weekly drift check: new poutine rules / advisories can flag workflows
+    # that were clean when they were last touched.
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: poutine-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  poutine:
+    name: Run poutine
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # to upload SARIF results to code scanning
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Pinned to main@badd750a rather than the v1.1.4 tag: that tag still
+      # builds FROM poutine 1.1.4, while this commit builds FROM
+      # poutine:1.1.6@sha256:722a8e09..., so both the action and the scanner
+      # binary are pinned. Bump deliberately when upstream tags the 1.1.6 base.
+      - name: poutine - GitHub Actions SAST (human-readable)
+        uses: boostsecurityio/poutine-action@badd750a259150be3b8b00823ad60849d539b96d # main @ poutine 1.1.6
+        env:
+          POUTINE_DISABLE_VERSION_CHECK: '1'
+        with:
+          format: pretty
+          output: poutine.txt
+
+      - name: poutine - GitHub Actions SAST (SARIF)
+        uses: boostsecurityio/poutine-action@badd750a259150be3b8b00823ad60849d539b96d # main @ poutine 1.1.6
+        env:
+          POUTINE_DISABLE_VERSION_CHECK: '1'
+        with:
+          format: sarif
+          output: poutine.sarif
+
+      - name: Annotate pull request with findings
+        # PRs from forks cannot upload SARIF to code scanning, so surface
+        # findings as inline annotations instead.
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          jq -r '
+            .runs[0].results[]?
+            | (.level // "warning") as $level
+            | (if $level == "error" then "error"
+               elif $level == "note" then "notice"
+               else "warning" end) as $kind
+            | .locations[0].physicalLocation as $loc
+            | "::\($kind) file=\($loc.artifactLocation.uri),line=\($loc.region.startLine // 1),title=poutine: \(.ruleId)::"
+              + (.message.text | gsub("\\s+"; " ") | .[0:400])
+          ' poutine.sarif
+
+      # The action always exits 0, so gate here. Notes (e.g. actions from
+      # unverified creators) are reported but do not fail CI; warnings and
+      # errors do.
+      - name: Report and gate on findings
+        run: |
+          {
+            echo '## poutine'
+            echo '```'
+            cat poutine.txt
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+
+          blocking="$(jq '
+            [.runs[0].results[]? | select((.level // "warning") | test("^(warning|error)$"))]
+            | length
+          ' poutine.sarif)"
+
+          if [ "$blocking" -gt 0 ]; then
+            echo "::error title=poutine::${blocking} finding(s) at warning level or above"
+            exit 1
+          fi
+          echo "poutine: no findings at warning level or above"
+
+      - name: Upload SARIF to code scanning
+        if: ${{ always() && github.event_name != 'pull_request' }}
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          sarif_file: poutine.sarif
+          category: poutine
+
+      - name: Upload poutine reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: poutine-reports
+          path: |
+            poutine.sarif
+            poutine.txt
+          if-no-files-found: warn
