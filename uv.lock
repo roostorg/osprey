@@ -1600,6 +1600,16 @@ requires-dist = [
 name = "osprey-rpc"
 version = "0.1.0"
 source = { editable = "osprey_rpc" }
+dependencies = [
+    { name = "grpcio" },
+    { name = "protobuf" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "grpcio", specifier = ">=1.82.1" },
+    { name = "protobuf", specifier = ">=7.35,<8" },
+]
 
 [[package]]
 name = "osprey-worker"
