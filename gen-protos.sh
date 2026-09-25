@@ -32,8 +32,9 @@ find "$out_dir/osprey" -type f \( -name '*_pb2.py' -o -name '*_pb2.pyi' -o -name
 done
 
 # Remove package directories that no longer hold any generated file.
-find "$out_dir/osprey/rpc" -mindepth 1 -depth -type d | while read -r package_dir; do
-    if [[ -z "$(find "$package_dir" -type f ! -name '__init__.py' -print -quit)" ]]; then
+# Bytecode caches do not count as content.
+find "$out_dir/osprey/rpc" -mindepth 1 -depth -type d ! -name '__pycache__' ! -path '*/__pycache__/*' | while read -r package_dir; do
+    if [[ -z "$(find "$package_dir" -type f ! -name '__init__.py' ! -path '*/__pycache__/*' -print -quit)" ]]; then
         echo "Removing empty package $package_dir"
         rm -r "$package_dir"
     fi
