@@ -1,0 +1,21 @@
+name: Discord Bot
+
+on:
+  issues:
+    types: [opened]
+  # Needed so the workflow running on fork PRs can use the webhook secret.
+  # Safe as long as no code from the pull request is checked out or executed.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
+    types: [opened, ready_for_review]
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: roostorg/discord-bot@65c8f236e26ac5ae1bbf613c082d37aaf508a9f8 # main
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
