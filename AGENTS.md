@@ -7,8 +7,8 @@ Instructions for AI coding agents working on Osprey. `README.md` is for humans; 
 Top-level modules:
 
 - `osprey_worker/` — main Python engine. Consumes events from Kafka, evaluates SML rules, emits verdicts and effects to output sinks. New worker/engine code belongs here (`osprey_worker/src/osprey/worker/`).
-- `osprey_rpc/` — generated protobuf/gRPC bindings under `osprey_rpc/src/osprey/rpc/`. Do not edit generated files (`*_pb2*.py`, `*_pb2*.pyi`) by hand; regenerate via `./gen-protos.sh` after editing the `.proto` files.
-- `osprey_ui/` — React + TypeScript frontend (Ant Design, Highcharts; versions in `osprey_ui/package.json`). UI code belongs here.
+- `osprey_rpc/` — generated protobuf/gRPC bindings under `osprey_rpc/src/osprey/rpc/`. Do not edit generated files (`*_pb2*.py`, `*_pb2*.pyi`) by hand; regenerate via `./gen-protos.sh` after editing, adding, or deleting `.proto` files. The script also removes bindings whose source proto is gone and the package directories left empty.
+- `osprey_ui/` — React + TypeScript frontend (Ant Design, ECharts; versions in `osprey_ui/package.json`). UI code belongs here.
 - `osprey_coordinator/` — Rust gRPC coordinator (tokio, tonic, etcd, rdkafka). Rust code belongs here.
 - `proto/osprey/rpc/` — protobuf source of truth for `osprey_rpc` and `osprey_coordinator` types.
 - `example_plugins/` — reference plugins (UDFs, output sinks, labels service) using the pluggy-based plugin system. Do not add production code here.
@@ -80,6 +80,10 @@ UI checks (in `osprey_ui/`):
 
 ```bash
 pnpm run format:check
+pnpm run lint
+pnpm run typecheck
+pnpm run test
+pnpm run build
 ```
 
 Rust checks (in `osprey_coordinator/`; requires `protoc`). CI only gates on `fmt` and `build`; `clippy` and `test` are advisory (`continue-on-error: true`):
@@ -136,7 +140,11 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 # code-quality.yml → ui-quality (CI `working-directory: osprey_ui`)
 ( cd osprey_ui
   pnpm install --frozen-lockfile
-  pnpm run format:check )
+  pnpm run format:check
+  pnpm run lint
+  pnpm run typecheck
+  pnpm run test
+  pnpm run build )
 
 # code-quality.yml → rust-quality (CI `working-directory: osprey_coordinator`)
 # Note: in CI the `cargo clippy` and `cargo test` steps are marked `continue-on-error: true`,
@@ -175,9 +183,16 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 - Rust stable in `osprey_coordinator/` (edition and toolchain in `osprey_coordinator/Cargo.toml`). Formatter `cargo fmt`; linter `cargo clippy -- -D warnings`.
 - Protobuf generated files (`*_pb2*.py`, `*_pb2*.pyi`) are excluded from ruff and mypy — do not edit.
 
+## Changelog
+
+- `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/2.0.0/): _notable_ changes only, one line each, written for humans. Most PRs need no entry — skip dependency bumps, CI-only changes, internal refactors, tests, and docs.
+- Add entries under `## [Unreleased]`. Never add to a published version's section; those are a record of what actually shipped in that tag.
+- Match the existing categories (Added, Changed, Fixed, Removed) and line format: `- <change> ([#123](https://github.com/roostorg/osprey/pull/123) by [@user](https://github.com/user))`.
+- Keep the line to what changed; details belong in the linked PR.
+
 ## CD
 
-- Releases are cut by publishing a GitHub Release; the tag triggers `.github/workflows/release-osprey-rpc.yml` to build and attach the `osprey_rpc` sdist. Tags follow semver (`vMAJOR.MINOR.PATCH`).
+- Releases are cut by publishing a GitHub Release; the tag triggers `.github/workflows/release-osprey-rpc.yml` to build and attach the `osprey_rpc` sdist. Tags follow semver with no `v` prefix (`MAJOR.MINOR.PATCH`, e.g. `1.1.0`); see `docs/development/releases.md`.
 - Coordinator image publishes to `ghcr.io` via `.github/workflows/publish-coordinator-image.yml` on push to `main` and on release.
 - mdBook docs deploy via `.github/workflows/mdbook.yml` to GitHub Pages on push to `main`.
 - Release/deploy workflows, production Dockerfiles, and signing/tagging are restricted — see "Human-approval-required actions" below.

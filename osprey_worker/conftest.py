@@ -17,6 +17,10 @@ if TYPE_CHECKING:
     from _pytest.config.argparsing import Parser
 
 
+# capture launch state before test imports can patch gevent
+_STARTED_PREPATCHED = monkey.is_module_patched('socket')
+
+
 def pytest_addoption(parser: 'Parser') -> None:
     """Register custom pytest options.
 
@@ -69,13 +73,14 @@ def pytest_sessionfinish(session: object, exitstatus: int) -> None:
     the process can stall inside gevent's interpreter finalization and never
     exit, so the integration-tests CI job hangs until its 30-minute timeout.
     Exit immediately here (trylast, so this runs after the junit/terminal
-    hooks) to skip that teardown. Guarded on gevent being active so a plain
-    ``pytest`` run finalizes normally.
+    hooks) to skip that teardown. Guarded on pytest having *started* under the
+    gevent-monkey runner (see ``_STARTED_PREPATCHED``) so a plain ``pytest`` run
+    finalizes normally even if a test module monkey-patched during collection.
     """
     import os
     import sys
 
-    if not monkey.is_module_patched('socket'):
+    if not _STARTED_PREPATCHED:
         return
     sys.stdout.flush()
     sys.stderr.flush()

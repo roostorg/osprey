@@ -2,18 +2,29 @@
 # Usage: docker compose -f docker-compose.yaml -f docker-compose.test.yaml --profile test <command>
 
 services:
+  # reset fixed names and host ports so test stacks can coexist
+  # dependencies communicate over the compose project network
   postgres:
+    container_name: !reset null
     ports: !reset []
     volumes: !reset []
 
+  osprey-kafka:
+    container_name: !reset null
+    ports: !reset []
+
   minio:
+    container_name: !reset null
+    ports: !reset []
     volumes: !reset []
 
+  snowflake-id-worker:
+    container_name: !reset null
+    ports: !reset []
+
   etcd:
-    container_name: etcd
+    container_name: !reset null
     image: quay.io/coreos/etcd:v3.4.18
-    ports:
-      - "127.0.0.1:2379:2379"
     environment:
       - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
       - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
@@ -38,7 +49,6 @@ services:
     restart: unless-stopped
 
   test_runner:
-    container_name: osprey_test_runner
     build:
       context: .
       dockerfile: osprey_worker/Dockerfile

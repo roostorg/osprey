@@ -1,6 +1,8 @@
 from gevent import monkey
 
-monkey.patch_all(aggressive=True)  # noqa: E402
+# late monkey-patching corrupts locks during plain pytest collection
+if monkey.is_module_patched('socket'):
+    monkey.patch_all(aggressive=True)
 
 import gevent  # noqa: E402
 import pytest  # noqa: E402

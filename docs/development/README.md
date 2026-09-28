@@ -4,7 +4,7 @@ Quickly see Osprey working with sample data and a real rule using the demo scrip
 
 To run the demo:
 
-1. **Ensure you have prerequisites** installed: Docker with the Compose v2 plugin, and the Docker daemon running. The script checks these before doing anything.
+1. **Ensure you have prerequisites** installed: Docker with Docker Compose 2.24.4+, and the Docker daemon running.
 
    ```sh
    docker --version && docker compose version

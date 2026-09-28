@@ -7,8 +7,8 @@ interface RichDescriptionProps {
   features: { [featureName: string]: string };
 }
 
-const INTERPOLATE_REG_EX = /{([A-z0-9_]+)}/;
-const SPLIT_REG_EX = /(:?{[A-z0-9_]+})/;
+const INTERPOLATE_REG_EX = /{(\w+)}/;
+const SPLIT_REG_EX = /(:?{\w+})/;
 
 const RichDescription = ({ description, features }: RichDescriptionProps) => {
   const interpolatedDescription = description.split(SPLIT_REG_EX).map((part, i) => {
