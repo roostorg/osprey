@@ -18,14 +18,20 @@ glob=(./proto/osprey/**/*.proto)
 uv run -m grpc_tools.protoc --proto_path=proto --python_out="$out_dir" --mypy_out="$out_dir" --grpc_python_out="$out_dir" "${glob[@]}"
 
 # protoc only writes outputs for the protos it is given, so bindings for a
-# deleted or renamed .proto would otherwise linger. Remove any generated file
-# whose source proto no longer exists.
+# deleted or renamed .proto would otherwise linger. Compute the set of files
+# protoc writes for the current protos (it maps `-` to `_` in the module path)
+# and remove any generated file outside that set.
+# Kept as a plain file so the check behaves the same under bash and zsh.
+expected_output=$(mktemp)
+trap 'rm -f "$expected_output"' EXIT
+for proto in "${glob[@]}"; do
+    stem=${proto#./proto/}
+    stem=${stem%.proto}
+    stem=${stem//-/_}
+    printf '%s\n' "$out_dir/${stem}_pb2.py" "$out_dir/${stem}_pb2.pyi" "$out_dir/${stem}_pb2_grpc.py"
+done > "$expected_output"
 find "$out_dir/osprey" -type f \( -name '*_pb2.py' -o -name '*_pb2.pyi' -o -name '*_pb2_grpc.py' \) | while read -r generated; do
-    source_stem=${generated#"$out_dir"/}
-    source_stem=${source_stem%_pb2_grpc.py}
-    source_stem=${source_stem%_pb2.pyi}
-    source_stem=${source_stem%_pb2.py}
-    if [[ ! -f "proto/$source_stem.proto" ]]; then
+    if ! grep -Fxq -- "$generated" "$expected_output"; then
         echo "Removing stale $generated"
         rm "$generated"
     fi
