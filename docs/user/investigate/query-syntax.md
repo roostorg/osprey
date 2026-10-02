@@ -37,7 +37,7 @@ RegexMatch(target=MessageText, pattern="(buy|sell|deal)")
 ```
 
 > [!NOTE]
-> These are the only functions that work in queries. The [UDF Registry](../manage.md#udf-registry) lists every UDF, but most are rules-only and will fail with a silent 500 error if you use them in a query.
+> These are the only functions that work in queries. The [UDF Registry](../manage.md#udf-registry) lists every UDF, but most are rules-only; using one of those in a query returns a clear error naming the function.
 
 ## Label queries
 

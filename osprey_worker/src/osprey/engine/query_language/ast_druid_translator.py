@@ -8,11 +8,24 @@ from osprey.engine.utils.osprey_unary_executor import OspreyUnaryExecutor
 
 
 class DruidQueryTransformException(Exception):
-    """Some error happened while trying to transform the Osprey AST into a Druid Query"""
+    """Some error happened while trying to transform the Osprey AST into a Druid Query.
+
+    This covers both genuinely-invalid-but-well-formed user queries (see DruidQueryUserError below)
+    and internal transformer failures that shouldn't be reachable through normal query validation
+    (an unhandled grammar node type, an unrecognized comparator, ...). Only the former is safe to
+    show directly to a user as a 400; the latter represents a bug and should keep propagating as an
+    ordinary 500, visible in Sentry/logs, rather than being silently swallowed into a client-facing
+    message that never alerts anyone.
+    """
 
     def __init__(self, node: grammar.ASTNode, error: str):
-        super().__init__(f'{error}: {node.__class__.__name__}')
+        super().__init__(error)
         self.node = node
+
+
+class DruidQueryUserError(DruidQueryTransformException):
+    """The subset of DruidQueryTransformException caused by a query that's invalid in a way a user could
+    plausibly hit and understand -- safe to surface directly as a 400."""
 
 
 class DruidQueryTransformer:
@@ -60,8 +73,11 @@ class DruidQueryTransformer:
             elif isinstance(node.comparator, grammar.NotEquals):
                 return {'type': 'not', 'field': column_comparison}
             else:
-                raise DruidQueryTransformException(
-                    node.comparator, 'When comparing two features, only the `==` and `!=` operators are supported'
+                operator = node.comparator.original_comparator
+                raise DruidQueryUserError(
+                    node.comparator,
+                    f'`{node.left.identifier} {operator} {node.right.identifier}` is not supported; '
+                    'comparing two features directly only supports `==` and `!=`',
                 )
 
         dimension = get_comparison_dimension(node)
@@ -102,7 +118,11 @@ class DruidQueryTransformer:
         udf, _ = self._udf_node_mapping[id(node)]
 
         if not isinstance(udf, QueryUdfBase):
-            raise DruidQueryTransformException(node, 'Unknown function call type')
+            function_name = node.func.identifier if isinstance(node.func, grammar.Name) else type(udf).__name__
+            raise DruidQueryUserError(
+                node,
+                f'`{function_name}` is not a query function; it must subclass QueryUdfBase to be usable in queries',
+            )
 
         return udf.to_druid_query()
 

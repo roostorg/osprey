@@ -121,6 +121,40 @@ def test_events_scan_request_missing_ability(
     assert res.data.decode('utf-8') == "User `local-dev@localhost` doesn't have ability `CAN_VIEW_EVENTS_BY_ACTION`"
 
 
+config_c = {
+    'main.sml': 'A = 1\nB = 2',
+    'config.yaml': json.dumps(
+        {
+            'acl': {
+                'users': {
+                    'local-dev@localhost': {
+                        'abilities': [
+                            {'name': 'CAN_VIEW_EVENTS_BY_ENTITY', 'allow_all': True},
+                            {'name': 'CAN_VIEW_EVENTS_BY_ACTION', 'allow_all': True},
+                        ]
+                    },
+                }
+            }
+        }
+    ),
+}
+
+
+@pytest.mark.use_rules_sources(config_c)
+def test_events_scan_request_with_unsupported_query_returns_400(
+    app: Flask,
+    client: 'FlaskClient[Response]',
+    mock_druid_client: Any,
+) -> None:
+    # Regression test for https://github.com/roostorg/osprey/issues/439: an uncaught
+    # DruidQueryTransformException used to propagate as an opaque 500.
+    model = PaginatedScanDruidQuery(**{**_base_druid_query.dict(), 'query_filter': 'A > B'})
+    res = client.post(url_for('events.scan_query'), content_type='application/json', data=model.json())
+
+    assert res.status_code == 400
+    assert '`A > B` is not supported' in res.get_json()
+
+
 # TODO: get druid local running again
 @pytest.mark.use_rules_sources(config_b)
 def test_events_scan_request(
