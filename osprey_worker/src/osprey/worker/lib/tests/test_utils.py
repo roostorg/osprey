@@ -1,7 +1,9 @@
 import os
 import textwrap
+import warnings
 from collections.abc import Callable, Iterator
 from typing import TYPE_CHECKING
+from urllib.parse import urlsplit, urlunsplit
 
 import pytest
 from flask import Flask
@@ -11,13 +13,67 @@ from osprey.worker.lib.singletons import CONFIG, ENGINE
 from osprey.worker.lib.sources_provider import StaticSourcesProvider
 from osprey.worker.lib.sources_publisher import validate_and_push
 from osprey.worker.lib.storage import postgres
-from psycopg2.errors import DuplicateDatabase
-from sqlalchemy.exc import ProgrammingError
-from sqlalchemy_utils import create_database, drop_database
+from psycopg2.errors import DuplicateDatabase, InvalidCatalogName, ObjectInUse
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy_utils import create_database
+from sqlalchemy_utils.functions.database import quote
 
 if TYPE_CHECKING:
     from _pytest.config import Config
     from _pytest.fixtures import FixtureRequest
+
+
+#: Databases this fixture is willing to destroy. Anything not named like this is
+#: assumed to belong to a human.
+_TEST_DATABASE_SUFFIX = '_test'
+
+
+def _is_disposable_database(url: str) -> bool:
+    """Whether this fixture may destroy the database at `url`.
+
+    This exists because the fixture used to drop whatever `POSTGRES_HOSTS` pointed at,
+    and the compose files pointed the tests and the dev stack at the same `osprey`
+    database. Running the suite therefore deleted the local development database, and
+    the failure surfaced later and elsewhere -- as `osprey-ui-api` refusing to start --
+    rather than as a test failure.
+
+    The name is the whole test. An earlier version also required that this run had
+    created the database, which was standing in for "somebody else may be using it" --
+    but the fixture now recreates an existing database at *setup* to guarantee the
+    schema matches the code, and that destroys a database in use just as thoroughly as
+    dropping it at teardown would. `_drop_database` asks Postgres to refuse instead,
+    which is stronger than either: it is atomic, so there is no window between the
+    decision and the destruction.
+    """
+    database_name = urlsplit(url).path.lstrip('/')
+    return database_name.endswith(_TEST_DATABASE_SUFFIX)
+
+
+def _drop_database(url: str) -> None:
+    """Drop the database at `url`, refusing if anything else is connected to it.
+
+    Deliberately not `sqlalchemy_utils.drop_database`: for Postgres that runs
+    `pg_terminate_backend` against every other session and then drops the database
+    anyway. A second test run would be killed and left failing with connection errors
+    that point nowhere near the cause.
+
+    Issuing `DROP DATABASE` ourselves lets Postgres refuse instead, and refuse
+    *atomically* -- there is no window between deciding the database is unused and
+    destroying it, which a check followed by a drop would leave open.
+
+    The two failure modes arrive as different SQLAlchemy wrappers, which is easy to get
+    wrong: in use raises `OperationalError` around `psycopg2.errors.ObjectInUse`, while
+    already-gone raises `ProgrammingError` around `InvalidCatalogName`.
+    """
+    parts = urlsplit(url)
+    database = parts.path.lstrip('/')
+    maintenance_engine = create_engine(urlunsplit(parts._replace(path='/postgres')), isolation_level='AUTOCOMMIT')
+    try:
+        with maintenance_engine.connect() as connection:
+            connection.execute(text(f'DROP DATABASE {quote(connection, database)}'))
+    finally:
+        maintenance_engine.dispose()
 
 
 def make_postgres_database_config_fixture() -> object:
@@ -41,11 +97,32 @@ def make_postgres_database_config_fixture() -> object:
         try:
             create_database(url)
         except ProgrammingError as e:
-            # If the database already exists, we're chill and have nothing left to do!
-            # This is a workaround to avoid calling `database_exists` as it is currently broken,
-            # see: https://github.com/kvesteri/sqlalchemy-utils/issues/472
+            # `create_database` is asked first and the failure inspected, rather than
+            # calling `database_exists`, which is broken:
+            # https://github.com/kvesteri/sqlalchemy-utils/issues/472
             if not isinstance(e.orig, DuplicateDatabase):
                 raise
+
+            # An existing database is recreated rather than reused. `metadata.create_all`
+            # below creates missing tables and never alters existing ones, so reusing one
+            # means every schema change since it was made is silently absent -- the tests
+            # then pass or fail against a schema nobody chose, and the cause is invisible.
+            if not _is_disposable_database(url):
+                pytest.fail(
+                    f'Refusing to run against an existing database that is not named '
+                    f'*{_TEST_DATABASE_SUFFIX}. Point POSTGRES_HOSTS at a test database.'
+                )
+            try:
+                _drop_database(url)
+            except OperationalError as drop_error:
+                if not isinstance(drop_error.orig, ObjectInUse):
+                    raise
+                pytest.fail(
+                    'The test database is in use, so another test run probably has it. Only '
+                    'one run at a time is supported: run-tests.sh pins a single compose '
+                    'project, so concurrent runs share the containers as well as this database.'
+                )
+            create_database(url)
 
         postgres.init_from_config('osprey_db')
 
@@ -53,14 +130,33 @@ def make_postgres_database_config_fixture() -> object:
 
         yield
 
-        try:
-            drop_database(url)
-        except ProgrammingError as e:
-            # Don't fail if the database is already closed
-            from psycopg2.errors import InvalidCatalogName
+        # Always ours to drop by this point: setup either created the database or
+        # recreated it, so the only question left is the name.
+        if not _is_disposable_database(url):
+            return
 
-            if not isinstance(e.orig, InvalidCatalogName):
-                raise
+        # Our own pooled connections are connections like any other, and `_drop_database`
+        # refuses rather than terminating them, so they have to go first. Whatever is
+        # still attached after this belongs to somebody else.
+        session_maker = postgres.sessions.get('osprey_db')
+        engine = session_maker.kw.get('bind') if session_maker is not None else None
+        if engine is not None:
+            engine.dispose()
+
+        try:
+            _drop_database(url)
+        except (OperationalError, ProgrammingError) as e:
+            if isinstance(e.orig, InvalidCatalogName):
+                return  # already gone; nothing to do
+            if isinstance(e.orig, ObjectInUse):
+                # Left behind rather than destroyed. The next run recreates it at setup,
+                # so this costs nothing but is worth saying out loud.
+                warnings.warn(
+                    f'Leaving the test database in place: something is still connected to it. {e.orig}',
+                    stacklevel=2,
+                )
+                return
+            raise
 
     return postgres_database_config
 
