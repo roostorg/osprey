@@ -43,7 +43,7 @@ common = [
     { name = "google-cloud-core", specifier = "==2.6.0" },
     { name = "google-cloud-kms", specifier = "==3.15.0" },
     { name = "google-cloud-pubsub", specifier = "==2.41.0" },
-    { name = "google-cloud-storage", specifier = "==2.10.0" },
+    { name = "google-cloud-storage", specifier = "==3.15.0" },
     { name = "google-resumable-media", specifier = "==2.7.2" },
     { name = "googleapis-common-protos", specifier = "==1.75.3" },
     { name = "graphviz", specifier = "==0.20" },
@@ -782,18 +782,19 @@ wheels = [
 
 [[package]]
 name = "google-cloud-storage"
-version = "2.10.0"
+version = "3.15.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "google-api-core" },
     { name = "google-auth" },
     { name = "google-cloud-core" },
+    { name = "google-crc32c" },
     { name = "google-resumable-media" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6b/20/51e9676cc112ec7344c0a8690361175dc1f41ed6edf618eae8af87d92a49/google-cloud-storage-2.10.0.tar.gz", hash = "sha256:934b31ead5f3994e5360f9ff5750982c5b6b11604dc072bc452c25965e076dc7", size = 5504936, upload-time = "2023-06-26T20:34:54.303Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5c/b9/de4f0a218485bdbac839ad337166997171471a29c7d28c03b41b37830379/google_cloud_storage-3.15.0.tar.gz", hash = "sha256:110041ee1cb566114015aa7c2492f1ff18c92af528588386663f4b41b6279989", size = 17350807, upload-time = "2026-09-24T23:20:16.709Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/88/14/c9d4faae7ea4bff4405152cbc762b61100aa6949273b4eb3203d23308670/google_cloud_storage-2.10.0-py2.py3-none-any.whl", hash = "sha256:9433cf28801671de1c80434238fb1e7e4a1ba3087470e90f70c928ea77c2b9d7", size = 114565, upload-time = "2023-06-26T20:34:51.797Z" },
+    { url = "https://files.pythonhosted.org/packages/d7/e7/77c6358819e53f2cf5175e50b61edcf0af4f7fd1158e9703649659630b5c/google_cloud_storage-3.15.0-py3-none-any.whl", hash = "sha256:248905def997a300ad456c0696cf7fad04b8c38412c1103ebb2a60cc6341579f", size = 343392, upload-time = "2026-09-24T23:19:52.066Z" },
 ]
 
 [[package]]

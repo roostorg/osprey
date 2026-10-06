@@ -20,7 +20,7 @@ common = [
     "google-cloud-core==2.6.0",
     "google-cloud-kms==3.15.0",
     "google-cloud-pubsub==2.41.0",
-    "google-cloud-storage==2.10.0",
+    "google-cloud-storage==3.15.0",
     "google-resumable-media==2.7.2",
     "googleapis-common-protos==1.75.3",
     "graphviz==0.20",
