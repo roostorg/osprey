@@ -25,9 +25,7 @@ TEST_URL = 'postgresql://osprey:FoolishPassword@postgres:5432/osprey_test'
 
 
 def _drop_if_present(url: str) -> None:
-    """Drop the database at `url`, tolerating it not being there.
-
-    Only that. A cleanup step that swallows everything hides the failure it should be
+    """Drop the database at `url`, tolerating it not being there, but no other failures. A cleanup step that swallows everything hides the failure it should be
     reporting -- a refused connection or a missing permission would surface later as a
     confusing `DuplicateDatabase` from the next `create_database`, pointing at the wrong
     thing entirely.
