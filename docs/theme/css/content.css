@@ -1,5 +1,9 @@
 /* Content styling overrides */
 
+:root {
+  scroll-behavior: smooth;
+}
+
 .content img {
   background-color: color-mix(in srgb, var(--bg) 80%, white);
   border: 0.5em solid color-mix(in srgb, var(--bg) 80%, white);
@@ -12,10 +16,6 @@
   background: var(--quote-bg);
   border-radius: 0.25em;
   padding: 1em;
-}
-
-.menu-title {
-  font-weight: 600;
 }
 
 table {
@@ -44,4 +44,3 @@ hr {
   margin-block: 2em;
   opacity: 0.25;
 }
-
