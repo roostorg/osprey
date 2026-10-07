@@ -41,7 +41,7 @@ Then open a release-prep pull request to:
 
 **Merge this PR _before_ creating the tag** so the tagged commit includes the release's changelog.
 
-This is a good time to draft the release notes, starting from CHANGELOG.md. See [Writing release notes](https://community.roost.tools/software-development-practices/releases.md) from the ROOST community site for recommendations on how to structure them.
+This is a good time to draft the release notes, starting from CHANGELOG.md. See [Writing release notes](https://community.roost.tools/software-development-practices/releases.html) from the ROOST community site for recommendations on how to structure them.
 
 ## Creating a release
 
