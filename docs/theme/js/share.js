@@ -87,6 +87,7 @@
       case 'markdown':
         return shareOrCopy(mdUrl);
       case 'copy':
+        prefetch();
         await navigator.clipboard.writeText(await markdown);
         return 'Copied!';
     }
