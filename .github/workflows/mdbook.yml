@@ -112,10 +112,17 @@ jobs:
           # Deploy the versioned docs
           rm -rf "_gh-pages/${DEPLOY_PATH}"
           # Fail loudly instead of silently deploying a markdown-only site
-          test -d docs/book/html || { echo "HTML output missing: docs/book/html" >&2; exit 1; }
-          test -d docs/book/markdown || { echo "Markdown output missing: docs/book/markdown" >&2; exit 1; }
-          cp -r docs/book/markdown/. docs/book/html/
-          cp -r docs/book/html "_gh-pages/${DEPLOY_PATH}"
+          if test -d docs/book/html; then
+            test -d docs/book/markdown || { echo "Markdown output missing: docs/book/markdown" >&2; exit 1; }
+            cp -r docs/book/markdown/. docs/book/html/
+            cp -r docs/book/html "_gh-pages/${DEPLOY_PATH}"
+          elif test -f docs/book/index.html; then
+            # Legacy single-backend layout (tags built before the markdown output was added)
+            cp -r docs/book "_gh-pages/${DEPLOY_PATH}"
+          else
+            echo "HTML output missing: docs/book/html" >&2
+            exit 1
+          fi
 
           # Regenerate the root version index
           (cd _gh-pages && tree -d -L 1 -H . -T "Osprey Documentation" -o index.html --noreport)
