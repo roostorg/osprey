@@ -8,6 +8,7 @@ from werkzeug.exceptions import HTTPException
 
 ddtrace.patch_all(gevent=True)
 
+import json
 from http import HTTPStatus
 from typing import NoReturn
 
@@ -15,6 +16,7 @@ import sentry_sdk
 from flask import Flask, Response
 from flask_cors import CORS
 from osprey.engine.ast_validator.validation_context import ValidationFailed
+from osprey.engine.query_language.ast_druid_translator import DruidQueryUserError
 from osprey.worker.lib import ddtrace_utils
 from osprey.worker.lib.osprey_shared.logging import get_logger
 from osprey.worker.lib.utils.flask_utils import OspreyFlask
@@ -29,6 +31,10 @@ def _after_request(response: Response) -> Response:
 
 def _handle_validation_failed(err: ValidationFailed) -> Response:
     return Response(status=HTTPStatus.BAD_REQUEST, response=err.rendered(), mimetype='application/json')
+
+
+def _handle_druid_query_user_error(err: DruidQueryUserError) -> Response:
+    return Response(status=HTTPStatus.BAD_REQUEST, response=json.dumps(str(err)), mimetype='application/json')
 
 
 def _handle_exception(e: HTTPException) -> Response:
@@ -91,6 +97,7 @@ def create_app() -> Flask:
     postgres.init_app(app)
     app.after_request(_after_request)
     app.register_error_handler(ValidationFailed, _handle_validation_failed)
+    app.register_error_handler(DruidQueryUserError, _handle_druid_query_user_error)
     app.register_error_handler(HTTPException, _handle_exception)
 
     app.logger.handlers = gunicorn_logger.handlers
