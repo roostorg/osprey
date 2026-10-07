@@ -1,0 +1,199 @@
+/*!
+  Theme: a11y-light
+  Author: @ericwbailey
+  Maintainer: @ericwbailey
+
+  Based on the Tomorrow Night Eighties theme: https://github.com/isagalaev/highlight.js/blob/master/src/styles/tomorrow-night-eighties.css
+*/
+
+.roost .hljs {
+  background: #fefefe;
+  color: #545454;
+}
+
+/* Comment */
+.roost .hljs-comment,
+.roost .hljs-quote {
+  color: #696969;
+}
+
+/* Red */
+.roost .hljs-variable,
+.roost .hljs-template-variable,
+.roost .hljs-tag,
+.roost .hljs-name,
+.roost .hljs-selector-id,
+.roost .hljs-selector-class,
+.roost .hljs-regexp,
+.roost .hljs-deletion {
+  color: #d91e18;
+}
+
+/* Orange */
+.roost .hljs-number,
+.roost .hljs-built_in,
+.roost .hljs-literal,
+.roost .hljs-type,
+.roost .hljs-params,
+.roost .hljs-meta,
+.roost .hljs-link {
+  color: #aa5d00;
+}
+
+/* Yellow */
+.roost .hljs-attribute {
+  color: #aa5d00;
+}
+
+/* Green */
+.roost .hljs-string,
+.roost .hljs-symbol,
+.roost .hljs-bullet,
+.roost .hljs-addition {
+  color: #008000;
+}
+
+/* Blue */
+.roost .hljs-title,
+.roost .hljs-section {
+  color: #007faa;
+}
+
+/* Purple */
+.roost .hljs-keyword,
+.roost .hljs-selector-tag {
+  color: #7928a1;
+}
+
+.roost .hljs-emphasis {
+  font-style: italic;
+}
+
+.roost .hljs-strong {
+  font-weight: bold;
+}
+
+@media screen and (-ms-high-contrast: active) {
+  .roost .hljs-addition,
+  .roost .hljs-attribute,
+  .roost .hljs-built_in,
+  .roost .hljs-bullet,
+  .roost .hljs-comment,
+  .roost .hljs-link,
+  .roost .hljs-literal,
+  .roost .hljs-meta,
+  .roost .hljs-number,
+  .roost .hljs-params,
+  .roost .hljs-string,
+  .roost .hljs-symbol,
+  .roost .hljs-type,
+  .roost .hljs-quote {
+        color: highlight;
+    }
+
+    .roost .hljs-keyword,
+    .roost .hljs-selector-tag {
+        font-weight: bold;
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+  /*!
+    Theme: a11y-dark
+    Author: @ericwbailey
+    Maintainer: @ericwbailey
+
+    Based on the Tomorrow Night Eighties theme: https://github.com/isagalaev/highlight.js/blob/master/src/styles/tomorrow-night-eighties.css
+  */
+
+  .roost .hljs {
+    background: #2b2b2b;
+    color: #f8f8f2;
+  }
+
+  /* Comment */
+  .roost .hljs-comment,
+  .roost .hljs-quote {
+    color: #d4d0ab;
+  }
+
+  /* Red */
+  .roost .hljs-variable,
+  .roost .hljs-template-variable,
+  .roost .hljs-tag,
+  .roost .hljs-name,
+  .roost .hljs-selector-id,
+  .roost .hljs-selector-class,
+  .roost .hljs-regexp,
+  .roost .hljs-deletion {
+    color: #ffa07a;
+  }
+
+  /* Orange */
+  .roost .hljs-number,
+  .roost .hljs-built_in,
+  .roost .hljs-literal,
+  .roost .hljs-type,
+  .roost .hljs-params,
+  .roost .hljs-meta,
+  .roost .hljs-link {
+    color: #f5ab35;
+  }
+
+  /* Yellow */
+  .roost .hljs-attribute {
+    color: #ffd700;
+  }
+
+  /* Green */
+  .roost .hljs-string,
+  .roost .hljs-symbol,
+  .roost .hljs-bullet,
+  .roost .hljs-addition {
+    color: #abe338;
+  }
+
+  /* Blue */
+  .roost .hljs-title,
+  .roost .hljs-section {
+    color: #00e0e0;
+  }
+
+  /* Purple */
+  .roost .hljs-keyword,
+  .roost .hljs-selector-tag {
+    color: #dcc6e0;
+  }
+
+  .roost .hljs-emphasis {
+    font-style: italic;
+  }
+
+  .roost .hljs-strong {
+    font-weight: bold;
+  }
+
+  @media screen and (-ms-high-contrast: active) {
+    .roost .hljs-addition,
+    .roost .hljs-attribute,
+    .roost .hljs-built_in,
+    .roost .hljs-bullet,
+    .roost .hljs-comment,
+    .roost .hljs-link,
+    .roost .hljs-literal,
+    .roost .hljs-meta,
+    .roost .hljs-number,
+    .roost .hljs-params,
+    .roost .hljs-string,
+    .roost .hljs-symbol,
+    .roost .hljs-type,
+    .roost .hljs-quote {
+          color: highlight;
+      }
+
+      .roost .hljs-keyword,
+      .roost .hljs-selector-tag {
+          font-weight: bold;
+      }
+  }
+}

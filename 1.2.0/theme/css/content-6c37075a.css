@@ -1,0 +1,70 @@
+/* Content styling overrides */
+
+:root {
+  scroll-behavior: smooth;
+}
+
+.content img {
+  background-color: color-mix(in srgb, var(--bg) 80%, white);
+  border: 0.5em solid color-mix(in srgb, var(--bg) 80%, white);
+  box-shadow: 0 0.25em 0.5em 0.25em rgba(0 0 0 / 0.1 );
+  box-sizing: border-box;
+  margin-block: 0.5em;
+}
+
+.blockquote-tag {
+  background: var(--quote-bg);
+  border-radius: 0.25em;
+  padding: 1em;
+}
+
+/* Share dropdown; .theme-popup anchors left, but this one hangs off the right. */
+#share-list {
+  left: unset;
+  right: 10px;
+}
+
+#share-list .share-item {
+  background: inherit;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font-size: inherit;
+  line-height: 25px;
+  margin: 0;
+  padding: 2px 20px;
+  text-align: start;
+  white-space: nowrap;
+  width: 100%;
+}
+
+#share-list .share-item:hover {
+  background-color: color-mix(in srgb, var(--fg) 4%, transparent);
+}
+
+table {
+  width: 100%;
+}
+
+table td,
+table thead th {
+  padding: 0.25em 0.5em;
+}
+
+table td {
+  text-wrap: balance;
+}
+
+dt {
+  margin-block: 1.5em 0;
+}
+
+dd {
+  margin-inline-start: 1em;
+  margin-block: 0.25em;
+}
+
+hr {
+  margin-block: 2em;
+  opacity: 0.25;
+}
