@@ -42,7 +42,7 @@ For more information about each release including git tags and artifacts, see [R
 - Narrow overly-broad `[A-z]` regular expressions in the string UDFs and UI ([#473](https://github.com/roostorg/osprey/pull/473) by [@cassidyjames](https://github.com/cassidyjames))
 - Running the test suite no longer deletes the development database; tests now use their own `osprey_test` database ([#499](https://github.com/roostorg/osprey/pull/499) by [@ThisIsMissEm](https://github.com/ThisIsMissEm))
 - `demo.sh` waits for the worker before declaring the demo ready ([#466](https://github.com/roostorg/osprey/pull/466) by [@forest-savage1234](https://github.com/forest-savage1234))
-- Shell scripts failing in containers when checked out with CRLF line endings on Windows ([#451](https://github.com/roostorg/osprey/pull/451) by [@Adarsh04Arun](https://github.com/Adarsh04Arun))
+- Fix shell scripts failing in containers when the repo is checked out with CRLF line endings on Windows ([#451](https://github.com/roostorg/osprey/pull/451) by [@Adarsh04Arun](https://github.com/Adarsh04Arun))
 - Excessive CPU load from the test data generator, which started a new Kafka producer for every message ([#455](https://github.com/roostorg/osprey/pull/455) by [@reitblatt](https://github.com/reitblatt))
 
 ## [1.1.0] - 2026-07-22
