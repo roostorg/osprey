@@ -1,5 +1,6 @@
 [book]
 title = "Osprey Documentation"
+description = "User guide, development guide, integration guide, and rule-writing reference for Osprey, the open source safety rules engine and investigation console from ROOST."
 authors = ["ROOST"]
 language = "en"
 src = "."
