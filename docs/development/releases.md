@@ -30,7 +30,7 @@ Before cutting a release, ensure:
 
 - [ ] **CI is passing** for the `main` branch
 - [ ] **You understand the correct version** according to SemVer
-- [ ] **The milestone is up-to-date** with no remaining open issues
+- [ ] **The milestone is up-to-date** with no remaining open issues or unmerged PRs
 - [ ] **[CHANGELOG.md](https://github.com/roostorg/osprey/blob/main/CHANGELOG.md) is up-to-date** with notable changes under `[Unreleased]`
 
 Then open a release-prep pull request to:
