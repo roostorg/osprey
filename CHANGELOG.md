@@ -45,6 +45,10 @@ For more information about each release including git tags and artifacts, see [R
 - Fix shell scripts failing in containers when the repo is checked out with CRLF line endings on Windows ([#451](https://github.com/roostorg/osprey/pull/451) by [@Adarsh04Arun](https://github.com/Adarsh04Arun))
 - Excessive CPU load from the test data generator, which started a new Kafka producer for every message ([#455](https://github.com/roostorg/osprey/pull/455) by [@reitblatt](https://github.com/reitblatt))
 
+### Fixed
+
+- Fix postgres worker crash on first boot ([#436](https://github.com/roostorg/osprey/pull/436) by [@vedarolap](https://github.com/vedarolap), closes [#432](https://github.com/roostorg/osprey/issues/432))
+
 ## [1.1.0] - 2026-07-22
 
 ### Added
