@@ -11,6 +11,7 @@ For more information about each release including git tags and artifacts, see [R
 ### Fixed
 
 - Security: upgrade `certifi` from 2026.5.20 to 2026.10.19 to drop the compromised emSign root CA from the bundled trust store ([GHSA-6q48-6c7w-9gw2](https://github.com/advisories/GHSA-6q48-6c7w-9gw2), [#541](https://github.com/roostorg/osprey/pull/541) by [@reitblatt](https://github.com/reitblatt))
+- Security: pin the Docker Compose `snowflake-id-worker` image to 0.5.1, which refreshes its dependencies past the emSign root CA compromise (RUSTSEC-2026-0381, RUSTSEC-2026-0382) ([#543](https://github.com/roostorg/osprey/pull/543) by [@ayubun](https://github.com/ayubun))
 
 ## [1.2.0] - 2026-10-07
 
