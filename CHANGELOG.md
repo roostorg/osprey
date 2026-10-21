@@ -8,6 +8,8 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-21
+
 ### Fixed
 
 - Security: upgrade `certifi` from 2026.5.20 to 2026.10.19 to drop the compromised emSign root CA from the bundled trust store ([GHSA-6q48-6c7w-9gw2](https://github.com/advisories/GHSA-6q48-6c7w-9gw2), [#541](https://github.com/roostorg/osprey/pull/541) by [@reitblatt](https://github.com/reitblatt))
@@ -169,7 +171,8 @@ Release pre-coordinator integration. Effectively the same feature-wise as the 1.
 
 See the [1.0 release notes](#10---2026-01-28) for a full description of the core Osprey feature set.
 
-[Unreleased]: https://github.com/roostorg/osprey/compare/1.2.0...HEAD
+[Unreleased]: https://github.com/roostorg/osprey/compare/1.2.1...HEAD
+[1.2.1]: https://github.com/roostorg/osprey/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/roostorg/osprey/compare/1.1.0...1.2.0
 [1.1.0]: https://github.com/roostorg/osprey/compare/1.0.1...1.1.0
 [1.0.1]: https://github.com/roostorg/osprey/compare/1.0...1.0.1
