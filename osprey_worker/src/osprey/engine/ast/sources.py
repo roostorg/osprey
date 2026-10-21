@@ -138,6 +138,10 @@ class SourcesBuilder:
         return self
 
     def add_config(self, *sources: Source) -> 'SourcesBuilder':
+        # No-op: a ruleset need not have a config, and `Sources` substitutes an empty one.
+        if not sources:
+            return self
+
         if self._config is not None:
             raise ValueError('A configuration already exists for this builder.')
 
@@ -165,10 +169,15 @@ class SourcesConfig(dict[str, Any]):
     that validation."""
 
     def __init__(self, *sources: Source):
-        assert sources, 'sources can not be empty'
+        if not sources:
+            raise ValueError(
+                f'SourcesConfig requires at least one source; pass an empty `{CONFIG_PATH}` for no config.'
+            )
         self._sources = sorted(sources, key=lambda source: source.path)
 
         if not all(_.contents for _ in self._sources):
+            # Still set `_source`; `source` is read unconditionally, e.g. by `Sources.to_dict()`.
+            self._source = Source(path=CONFIG_PATH, contents='')
             super().__init__()
             return
 
