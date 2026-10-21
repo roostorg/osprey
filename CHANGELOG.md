@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Fixed
+
+- Security: upgrade `certifi` from 2026.5.20 to 2026.10.19 to drop the compromised emSign root CA from the bundled trust store ([GHSA-6q48-6c7w-9gw2](https://github.com/advisories/GHSA-6q48-6c7w-9gw2), [#541](https://github.com/roostorg/osprey/pull/541) by [@reitblatt](https://github.com/reitblatt))
+
 ## [1.2.0] - 2026-10-07
 
 ### Added
