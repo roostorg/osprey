@@ -20,7 +20,7 @@ common = [
     "google-cloud-core==2.6.0",
     "google-cloud-kms==3.15.0",
     "google-cloud-pubsub==2.41.0",
-    "google-cloud-storage==2.10.0",
+    "google-cloud-storage==3.15.0",
     "google-resumable-media==2.7.2",
     "googleapis-common-protos==1.75.3",
     "graphviz==0.20",
@@ -72,7 +72,7 @@ common = [
     "anyascii==0.3.3",
     "werkzeug==1.0.1",
     # --- Type stubs (used by mypy, not imported directly) ---
-    "types-cachetools==6.1.0.20250717",
+    "types-cachetools==7.0.0.20260713",
     "types-click==7.1.8",
     "types-flask==1.1.6",
     "types-ipaddress==1.0.8",

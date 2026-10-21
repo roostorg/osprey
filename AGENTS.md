@@ -7,7 +7,7 @@ Instructions for AI coding agents working on Osprey. `README.md` is for humans; 
 Top-level modules:
 
 - `osprey_worker/` — main Python engine. Consumes events from Kafka, evaluates SML rules, emits verdicts and effects to output sinks. New worker/engine code belongs here (`osprey_worker/src/osprey/worker/`).
-- `osprey_rpc/` — generated protobuf/gRPC bindings under `osprey_rpc/src/osprey/rpc/`. Do not edit generated files (`*_pb2*.py`, `*_pb2*.pyi`) by hand; regenerate via `./gen-protos.sh` after editing the `.proto` files.
+- `osprey_rpc/` — generated protobuf/gRPC bindings under `osprey_rpc/src/osprey/rpc/`. Do not edit generated files (`*_pb2*.py`, `*_pb2*.pyi`) by hand; regenerate via `./gen-protos.sh` after editing, adding, or deleting `.proto` files. The script also removes bindings whose source proto is gone and the package directories left empty.
 - `osprey_ui/` — React + TypeScript frontend (Ant Design, ECharts; versions in `osprey_ui/package.json`). UI code belongs here.
 - `osprey_coordinator/` — Rust gRPC coordinator (tokio, tonic, etcd, rdkafka). Rust code belongs here.
 - `proto/osprey/rpc/` — protobuf source of truth for `osprey_rpc` and `osprey_coordinator` types.
@@ -67,6 +67,17 @@ Pass pytest args through:
 ./run-tests.sh --junitxml=/tmp/test-results/junit-pytest.xml
 ```
 
+The dependency containers stay up between runs so they don't have to become healthy
+again each time. Stop them when you want the resources back:
+
+```bash
+./stop-tests.sh
+```
+
+Don't reach for `docker compose down` directly: without `-p osprey-test` compose derives
+the project name from the directory, which is the *dev* stack, and tears that down
+instead.
+
 Python lint / format / type-check (no Docker needed):
 
 ```bash
@@ -80,6 +91,10 @@ UI checks (in `osprey_ui/`):
 
 ```bash
 pnpm run format:check
+pnpm run lint
+pnpm run typecheck
+pnpm run test
+pnpm run build
 ```
 
 Rust checks (in `osprey_coordinator/`; requires `protoc`). CI only gates on `fmt` and `build`; `clippy` and `test` are advisory (`continue-on-error: true`):
@@ -138,7 +153,11 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 # code-quality.yml → ui-quality (CI `working-directory: osprey_ui`)
 ( cd osprey_ui
   pnpm install --frozen-lockfile
-  pnpm run format:check )
+  pnpm run format:check
+  pnpm run lint
+  pnpm run typecheck
+  pnpm run test
+  pnpm run build )
 
 # code-quality.yml → rust-quality (CI `working-directory: osprey_coordinator`)
 # Note: in CI the `cargo clippy` and `cargo test` steps are marked `continue-on-error: true`,
