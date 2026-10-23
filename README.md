@@ -24,6 +24,8 @@ curl -sSL https://raw.githubusercontent.com/roostorg/osprey/main/demo.sh | bash
 
 See the [Getting Started guide](https://roostorg.github.io/osprey/latest/development/) for more, including what to try in the UI. See the [full documentation](https://roostorg.github.io/osprey/latest/) for a user guide, development setup, basic concepts, integration information, and more.
 
+The UI API's HTTP interface is described by an [OpenAPI spec](./docs/api/openapi.yaml); see the [UI API reference](./docs/api/README.md).
+
 ## Adopters
 
 Osprey is used by:
