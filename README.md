@@ -2,6 +2,8 @@
 
 # Osprey
 
+[![codecov](https://codecov.io/gh/roostorg/osprey/graph/badge.svg)](https://codecov.io/gh/roostorg/osprey)
+
 **Automate the obvious and investigate the ambiguous.** Osprey is a safety rules engine and investigation console for real-time event processing at scale.
 
 Your platform streams events to Osprey, and human-written rules evaluate each one as it arrives—taking automatic action, applying labels to the entities involved, and sending verdicts and custom effects to your own systems. Analysts query and chart the results to spot patterns, investigate, and turn what they find into new rules.

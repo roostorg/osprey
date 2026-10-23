@@ -1,0 +1,33 @@
+codecov:
+  require_ci_to_pass: true
+coverage:
+  status:
+    project: { default: { informational: true } }
+    patch: { default: { target: 80%, informational: true } }
+comment:
+  layout: "condensed_header, diff, flags, components, condensed_files"
+  require_changes: true
+fixes:
+  - "/osprey/::"
+flag_management:
+  default_rules: { carryforward: true }
+  individual_flags:
+    - { name: worker, paths: [osprey_worker/] }
+    - { name: async-worker, paths: [osprey_async_worker/] }
+    - { name: ui, paths: [osprey_ui/] }
+    - { name: coordinator, paths: [osprey_coordinator/] }
+    - { name: e2e, statuses: [] }
+component_management:
+  individual_components:
+    - { component_id: engine, name: "engine (SML)", paths: ["osprey_worker/src/osprey/engine/**"] }
+    - { component_id: worker, name: "worker + UI API", paths: ["osprey_worker/src/osprey/worker/**"] }
+    - { component_id: async-worker, name: "async worker", paths: ["osprey_async_worker/**"] }
+    - { component_id: ui, name: UI, paths: ["osprey_ui/**"] }
+    - { component_id: coordinator, name: "coordinator (Rust)", paths: ["osprey_coordinator/**"] }
+ignore:
+  - "osprey_rpc/src/osprey/rpc/**/*_pb2.py"
+  - "osprey_rpc/src/osprey/rpc/**/*_pb2_grpc.py"
+  - "osprey_rpc/src/osprey/rpc/**/*_pb2.pyi"
+  - "**/tests/**"
+  - "**/conftest.py"
+  - "osprey_ui/**/*.test.*"

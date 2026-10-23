@@ -78,6 +78,17 @@ Don't reach for `docker compose down` directly: without `-p osprey-test` compose
 the project name from the directory, which is the *dev* stack, and tears that down
 instead.
 
+Coverage (CI uploads these to [Codecov](https://app.codecov.io/gh/roostorg/osprey), one flag per suite; config in `codecov.yml`, coverage.py settings under `[tool.coverage.run]` in `pyproject.toml`). Write the worker report into `/tmp/test-results`, the directory mounted into the test container:
+
+```bash
+mkdir -p /tmp/test-results
+./run-tests.sh --cov=osprey_worker --cov-report=xml:/tmp/test-results/coverage-worker.xml --cov-report=term   # worker flag
+uv run pytest osprey_async_worker --cov=osprey_async_worker --cov-report=xml --cov-report=term                # async-worker flag
+( cd osprey_ui && pnpm run test:coverage )                                                                     # ui flag; lcov in osprey_ui/coverage/
+```
+
+Keep the `osprey_worker` and `osprey_async_worker` runs separate: one pytest session over both fails with conftest conflicts.
+
 Python lint / format / type-check (no Docker needed):
 
 ```bash
