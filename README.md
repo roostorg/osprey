@@ -46,6 +46,15 @@ Try it locally, connect your data, write some rules, and tell us what's missing 
 
 Your feedback directly shapes our [roadmap](https://roostorg.github.io/community/roadmap) and helps us build the most useful Trust & Safety tooling for the community.
 
+## Contributing
+
+Contributions are welcome. Before you start, please read:
+
+- [Contributing guide](https://github.com/roostorg/.github/blob/main/CONTRIBUTING.md)
+- [Code of Conduct](https://github.com/roostorg/.github/blob/main/CODE_OF_CONDUCT.md)
+- [Security policy](https://github.com/roostorg/.github/blob/main/SECURITY.md), including how to report a vulnerability privately
+- [Development docs](https://roostorg.github.io/osprey/latest/development/) for local setup, tests, and workflow (source in [`docs/development`](docs/development/README.md))
+
 ## Recognition
 
 Discord uses Osprey to quickly detect and remove new types of harm that put users at risk. Rather than leaving other platforms to build similar tools from scratch, ROOST and Discord have open-sourced Osprey in collaboration with [internet.dev](https://internet.dev/) to make it available for anyone who needs it.
