@@ -6,7 +6,7 @@ coverage:
     patch: { default: { target: 80%, informational: true } }
 comment:
   layout: "condensed_header, diff, flags, components, condensed_files"
-  require_changes: true
+  require_changes: false
 fixes:
   - "/osprey/::"
 flag_management:
