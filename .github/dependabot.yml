@@ -11,6 +11,10 @@ updates:
       - "dependabot"
     ignore:
       - dependency-name: "grpcio"
+      # Flask 1.1.4 / Jinja2 2.11 import `markupsafe.soft_unicode`, removed in 2.1.0.
+      # Keep in step with the `markupsafe<2.1` pin in pyproject.toml.
+      - dependency-name: "markupsafe"
+        versions: [">=2.1"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
