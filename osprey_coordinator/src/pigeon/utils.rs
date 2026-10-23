@@ -7,14 +7,8 @@ pub(crate) type Error = Box<dyn std::error::Error + Send + Sync>;
 ///
 /// [gRPC spec]: https://github.com/grpc/grpc/blob/99a7f2995e66f9d6f5c3403dc7178238251fb2b5/doc/PROTOCOL-HTTP2.md#requests
 pub(crate) fn parse_path(path: &str) -> Option<(&str, &str)> {
-    let tail = match path.strip_prefix('/') {
-        Some(tail) => tail,
-        None => return None,
-    };
-    let (service, method) = match tail.split_once('/') {
-        Some(split) => split,
-        None => return None,
-    };
+    let tail = path.strip_prefix('/')?;
+    let (service, method) = tail.split_once('/')?;
     if service.is_empty() || method.is_empty() {
         None
     } else {

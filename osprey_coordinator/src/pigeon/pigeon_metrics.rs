@@ -198,7 +198,7 @@ impl MetricsLayer {
 
     /// Creates a new client layer
     /// with the name of the running service (e.g. `"osprey_foo"`).
-    pub fn client<'a>(peer_service: impl Into<&'static str>) -> Self {
+    pub fn client(peer_service: impl Into<&'static str>) -> Self {
         MetricsLayer {
             v1_enabled: true,
             metrics: METRICS.clone(),
