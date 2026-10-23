@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '4' and platform_machine == 'x86_64'",
@@ -22,6 +22,7 @@ members = [
     "osprey-rpc",
     "osprey-worker",
 ]
+default-groups = ["common", "dev"]
 overrides = [{ name = "ddtrace", specifier = ">=2.17.2,<3.0.0" }]
 
 [manifest.dependency-groups]
@@ -46,7 +47,7 @@ common = [
     { name = "google-cloud-storage", specifier = "==3.15.0" },
     { name = "google-resumable-media", specifier = "==2.7.2" },
     { name = "googleapis-common-protos", specifier = "==1.75.3" },
-    { name = "graphviz", specifier = "==0.20" },
+    { name = "graphviz", specifier = "==0.21" },
     { name = "greenlet", git = "https://github.com/discord/greenlet.git?rev=a75d78f1547c74a81134644a179467525a255466" },
     { name = "grpc-google-iam-v1", specifier = "==0.14.4" },
     { name = "grpcio", specifier = "==1.82.1" },
@@ -858,11 +859,11 @@ grpc = [
 
 [[package]]
 name = "graphviz"
-version = "0.20"
+version = "0.21"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/43/ae/a0ee0dbddc06dbecfaece65c45c8c4729c394b5eb62e04e711e6495cdf64/graphviz-0.20.zip", hash = "sha256:76bdfb73f42e72564ffe9c7299482f9d72f8e6cb8d54bce7b48ab323755e9ba5", size = 255452, upload-time = "2022-04-16T15:32:16.872Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/b3/3ac91e9be6b761a4b30d66ff165e54439dcd48b83f4e20d644867215f6ca/graphviz-0.21.tar.gz", hash = "sha256:20743e7183be82aaaa8ad6c93f8893c923bd6658a04c32ee115edb3c8a835f78", size = 200434, upload-time = "2025-06-15T09:35:05.824Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4d/ea/81a8018c234ad6219c27155fe3dce349f2ba83e6ebed582c9f8aca46091f/graphviz-0.20-py3-none-any.whl", hash = "sha256:62c5f48bcc534a45b4588c548ff75e419c1f1f3a33d31a91796ae80a7f581e4a", size = 46997, upload-time = "2022-04-16T15:32:15.016Z" },
+    { url = "https://files.pythonhosted.org/packages/91/4c/e0ce1ef95d4000ebc1c11801f9b944fa5910ecc15b5e351865763d8657f8/graphviz-0.21-py3-none-any.whl", hash = "sha256:54f33de9f4f911d7e84e4191749cac8cc5653f815b06738c54db9a15ab8b1e42", size = 47300, upload-time = "2025-06-15T09:35:04.433Z" },
 ]
 
 [[package]]
