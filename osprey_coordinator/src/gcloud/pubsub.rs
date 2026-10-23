@@ -387,11 +387,11 @@ impl PubSubMessage<PubSubMessageValid> {
 
     /// Converts this to an encoded proto message.
     pub fn encode_to_vec(self) -> Vec<u8> {
-        self.to_proto_message().encode_to_vec()
+        self.into_proto_message().encode_to_vec()
     }
 
     // Converts this to a proto message.
-    fn to_proto_message(self) -> proto::PubsubMessage {
+    fn into_proto_message(self) -> proto::PubsubMessage {
         proto::PubsubMessage {
             attributes: self.attributes,
             data: self.data,
@@ -474,7 +474,7 @@ impl TopicPublisherHandle {
         let did_have_ordering_key = message.ordering_key.is_some();
 
         self.send_queue_tx
-            .send(message.to_proto_message())
+            .send(message.into_proto_message())
             .map_err(|e| {
                 SendError(PubSubMessage {
                     data: e.0.data,
@@ -556,7 +556,7 @@ impl SynchronousTopicPublisher {
                 messages: messages
                     .iter()
                     .cloned()
-                    .map(|x| x.to_proto_message())
+                    .map(|x| x.into_proto_message())
                     .collect(),
             })
             .await

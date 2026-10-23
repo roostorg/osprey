@@ -7,23 +7,23 @@ use rand::{thread_rng, Rng};
 pub(super) fn err_should_reset_watcher(err: &crate::etcd::EtcdError) -> bool {
     const ETCD_ERROR_CODE_EVENT_INDEX_CLEARED: u64 = 401;
 
-    match err {
-        crate::etcd::EtcdError::API {
+    matches!(
+        err,
+        crate::etcd::EtcdError::Api {
             error: crate::etcd::EtcdApiError::Api(api_error),
             ..
-        } if api_error.error_code == ETCD_ERROR_CODE_EVENT_INDEX_CLEARED => true,
-        _ => false,
-    }
+        } if api_error.error_code == ETCD_ERROR_CODE_EVENT_INDEX_CLEARED
+    )
 }
 
 /// Checks to see if the error is a watch timeout.
 pub(super) fn err_is_watch_timeout(err: &crate::etcd::EtcdError) -> bool {
-    match err {
+    matches!(
+        err,
         crate::etcd::EtcdError::Watch {
             error: crate::etcd::WatchError::Timeout,
-        } => true,
-        _ => false,
-    }
+        }
+    )
 }
 
 /// Returns a timeout, with jitter for how long we should watch the key, before timing out and trying again.

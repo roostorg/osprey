@@ -1,4 +1,4 @@
-/// Handler for `StaticCounter(...), StaticGauge(...) or StaticHistogram(...)`.
+// Handler for `StaticCounter(...), StaticGauge(...) or StaticHistogram(...)`.
 
 #[doc(hidden)]
 #[macro_export]
