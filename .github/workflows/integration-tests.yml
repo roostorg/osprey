@@ -37,7 +37,30 @@ jobs:
           docker compose -f docker-compose.yaml -f docker-compose.test.yaml --profile test build
 
       - name: Run integration tests
-        run: ./run-tests.sh --junitxml=/tmp/test-results/junit-pytest.xml
+        run: ./run-tests.sh --junitxml=/tmp/test-results/junit-pytest.xml --cov=osprey_worker --cov-report=xml:/tmp/test-results/coverage-worker.xml
+
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5  # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: /tmp/test-results/coverage-worker.xml
+          disable_search: true
+          flags: worker
+          name: worker
+          fail_ci_if_error: false
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5  # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: /tmp/test-results/junit-pytest.xml
+          disable_search: true
+          flags: worker
+          name: worker
+          report_type: test_results
+          fail_ci_if_error: false
 
       - name: Upload test results
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
