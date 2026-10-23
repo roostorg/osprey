@@ -23,7 +23,7 @@ common = [
     "google-cloud-storage==3.15.0",
     "google-resumable-media==2.7.2",
     "googleapis-common-protos==1.75.3",
-    "graphviz==0.20",
+    "graphviz==0.21",
     "greenlet",
     "grpc-google-iam-v1==0.14.4",
     "grpcio==1.82.1",
