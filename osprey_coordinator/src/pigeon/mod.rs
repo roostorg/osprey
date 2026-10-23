@@ -445,11 +445,7 @@ where
                     .map_response(|resp| resp.map(BoxBody::new)),
             ),
         )))
-        .chain(
-            reflection_service
-                .map(|s| (REFLECTION_SERVICE_NAME, box_service(s)))
-                .into_iter(),
-        )
+        .chain(reflection_service.map(|s| (REFLECTION_SERVICE_NAME, box_service(s))))
         .collect();
 
     let mut incoming = AddrIncoming::bind(address)?;
