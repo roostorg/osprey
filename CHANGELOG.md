@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Fixed
+
+- Timeseries chart now follows dark mode ([#366](https://github.com/roostorg/osprey/issues/366) by [@26wv](https://github.com/26wv))
+
 ## [1.2.1] - 2026-10-21
 
 ### Fixed
