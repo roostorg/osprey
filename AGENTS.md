@@ -35,7 +35,7 @@ uv sync --dev
 # Install git hooks
 uv run pre-commit install --install-hooks
 
-# Start full stack (Kafka, Postgres, Druid, MinIO, worker, UI, UI API)
+# Start full stack (Kafka, Postgres, Druid, RustFS, worker, UI, UI API)
 docker compose up -d
 # or
 ./start.sh
@@ -145,8 +145,9 @@ CI runs entirely via GitHub Actions on `pull_request` and `push` to `main`. Each
 # code-quality.yml → python-quality
 uv sync --dev
 uv run pre-commit install --install-hooks
-SKIP=prettier-osprey-ui uv run pre-commit run --show-diff-on-failure --color=always --all-files
-uv tool run fawltydeps --check-unused --pyenv .venv
+SKIP=prettier-osprey-ui,eslint-osprey-ui uv run pre-commit run --show-diff-on-failure --color=always --all-files
+uv run pytest -q osprey_async_worker
+uv tool run fawltydeps --pyenv .venv
 
 # code-quality.yml → ui-quality (CI `working-directory: osprey_ui`)
 ( cd osprey_ui
