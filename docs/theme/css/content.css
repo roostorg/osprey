@@ -1,5 +1,9 @@
 /* Content styling overrides */
 
+:root {
+  scroll-behavior: smooth;
+}
+
 .content img {
   background-color: color-mix(in srgb, var(--bg) 80%, white);
   border: 0.5em solid color-mix(in srgb, var(--bg) 80%, white);
@@ -14,8 +18,28 @@
   padding: 1em;
 }
 
-.menu-title {
-  font-weight: 600;
+/* Share dropdown; .theme-popup anchors left, but this one hangs off the right. */
+#share-list {
+  left: unset;
+  right: 10px;
+}
+
+#share-list .share-item {
+  background: inherit;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font-size: inherit;
+  line-height: 25px;
+  margin: 0;
+  padding: 2px 20px;
+  text-align: start;
+  white-space: nowrap;
+  width: 100%;
+}
+
+#share-list .share-item:hover {
+  background-color: color-mix(in srgb, var(--fg) 4%, transparent);
 }
 
 table {
@@ -44,4 +68,3 @@ hr {
   margin-block: 2em;
   opacity: 0.25;
 }
-

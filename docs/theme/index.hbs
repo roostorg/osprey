@@ -17,7 +17,7 @@
 
         <meta name="description" content="{{ description }}">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="theme-color" content="#ffffff">
+        <meta name="theme-color" content="#24281A">
 
         {{#if favicon_svg}}
         <link rel="icon" href="{{ resource "favicon.svg" }}">
@@ -172,6 +172,14 @@
                             {{fa "solid" "print" "print-button"}}
                         </a>
                         {{/if}}
+                        <button id="share-toggle" class="icon-button" type="button" title="Share" aria-label="Share" aria-haspopup="true" aria-expanded="false" aria-controls="share-list">
+                            {{fa "solid" "share-nodes"}}
+                        </button>
+                        <ul id="share-list" class="theme-popup" aria-label="Share" role="menu">
+                            <li role="none"><button role="menuitem" class="share-item" data-share="link">Share link to page</button></li>
+                            <li role="none"><button role="menuitem" class="share-item" data-share="markdown">Share link to Markdown</button></li>
+                            <li role="none"><button role="menuitem" class="share-item" data-share="copy">Copy as Markdown</button></li>
+                        </ul>
                         {{#if git_repository_url}}
                         <a href="{{git_repository_url}}" title="Git repository" aria-label="Git repository">
                             {{fa git_repository_icon_class git_repository_icon}}
