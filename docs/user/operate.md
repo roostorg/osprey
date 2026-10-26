@@ -20,7 +20,7 @@ There are two ways to start a bulk action:
 
 Before submitting, Osprey shows a count of how many unique entities will be labeled. Review this number carefully to understand the impact of your bulk action.
 
-> For scripted or bulk labeling from the command line (e.g., importing label lists from external sources), see `apply_label` and `bulk_apply_label` in the [CLI Reference](../development/cli-reference.md#osprey-cli-apply_label).
+> For scripted or bulk labeling from the command line (e.g., importing label lists from external sources), see `apply-label` and `bulk-apply-label` in the [CLI Reference](../development/cli-reference.md#osprey-cli-apply-label).
 
 Each labeling job takes:
 - The label to apply and its status
