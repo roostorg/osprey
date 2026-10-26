@@ -51,6 +51,8 @@ def test_create_schema_survives_concurrent_callers_on_a_fresh_database():
             thread.start()
         for thread in threads:
             thread.join(timeout=10)
+            if thread.is_alive():
+                raise TimeoutError('Schema-creation thread timed out and may be deadlocked')
 
         assert not errors, errors
     finally:

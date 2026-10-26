@@ -19,7 +19,7 @@ from sqlalchemy.orm.scoping import ThreadLocalRegistry  # type: ignore # missing
 metadata = MetaData()
 Model = declarative_base(name='Model', metadata=metadata)
 
-# Arbitrary key for the Postgres advisory lock guarding schema creation (see init_from_config).
+# Arbitrary key for the Postgres advisory lock guarding schema creation (see create_schema).
 # Any process taking this lock is guaranteed to be alone while it runs metadata.create_all().
 _SCHEMA_CREATE_LOCK_KEY = 87271
 
@@ -49,13 +49,13 @@ def create_schema(engine: sqlalchemy.engine.Engine) -> None:
     loser crashes with a UniqueViolation. Take a Postgres advisory lock first so only one process
     creates the schema at a time; by the time any other process acquires the lock, create_all's
     own existence checks make it a no-op.
+
+    The lock is transaction-scoped and the DDL runs in that same transaction, so the lock is
+    released only when the new schema commits and becomes visible to the next process.
     """
-    with engine.connect() as connection:
-        connection.execute(sqlalchemy.text('SELECT pg_advisory_lock(:key)'), {'key': _SCHEMA_CREATE_LOCK_KEY})
-        try:
-            metadata.create_all(engine)
-        finally:
-            connection.execute(sqlalchemy.text('SELECT pg_advisory_unlock(:key)'), {'key': _SCHEMA_CREATE_LOCK_KEY})
+    with engine.begin() as connection:
+        connection.execute(sqlalchemy.text('SELECT pg_advisory_xact_lock(:key)'), {'key': _SCHEMA_CREATE_LOCK_KEY})
+        metadata.create_all(connection)
 
 
 def init_from_config(database: str) -> None:
