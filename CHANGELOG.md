@@ -8,22 +8,48 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-21
+
+### Fixed
+
+- Security: upgrade `certifi` from 2026.5.20 to 2026.10.19 to drop the compromised emSign root CA from the bundled trust store ([GHSA-6q48-6c7w-9gw2](https://github.com/advisories/GHSA-6q48-6c7w-9gw2), [#541](https://github.com/roostorg/osprey/pull/541) by [@reitblatt](https://github.com/reitblatt))
+
+## [1.2.0] - 2026-10-07
+
 ### Added
 
 - Configurable execution timeouts for native async UDFs ([#452](https://github.com/roostorg/osprey/pull/452) by [@ayubun](https://github.com/ayubun))
 - `HasLabel` support in the asyncio worker ([#453](https://github.com/roostorg/osprey/pull/453) by [@ayubun](https://github.com/ayubun))
+- `run-tests-local.sh` to run tests with the local Python interpreter against an already-running test stack ([#499](https://github.com/roostorg/osprey/pull/499) by [@ThisIsMissEm](https://github.com/ThisIsMissEm))
 
 ### Changed
 
 - Pub/Sub publishing is now opt-in via `OSPREY_PUBSUB_ENABLED` (default off), so Osprey starts without GCP credentials instead of crashing ([#388](https://github.com/roostorg/osprey/pull/388) by [@julietshen](https://github.com/julietshen))
 - Immutable execution-plan scheduler for faster engine and coordinator execution ([#454](https://github.com/roostorg/osprey/pull/454) by [@cmttt](https://github.com/cmttt))
+- Replace MinIO with RustFS, an S3-compatible object store, in Docker Compose after MinIO's images were removed from Docker Hub ([#513](https://github.com/roostorg/osprey/pull/513) by [@reitblatt](https://github.com/reitblatt), [#514](https://github.com/roostorg/osprey/pull/514) by [@ThisIsMissEm](https://github.com/ThisIsMissEm))
+- `osprey_rpc` now declares its runtime dependencies, requiring `grpcio>=1.82.1` and `protobuf>=7.35,<8` ([#349](https://github.com/roostorg/osprey/pull/349) by [@reitblatt](https://github.com/reitblatt))
 - Upgrade `grpcio` from 1.49.1/1.53.x to 1.82.1, and `typing-extensions` from 4.6.3 to 4.12.2 (required by the grpcio upgrade) ([#415](https://github.com/roostorg/osprey/pull/415) by [@reitblatt](https://github.com/reitblatt))
+- Upgrade `protobuf` from 4.25.8 to 7.36.2 ([#317](https://github.com/roostorg/osprey/issues/317), [#349](https://github.com/roostorg/osprey/pull/349) by [@reitblatt](https://github.com/reitblatt)); as a downstream consequence, also upgrade
+  - `grpcio-tools` from 1.49.1/1.53.x to 1.82.1 (to match the `grpcio` version, and required by `grpcio-tools` for protobuf 7.x support)
+  - `google-cloud-pubsub` from 2.15.2 to 2.41.0
+  - `tink` from 1.9.0 to 1.15.0
+  - `google-api-core` from 2.19.2 to 2.38.0 (older versions cap protobuf below 6.0)
+  - `googleapis-common-protos` from 1.70.0 to 1.75.3 (older versions cap protobuf below 7.0)
+  - `types-protobuf` from 4.24.0.1 to 7.35.1.20260906 to match the protobuf major version
+  - `google-cloud-kms` from 3.5.1 to 3.15.0 (older versions cap protobuf below 7.0), keeping the exact pin
+  - `grpcio-status` from 1.49.1/1.53.x to 1.82.1 (to match the `grpcio` version), collapsing the platform-specific pins into a single exact pin since 1.82.1 ships a universal wheel
+  - `grpcio-health-checking` and `grpcio-reflection` remain pinned at 1.44.0, still compatible with the new `grpcio`/`protobuf` versions
+  - regenerate all gRPC bindings
 
 ### Fixed
 
 - Cancel the parent execution and drain its owned tasks when a native async UDF is cancelled ([#459](https://github.com/roostorg/osprey/pull/459) by [@ayubun](https://github.com/ayubun))
 - Retry transient Snowflake errors in the coordinator ([#448](https://github.com/roostorg/osprey/pull/448) by [@ayubun](https://github.com/ayubun))
 - Narrow overly-broad `[A-z]` regular expressions in the string UDFs and UI ([#473](https://github.com/roostorg/osprey/pull/473) by [@cassidyjames](https://github.com/cassidyjames))
+- Running the test suite no longer deletes the development database; tests now use their own `osprey_test` database ([#499](https://github.com/roostorg/osprey/pull/499) by [@ThisIsMissEm](https://github.com/ThisIsMissEm))
+- `demo.sh` waits for the worker before declaring the demo ready ([#466](https://github.com/roostorg/osprey/pull/466) by [@forest-savage1234](https://github.com/forest-savage1234))
+- Fix shell scripts failing in containers when the repo is checked out with CRLF line endings on Windows ([#451](https://github.com/roostorg/osprey/pull/451) by [@Adarsh04Arun](https://github.com/Adarsh04Arun))
+- Excessive CPU load from the test data generator, which started a new Kafka producer for every message ([#455](https://github.com/roostorg/osprey/pull/455) by [@reitblatt](https://github.com/reitblatt))
 
 ## [1.1.0] - 2026-07-22
 
@@ -145,7 +171,9 @@ Release pre-coordinator integration. Effectively the same feature-wise as the 1.
 
 See the [1.0 release notes](#10---2026-01-28) for a full description of the core Osprey feature set.
 
-[Unreleased]: https://github.com/roostorg/osprey/compare/1.1.0...HEAD
+[Unreleased]: https://github.com/roostorg/osprey/compare/1.2.1...HEAD
+[1.2.1]: https://github.com/roostorg/osprey/compare/1.2.0...1.2.1
+[1.2.0]: https://github.com/roostorg/osprey/compare/1.1.0...1.2.0
 [1.1.0]: https://github.com/roostorg/osprey/compare/1.0.1...1.1.0
 [1.0.1]: https://github.com/roostorg/osprey/compare/1.0...1.0.1
 [1.0]: https://github.com/roostorg/osprey/compare/0.2...1.0
