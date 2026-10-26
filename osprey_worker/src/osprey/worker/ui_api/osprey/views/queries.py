@@ -28,7 +28,7 @@ def create_query_record() -> Any:
 
 @blueprint.route('/queries', methods=['GET'])
 def get_queries() -> Any:
-    before: int | None = request.args.get('before')
+    before = request.args.get('before')
     user_email = request.args.get('user_email')
 
     if user_email:

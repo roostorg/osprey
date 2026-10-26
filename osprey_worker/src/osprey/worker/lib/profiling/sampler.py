@@ -6,6 +6,7 @@ import signal
 import types
 
 from flask import request
+from osprey.worker.lib.utils.flask_utils import canonical_endpoint
 
 from .feature import current_features
 from .pyroscope_reporter import Reporter, StackTrace
@@ -51,7 +52,7 @@ class Sampler(object):
     def _get_current_endpoint(self) -> str | None:
         """Get the current endpoint from the request."""
         try:
-            return request.endpoint
+            return canonical_endpoint(request.endpoint)
         except Exception:
             return None
 
