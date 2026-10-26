@@ -196,7 +196,8 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 
 ## Changelog
 
-- `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/2.0.0/): _notable_ changes only, one line each, written for humans. Most PRs need no entry — skip dependency bumps, CI-only changes, internal refactors, tests, and docs.
+- `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/2.0.0/): _notable_ changes only, one line each, written for humans. Most PRs need no entry — skip routine patch-level and lockfile-only dependency refreshes, CI-only changes, internal refactors, tests, and docs.
+- Major and minor dependency upgrades do get an entry: under Changed (`Upgrade <pkg> from X to Y`), or under Fixed with the GHSA ID when the upgrade fixes a vulnerability. Upgrades forced by the same change can share one entry as sub-bullets (see protobuf in 1.2.0).
 - Add entries under `## [Unreleased]`. Never add to a published version's section; those are a record of what actually shipped in that tag.
 - Match the existing categories (Added, Changed, Fixed, Removed) and line format: `- <change> ([#123](https://github.com/roostorg/osprey/pull/123) by [@user](https://github.com/user))`.
 - Keep the line to what changed; details belong in the linked PR.
