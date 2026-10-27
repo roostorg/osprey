@@ -196,10 +196,17 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 
 ## Changelog
 
-- `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/2.0.0/): _notable_ changes only, one line each, written for humans. Most PRs need no entry — skip dependency bumps, CI-only changes, internal refactors, tests, and docs.
-- Add entries under `## [Unreleased]`. Never add to a published version's section; those are a record of what actually shipped in that tag.
-- Match the existing categories (Added, Changed, Fixed, Removed) and line format: `- <change> ([#123](https://github.com/roostorg/osprey/pull/123) by [@user](https://github.com/user))`.
-- Keep the line to what changed; details belong in the linked PR.
+`CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/2.0.0/); Osprey versions follow [SemVer](https://semver.org/). Release process: [`docs/development/releases.md`](docs/development/releases.md).
+
+- Update `## [Unreleased]` in the same PR as the change, not in a later cleanup PR.
+- Only **notable** changes get an entry: what someone deploying Osprey needs to know. Internal refactors, test and CI plumbing, lint fixes, docs, repo hygiene, and dependency bumps that don't affect deployment do not.
+- Use only the six Keep a Changelog headings — `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, `### Security` — adding the heading under `## [Unreleased]` if it's missing. Don't invent others.
+- `Fixed` is for behavior that was wrong and is now correct; `Changed` is for intentionally altering behavior that was already correct.
+- Keep each entry to a single concise line, essentially a title: no reasoning, mechanism, or caveats. Anyone who needs the detail follows the PR link.
+- Format: `- Description ([#123](https://github.com/roostorg/osprey/pull/123) by [@user](https://github.com/user))`.
+- Omit related issue links (e.g. `closes [#456](...)`); this information is accessible at the PR link.
+- Removing or renaming an environment variable always earns an entry.
+- Never edit a released version's section; it's a historical record. Corrections go under `## [Unreleased]`.
 
 ## CD
 
