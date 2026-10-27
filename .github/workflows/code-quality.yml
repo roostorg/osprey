@@ -52,7 +52,18 @@ jobs:
           uv run pre-commit run --show-diff-on-failure --color=always --all-files
 
       - name: Run async worker unit tests
-        run: uv run pytest -q osprey_async_worker
+        run: uv run pytest -q osprey_async_worker --cov=osprey_async_worker --cov-report=xml
+
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5  # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          disable_search: true
+          flags: async-worker
+          name: async-worker
+          fail_ci_if_error: false
 
       - name: Check for unused and undeclared dependencies
         run: uv tool run fawltydeps --pyenv .venv
@@ -90,8 +101,19 @@ jobs:
         working-directory: osprey_ui
 
       - name: Run tests
-        run: corepack pnpm run test
+        run: corepack pnpm run test:coverage
         working-directory: osprey_ui
+
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5  # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: osprey_ui/coverage/lcov.info
+          disable_search: true
+          flags: ui
+          name: ui
+          fail_ci_if_error: false
 
       - name: Build
         run: corepack pnpm run build

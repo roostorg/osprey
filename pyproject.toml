@@ -93,6 +93,7 @@ common = [
 dev = [
     "ipdb==0.13.13",
     "pytest-asyncio",
+    "pytest-cov==7.1.0",
     "ipython==9.4.0",
     "memray==1.19.2",
     "mypy>=1.13.0",
@@ -218,6 +219,7 @@ ignore_unused = [
     "mypy-protobuf",
     "pre-commit",
     "pytest-asyncio",
+    "pytest-cov",
     "pytest-flask",
     "pytest-order",
     "requests-mock",
@@ -242,6 +244,14 @@ ignore_unused = [
 [tool.pytest.ini_options]
 testpaths = ["osprey_worker", "example_plugins", "example_atproto_plugins"]
 asyncio_mode = "auto"
+
+[tool.coverage.run]
+# Report paths relative to the working directory (e.g. `osprey_worker/src/...`) so they
+# match repo paths in Codecov wherever the tests ran (host, CI runner or container).
+relative_files = true
+# The worker test suite runs under gevent monkey-patching; without `gevent`, coverage
+# misses lines executed inside greenlets.
+concurrency = ["gevent", "thread"]
 
 [tool.mypy]
 plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
