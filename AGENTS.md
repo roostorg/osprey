@@ -199,7 +199,7 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/2.0.0/); Osprey versions follow [SemVer](https://semver.org/). Release process: [`docs/development/releases.md`](docs/development/releases.md).
 
 - Update `## [Unreleased]` in the same PR as the change, not in a later cleanup PR.
-- Only **notable** changes get an entry: what someone deploying Osprey needs to know. Internal refactors, test and CI plumbing, lint fixes, docs, repo hygiene, and dependency bumps with no user-visible impact do not.
+- Only **notable** changes get an entry: what someone deploying Osprey needs to know. Internal refactors, test and CI plumbing, lint fixes, docs, repo hygiene, and dependency bumps that don't affect deployment do not.
 - Use only the six Keep a Changelog headings — `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, `### Security` — adding the heading under `## [Unreleased]` if it's missing. Don't invent others.
 - `Fixed` is for behavior that was wrong and is now correct; `Changed` is for intentionally altering behavior that was already correct.
 - Keep each entry to a single concise line, essentially a title: no reasoning, mechanism, or caveats. Anyone who needs the detail follows the PR link.
