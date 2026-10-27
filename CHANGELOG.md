@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Fixed
+
+- UI query filters now escape every apostrophe and backslash in string feature values, not just the first apostrophe ([#472](https://github.com/roostorg/osprey/pull/472) by [@cassidyjames](https://github.com/cassidyjames))
+
 ## [1.2.1] - 2026-10-21
 
 ### Fixed
