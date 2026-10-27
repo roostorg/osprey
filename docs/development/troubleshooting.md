@@ -73,3 +73,24 @@ Ensure all dependencies are installed:
 ```bash
 uv sync
 ```
+
+## Sharing your configuration
+
+When reporting a bug, attach the output of `osprey-config dump`: the effective configuration of each service, with secrets redacted, plus the Osprey version and commit, Python version and enabled plugins. Run it inside the service's container so it sees that container's environment:
+
+```bash
+docker compose exec osprey-worker uv run osprey-config dump > worker-config.json
+docker compose exec osprey-ui-api uv run osprey-config dump > ui-api-config.json
+```
+
+The coordinator image has no Python, so pass its environment to a Python container instead. The raw environment only travels through the pipe; only the redacted dump is printed:
+
+```bash
+docker compose exec osprey-coordinator cat /proc/1/environ \
+  | docker compose exec -T osprey-worker uv run osprey-config dump --component coordinator --env-file - \
+  > coordinator-config.json
+```
+
+The UI's settings (`REACT_APP_*`) are fixed at build time and public in its JavaScript bundle; dump them from the build environment with `--component ui --env-file`.
+
+Read the output before posting it. Redaction is fail-closed, but it can only catch what looks like a secret. Rules (SML) and per-entity data are not part of the dump.
