@@ -10,7 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Added
 
-- `osprey-config dump` prints the effective configuration with secrets redacted, for bug reports ([#PR](https://github.com/roostorg/osprey/pull/PR) by [@reitblatt](https://github.com/reitblatt))
+- `osprey-config dump` prints the effective configuration with secrets redacted, for bug reports ([#573](https://github.com/roostorg/osprey/pull/573) by [@reitblatt](https://github.com/reitblatt))
 
 ### Fixed
 
