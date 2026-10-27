@@ -144,3 +144,26 @@ jobs:
         run: cargo test --verbose
         working-directory: osprey_coordinator
         continue-on-error: true
+
+  compose-config:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate default stack
+        run: docker compose -f docker-compose.yaml --profile test_data config --quiet
+
+      - name: Validate test overlay
+        run: docker compose -f docker-compose.yaml -f docker-compose.test.yaml --profile test config --quiet
+
+      - name: Validate ATProto overlay
+        run: docker compose -f docker-compose.yaml -f docker-compose.atproto.yaml config --quiet
+
+      - name: Validate coordinator overlay
+        run: docker compose -f docker-compose.yaml -f example_docker_compose/run_osprey_with_coordinator/docker-compose.coordinator.yaml --profile coordinator_test_data config --quiet
+
+      - name: Validate async worker stack
+        run: docker compose -f docker-compose.async-worker.yaml config --quiet
