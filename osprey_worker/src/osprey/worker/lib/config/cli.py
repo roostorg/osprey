@@ -9,7 +9,7 @@ from typing import TextIO
 
 import click
 from osprey.worker.lib.config.catalog import ALL_COMPONENTS, PYTHON_COMPONENTS
-from osprey.worker.lib.config.dump import build_dump, git_commit, parse_env_file, render
+from osprey.worker.lib.config.dump import app_commit, app_version, build_dump, parse_env_file, render
 
 
 @click.group()
@@ -35,7 +35,11 @@ def cli() -> None:
 def dump(components: tuple[str, ...], env_file: TextIO | None, output_format: str) -> None:
     """Print the effective configuration with secrets redacted, for pasting into bug reports."""
     env = parse_env_file(env_file.read()) if env_file is not None else dict(os.environ)
-    click.echo(render(build_dump(env, components or PYTHON_COMPONENTS, commit=git_commit()), output_format), nl=False)
+    # The image's build info comes from this process even when dumping another one via --env-file.
+    dump = build_dump(
+        env, components or PYTHON_COMPONENTS, version=app_version(os.environ), commit=app_commit(os.environ)
+    )
+    click.echo(render(dump, output_format), nl=False)
 
 
 if __name__ == '__main__':

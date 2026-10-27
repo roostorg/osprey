@@ -1,12 +1,23 @@
 import json
 from datetime import UTC, datetime
+from importlib import metadata
 from pathlib import Path
 
+import pytest
 import yaml
 from click.testing import CliRunner
+from osprey.worker.lib.config import dump as dump_module
 from osprey.worker.lib.config.catalog import CATALOG, PYTHON_COMPONENTS, ConfigKey
 from osprey.worker.lib.config.cli import cli
-from osprey.worker.lib.config.dump import build_config, build_dump, config_entry, parse_env_file, render
+from osprey.worker.lib.config.dump import (
+    app_commit,
+    app_version,
+    build_config,
+    build_dump,
+    config_entry,
+    parse_env_file,
+    render,
+)
 from osprey.worker.lib.config.redaction import REDACTED
 
 # Mirrors the osprey-ui-api / osprey-worker environment in docker-compose.yaml, plus secrets of every shape.
@@ -38,6 +49,7 @@ def _dump(env: dict[str, str] = ENV) -> dict[str, object]:
         env,
         PYTHON_COMPONENTS,
         now=datetime(2026, 10, 27, tzinfo=UTC),
+        version='1.2.1',
         commit='3cac93be2002b45c77a2d47038aa74648e2d9b8f',
         plugins=['stdlib'],
     )
@@ -92,7 +104,7 @@ def test_dump_shape() -> None:
     assert dump['generated_at'] == '2026-10-27T00:00:00+00:00'
     assert dump['app'] == {
         'name': 'osprey',
-        'version': dump['app']['version'],  # type: ignore[index]
+        'version': '1.2.1',
         'commit': '3cac93be2002b45c77a2d47038aa74648e2d9b8f',
     }
     assert set(dump['runtime']) == {'python', 'platform'}  # type: ignore[arg-type]
@@ -153,3 +165,20 @@ def test_cli_dump_yaml_from_stdin() -> None:
     result = CliRunner().invoke(cli, ['dump', '--format', 'yaml', '--env-file', '-'], input='DRUID_URL=http://d:1\n')
     assert result.exit_code == 0, result.output
     assert yaml.safe_load(result.output)['config']['ui_api']['DRUID_URL']['value'] == 'http://d:1'
+
+
+def test_app_version_and_commit_from_build_args(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert app_version({'OSPREY_VERSION': '1.2.1'}) == '1.2.1'
+    assert app_commit({'OSPREY_COMMIT': 'abc123'}) == 'abc123'
+    # An image built without the args has them set to ''; fall back to the package and checkout.
+    monkeypatch.setattr(dump_module, 'git_commit', lambda: None)
+    assert app_commit({'OSPREY_COMMIT': ''}) is None
+    assert app_version({'OSPREY_VERSION': ''}) == metadata.version('osprey-worker')
+
+
+def test_cli_reports_build_args(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('OSPREY_VERSION', '1.2.1')
+    monkeypatch.setenv('OSPREY_COMMIT', 'abc123')
+    result = CliRunner().invoke(cli, ['dump', '--env-file', '-'], input='')
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output)['app'] == {'name': 'osprey', 'version': '1.2.1', 'commit': 'abc123'}
