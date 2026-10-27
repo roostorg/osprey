@@ -23,6 +23,7 @@ Reference files: `docs/development/local.md` (setup), `example_plugins/src/regis
 - API: gRPC between `osprey_coordinator` and workers; HTTP/Flask for `osprey-ui-api` (port 5004); protobuf definitions under `proto/osprey/rpc/` are authoritative.
 - Rules: SML (Osprey's rule language) with user-defined functions registered via pluggy hooks (`@hookimpl_osprey`): `register_udfs`, `register_output_sinks`, `register_labels_service_or_provider`, `register_input_stream` (custom event source; see `example_atproto_plugins/`).
 - Data model conventions: Pydantic for models, SQLAlchemy for persistence (versions pinned in `pyproject.toml`).
+- Config: environment variables, read via `Config.get_*` / `expect_*` (`osprey_worker/src/osprey/worker/lib/config/`) or `os.environ`; the coordinator reads env vars and clap flags. When you add, rename or remove a config key (Python, coordinator or `REACT_APP_*`), update `osprey_worker/src/osprey/worker/lib/config/catalog.py` (default, and `sensitive=` if the name alone doesn't say). `test_config_catalog.py` fails on uncatalogued keys.
 
 ## Build and run
 
@@ -178,6 +179,7 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 - Do not disable lint or type rules to silence errors. Fix the underlying issue, or use a narrowly-scoped `# noqa: <code>` / `# type: ignore[<code>]` with a comment explaining why.
 - Before adding a new dependency, check it for known CVEs and confirm the license is compatible with `LICENSE.md`.
 - Do not commit generated protobuf files from an untrusted toolchain; always regenerate via `./gen-protos.sh`.
+- To inspect a running service's configuration, use `docker compose exec <service> uv run osprey-config dump` (redacted JSON; see `docs/development/troubleshooting.md#sharing-your-configuration`), not `env` or `docker inspect`, which print secrets.
 - Default Docker bindings are `127.0.0.1`; do not change bind addresses without explicit instruction (see `docs/development/local.md` §6).
 
 ## Code review

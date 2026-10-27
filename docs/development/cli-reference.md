@@ -50,6 +50,53 @@ osprey-cli bulk-apply-label ENTITY_TYPE ENTITY_IDS_FILE_PATH LABEL_NAME LABEL_ST
 
 Same as `apply-label`, but reads entity IDs (one per line) from `ENTITY_IDS_FILE_PATH` and applies the label to all of them, printing progress as it goes. This is the CLI path for importing bulk label lists from external sources; see also the UI-driven [Bulk Actions](../user/operate.md#bulk-actions) workflow.
 
+## osprey-config
+
+Installed by `osprey_worker` (`osprey.worker.lib.config.cli:cli`). It doesn't monkey-patch or import the rules engine, so it runs in any Osprey container without side effects.
+
+### osprey-config dump
+
+```bash
+osprey-config dump [--component COMPONENT ...] [--env-file PATH|-] [--format {json,yaml}]
+```
+
+Prints the effective configuration as sorted JSON (or YAML) with secrets redacted, for pasting into bug reports. See [Sharing your configuration](troubleshooting.md#sharing-your-configuration) for how to run it against each service.
+
+- `--component`: `common`, `worker`, `ui_api`, `async_worker`, `coordinator` or `ui`; repeatable. Defaults to the Python components (`common`, `worker`, `ui_api`, `async_worker`).
+- `--env-file`: read the environment from a file (`-` for stdin) instead of the current process. Accepts `KEY=VALUE` lines or the NUL-separated contents of `/proc/<pid>/environ`. Use it for processes that can't run Python, such as the coordinator.
+- `--format`: `json` (default) or `yaml`.
+
+Output:
+
+```json
+{
+  "app": {"commit": "3cac93be…", "name": "osprey", "version": "0.1.0"},
+  "config": {
+    "common": {
+      "OSPREY_MINIO_SECRET_KEY": {"redacted": true, "set": true, "source": "env", "value": "[REDACTED]"},
+      "POSTGRES_HOSTS": {
+        "redacted": true, "set": true, "source": "env",
+        "value": {"osprey_db": "postgresql://osprey:[REDACTED]@postgres:5432/osprey"}
+      },
+      "SNOWFLAKE_EPOCH": {"set": false, "source": "default", "value": 0}
+    }
+  },
+  "generated_at": "2026-10-27T16:13:15+00:00",
+  "plugins": ["stdlib"],
+  "runtime": {"platform": "Linux-…-x86_64", "python": "3.11.9"},
+  "schema_version": 1
+}
+```
+
+Each key reports `value`, `set` (present in the environment), `source` (`env`; `default`, the code's fallback; or `derived`, a fallback computed at runtime) and `redacted: true` when anything was masked. Only keys listed in `osprey_worker/src/osprey/worker/lib/config/catalog.py` are reported; other environment variables are never printed. Redaction is fail-closed:
+
+- Keys whose names contain a sensitive word (`secret`, `token`, `password`, `key`, `auth`, `dsn`, `cert`, `private`, `signing`, `salt`, `session`, `cookie`, `webhook`, `header`, `credentials`, service accounts, …) show `[REDACTED]`, including their defaults. Unset or empty values are shown as they are.
+- URLs keep scheme, host, port and path; the password (or a password-less username, usually a token) and sensitive query parameters are masked: `postgresql://osprey:[REDACTED]@postgres:5432/osprey`.
+- PEM blocks, JWTs, service-account JSON and long random-looking strings are replaced entirely.
+- JSON values are walked, applying the same rules to their keys and values.
+
+The coop config dump uses the same output shape and rules.
+
 ## osprey-stress
 
 Installed by `osprey_worker` (`osprey.worker.stress.cli:main`). Runs an end-to-end stress test against a live Osprey worker: produces synthetic events, consumes the resulting execution results, and reports drop rate and latency. Useful for validating dependency bumps, measuring throughput regressions, and gating CI on pipeline health.
