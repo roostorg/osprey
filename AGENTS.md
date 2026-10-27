@@ -166,6 +166,13 @@ uv tool run fawltydeps --check-unused --pyenv .venv
   cargo build --verbose
   cargo test --verbose )
 
+# code-quality.yml → compose-config
+docker compose -f docker-compose.yaml --profile test_data config --quiet
+docker compose -f docker-compose.yaml -f docker-compose.test.yaml --profile test config --quiet
+docker compose -f docker-compose.yaml -f docker-compose.atproto.yaml config --quiet
+docker compose -f docker-compose.yaml -f example_docker_compose/run_osprey_with_coordinator/docker-compose.coordinator.yaml --profile coordinator_test_data config --quiet
+docker compose -f docker-compose.async-worker.yaml config --quiet
+
 # integration-tests.yml
 ./run-tests.sh
 ```
