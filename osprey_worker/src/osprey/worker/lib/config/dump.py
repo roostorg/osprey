@@ -97,6 +97,16 @@ def _distribution_version(name: str) -> str | None:
         return None
 
 
+def app_version(env: Mapping[str, str]) -> str | None:
+    """`OSPREY_VERSION` (an image build arg), else the installed package's version."""
+    return env.get('OSPREY_VERSION') or _distribution_version('osprey-worker')
+
+
+def app_commit(env: Mapping[str, str]) -> str | None:
+    """`OSPREY_COMMIT` (an image build arg), else the source checkout's commit."""
+    return env.get('OSPREY_COMMIT') or git_commit()
+
+
 def git_commit() -> str | None:
     """The commit of the source checkout, if Osprey runs from one (the dev stack mounts the repo)."""
     try:
@@ -119,13 +129,14 @@ def build_dump(
     components: Iterable[str],
     *,
     now: datetime | None = None,
+    version: str | None = None,
     commit: str | None = None,
     plugins: list[str] | None = None,
 ) -> dict[str, Any]:
     return {
         'schema_version': SCHEMA_VERSION,
         'generated_at': (now or datetime.now(UTC)).isoformat(timespec='seconds'),
-        'app': {'name': 'osprey', 'version': _distribution_version('osprey-worker'), 'commit': commit},
+        'app': {'name': 'osprey', 'version': version, 'commit': commit},
         'runtime': {'python': platform.python_version(), 'platform': platform.platform()},
         'plugins': plugins if plugins is not None else enabled_plugins(),
         'config': build_config(env, components),

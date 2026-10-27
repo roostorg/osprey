@@ -66,6 +66,8 @@ Prints the effective configuration as sorted JSON (or YAML) with secrets redacte
 - `--env-file`: read the environment from a file (`-` for stdin) instead of the current process. Accepts `KEY=VALUE` lines or the NUL-separated contents of `/proc/<pid>/environ`. Use it for processes that can't run Python, such as the coordinator.
 - `--format`: `json` (default) or `yaml`.
 
+`app.version` and `app.commit` come from `OSPREY_VERSION` and `OSPREY_COMMIT` when set (for example from image build args). Otherwise they fall back to the installed package version and the source checkout's `git` commit, or `null`.
+
 Output:
 
 ```json
