@@ -1,7 +1,7 @@
 name: License Check (Rust)
 on:
+  # Any base branch, so stacked PRs (based on another PR's branch) get CI too.
   pull_request:
-    branches: [main]
     paths:
       - 'osprey_coordinator/**/Cargo.toml'
       - '.github/allowed-licenses.txt'
