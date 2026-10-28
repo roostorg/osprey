@@ -1,4 +1,4 @@
-"""Builds the redacted effective-configuration dump printed by `osprey-config dump`.
+"""Builds the redacted effective-configuration dump printed by `osprey-cli config dump`.
 
 The output shape is shared with coop's config dump:
 

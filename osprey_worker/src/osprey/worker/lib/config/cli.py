@@ -1,8 +1,4 @@
-"""`osprey-config`: inspect Osprey's configuration.
-
-Deliberately light: it doesn't monkey-patch, start tracing or import the engine, so it runs in any Osprey container
-(or against another process's environment via `--env-file`) without side effects.
-"""
+"""`osprey-cli config`: inspect Osprey's configuration."""
 
 import os
 from typing import TextIO
@@ -13,11 +9,11 @@ from osprey.worker.lib.config.dump import app_commit, app_version, build_dump, p
 
 
 @click.group()
-def cli() -> None:
+def config() -> None:
     """Inspect Osprey's configuration."""
 
 
-@cli.command()
+@config.command()
 @click.option(
     '--component',
     'components',
@@ -40,7 +36,3 @@ def dump(components: tuple[str, ...], env_file: TextIO | None, output_format: st
         env, components or PYTHON_COMPONENTS, version=app_version(os.environ), commit=app_commit(os.environ)
     )
     click.echo(render(dump, output_format), nl=False)
-
-
-if __name__ == '__main__':
-    cli()

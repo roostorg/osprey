@@ -1,4 +1,6 @@
 import json
+import subprocess
+import sys
 from datetime import UTC, datetime
 from importlib import metadata
 from pathlib import Path
@@ -8,7 +10,7 @@ import yaml
 from click.testing import CliRunner
 from osprey.worker.lib.config import dump as dump_module
 from osprey.worker.lib.config.catalog import CATALOG, PYTHON_COMPONENTS, ConfigKey
-from osprey.worker.lib.config.cli import cli
+from osprey.worker.lib.config.cli import config as cli
 from osprey.worker.lib.config.dump import (
     app_commit,
     app_version,
@@ -182,3 +184,15 @@ def test_cli_reports_build_args(monkeypatch: pytest.MonkeyPatch) -> None:
     result = CliRunner().invoke(cli, ['dump', '--env-file', '-'], input='')
     assert result.exit_code == 0, result.output
     assert json.loads(result.output)['app'] == {'name': 'osprey', 'version': '1.2.1', 'commit': 'abc123'}
+
+
+def test_osprey_cli_config_dump_prints_only_json() -> None:
+    # Fresh interpreter, like the console script: import-time output on stdout would break `> config.json`.
+    result = subprocess.run(
+        [sys.executable, '-c', 'import sys; from osprey.worker.lib.cli import cli; sys.exit(cli())', 'config', 'dump'],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)['app']['name'] == 'osprey'

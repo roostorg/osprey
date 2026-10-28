@@ -50,14 +50,10 @@ osprey-cli bulk-apply-label ENTITY_TYPE ENTITY_IDS_FILE_PATH LABEL_NAME LABEL_ST
 
 Same as `apply-label`, but reads entity IDs (one per line) from `ENTITY_IDS_FILE_PATH` and applies the label to all of them, printing progress as it goes. This is the CLI path for importing bulk label lists from external sources; see also the UI-driven [Bulk Actions](../user/operate.md#bulk-actions) workflow.
 
-## osprey-config
-
-Installed by `osprey_worker` (`osprey.worker.lib.config.cli:cli`). It doesn't monkey-patch or import the rules engine, so it runs in any Osprey container without side effects.
-
-### osprey-config dump
+### osprey-cli config dump
 
 ```bash
-osprey-config dump [--component COMPONENT ...] [--env-file PATH|-] [--format {json,yaml}]
+osprey-cli config dump [--component COMPONENT ...] [--env-file PATH|-] [--format {json,yaml}]
 ```
 
 Prints the effective configuration as sorted JSON (or YAML) with secrets redacted, for pasting into bug reports. See [Sharing your configuration](troubleshooting.md#sharing-your-configuration) for how to run it against each service.

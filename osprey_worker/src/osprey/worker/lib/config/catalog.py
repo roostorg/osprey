@@ -1,4 +1,4 @@
-"""Catalog of the configuration keys Osprey reads, for `osprey-config dump`.
+"""Catalog of the configuration keys Osprey reads, for `osprey-cli config dump`.
 
 Osprey's Python config is the process environment (see `config_from_env`), read through `Config.get_*` /
 `expect_*` and `os.environ` at call sites across the codebase. The dump only reports keys listed here, never the
