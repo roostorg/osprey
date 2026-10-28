@@ -211,6 +211,7 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 ## CD
 
 - Releases are cut by publishing a GitHub Release; the tag triggers `.github/workflows/release-osprey-rpc.yml` to build and attach the `osprey_rpc` sdist. Tags follow semver with no `v` prefix (`MAJOR.MINOR.PATCH`, e.g. `1.1.0`); see `docs/development/releases.md`.
+- Security (hotfix) releases follow `docs/development/security-releases.md`.
 - Coordinator image publishes to `ghcr.io` via `.github/workflows/publish-coordinator-image.yml` on push to `main` and on release.
 - mdBook docs deploy via `.github/workflows/mdbook.yml` to GitHub Pages on push to `main`.
 - Release/deploy workflows, production Dockerfiles, and signing/tagging are restricted — see "Human-approval-required actions" below.
