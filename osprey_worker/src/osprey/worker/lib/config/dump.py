@@ -97,13 +97,13 @@ def _distribution_version(name: str) -> str | None:
         return None
 
 
-def app_version(env: Mapping[str, str]) -> str | None:
-    """`OSPREY_VERSION` (an image build arg), else the installed package's version."""
-    return env.get('OSPREY_VERSION') or _distribution_version('osprey-worker')
+def app_version() -> str | None:
+    """The installed package's version, which release prep sets to the release's tag."""
+    return _distribution_version('osprey-worker')
 
 
 def app_commit(env: Mapping[str, str]) -> str | None:
-    """`OSPREY_COMMIT` (an image build arg), else the source checkout's commit."""
+    """`OSPREY_COMMIT` if the deployment sets it, else the commit of the source checkout Osprey runs from."""
     return env.get('OSPREY_COMMIT') or git_commit()
 
 
