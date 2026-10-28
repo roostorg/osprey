@@ -13,6 +13,13 @@ It follows the dependency vulnerability process proposed in [roostorg/community#
 
 Osprey publishes only the coordinator image. There is no published worker or UI image: adopters build those from the repository (or from the compose files), so a fix in the worker or UI reaches them through the release tag and their own rebuild, not through a new image.
 
+## Before you start
+
+- [ ] **Triage is done.** The on-duty maintainer has answered the four triage questions from the RFC (do we ship the vulnerable version, and in which releases; is it reachable; is it exploitable in the default configuration; is it known exploited or likely to be) and the outcome is "fix now".
+- [ ] **You know which path you're on:**
+  - **Undisclosed vulnerability** (reported to us privately, or found by us, and not yet public): use the [private fork](#undisclosed-vulnerability-private-fork) path.
+  - **Public upstream CVE** (already published by the upstream project): use a [normal PR](#public-upstream-cve-normal-pr). There is no embargo to protect.
+
 Proposed response targets, from the RFC:
 
 | Situation | Triage | Fix or mitigate | Communication |
@@ -25,14 +32,7 @@ Proposed response targets, from the RFC:
 
 Moderate, low and tier 4 items don't need this runbook: they go out in the next normal release with a changelog entry.
 
-## Before you start
-
-- [ ] **Triage is done.** The on-duty maintainer has answered the four triage questions from the RFC (do we ship the vulnerable version, and in which releases; is it reachable; is it exploitable in the default configuration; is it known exploited or likely to be) and the outcome is "fix now".
-- [ ] **You know which path you're on:**
-  - **Undisclosed vulnerability** (reported to us privately, or found by us, and not yet public): use the [private fork](#undisclosed-vulnerability-private-fork) path.
-  - **Public upstream CVE** (already published by the upstream project): use a [normal PR](#public-upstream-cve-normal-pr). There is no embargo to protect.
-
-Either way, reachability and exploitability details stay private until a fix is released. Keep them in the draft advisory or the private triage queue, not in a public issue, PR description, commit message or changelog entry.
+Reachability and exploitability details stay in the draft advisory or the private triage queue until the fix is released. Never put them in a public issue, PR, commit message or changelog entry.
 
 ## 1. Prepare the fix
 
@@ -48,7 +48,8 @@ Either way, reachability and exploitability details stay private until a fix is 
    ./run-tests.sh
    ```
 
-5. **Merge pull request(s)** from the advisory page only when you are ready to release: merging makes the fix public on `main`. Do steps 2–3 below first, then merge and release promptly.
+5. Make the [version and changelog changes](#3-bump-the-version-and-changelog) in the private fork PR too, instead of a separate public release-prep PR, so nothing about the fix is public before the release.
+6. **Merge pull request(s)** from the advisory page only when you are ready to release: merging makes the fix public on `main`. Tag and publish the release (step 4) right after.
 
 If the vulnerability isn't public yet, request a CVE from the draft advisory (see [step 6](#6-publish-the-advisory)).
 
@@ -71,12 +72,12 @@ If `main` has unreleased changes (check the `## [Unreleased]` section of [CHANGE
 
 - Adopters get only the fix, as a patch release.
 - The `Code Quality Checks` and `Integration Tests` workflows only run on pull requests to `main` and pushes to `main`, so they won't run on the release branch: run them locally (see [CI](https://github.com/roostorg/osprey/blob/main/AGENTS.md#ci) in `AGENTS.md`) before tagging.
-- The fix still has to land on `main`, and the release's CHANGELOG section has to be added to `main` too, so the next release's changelog stays complete.
+- After the release, open a follow-up PR to `main` that cherry-picks the fix and adds the release's CHANGELOG section, so the next release's changelog stays complete.
 - This is a backport, which `releases.md` currently says we don't do; adopting this option changes that policy.
 
 ## 3. Bump the version and changelog
 
-Use the release-prep pull request from [Preparing a release](releases.md#preparing-a-release) (against the release base from step 2), with these additions:
+Use the release-prep pull request from [Preparing a release](releases.md#preparing-a-release) (against the release base from step 2); for an undisclosed vulnerability, make these changes in the private fork PR instead. Either way, with these additions:
 
 - **Version:** a patch release (`x.y.Z`) under option B, or under option A when the unreleased changes allow it; otherwise the next minor.
 - **Changelog:** add the fix under `### Security` in the new release's section (adding the heading if it's missing). Keep it to one line naming the dependency, the versions, and the advisory, for example:
@@ -89,7 +90,7 @@ Use the release-prep pull request from [Preparing a release](releases.md#prepari
 
   For an undisclosed vulnerability, link our own advisory instead. Under the proposed communication rules, a tier 1 fix that isn't exploitable gets this changelog entry and no advisory.
 
-- **Milestone:** create a milestone for the release (e.g. `1.2.2`) if there isn't one, and attach the fix and the release-prep PR, as in [Milestones](releases.md#milestones). For an undisclosed vulnerability, the private fork PR can't be attached; attach the release-prep PR only.
+- **Milestone:** create a milestone for the release (e.g. `1.2.2`) if there isn't one, and attach the fix and the release-prep PR, as in [Milestones](releases.md#milestones). For an undisclosed vulnerability, the private fork PR can't be attached; attach the merged commit's PR once it is public, or leave the milestone empty.
 
 ## 4. Tag and publish the release
 
