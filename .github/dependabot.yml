@@ -64,11 +64,8 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
-    groups:
-      docker-images-security:
-        applies-to: "security-updates"
-        patterns:
-          - "*"
+    # No security-updates group: Dependabot doesn't support security updates for
+    # Docker, so base images only move through the weekly version updates.
 
   - package-ecosystem: "github-actions"
     directory: "/"
