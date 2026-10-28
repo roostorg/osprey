@@ -32,7 +32,5 @@ def dump(components: tuple[str, ...], env_file: TextIO | None, output_format: st
     """Print the effective configuration with secrets redacted, for pasting into bug reports."""
     env = parse_env_file(env_file.read()) if env_file is not None else dict(os.environ)
     # The image's build info comes from this process even when dumping another one via --env-file.
-    dump = build_dump(
-        env, components or PYTHON_COMPONENTS, version=app_version(os.environ), commit=app_commit(os.environ)
-    )
+    dump = build_dump(env, components or PYTHON_COMPONENTS, version=app_version(), commit=app_commit(os.environ))
     click.echo(render(dump, output_format), nl=False)

@@ -169,21 +169,24 @@ def test_cli_dump_yaml_from_stdin() -> None:
     assert yaml.safe_load(result.output)['config']['ui_api']['DRUID_URL']['value'] == 'http://d:1'
 
 
-def test_app_version_and_commit_from_build_args(monkeypatch: pytest.MonkeyPatch) -> None:
-    assert app_version({'OSPREY_VERSION': '1.2.1'}) == '1.2.1'
+def test_app_version_and_commit(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert app_version() == metadata.version('osprey-worker')
     assert app_commit({'OSPREY_COMMIT': 'abc123'}) == 'abc123'
-    # An image built without the args has them set to ''; fall back to the package and checkout.
+    # Unset or empty: the checkout's commit, or None outside a checkout (e.g. in an image).
     monkeypatch.setattr(dump_module, 'git_commit', lambda: None)
     assert app_commit({'OSPREY_COMMIT': ''}) is None
-    assert app_version({'OSPREY_VERSION': ''}) == metadata.version('osprey-worker')
+    assert app_commit({}) is None
 
 
-def test_cli_reports_build_args(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('OSPREY_VERSION', '1.2.1')
+def test_cli_reports_osprey_commit(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('OSPREY_COMMIT', 'abc123')
     result = CliRunner().invoke(cli, ['dump', '--env-file', '-'], input='')
     assert result.exit_code == 0, result.output
-    assert json.loads(result.output)['app'] == {'name': 'osprey', 'version': '1.2.1', 'commit': 'abc123'}
+    assert json.loads(result.output)['app'] == {
+        'name': 'osprey',
+        'version': metadata.version('osprey-worker'),
+        'commit': 'abc123',
+    }
 
 
 def test_osprey_cli_config_dump_prints_only_json() -> None:

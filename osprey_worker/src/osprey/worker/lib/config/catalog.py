@@ -48,8 +48,7 @@ CATALOG: tuple[ConfigKey, ...] = (
     _key('DEBUG', COMMON, default=False),
     _key('TESTING', COMMON, default=False),
     _key('ENVIRONMENT', COMMON),
-    _key('OSPREY_VERSION', COMMON),  # set from image build args; reported as app.version / app.commit
-    _key('OSPREY_COMMIT', COMMON),
+    _key('OSPREY_COMMIT', COMMON),  # reported as app.commit
     _key('BASE_URL', COMMON, default='https://localhost'),
     _key('OSPREY_PYTHON_LOG_HANDLER', COMMON),
     _key('OSPREY_DD_LOGGING', COMMON, default=True),

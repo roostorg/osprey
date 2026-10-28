@@ -62,13 +62,13 @@ Prints the effective configuration as sorted JSON (or YAML) with secrets redacte
 - `--env-file`: read the environment from a file (`-` for stdin) instead of the current process. Accepts `KEY=VALUE` lines or the NUL-separated contents of `/proc/<pid>/environ`. Use it for processes that can't run Python, such as the coordinator.
 - `--format`: `json` (default) or `yaml`.
 
-`app.version` and `app.commit` come from `OSPREY_VERSION` and `OSPREY_COMMIT` when set (for example from image build args). Otherwise they fall back to the installed package version and the source checkout's `git` commit, or `null`.
+`app.version` is the installed `osprey-worker` package version, which matches the release tag. `app.commit` is `OSPREY_COMMIT` if your deployment sets it; otherwise it is the `git` commit when run from a source checkout, and `null` elsewhere (images don't include the repository).
 
 Output:
 
 ```json
 {
-  "app": {"commit": "3cac93be…", "name": "osprey", "version": "0.1.0"},
+  "app": {"commit": null, "name": "osprey", "version": "1.2.1"},
   "config": {
     "common": {
       "OSPREY_MINIO_SECRET_KEY": {"redacted": true, "set": true, "source": "env", "value": "[REDACTED]"},
