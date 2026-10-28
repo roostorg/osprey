@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Added
+
+- CycloneDX SBOMs for the coordinator image, its Rust crates and osprey-rpc attached to each release ([#583](https://github.com/roostorg/osprey/pull/583) by [@reitblatt](https://github.com/reitblatt))
+
 ### Fixed
 
 - UI query filters now escape every apostrophe and backslash in string feature values, not just the first apostrophe ([#472](https://github.com/roostorg/osprey/pull/472) by [@cassidyjames](https://github.com/cassidyjames))
