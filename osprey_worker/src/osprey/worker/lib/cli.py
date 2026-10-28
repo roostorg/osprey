@@ -18,6 +18,7 @@ configure_logging()
 # Import safety record and common protos
 from osprey.engine.ast.sources import Sources  # noqa: E402
 from osprey.engine.language_types.entities import EntityT  # noqa: E402
+from osprey.worker.lib.config.cli import config  # noqa: E402
 from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation, LabelStatus  # noqa: E402
 from osprey.worker.lib.singletons import LABELS_PROVIDER  # noqa: E402
 from osprey.worker.lib.sources_publisher import (  # noqa: E402
@@ -35,6 +36,9 @@ from osprey.worker.lib.utils.click_utils import EnumChoice  # noqa: E402
 @click.group()
 def cli():
     pass
+
+
+cli.add_command(config)
 
 
 class CliCommandProgressTracker:

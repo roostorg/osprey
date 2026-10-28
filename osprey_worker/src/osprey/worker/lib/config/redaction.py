@@ -1,4 +1,4 @@
-"""Redaction of configuration values for `osprey-config dump`.
+"""Redaction of configuration values for `osprey-cli config dump`.
 
 Everything here is pure: no I/O, no logging. Rules, applied fail-closed:
 

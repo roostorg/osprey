@@ -179,7 +179,7 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 - Do not disable lint or type rules to silence errors. Fix the underlying issue, or use a narrowly-scoped `# noqa: <code>` / `# type: ignore[<code>]` with a comment explaining why.
 - Before adding a new dependency, check it for known CVEs and confirm the license is compatible with `LICENSE.md`.
 - Do not commit generated protobuf files from an untrusted toolchain; always regenerate via `./gen-protos.sh`.
-- To inspect a running service's configuration, use `docker compose exec <service> uv run osprey-config dump` (redacted JSON; see `docs/development/troubleshooting.md#sharing-your-configuration`), not `env` or `docker inspect`, which print secrets.
+- To inspect a running service's configuration, use `docker compose exec <service> uv run osprey-cli config dump` (redacted JSON; see `docs/development/troubleshooting.md#sharing-your-configuration`), not `env` or `docker inspect`, which print secrets.
 - Default Docker bindings are `127.0.0.1`; do not change bind addresses without explicit instruction (see `docs/development/local.md` §6).
 
 ## Code review

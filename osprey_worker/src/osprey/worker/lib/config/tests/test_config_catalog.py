@@ -1,5 +1,5 @@
 """Keeps `catalog.py` in sync with the code: every config key read anywhere must be catalogued, or
-`osprey-config dump` silently omits it.
+`osprey-cli config dump` silently omits it.
 
 The Python side is scanned with `ast`; the coordinator (Rust) and UI with regexes. Sources outside
 `osprey_worker` are skipped when absent (the integration-test container only mounts `osprey_worker`).
