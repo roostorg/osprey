@@ -39,7 +39,7 @@ Then open a release-prep pull request to:
 
 2. Update the compare links at the bottom of CHANGELOG.md: ensure the “Unreleased” link points to the comparison link between this release and main, and there's a new link for this release
 
-3. Set `version` to the release version in the Python packages' `pyproject.toml` files (`osprey_worker`, `osprey_async_worker` and `osprey_rpc`), then run `uv lock` and commit the updated `uv.lock`. Installed packages report this version, so it must match the tag
+3. Set `version` to the release version in every package, so they all match the tag: the `pyproject.toml` files of `osprey_worker`, `osprey_async_worker`, `osprey_rpc`, `example_plugins` and `example_atproto_plugins`, and `osprey_coordinator/Cargo.toml`. Then run `uv lock` and commit the updated `uv.lock` (`Cargo.lock` isn't committed)
 
 **Merge this PR _before_ creating the tag** so the tagged commit includes the release's changelog and version.
 
