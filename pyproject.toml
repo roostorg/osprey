@@ -31,7 +31,7 @@ common = [
     "grpcio-reflection==1.44.0",
     "grpcio-status==1.82.1",
     "grpcio-tools==1.82.1",
-    "gunicorn",
+    "gunicorn==23.0.0",
     "intervals==0.9.2",
     "jsonpath-rw",
     "kafka-python==1.4.7",
@@ -116,7 +116,6 @@ default-groups = ["common", "dev"]
 
 [tool.uv.sources]
 greenlet = { git = "https://github.com/discord/greenlet.git", rev = "a75d78f1547c74a81134644a179467525a255466" }
-gunicorn = { git = "https://github.com/discord/gunicorn.git", rev = "979efdcb918daa536d8923668241c6e6bf1edb58" }
 jsonpath-rw = { git = "https://github.com/kennknowles/python-jsonpath-rw.git", rev = "6f5647bb3ad2395c20f0191fef07a1df51c9fed8" }
 osprey_rpc = { workspace = true }
 osprey_worker = { workspace = true }
