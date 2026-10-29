@@ -1,6 +1,6 @@
 [project]
 name = "example_plugins"
-version = "0.1.0"
+version = "1.2.1"
 description = "Example plugins for Osprey"
 requires-python = ">=3.11"
 dependencies = [
