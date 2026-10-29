@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Added
+
+- `osprey-cli config dump` prints the effective configuration with secrets redacted, for bug reports ([#573](https://github.com/roostorg/osprey/pull/573) by [@reitblatt](https://github.com/reitblatt))
+
 ### Fixed
 
 - `osprey-cli` no longer crashes at import with gevent's "cannot release un-acquired lock" ([#574](https://github.com/roostorg/osprey/pull/574) by [@reitblatt](https://github.com/reitblatt))
