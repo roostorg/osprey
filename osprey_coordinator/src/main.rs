@@ -72,7 +72,14 @@ struct CliOptions {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
+    // Keep the timestamp format tracing-subscriber 0.2 used, in case log
+    // consumers parse it.
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_timer(tracing_subscriber::fmt::time::ChronoLocal::new(
+            "%b %d %H:%M:%S%.3f".to_string(),
+        ))
+        .init();
     let opts = CliOptions::parse();
 
     tracing::info!("starting Osprey Coordinator");
