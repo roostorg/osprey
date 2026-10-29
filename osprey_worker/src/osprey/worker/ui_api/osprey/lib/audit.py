@@ -3,6 +3,7 @@ import json
 from flask import Response, request
 from osprey.worker.lib.snowflake import generate_snowflake
 from osprey.worker.lib.storage.access_audit_log import AccessAuditLog
+from osprey.worker.lib.utils.flask_utils import canonical_endpoint
 from werkzeug.datastructures import Headers
 
 # To handle case insensitivity, ensure these are normalized to lower case.
@@ -23,7 +24,7 @@ def audit_request(response: Response) -> Response:
     NOTE: This will only be called for successful requests. If we want audit logs for requests that fail we can use
     Flask's `teardown_request` method as well.
     """
-    if request.endpoint in _AUDIT_EXEMPT_ENDPOINTS:
+    if canonical_endpoint(request.endpoint) in _AUDIT_EXEMPT_ENDPOINTS:
         return response
 
     AccessAuditLog(

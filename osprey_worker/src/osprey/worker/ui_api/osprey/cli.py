@@ -22,7 +22,6 @@ os.environ.update(
     BIGTABLE_EMULATOR_HOST='localhost:8361',
     DEBUG='true',
     FLASK_DEBUG='1',
-    FLASK_ENV='development',
     DRUID_URL='http://localhost:8082',
     POSTGRES_HOSTS='{"osprey_db": "postgresql://localhost/osprey_db"}',
 )

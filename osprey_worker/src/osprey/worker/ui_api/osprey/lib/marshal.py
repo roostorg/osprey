@@ -51,13 +51,13 @@ class ViewArgMarshaller(FlaskRequestMarshaller):
 class ViewArgAndJsonBodyMarshaller(FlaskRequestMarshaller):
     @classmethod
     def marshal(cls: Type[T], flask_request: Request) -> T:
-        return cls.parse_obj({**request.view_args, **request.get_json(force=True)})
+        return cls.parse_obj({**(request.view_args or {}), **request.get_json(force=True)})
 
 
 class ArgAndViewArgMarshaller(FlaskRequestMarshaller):
     @classmethod
     def marshal(cls: Type[T], flask_request: Request) -> T:
-        return cls.parse_obj({**request.view_args, **request.args})
+        return cls.parse_obj({**(request.view_args or {}), **request.args})
 
 
 def marshal_with(model: Type[T]) -> Callable[[Callable[[T], Any]], Callable[[T], Any]]:
