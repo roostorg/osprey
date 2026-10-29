@@ -39,7 +39,7 @@ export const getChartOptions = (
       type: 'value',
       min: 0,
       axisLabel: {
-        formatter: (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+        formatter: (value: number) => value.toLocaleString(undefined, { maximumFractionDigits: 0 }),
       },
     },
     tooltip: {
