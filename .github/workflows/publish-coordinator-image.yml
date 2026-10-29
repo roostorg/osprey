@@ -8,6 +8,7 @@ on:
       - "osprey_coordinator/**"
       - "proto/**"
       - ".github/workflows/publish-coordinator-image.yml"
+      - ".github/actions/install-trivy/**"
   pull_request:
     branches:
       - main
@@ -15,6 +16,7 @@ on:
       - "osprey_coordinator/**"
       - "proto/**"
       - ".github/workflows/publish-coordinator-image.yml"
+      - ".github/actions/install-trivy/**"
   release:
     types: [published]
   workflow_dispatch:
@@ -22,6 +24,8 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/osprey-coordinator
+  # Fall back to GHCR if the default mirror.gcr.io Trivy DB mirror is unavailable.
+  TRIVY_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2
 
 jobs:
   build-and-push:
@@ -29,6 +33,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write  # to upload Trivy SARIF results to code scanning
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
 
     steps:
       - name: Checkout repository
@@ -62,16 +69,50 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
         with:
           context: .
           file: ./osprey_coordinator/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
+          # PR builds aren't pushed, so load them into the local daemon for Trivy to scan.
+          load: ${{ github.event_name == 'pull_request' }}
+          # Registry SBOM and provenance attestations; the docker exporter used by
+          # `load` can't store them, so PR builds skip them.
+          sbom: ${{ github.event_name != 'pull_request' }}
+          provenance: ${{ github.event_name != 'pull_request' && 'mode=max' || 'false' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
+
+      - name: Install Trivy
+        uses: ./.github/actions/install-trivy
+
+      # Non-blocking: findings are triaged in code scanning, and a scanner or DB
+      # outage must not fail a job whose image is already pushed.
+      - name: Scan image with Trivy
+        continue-on-error: true
+        env:
+          IMAGE_REF: >-
+            ${{ github.event_name == 'pull_request'
+              && format('{0}/{1}:{2}', env.REGISTRY, env.IMAGE_NAME, steps.meta.outputs.version)
+              || format('{0}/{1}@{2}', env.REGISTRY, env.IMAGE_NAME, steps.build.outputs.digest) }}
+        # Results go only to the SARIF file, not the public job log.
+        run: >-
+          "$RUNNER_TEMP/trivy-bin/trivy" image --quiet --scanners vuln --pkg-types os,library
+          --format sarif --output trivy-coordinator.sarif "$IMAGE_REF"
+
+      # Code scanning alerts are visible only to people with write access. PR
+      # runs skip the upload because PR alerts surface as public annotations.
+      - name: Upload Trivy results to code scanning
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370  # v4.39.1
+        with:
+          sarif_file: trivy-coordinator.sarif
+          category: trivy-osprey-coordinator-${{ github.event_name == 'release' && 'release' || 'edge' }}
 
       - name: Generate build summary
         if: github.event_name != 'pull_request'
@@ -88,3 +129,44 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "$TAGS" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # Attach CycloneDX SBOMs to the GitHub Release. The image SBOM covers the OS
+  # packages; the coordinator binary isn't built with cargo-auditable and the
+  # image drops the source, so the crate list comes from Cargo.lock instead.
+  attach-sboms:
+    if: github.event_name == 'release'
+    needs: build-and-push
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write  # to upload release assets
+      packages: read  # to pull the image from GHCR
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Trivy
+        uses: ./.github/actions/install-trivy
+
+      - name: Generate SBOMs
+        env:
+          IMAGE_REF: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-and-push.outputs.digest }}
+          TAG: ${{ github.event.release.tag_name }}
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          "$RUNNER_TEMP/trivy-bin/trivy" image --quiet --format cyclonedx \
+            --output "osprey-coordinator-${TAG}.cdx.json" "$IMAGE_REF"
+          "$RUNNER_TEMP/trivy-bin/trivy" fs --quiet --format cyclonedx \
+            --output "osprey-coordinator-crates-${TAG}.cdx.json" osprey_coordinator
+
+      - name: Upload SBOMs to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release upload "$TAG" --clobber \
+            "osprey-coordinator-${TAG}.cdx.json" \
+            "osprey-coordinator-crates-${TAG}.cdx.json"

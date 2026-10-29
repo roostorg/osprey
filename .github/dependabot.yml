@@ -12,6 +12,61 @@ updates:
     ignore:
       - dependency-name: "grpcio"
 
+  - package-ecosystem: "npm"
+    directory: "/osprey_ui"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    labels:
+      - "dependencies"
+      - "dependabot"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      npm-security:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
+
+  - package-ecosystem: "cargo"
+    directory: "/osprey_coordinator"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    labels:
+      - "dependencies"
+      - "dependabot"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      cargo-security:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker"
+    directories:
+      - "/osprey_ui"
+      - "/osprey_coordinator"
+      - "/osprey_async_worker"
+      - "/osprey_worker"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    labels:
+      - "dependencies"
+      - "dependabot"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    # No security-updates group: Dependabot doesn't support security updates for
+    # Docker, so base images only move through the weekly version updates.
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
