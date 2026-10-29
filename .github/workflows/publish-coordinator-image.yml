@@ -8,9 +8,8 @@ on:
       - "osprey_coordinator/**"
       - "proto/**"
       - ".github/workflows/publish-coordinator-image.yml"
+  # Any base branch, so stacked PRs get the build check; pull_request never pushes.
   pull_request:
-    branches:
-      - main
     paths:
       - "osprey_coordinator/**"
       - "proto/**"

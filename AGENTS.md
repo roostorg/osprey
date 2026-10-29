@@ -139,7 +139,7 @@ If the MCP approval prompt doesn't fire on a fresh `claude` launch, **the operat
 
 ## CI
 
-CI runs entirely via GitHub Actions on `pull_request` and `push` to `main`. Each line below is one literal CI `run:` step, in workflow order. Run them in your shell (paste-as-is — no `&&` chaining, no error suppression — so each step's exit code matches the corresponding CI step's exit code):
+CI runs entirely via GitHub Actions on `pull_request` (into any base branch, so stacked PRs get the same checks as PRs into `main`) and `push` to `main`. When adding a workflow, don't restrict `pull_request` to `branches: [main]`; gate publishing steps on `github.event_name` / `github.ref` instead. Each line below is one literal CI `run:` step, in workflow order. Run them in your shell (paste-as-is — no `&&` chaining, no error suppression — so each step's exit code matches the corresponding CI step's exit code):
 
 ```bash
 # code-quality.yml → python-quality
