@@ -136,6 +136,7 @@ pub struct Server {
     metrics_prefix: String,
 
     /// gRPC services that do business logic.
+    #[allow(clippy::type_complexity)]
     grpc_services: HashMap<&'static str, (BoxGrpcService, Vec<Box<dyn HealthChecker>>)>,
     /// Protobuf reflection data.
     /// If empty, don't serve reflection.
@@ -146,6 +147,7 @@ pub struct Server {
 
     /// A callback to be called synchronously after the server has received
     /// an interrupt signal but BEFORE being deregistered from service discovery
+    #[allow(clippy::type_complexity)]
     pre_unannounce_callback:
         Option<Box<dyn FnOnce() -> Pin<Box<dyn Future<Output = ()> + Send>> + Send>>,
 
@@ -345,7 +347,7 @@ impl Server {
                 let etcd_client = discovery_config
                     .etcd_client
                     .map(Result::Ok)
-                    .unwrap_or_else(|| EtcdClient::from_etcd_peers())?;
+                    .unwrap_or_else(EtcdClient::from_etcd_peers)?;
                 discovery_config
                     .registrations
                     .into_iter()
@@ -394,6 +396,7 @@ impl Server {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn listen_and_serve<'a, THealthServer>(
     address: &'a SocketAddr,
     metrics_prefix: &'a str,
@@ -442,11 +445,7 @@ where
                     .map_response(|resp| resp.map(BoxBody::new)),
             ),
         )))
-        .chain(
-            reflection_service
-                .map(|s| (REFLECTION_SERVICE_NAME, box_service(s)))
-                .into_iter(),
-        )
+        .chain(reflection_service.map(|s| (REFLECTION_SERVICE_NAME, box_service(s))))
         .collect();
 
     let mut incoming = AddrIncoming::bind(address)?;
@@ -547,10 +546,8 @@ impl GrpcHandle {
                         if prev_request_count != current_request_count {
                             prev_request_count = current_request_count;
                             acequiesce_start = Instant::now();
-                        } else {
-                            if acequiesce_start.elapsed() > acquiesce_duration {
-                                return start_time.elapsed();
-                            }
+                        } else if acequiesce_start.elapsed() > acquiesce_duration {
+                            return start_time.elapsed();
                         }
                     }
                 };

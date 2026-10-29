@@ -78,13 +78,13 @@ impl MessageConsumer for KafkaConsumer {
             .map(|headers| {
                 headers
                     .iter()
-                    .filter_map(|header| {
+                    .map(|header| {
                         let key = header.key.to_string();
                         let value = header
                             .value
                             .and_then(|v| String::from_utf8(v.to_vec()).ok())
                             .unwrap_or_default();
-                        Some((key, value))
+                        (key, value)
                     })
                     .collect()
             })

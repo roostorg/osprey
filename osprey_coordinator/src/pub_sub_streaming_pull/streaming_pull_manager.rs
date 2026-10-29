@@ -336,7 +336,7 @@ where
             self.message_latency_histogram.value_at_percentile(99.0);
 
         // Round up to nearest second.
-        if p99_message_latency_millis % 1000 != 0 {
+        if !p99_message_latency_millis.is_multiple_of(1000) {
             p99_message_latency_millis += 1000 - (p99_message_latency_millis % 1000);
         }
 
@@ -379,6 +379,7 @@ where
     ///  - `flow_control` see [`FlowControl`].
     ///  - `message_handler` see [`MessageHandler`],
     ///  - `metrics_client_builder` see [`MetricsClientBuilder`]
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(
         client: TonicSubscriberClient<I>,
         subscription: PubSubSubscription,
@@ -785,7 +786,7 @@ where
         // Create the mod-ack requests we need in order to release our lease on the messages we had on hold.
         for chunk in ack_or_nacks.chunks(ACK_IDS_MAX_BATCH_SIZE) {
             let chunk = chunk
-                .into_iter()
+                .iter()
                 .filter_map(|ack_id| self.state.message_ack_queue.remove_ack_id(ack_id))
                 .collect();
 
@@ -990,6 +991,8 @@ pub(crate) enum StreamingPullManagerMessage {
 pub(crate) struct GracefulStopAlreadyRequested;
 
 /// Holds the tonic streaming channel, and the sender to push messages into that bi-directional channel.
+// The variants are short-lived and held one at a time, so boxing is not worthwhile.
+#[allow(clippy::large_enum_variant)]
 pub enum StreamingPullChannel {
     /// Hackfix for: https://github.com/hyperium/tonic/issues/515
     Connecting {

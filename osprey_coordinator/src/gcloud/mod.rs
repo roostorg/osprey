@@ -26,6 +26,8 @@ impl Default for ConnectionOptions {
     }
 }
 
+// Generated code (prost/tonic) from the googleapis protos; we can't edit its doc comments.
+#[allow(clippy::doc_overindented_list_items)]
 pub mod google {
     pub mod api {
         tonic::include_proto!("google.api");

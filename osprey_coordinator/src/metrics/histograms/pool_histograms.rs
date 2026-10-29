@@ -61,10 +61,9 @@ impl PoolHistograms {
         Arc::new(DynamicPool::new(*CPU_COUNT, *CPU_COUNT, || {
             // Create a Histogram that can count values in the [1..u64::max_value()] range with 1% precision.
             // If the provided parameters to create this histogram are invalid, returns an error, which should not happen.
-            let h = hdrhistogram::Histogram::<u64>::new_with_bounds(1, u64::max_value(), 2)
-                .map_err(|e| {
+            let h = hdrhistogram::Histogram::<u64>::new_with_bounds(1, u64::MAX, 2)
+                .inspect_err(|e| {
                     error!["Couldn't create histogram: {:?}", e];
-                    e
                 })
                 .unwrap();
             PoolItemHistogram(h)

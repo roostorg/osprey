@@ -4,6 +4,7 @@
 //!
 //! For examples, see the `examples` directory in this crate.
 #![warn(unused)]
+#![allow(dead_code)]
 
 mod ack_id;
 mod flow_control;
