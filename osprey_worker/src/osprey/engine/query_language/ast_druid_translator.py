@@ -67,6 +67,11 @@ class DruidQueryTransformer:
         dimension = get_comparison_dimension(node)
         value = get_comparison_value(node)
 
+        if isinstance(value, bool) and isinstance(node.comparator, grammar.Equals):
+            return get_boolean_query(dimension, value)
+        elif isinstance(value, bool) and isinstance(node.comparator, grammar.NotEquals):
+            return {'type': 'not', 'field': get_boolean_query(dimension, value)}
+
         if isinstance(node.comparator, grammar.Equals):
             return {'type': 'selector', 'dimension': dimension, 'value': value}
         elif isinstance(node.comparator, grammar.In):
@@ -115,9 +120,23 @@ def get_in_query_by_value_type(node: grammar.BinaryComparison, dimension: str, c
             'query': {'type': 'insensitive_contains', 'value': comparison_value},
         }
     elif isinstance(comparison_value, list):
-        return {'type': 'in', 'dimension': dimension, 'values': comparison_value}
+        values: list[Any] = []
+        for item in comparison_value:
+            values.extend(get_druid_boolean_values(item) if isinstance(item, bool) else [item])
+        return {'type': 'in', 'dimension': dimension, 'values': values}
     else:
         raise DruidQueryTransformException(node, 'Invalid "in" comparison value type, must be string or list')
+
+
+def get_druid_boolean_values(value: bool) -> list[str]:
+    """Druid's schema discovery ingests booleans as the longs 1/0, so `== True` can't be sent as a literal `true`.
+    'true'/'false' are kept for datasources that declare the dimension as a string instead."""
+
+    return ['1', 'true'] if value else ['0', 'false']
+
+
+def get_boolean_query(dimension: str, value: bool) -> dict[str, Any]:
+    return {'type': 'in', 'dimension': dimension, 'values': get_druid_boolean_values(value)}
 
 
 def get_druid_bound_query_props(node: grammar.BinaryComparison, comparison_value: Any) -> dict[str, Any]:

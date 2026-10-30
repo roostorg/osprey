@@ -129,3 +129,27 @@ def test_parses_query_with_unary_operator(
     transformed_query = DruidQueryTransformer(validated_sources=validated_sources).transform()
 
     assert check_json_output(transformed_query)
+
+
+@pytest.mark.parametrize(
+    'query, expected_filter',
+    [
+        ('A == True', {'type': 'in', 'dimension': 'A', 'values': ['1', 'true']}),
+        ('A == False', {'type': 'in', 'dimension': 'A', 'values': ['0', 'false']}),
+        ('True == A', {'type': 'in', 'dimension': 'A', 'values': ['1', 'true']}),
+        ('A != True', {'type': 'not', 'field': {'type': 'in', 'dimension': 'A', 'values': ['1', 'true']}}),
+        ('not A == False', {'type': 'not', 'field': {'type': 'in', 'dimension': 'A', 'values': ['0', 'false']}}),
+        ('A in [True]', {'type': 'in', 'dimension': 'A', 'values': ['1', 'true']}),
+        (
+            'A not in [False]',
+            {'type': 'not', 'field': {'type': 'in', 'dimension': 'A', 'values': ['0', 'false']}},
+        ),
+    ],
+)
+def test_boolean_comparisons_match_how_druid_stores_booleans(
+    make_rules_sources: MakeRulesSourcesFunction, query: str, expected_filter: dict[str, object]
+) -> None:
+    validated_sources = parse_query_to_validated_ast(query, make_rules_sources([('A', 'True')]))
+    transformed_query = DruidQueryTransformer(validated_sources=validated_sources).transform()
+
+    assert transformed_query == {'filter': expected_filter}
