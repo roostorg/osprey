@@ -101,7 +101,7 @@ common = [
     { name = "types-python-dateutil", specifier = "==2.9.0.20260807" },
     { name = "types-pytz", specifier = "==2025.2.0.20250516" },
     { name = "types-pyyaml", specifier = "==6.0.12.20250516" },
-    { name = "types-requests", specifier = "==2.27.7" },
+    { name = "types-requests", specifier = "==2.33.0.20261006" },
     { name = "types-simplejson", specifier = "==3.20.0.20250326" },
     { name = "types-six", specifier = "==1.17.0.20250515" },
     { name = "types-urllib3", specifier = "==1.26.25.14" },
@@ -2651,14 +2651,14 @@ wheels = [
 
 [[package]]
 name = "types-requests"
-version = "2.27.7"
+version = "2.33.0.20261006"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "types-urllib3" },
+    { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/52/ed/76de4c42bf515069c8d47306539a57f8d46cbed6d0c714b70fe7ec28a10d/types-requests-2.27.7.tar.gz", hash = "sha256:f38bd488528cdcbce5b01dc953972f3cead0d060cfd9ee35b363066c25bab13c", size = 9654, upload-time = "2022-01-13T21:15:51.34Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/57/15/9b7e2e2e7c87d01366185b198b3febc6bc0c973f2bf21a62da4ab7d3495e/types_requests-2.33.0.20261006.tar.gz", hash = "sha256:0652999e9306aea345f40732d58fa49a7f6cade6a0d74d92119c5c8d82eddaf0", size = 25316, upload-time = "2026-10-06T08:15:57.782Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/45/58/2b348b3b4eaba4cc80ee8365458bbccdf8f911d196fed0f5cfefc38cf678/types_requests-2.27.7-py3-none-any.whl", hash = "sha256:2e0e100dd489f83870d4f61949d3a7eae4821e7bfbf46c57e463c38f92d473d4", size = 11847, upload-time = "2022-01-13T21:15:49.956Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/72/b82789207b3d360ce9f5a4372c790c52cc3dd928aeb7d4faeec652b651b2/types_requests-2.33.0.20261006-py3-none-any.whl", hash = "sha256:26cc8146505cab33cda9737991929e4144c559bebe05078ccc6998f27c4ca2c1", size = 21445, upload-time = "2026-10-06T08:15:56.658Z" },
 ]
 
 [[package]]
