@@ -10,7 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Added
 
-- One-click demo in GitHub Codespaces, with sample data flowing (PRLINK by [@reitblatt](https://github.com/reitblatt))
+- One-click demo in GitHub Codespaces, with sample data flowing ([#593](https://github.com/roostorg/osprey/pull/593) by [@reitblatt](https://github.com/reitblatt))
 
 ### Fixed
 
