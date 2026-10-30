@@ -1,0 +1,44 @@
+{
+  "name": "Osprey development",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22.22"
+    },
+    "ghcr.io/devcontainers/features/rust:1": {}
+  },
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "32gb"
+  },
+  "containerEnv": {
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+    "REACT_APP_API_BASE_URL": "/api",
+    "UV_LINK_MODE": "copy"
+  },
+  "onCreateCommand": "bash .devcontainer/dev/install-tools.sh",
+  "updateContentCommand": "bash .devcontainer/dev/install-deps.sh",
+  "postAttachCommand": "bash .devcontainer/dev/welcome.sh",
+  "portsAttributes": {
+    "5002": { "label": "Osprey UI", "onAutoForward": "notify" },
+    "5004": { "label": "Osprey UI API", "onAutoForward": "silent" },
+    "5001": { "label": "Osprey worker", "onAutoForward": "silent" },
+    "8081": { "label": "Druid coordinator", "onAutoForward": "silent" }
+  },
+  "otherPortsAttributes": { "onAutoForward": "silent" },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python"
+      }
+    }
+  }
+}
