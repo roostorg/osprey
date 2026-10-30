@@ -109,6 +109,15 @@ exec 3> "$FIFO"
 
 # Infinite loop to generate and send actions
 while true; do
+    # If the producer died (e.g. Kafka wasn't reachable yet when Docker restarted this
+    # container), exit so the container's restart policy retries. As PID 1 this script
+    # ignores the SIGPIPE that writing to the reader-less FIFO would otherwise raise.
+    if ! kill -0 "$producer_pid" 2>/dev/null; then
+        echo "Kafka producer exited; stopping so the container can restart and retry." >&2
+        rm -rf "$FIFO_DIR"
+        exit 1
+    fi
+
     action=$(generate_action)
     echo -e "Sending $action"
     echo -e "$action" >&3
