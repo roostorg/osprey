@@ -25,3 +25,13 @@ updates:
       github-actions:
         patterns:
           - "*"
+
+  - package-ecosystem: "devcontainers"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    labels:
+      - "dependencies"
+      - "dependabot"

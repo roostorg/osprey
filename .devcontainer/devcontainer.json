@@ -1,0 +1,41 @@
+{
+  "name": "Osprey demo",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "32gb"
+  },
+  "containerEnv": {
+    "COMPOSE_PROJECT_NAME": "osprey",
+    "COMPOSE_FILE": "${containerWorkspaceFolder}/docker-compose.yaml:${containerWorkspaceFolder}/.devcontainer/docker-compose.codespaces.yaml",
+    "COMPOSE_PROFILES": "test_data"
+  },
+  "updateContentCommand": "bash .devcontainer/scripts/prepare.sh",
+  "postStartCommand": "bash .devcontainer/scripts/start.sh",
+  "postAttachCommand": "bash .devcontainer/scripts/status.sh",
+  "forwardPorts": [5002],
+  "portsAttributes": {
+    "5002": {
+      "label": "Osprey UI",
+      "onAutoForward": "openBrowserOnce"
+    },
+    "5004": { "label": "Osprey UI API", "onAutoForward": "silent" },
+    "5001": { "label": "Osprey worker", "onAutoForward": "silent" },
+    "8081": { "label": "Druid coordinator", "onAutoForward": "silent" }
+  },
+  "otherPortsAttributes": { "onAutoForward": "silent" },
+  "customizations": {
+    "codespaces": {
+      "openFiles": [".devcontainer/README.md"]
+    },
+    "vscode": {
+      "settings": {
+        "workbench.startupEditor": "none"
+      }
+    }
+  }
+}

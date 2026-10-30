@@ -1,6 +1,6 @@
 # Getting Started
 
-Quickly see Osprey working with sample data and a real rule using the demo script. It needs no code or configuration, and everything cleans up with a single command afterward. For a full development environment—running services individually, making changes, and debugging—see [Local Development](local.md).
+Quickly see Osprey working with sample data and a real rule using the demo script. It needs no code or configuration, and everything cleans up with a single command afterward. To try it in your browser instead, with nothing to install, see [Try Osprey in GitHub Codespaces](codespaces.md). For a full development environment—running services individually, making changes, and debugging—see [Local Development](local.md).
 
 To run the demo:
 
