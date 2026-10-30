@@ -97,7 +97,11 @@ The configuration lives in [`.devcontainer/`](https://github.com/roostorg/osprey
 npx @devcontainers/cli up --workspace-folder .
 ```
 
-The container doesn't include the Python, uv or Node toolchains. For a full development environment, see [Local Development](local.md).
+The demo container doesn't include the Python, uv, Node or Rust toolchains. For development, there's a second configuration, **Osprey development** ([`.devcontainer/dev/devcontainer.json`](https://github.com/roostorg/osprey/blob/main/.devcontainer/dev/devcontainer.json)), with those toolchains and the project's dependencies installed, and nothing started until you ask. Choose it under **New with options…** → *Dev container configuration*, or open it directly:
+
+[![Open the development configuration in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/roostorg/osprey?devcontainer_path=.devcontainer/dev/devcontainer.json)
+
+Locally, pass `--config .devcontainer/dev/devcontainer.json` to the devcontainer CLI. The [`.devcontainer` README](https://github.com/roostorg/osprey/blob/main/.devcontainer/README.md#development-configuration) covers what it installs and how to run the stack and tests inside it. For development without a devcontainer, see [Local Development](local.md).
 
 Running it locally on a host whose kernel lacks legacy iptables support (seen on Linux 7.0), Docker inside the container fails to start with `can't initialize iptables table 'nat'`: the Docker-in-Docker feature sets up the container to use legacy iptables. Switch the container to the nftables backend, restart its Docker daemon, and start the demo again:
 
