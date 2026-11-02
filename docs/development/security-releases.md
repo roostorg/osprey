@@ -37,7 +37,7 @@ The steps run in this order: choose the release base (step 2) before merging any
 
 ### Finding a release's security fixes
 
-<!-- TODO(R1): replace with the `security` label query once the labeling workflow lands. -->
+<!-- TODO(roostorg/coop#1520 item 1): replace with the `security` label query once Osprey has an equivalent labeling workflow. -->
 
 List the PRs merged since the last release and pick out the security fixes and dependency updates:
 
@@ -69,7 +69,7 @@ If Dependabot has already opened the bump, use its PR. If its PR groups the secu
 
 If `## [Unreleased]` in `CHANGELOG.md` contains only the fix, release from `main` as usual and skip to step 3.
 
-If `main` has unreleased changes, choose one of the options below. **Pending decision (H1):** option B as a standing model is a proposal; until it is decided, agree the base with a maintainer for each release.
+If `main` has unreleased changes, choose one of the options below. **Pending decision ([roostorg/coop#1520](https://github.com/roostorg/coop/issues/1520) item 11):** option B as a standing model is a proposal; until it is decided, agree the base with a maintainer for each release.
 
 **A. Release from `main`.** Ship the fix together with everything already on `main`. This is how 1.2.1 was released.
 
@@ -95,7 +95,7 @@ Dependency updates usually conflict in `uv.lock` (or `osprey_ui/pnpm-lock.yaml`)
 
 For `osprey_ui/pnpm-lock.yaml`, the same steps use `pnpm install` to update the fixed packages, then `pnpm install --frozen-lockfile`, and confirm that `pnpm install` leaves the lockfile unchanged (`git diff --exit-code pnpm-lock.yaml`).
 
-<!-- TODO(R5): reference the lockfile check script once it lands. -->
+<!-- TODO(roostorg/coop#1520 item 5): reference an Osprey equivalent of the lockfile check script once it lands. -->
 
 ## 3. Bump the version and changelog
 
@@ -217,7 +217,7 @@ Post to [security-announce@roost.tools](https://groups.google.com/a/roost.tools/
 
 ### Upgrade wording
 
-**Pending decision (H9):**
+**Pending decision ([roostorg/coop#1520](https://github.com/roostorg/coop/issues/1520) item 18):**
 
 - An advisory rated High or Critical: "All deployments should upgrade."
 - Otherwise: "We recommend you upgrade."
