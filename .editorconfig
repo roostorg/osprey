@@ -32,5 +32,8 @@ indent_size = 2
 # Two trailing spaces are a hard line break in Markdown.
 trim_trailing_whitespace = false
 
+[*.rs]
+indent_size = 4
+
 [Makefile]
 indent_style = tab
