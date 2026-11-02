@@ -30,7 +30,7 @@ common = [
     { name = "anyascii", specifier = "==0.3.3" },
     { name = "blinker", specifier = "==1.9.0" },
     { name = "click", specifier = "==7.1.2" },
-    { name = "datadog", specifier = "==0.51.0" },
+    { name = "datadog", specifier = "==0.55.0" },
     { name = "ddtrace", specifier = "==2.21.11" },
     { name = "deepmerge", specifier = "==0.3.0" },
     { name = "dnspython", specifier = "==2.6.1" },
@@ -443,14 +443,14 @@ wheels = [
 
 [[package]]
 name = "datadog"
-version = "0.51.0"
+version = "0.55.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ee/be/68c69e50e45aaecbf22d06f2d658f50531c8709d797c2f97378a4454f3de/datadog-0.51.0.tar.gz", hash = "sha256:3279534f831ae0b4ae2d8ce42ef038b4ab38e667d7ed6ff7437982d7a0cf5250", size = 352649, upload-time = "2025-01-27T18:24:11.109Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/aa/0d/dbe01629e2a40f934d513d0edfc9d65a5b8a9238f1b0dbf34fc6f4a1a423/datadog-0.55.0.tar.gz", hash = "sha256:d24085e33b9be2ec4d8fd413998ad0012a609ad022e1b8a59c171391d1753790", size = 408050, upload-time = "2026-09-30T15:37:24.099Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fb/56/c48c12fdbbaece1a0ca2eacb9be549c34e562baff437ef4c66c4b236a247/datadog-0.51.0-py2.py3-none-any.whl", hash = "sha256:a9764f091c96af4e0996d4400b168fc5fba380f911d6d672c9dcd4773e29ea3f", size = 121813, upload-time = "2025-01-27T18:24:09.045Z" },
+    { url = "https://files.pythonhosted.org/packages/63/e0/21a5b86b08c56a9507d1595517fb909be07aabb1280f2b0111fb8491e56d/datadog-0.55.0-py2.py3-none-any.whl", hash = "sha256:9e1003a8c593ffa62f04eab09f15cf5b6332716c9723014d43b9fb0919adf7d6", size = 152565, upload-time = "2026-09-30T15:37:22.74Z" },
 ]
 
 [[package]]
