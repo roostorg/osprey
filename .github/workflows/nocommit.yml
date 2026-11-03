@@ -1,0 +1,95 @@
+# Blocks merging while a PR carries a "do not merge" marker.
+# See docs/development/workflow.md ("Blocking a PR from merging").
+#
+# Branch protection refers to the `nocommit` check by name; keep the job name stable.
+#
+# This file is excluded from the code scan because it contains the marker pattern itself,
+# as is the one docs section that explains the convention.
+name: nocommit
+
+on:
+  pull_request:
+    # `edited` re-runs the check when the title or description changes;
+    # `labeled`/`unlabeled` when the do-not-merge label is added or removed.
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+
+concurrency:
+  group: nocommit-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  nocommit:
+    name: nocommit
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check for do-not-merge markers
+        env:
+          # PR-controlled text goes through env only, never interpolated into the script.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'do-not-merge') }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          marker='nocommit|do not merge'
+          failed=0
+
+          # 1. Added lines in the PR diff. Removed and unchanged lines are ignored.
+          #    -U0 gives no context lines; the awk tracks file headers vs. hunk bodies
+          #    so an added line that itself starts with "++" is still scanned.
+          hits=$(git -c core.quotePath=false diff --no-color --no-ext-diff -U0 \
+              "origin/${BASE_REF}...HEAD" -- . \
+              ':(exclude,top).github/workflows/nocommit.yml' \
+              ':(exclude,top)docs/development/workflow.md' \
+            | awk -v re="$marker" '
+                function prop(s) { gsub(/%/, "%25", s); gsub(/\r/, "%0D", s); gsub(/:/, "%3A", s); gsub(/,/, "%2C", s); return s }
+                function msg(s)  { gsub(/%/, "%25", s); gsub(/\r/, "%0D", s); return s }
+                /^diff --git / { in_hunk = 0; file = ""; next }
+                !in_hunk && /^\+\+\+ / { file = substr($0, 5); sub(/^b\//, "", file); next }
+                /^@@ / {
+                  in_hunk = 1
+                  split($3, a, ","); line = substr(a[1], 2) + 0
+                  next
+                }
+                in_hunk && /^\+/ {
+                  text = substr($0, 2)
+                  if (tolower(text) ~ re) {
+                    printf "::error file=%s,line=%d,title=nocommit (added code)::%s:%d adds a do-not-merge marker: %s\n", prop(file), line, msg(file), line, msg(substr(text, 1, 200))
+                  }
+                  line++
+                }
+              ')
+          if [ -n "$hits" ]; then
+            printf '%s\n' "$hits"
+            failed=1
+          fi
+
+          # 2. PR title and description.
+          if printf '%s' "$PR_TITLE" | grep -qiE "$marker"; then
+            echo "::error title=nocommit (PR title)::The PR title contains a do-not-merge marker (nocommit / do not merge)."
+            failed=1
+          fi
+          if printf '%s' "$PR_BODY" | grep -qiE "$marker"; then
+            echo "::error title=nocommit (PR description)::The PR description contains a do-not-merge marker (nocommit / do not merge)."
+            failed=1
+          fi
+
+          # 3. do-not-merge label.
+          if [ "$HAS_LABEL" = "true" ]; then
+            echo "::error title=nocommit (label)::The PR has the do-not-merge label."
+            failed=1
+          fi
+
+          if [ "$failed" -ne 0 ]; then
+            exit 1
+          fi
+          echo "No do-not-merge markers found."
