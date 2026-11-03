@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { App as AntdApp, ConfigProvider, Spin, theme } from 'antd';
+// #nocommit throwaway test line, do not keep
 import { Router, Switch, Route } from 'react-router-dom';
 
 import { getApplicationConfig } from './actions/ConfigActions';
