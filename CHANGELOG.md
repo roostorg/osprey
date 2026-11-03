@@ -10,6 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
+- `ParseInt` UDF can be called from rules again ([#588](https://github.com/roostorg/osprey/pull/588) by [@NopeCharon](https://github.com/NopeCharon))
 - `osprey-cli` no longer crashes at import with gevent's "cannot release un-acquired lock" ([#574](https://github.com/roostorg/osprey/pull/574) by [@reitblatt](https://github.com/reitblatt))
 - UI query filters now escape every apostrophe and backslash in string feature values, not just the first apostrophe ([#472](https://github.com/roostorg/osprey/pull/472) by [@cassidyjames](https://github.com/cassidyjames))
 - Fix postgres worker crash on first boot by wrapping schema creation behind advisory lock ([#436](https://github.com/roostorg/osprey/pull/436) by [@vedarolap](https://github.com/vedarolap), closes [#432](https://github.com/roostorg/osprey/issues/432))
