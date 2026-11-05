@@ -21,6 +21,7 @@
   - [Troubleshooting](development/troubleshooting.md)
   - [IDE Setup](development/ide.md)
   - [Releases](development/releases.md)
+  - [Security Releases](development/security-releases.md)
 
 ---
 
