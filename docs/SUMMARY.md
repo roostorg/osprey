@@ -21,6 +21,7 @@
   - [Troubleshooting](development/troubleshooting.md)
   - [IDE Setup](development/ide.md)
   - [Releases](development/releases.md)
+    - [Vulnerability Scanning](development/vulnerability-scanning.md)
 
 ---
 

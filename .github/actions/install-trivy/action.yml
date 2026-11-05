@@ -1,0 +1,30 @@
+name: Install Trivy
+description: >
+  Install a pinned Trivy release binary, verified against a hard-coded sha256.
+  Used instead of aquasecurity/trivy-action and aquasecurity/setup-trivy, whose
+  tags were hijacked in March 2026 (GHSA-69fq-xp46-6x23). The binary lands at
+  $RUNNER_TEMP/trivy-bin/trivy; callers invoke it by that path rather than this
+  action editing PATH. Set TRIVY_DB_REPOSITORY in the calling workflow.
+
+runs:
+  using: composite
+  steps:
+    - name: Download and verify Trivy
+      shell: bash
+      env:
+        # Bump both together. Take the sha256 for trivy_<version>_Linux-64bit.tar.gz
+        # from the release's trivy_<version>_checksums.txt.
+        TRIVY_VERSION: "0.76.1"
+        TRIVY_SHA256: "c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0"
+      run: |
+        set -euo pipefail
+        tarball="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+        install_dir="${RUNNER_TEMP}/trivy-bin"
+        mkdir -p "$install_dir"
+        cd "$RUNNER_TEMP"
+        curl -fsSL --retry 3 -o "$tarball" \
+          "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${tarball}"
+        echo "${TRIVY_SHA256}  ${tarball}" | sha256sum -c -
+        tar -xzf "$tarball" -C "$install_dir" trivy
+        rm "$tarball"
+        "$install_dir/trivy" --version
