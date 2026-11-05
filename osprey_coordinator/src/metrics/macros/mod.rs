@@ -69,11 +69,9 @@ pub use paste::paste;
 ///     foo => StaticCounter(),
 ///     bar => DynamicCounter([tag_a, tag_b]),
 /// ]);
-/// fn main() {
-///     let metrics = FooMetrics::new();
-///     metrics.foo.incr();
-///     metrics.bar.incr("tag_a_value", "tag_b_value");
-/// }
+/// let metrics = FooMetrics::new();
+/// metrics.foo.incr();
+/// metrics.bar.incr("tag_a_value", "tag_b_value");
 /// ```
 ///
 /// Besides counting your metrics, however, these metrics will not be emitted anywhere. This is because you need
@@ -194,17 +192,17 @@ macro_rules! define_metrics {
             mod [<$metrics_struct_name:snake:lower>] {
                 mod prelude {
                     #[allow(unused_imports)]
-                    pub use crate::metrics::{BaseMetric, DynamicTagKey, DynamicTagValue, StaticTag};
+                    pub use $crate::metrics::{BaseMetric, DynamicTagKey, DynamicTagValue, StaticTag};
                     #[allow(unused_imports)]
                     pub use std::sync::atomic::AtomicI64;
                     #[allow(unused_imports)]
-                    pub use crate::metrics::counters::{DynamicCounter, StaticCounter, DynamicCounterStorage};
+                    pub use $crate::metrics::counters::{DynamicCounter, StaticCounter, DynamicCounterStorage};
                     #[allow(unused_imports)]
-                    pub use crate::metrics::gauges::{DynamicGauge, GaugeInner, StaticGauge, DynamicGaugeStorage};
+                    pub use $crate::metrics::gauges::{DynamicGauge, GaugeInner, StaticGauge, DynamicGaugeStorage};
                     #[allow(unused_imports)]
-                    pub use crate::metrics::gauges::{GaugeHandleOwned, Many, One};
+                    pub use $crate::metrics::gauges::{GaugeHandleOwned, Many, One};
                     #[allow(unused_imports)]
-                    pub use crate::metrics::histograms::{DynamicHistogram, StaticHistogram, DynamicHistogramStorage, PoolHistograms};
+                    pub use $crate::metrics::histograms::{DynamicHistogram, StaticHistogram, DynamicHistogramStorage, PoolHistograms};
                 }
 
                 $(
@@ -220,32 +218,32 @@ macro_rules! define_metrics {
 macro_rules! __generate_metric_struct_field_type {
     (DynamicCounter, $metrics_module_name: ident, $metric_struct_name: ident) => {
         $crate::metrics::macros::paste! {
-            crate::metrics::counters::dynamic_counter::DynamicCounterWrapper<[<$metrics_module_name:snake:lower>]::[<$metric_struct_name:camel>]>
+            $crate::metrics::counters::dynamic_counter::DynamicCounterWrapper<[<$metrics_module_name:snake:lower>]::[<$metric_struct_name:camel>]>
         }
     };
     (StaticCounter, $metrics_module_name: ident, $metric_struct_name: ident) => {
         $crate::metrics::macros::paste! {
-            crate::metrics::counters::static_counter::StaticCounterWrapper<[<$metrics_module_name:snake:lower>]::[<$metric_struct_name:camel>]>
+            $crate::metrics::counters::static_counter::StaticCounterWrapper<[<$metrics_module_name:snake:lower>]::[<$metric_struct_name:camel>]>
         }
     };
     (DynamicGauge, $metrics_module_name: ident, $metric_struct_name: ident) => {
         $crate::metrics::macros::paste! {
-            crate::metrics::gauges::dynamic_gauge::DynamicGaugeWrapper<[<$metrics_module_name:snake:lower>]::[<$metric_struct_name:camel>]>
+            $crate::metrics::gauges::dynamic_gauge::DynamicGaugeWrapper<[<$metrics_module_name:snake:lower>]::[<$metric_struct_name:camel>]>
         }
     };
     (StaticGauge, $metrics_module_name: ident, $metric_struct_name: ident) => {
         $crate::metrics::macros::paste! {
-            crate::metrics::gauges::static_gauge::StaticGaugeWrapper<[<$metrics_module_name:snake:lower>]::[<$metric_struct_name:camel>]>
+            $crate::metrics::gauges::static_gauge::StaticGaugeWrapper<[<$metrics_module_name:snake:lower>]::[<$metric_struct_name:camel>]>
         }
     };
     (DynamicHistogram, $metrics_module_name: ident, $metric_struct_name: ident) => {
         $crate::metrics::macros::paste! {
-            crate::metrics::histograms::dynamic_histogram::DynamicHistogramWrapper<[<$metrics_module_name:snake:lower>]::[<$metric_struct_name:camel>]>
+            $crate::metrics::histograms::dynamic_histogram::DynamicHistogramWrapper<[<$metrics_module_name:snake:lower>]::[<$metric_struct_name:camel>]>
         }
     };
     (StaticHistogram, $metrics_module_name: ident, $metric_struct_name: ident) => {
         $crate::metrics::macros::paste! {
-            crate::metrics::histograms::static_histogram::StaticHistogramWrapper<[<$metrics_module_name:snake:lower>]::[<$metric_struct_name:camel>]>
+            $crate::metrics::histograms::static_histogram::StaticHistogramWrapper<[<$metrics_module_name:snake:lower>]::[<$metric_struct_name:camel>]>
         }
     };
     ($other: ident, $metrics_module_name: ident, $metric_struct_name: ident) => {

@@ -193,7 +193,7 @@ fn extract_span<B>(request: &Request<B>) -> tracing::Span {
     for (header_key, field_key) in HEADERS_TO_RECORD_AS_SPAN_FIELDS {
         if let Some(header_value) = headers.get(*header_key) {
             if let Ok(header_value_str) = header_value.to_str() {
-                tracing_span.record(*field_key, &header_value_str);
+                tracing_span.record(*field_key, header_value_str);
             }
         }
     }

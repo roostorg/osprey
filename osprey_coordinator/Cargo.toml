@@ -90,3 +90,8 @@ tokio = { version = "1.4", features = ["test-util"] }
 [[bin]]
 name = "osprey_coordinator"
 path = "src/main.rs"
+
+# These feature gates come from code that predates this crate's Cargo features and
+# are never enabled here; declare them so `unexpected_cfgs` doesn't flag them.
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("integration_test", "test_server", "rpc"))'] }

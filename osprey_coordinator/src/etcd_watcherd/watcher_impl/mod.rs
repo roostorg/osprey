@@ -1,6 +1,6 @@
 pub(crate) mod key_watcher;
 pub(crate) mod recursive_key_watcher;
-pub(self) mod util;
+mod util;
 
 use std::fmt::Debug;
 

@@ -37,7 +37,7 @@ pub(crate) fn try_status_from_error(
 
     let err = match err.downcast::<h2::Error>() {
         Ok(h2) => {
-            return Ok(from_h2_error(&*h2));
+            return Ok(from_h2_error(&h2));
         }
         Err(err) => err,
     };
@@ -111,6 +111,8 @@ fn from_hyper_error(err: &hyper::Error) -> Option<Status> {
     None
 }
 
+// `Status` is large, but it is the error type used throughout the gRPC stack.
+#[allow(clippy::result_large_err)]
 pub(crate) fn add_status_header(status: &Status, header_map: &mut HeaderMap) -> Result<(), Status> {
     header_map.extend(metadata_into_sanitized_headers(status.metadata().clone()));
 

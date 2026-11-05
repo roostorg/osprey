@@ -42,6 +42,8 @@ impl HealthChecker for AlwaysHealthy {
 
 #[derive(Clone)]
 pub(crate) struct HealthServer {
+    // clippy::type_complexity: a type alias would not make this clearer.
+    #[allow(clippy::type_complexity)]
     callbacks: Arc<HashMap<Cow<'static, str>, Vec<Box<dyn HealthChecker>>>>,
     shutting_down: tokio::sync::watch::Receiver<bool>,
 }

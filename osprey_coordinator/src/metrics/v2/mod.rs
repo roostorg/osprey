@@ -112,8 +112,10 @@ impl<T: MetricsEmitter> MetricsEmitter for TagWrapper<T> {
         client: &StatsdClient,
         base_tags: &mut dyn Iterator<Item = (&str, &str)>,
     ) -> Result<(), MetricError> {
+        // The identity `map` unifies the lifetimes of the two iterators.
+        #[allow(clippy::map_identity)]
         let mut base_tags = base_tags
-            .map(|t| t) // to unify the lifetimes
+            .map(|t| t)
             .chain(self.tags.iter().map(|(k, v)| (k.deref(), v.deref())));
         self.inner.emit_metrics(client, &mut base_tags)
     }
@@ -126,8 +128,10 @@ impl<T: BaseMetric> BaseMetric for TagWrapper<T> {
         name: &str,
         base_tags: &mut dyn Iterator<Item = (&str, &str)>,
     ) -> Result<(), MetricError> {
+        // The identity `map` unifies the lifetimes of the two iterators.
+        #[allow(clippy::map_identity)]
         let mut base_tags = base_tags
-            .map(|t| t) // to unify the lifetimes
+            .map(|t| t)
             .chain(self.tags.iter().map(|(k, v)| (k.deref(), v.deref())));
         self.inner.send_metric(client, name, &mut base_tags)
     }

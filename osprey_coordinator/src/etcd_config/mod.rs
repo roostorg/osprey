@@ -78,9 +78,7 @@ pub async fn run_etcd_watcher<T: KeyHandler + Send + Sync + 'static>(
 const PATTERN: &[char] = &['"', ' '];
 
 pub fn convert_to_bool(value: Option<&str>) -> bool {
-    value.map_or(false, |v| {
-        v.trim_matches(PATTERN).parse::<f32>().unwrap_or_default() > 0.0
-    })
+    value.is_some_and(|v| v.trim_matches(PATTERN).parse::<f32>().unwrap_or_default() > 0.0)
 }
 
 pub fn convert_to_float(value: Option<&str>) -> f32 {

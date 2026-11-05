@@ -97,13 +97,13 @@ pnpm run test
 pnpm run build
 ```
 
-Rust checks (in `osprey_coordinator/`; requires `protoc`). CI only gates on `fmt` and `build`; `clippy` and `test` are advisory (`continue-on-error: true`):
+Rust checks (in `osprey_coordinator/`; requires `protoc`). CI gates on `fmt`, `clippy`, `build`, and `test`:
 
 ```bash
 cargo fmt --check
 cargo build --verbose
-cargo clippy -- -D warnings   # advisory
-cargo test --verbose          # advisory
+cargo clippy -- -D warnings
+cargo test --verbose
 ```
 
 ## Browser MCP (UI verification)
@@ -158,8 +158,6 @@ uv tool run fawltydeps --check-unused --pyenv .venv
   pnpm run build )
 
 # code-quality.yml → rust-quality (CI `working-directory: osprey_coordinator`)
-# Note: in CI the `cargo clippy` and `cargo test` steps are marked `continue-on-error: true`,
-# so they currently print failures but do not fail the job. Locally, expect the same output.
 ( cd osprey_coordinator
   cargo fmt --check
   cargo clippy -- -D warnings
