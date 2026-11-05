@@ -546,7 +546,7 @@ wheels = [
 
 [[package]]
 name = "example-atproto-plugins"
-version = "0.1.0"
+version = "1.2.1"
 source = { editable = "example_atproto_plugins" }
 dependencies = [
     { name = "pluggy" },
@@ -561,7 +561,7 @@ requires-dist = [
 
 [[package]]
 name = "example-plugins"
-version = "0.1.0"
+version = "1.2.1"
 source = { editable = "example_plugins" }
 dependencies = [
     { name = "pluggy" },
@@ -1581,7 +1581,7 @@ wheels = [
 
 [[package]]
 name = "osprey-async-worker"
-version = "0.1.0"
+version = "1.2.1"
 source = { editable = "osprey_async_worker" }
 dependencies = [
     { name = "aiodns" },
@@ -1600,7 +1600,7 @@ requires-dist = [
 
 [[package]]
 name = "osprey-rpc"
-version = "0.1.0"
+version = "1.2.1"
 source = { editable = "osprey_rpc" }
 dependencies = [
     { name = "grpcio" },
@@ -1615,7 +1615,7 @@ requires-dist = [
 
 [[package]]
 name = "osprey-worker"
-version = "0.1.0"
+version = "1.2.1"
 source = { editable = "osprey_worker" }
 dependencies = [
     { name = "flask-cors" },
