@@ -32,7 +32,7 @@ def audit_request(response: Response) -> Response:
         request_method=request.method,
         request_path=request.full_path,
         request_headers=_audit_serialize_headers(request.headers),
-        request_body=request.data,
+        request_body=request.get_data(),
         response_status_code=response.status_code,
         response_headers=_audit_serialize_headers(response.headers),
         response_body=response.data,
