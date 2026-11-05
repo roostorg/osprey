@@ -26,11 +26,13 @@ ok "Services started"
 
 wait_for "the Osprey API" 300 api_ready || on_failure
 wait_for "the Osprey UI" 300 ui_ready || on_failure
-# Druid needs a minute or two to start ingesting; the UI works meanwhile, its
-# charts are just empty. A slow first event isn't a failure.
+# Druid needs a minute or two to start ingesting; the UI works meanwhile, its charts are
+# just empty. Without events by the deadline, say which part of the pipeline is down rather
+# than announcing a demo with no data; only a stopped service counts as a failed start.
 if ! wait_for "the first demo events in the charts" 300 events_ready; then
-    echo "  The UI works, but its charts stay empty until events arrive."
-    echo "  If they haven't after a few minutes, see the troubleshooting guide."
+    print_no_data_banner
+    [ -z "$(stopped_pipeline_services)" ]
+    exit
 fi
 
 print_ready_banner

@@ -33,7 +33,7 @@ If the new tab doesn't appear (browsers sometimes block it), open the **Ports** 
 
 ## 3. Use it
 
-The Query page opens empty. Click **Submit Query** to load the last day of events. (The terminal also prints a link that opens the page with this query already run.)
+The Query page opens empty. Click **Submit Query** to load the last day of events. (The terminal also prints a link that opens the page with yesterday's and today's events already queried.)
 
 ![The Osprey Query page with the last day of demo events: a timeseries chart of event volume, a Top N table of user IDs, and the event stream of synthetic posts on the right](../images/codespaces-query-page.png)
 
@@ -47,11 +47,11 @@ Synthetic posts arrive about once a second. The demo has one rule, `ContainsHell
 
 ![The user panel for a synthetic user, showing the meow label the ContainsHello rule applied](../images/codespaces-user-labels.png)
 
-The [User Guide](../user/) covers the rest of the UI. The address of your UI tab is private to your GitHub account; sharing the link won't let anyone else in.
+The [User Guide](../user/) covers the rest of the UI. The address of your UI tab is private by default: only your GitHub account can open it, so sharing the link won't let anyone else in. Leave the port's visibility in the **Ports** tab set to **Private**; if it's changed to **Public**, anyone with the link can use your Osprey UI.
 
 ## 4. Stop it
 
-A codespace stops by itself after a period without activity: 30 minutes, unless you've changed your [Codespaces settings](https://github.com/settings/codespaces). Only activity in the editor tab counts, so if you're presenting from the Osprey UI tab for a long time, click into the editor tab now and then, or raise the idle timeout in your settings.
+A codespace stops by itself after a period without activity: 30 minutes, unless you've changed your [Codespaces settings](https://github.com/settings/codespaces). Typing or using the mouse in the editor tab counts as activity, and so does terminal input or output; using only the Osprey UI tab doesn't. If you're presenting from the UI tab for a long time, click into the editor tab now and then, or raise the idle timeout (up to 4 hours) in your settings.
 
 To stop it yourself, go to [github.com/codespaces](https://github.com/codespaces), click **⋯** next to the codespace, and choose **Stop codespace**.
 
@@ -61,7 +61,7 @@ Open [github.com/codespaces](https://github.com/codespaces) and click the codesp
 
 ## 6. Delete it
 
-When you're done with it, delete it so it stops using your storage: at [github.com/codespaces](https://github.com/codespaces), click **⋯** → **Delete**. GitHub also deletes codespaces that have been stopped for 30 days.
+When you're done with it, delete it so it stops using your storage: at [github.com/codespaces](https://github.com/codespaces), click **⋯** → **Delete**. GitHub also deletes stopped codespaces on its own, by default after 30 days; your settings or your organization's can make that shorter.
 
 ## Costs and time limits
 
@@ -99,4 +99,13 @@ npx @devcontainers/cli up --workspace-folder .
 
 The container doesn't include the Python, uv or Node toolchains. For a full development environment, see [Local Development](local.md).
 
-Running it locally on a host whose kernel lacks legacy iptables support (seen on Linux 7.0), Docker inside the container fails to start with `can't initialize iptables table 'nat'`. That comes from the Docker-in-Docker feature's choice of iptables backend on that host.
+Running it locally on a host whose kernel lacks legacy iptables support (seen on Linux 7.0), Docker inside the container fails to start with `can't initialize iptables table 'nat'`: the Docker-in-Docker feature sets up the container to use legacy iptables. Switch the container to the nftables backend, restart its Docker daemon, and start the demo again:
+
+```sh
+sudo update-alternatives --set iptables /usr/sbin/iptables-nft
+sudo update-alternatives --set ip6tables /usr/sbin/ip6tables-nft
+sudo /usr/local/share/docker-init.sh true
+bash .devcontainer/scripts/start.sh
+```
+
+The switch lasts until the container is rebuilt. Codespaces machines aren't affected.
