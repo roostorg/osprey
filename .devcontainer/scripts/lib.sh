@@ -33,10 +33,13 @@ ui_url() {
     fi
 }
 
+# Every probe has its own time limit, so a hung service can't stall wait_for past its deadline.
+docker_ready() { timeout 10 docker info >/dev/null 2>&1; }
+
 wait_for_docker() {
     local attempt
     for attempt in $(seq 1 60); do
-        docker info >/dev/null 2>&1 && return 0
+        docker_ready && return 0
         sleep 2
     done
     fail "Docker didn't start inside the codespace."
@@ -59,25 +62,58 @@ wait_for() {
     ok "Ready: $what"
 }
 
-api_ready() { curl -fsS http://localhost:5004/_health; }
-ui_ready() { curl -fsS http://localhost:5002/ && curl -fsS http://localhost:5002/api/config; }
+probe() { curl -fsS --max-time 10 "$@"; }
+api_ready() { probe http://localhost:5004/_health; }
+ui_ready() { probe http://localhost:5002/ && probe http://localhost:5002/api/config; }
 
 # True once Druid has ingested an event from the last few minutes, i.e. data is flowing
 # now (after a resume, older events are already there).
 events_ready() {
     local count
-    count=$(curl -fsS -X POST -H 'Content-Type: application/json' \
+    count=$(probe -X POST -H 'Content-Type: application/json' \
         -d '{"query":"SELECT COUNT(*) AS n FROM \"osprey.execution_results\" WHERE __time > CURRENT_TIMESTAMP - INTERVAL '"'"'5'"'"' MINUTE","resultFormat":"array"}' \
         http://localhost:8082/druid/v2/sql 2>/dev/null | tr -dc '0-9')
     [ -n "$count" ] && [ "$count" -gt 0 ]
 }
 
-# The UI with the last day of events already queried, grouped by user.
+# The UI with yesterday's and today's events already queried, grouped by user. Whole days,
+# so the link keeps showing new events for the rest of the day after it's printed.
 demo_url() {
     local start end
     start=$(date -u -d yesterday +%Y-%m-%dT00:00:00.000Z)
     end=$(date -u -d tomorrow +%Y-%m-%dT00:00:00.000Z)
     echo "$(ui_url)?start=${start}&end=${end}&interval=day&queryFilter=&topn=UserId"
+}
+
+# The long-running services the demo's data flows through: producer → Kafka → worker → Druid.
+PIPELINE_SERVICES=(osprey-kafka-test-data-producer osprey-kafka osprey-worker
+    druid-coordinator druid-broker druid-middlemanager druid-historical)
+
+# Prints the pipeline services that aren't running; prints nothing when they all are.
+stopped_pipeline_services() {
+    local running svc
+    running=$(timeout 20 docker compose ps --status running --services 2>/dev/null)
+    for svc in "${PIPELINE_SERVICES[@]}"; do
+        grep -qx "$svc" <<<"$running" || echo "$svc"
+    done
+}
+
+# Shown instead of the ready banner when the UI is up but no new events are arriving.
+print_no_data_banner() {
+    local stopped
+    stopped=$(stopped_pipeline_services)
+    echo
+    echo -e "${YELLOW}${BOLD}The Osprey UI is up, but no new demo events are arriving.${NC}"
+    echo -e "  UI: ${BOLD}$(ui_url)${NC}"
+    if [ -n "$stopped" ]; then
+        echo "  These services aren't running: $(echo $stopped)"
+        echo "  Try:  docker compose up -d   (or rebuild the codespace; see the guide)"
+    else
+        echo "  Every service is running, so Druid may still be starting. Give it a few"
+        echo "  minutes, then run:  bash .devcontainer/scripts/status.sh"
+    fi
+    echo "  Guide: docs/development/codespaces.md#troubleshooting"
+    echo
 }
 
 print_ready_banner() {
@@ -90,7 +126,7 @@ print_ready_banner() {
     echo -e "  (or the ${BOLD}Ports${NC} tab → ${BOLD}Osprey UI${NC} → globe icon)"
     echo -e "  Then click ${BOLD}Submit Query${NC} to load the last day of events."
     echo
-    echo "  Or open it with that query already run:"
+    echo "  Or open it with yesterday's and today's events already queried:"
     echo "  $(demo_url)"
     echo
     echo "  Synthetic posts arrive about once a second. Posts containing"
