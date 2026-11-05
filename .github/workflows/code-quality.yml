@@ -37,6 +37,16 @@ jobs:
       - name: Install dependencies
         run: uv sync --dev
 
+      - name: Check generated protobuf bindings are up to date
+        run: |
+          ./gen-protos.sh
+          if [ -n "$(git status --porcelain -- osprey_rpc/src/osprey/rpc/)" ]; then
+            git status --short -- osprey_rpc/src/osprey/rpc/
+            git diff -- osprey_rpc/src/osprey/rpc/
+            echo "::error::Generated protobuf bindings are out of date. Run ./gen-protos.sh and commit the result."
+            exit 1
+          fi
+
       - name: Set PY
         run: echo "PY=$(python -VV | sha256sum | cut -d' ' -f1)" >> $GITHUB_ENV
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
