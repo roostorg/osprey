@@ -1,0 +1,44 @@
+# Path-based PR labels, applied by .github/workflows/labeler.yml.
+# One entry per top-level module (see AGENTS.md "Architecture").
+worker:
+  - changed-files:
+      - any-glob-to-any-file:
+          - osprey_worker/**
+
+async-worker:
+  - changed-files:
+      - any-glob-to-any-file:
+          - osprey_async_worker/**
+
+coordinator:
+  - changed-files:
+      - any-glob-to-any-file:
+          - osprey_coordinator/**
+
+ui:
+  - changed-files:
+      - any-glob-to-any-file:
+          - osprey_ui/**
+
+# Protobuf sources and the bindings generated from them.
+proto:
+  - changed-files:
+      - any-glob-to-any-file:
+          - proto/**
+          - osprey_rpc/**
+          - gen-protos.sh
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - docs/**
+          - '*.md'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+          - docker-compose.test.yaml
+          - run-tests.sh
+          - run-tests-local.sh
+          - stop-tests.sh
