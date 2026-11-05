@@ -11,6 +11,17 @@ updates:
       - "dependabot"
     ignore:
       - dependency-name: "grpcio"
+    groups:
+      # Overrides the repository's grouped security updates for uv. Minor and
+      # patch fixes share one PR; major bumps get their own PRs so one that
+      # needs code changes doesn't hold back the rest.
+      uv-security-minor-patch:
+        applies-to: security-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"
