@@ -11,6 +11,8 @@ common = [
     "deepmerge==0.3.0",
     "dnspython==2.6.1",
     "faker==4.18.0",
+    # Flask 1.x forces the `markupsafe<2.1` pin below. When upgrading or replacing Flask,
+    # also remove that pin and the `markupsafe` ignore in .github/dependabot.yml.
     "flask==1.1.4",
     "gevent==24.2.1",
     "google-api-core==2.38.0",
