@@ -46,6 +46,17 @@ wait_for_docker() {
     return 1
 }
 
+# Most images come from Docker Hub, which rate-limits anonymous pulls per IP address.
+# Signing in (from Codespaces secrets, if you've set them) avoids the limit.
+docker_hub_login() {
+    if [ -n "${DOCKERHUB_USERNAME:-}" ] && [ -n "${DOCKERHUB_TOKEN:-}" ]; then
+        echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin >/dev/null \
+            && ok "Signed in to Docker Hub as $DOCKERHUB_USERNAME" \
+            || fail "Couldn't sign in to Docker Hub as $DOCKERHUB_USERNAME; downloading anonymously."
+    fi
+    return 0
+}
+
 # wait_for <description> <timeout seconds> <command...>
 wait_for() {
     local what=$1 timeout=$2
@@ -86,8 +97,10 @@ demo_url() {
 }
 
 # The long-running services the demo's data flows through: producer → Kafka → worker → Druid.
+# Druid also needs ZooKeeper, Postgres (metadata) and MinIO (deep storage).
 PIPELINE_SERVICES=(osprey-kafka-test-data-producer osprey-kafka osprey-worker
-    druid-coordinator druid-broker druid-middlemanager druid-historical)
+    druid-coordinator druid-broker druid-middlemanager druid-historical
+    druid-zookeeper postgres minio)
 
 # Prints the pipeline services that aren't running; prints nothing when they all are.
 stopped_pipeline_services() {
