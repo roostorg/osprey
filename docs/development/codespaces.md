@@ -103,7 +103,7 @@ The demo container doesn't include the Python, uv, Node or Rust toolchains. For 
 
 Locally, pass `--config .devcontainer/dev/devcontainer.json` to the devcontainer CLI. The [`.devcontainer` README](https://github.com/roostorg/osprey/blob/main/.devcontainer/README.md#development-configuration) covers what it installs and how to run the stack and tests inside it. For development without a devcontainer, see [Local Development](local.md).
 
-Running it locally on a host whose kernel lacks legacy iptables support (seen on Linux 7.0), Docker inside the container fails to start with `can't initialize iptables table 'nat'`: the Docker-in-Docker feature sets up the container to use legacy iptables. Switch the container to the nftables backend, restart its Docker daemon, and start the demo again:
+Running either configuration locally on a host whose kernel lacks legacy iptables support (seen on Linux 7.0), Docker inside the container fails to start with `can't initialize iptables table 'nat'`: the Docker-in-Docker feature sets up the container to use legacy iptables. Switch the container to the nftables backend, restart its Docker daemon, and start the demo again:
 
 ```sh
 sudo update-alternatives --set iptables /usr/sbin/iptables-nft
