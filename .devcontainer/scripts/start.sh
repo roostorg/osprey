@@ -19,6 +19,8 @@ echo "keeps showing progress."
 echo
 
 wait_for_docker || on_failure
+# Also signed in by prepare.sh, unless it skipped preparation; `up` pulls anything missing.
+docker_hub_login
 
 step "Starting services"
 docker compose up -d --quiet-pull || on_failure

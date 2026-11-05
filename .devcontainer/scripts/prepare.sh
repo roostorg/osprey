@@ -15,12 +15,7 @@ if ! wait_for_docker; then
     exit 0
 fi
 
-# Most images come from Docker Hub, which rate-limits anonymous pulls per IP address.
-# Signing in (from Codespaces secrets, if you've set them) avoids the limit.
-if [ -n "${DOCKERHUB_USERNAME:-}" ] && [ -n "${DOCKERHUB_TOKEN:-}" ]; then
-    echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin >/dev/null \
-        && ok "Signed in to Docker Hub as $DOCKERHUB_USERNAME"
-fi
+docker_hub_login
 
 pull_failed() {
     fail "Couldn't download or build the demo's images."
