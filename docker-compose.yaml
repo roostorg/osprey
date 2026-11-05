@@ -170,7 +170,6 @@ services:
       - PORT=5004
       - DEBUG=true
       - FLASK_DEBUG=1
-      - FLASK_ENV=development
       - DRUID_URL=http://druid-broker:8082
       - POSTGRES_HOSTS={"osprey_db":"postgresql://osprey:FoolishPassword@postgres:5432/osprey"}
       - DD_TRACE_ENABLED=False

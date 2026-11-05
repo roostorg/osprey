@@ -50,7 +50,7 @@ class Query(Model):
             return session.query(cls).filter(cls.id == query_id).limit(1).first()
 
     @classmethod
-    def get_all(cls, before: int | None = None, limit: int = 100) -> list['Query']:
+    def get_all(cls, before: int | str | None = None, limit: int = 100) -> list['Query']:
         table = cls.__table__
         query = table.select().limit(limit).order_by(table.c.id.desc())
 
@@ -61,7 +61,7 @@ class Query(Model):
             return [cls(**result) for result in session.execute(query)]
 
     @classmethod
-    def get_all_for_user(cls, user_email: str, before: int | None = None, limit: int = 100) -> list['Query']:
+    def get_all_for_user(cls, user_email: str, before: int | str | None = None, limit: int = 100) -> list['Query']:
         table = cls.__table__
         query = table.select().where(table.c.executed_by == user_email).limit(limit).order_by(table.c.id.desc())
 
@@ -144,7 +144,7 @@ class SavedQuery(Model):
             return session.query(cls).filter(cls.query_id == query_id).limit(1).first()
 
     @classmethod
-    def get_all(cls, before: int | None = None, limit: int = 100) -> Any:
+    def get_all(cls, before: int | str | None = None, limit: int = 100) -> Any:
         table = cls.__table__
         query = table.select().limit(limit).order_by(table.c.id.desc())
 
@@ -155,7 +155,7 @@ class SavedQuery(Model):
             return session.query(SavedQuery).options(selectinload(SavedQuery.query)).from_statement(query).all()
 
     @classmethod
-    def get_all_for_user(cls, user_email: str, before: int | None = None, limit: int = 100) -> list['Query']:
+    def get_all_for_user(cls, user_email: str, before: int | str | None = None, limit: int = 100) -> list['Query']:
         table = cls.__table__
         query = table.select().where(table.c.saved_by == user_email).limit(limit).order_by(table.c.id.desc())
 

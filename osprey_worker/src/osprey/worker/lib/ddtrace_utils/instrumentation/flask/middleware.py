@@ -3,6 +3,7 @@
 import re
 import sys
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 import flask.templating
@@ -15,10 +16,13 @@ from ddtrace.propagation.http import HTTPPropagator
 from flask import Flask, g, request, signals
 from osprey.worker.lib.ddtrace_utils.constants import SpanAttributes
 from osprey.worker.lib.ddtrace_utils.internal.globals import baggage_manager, baggage_propagator
+from osprey.worker.lib.utils.flask_utils import canonical_endpoint
 
 log = get_logger(__name__)
 
 SPAN_NAME = 'flask.request'
+
+_SETTINGS_EXTENSION_KEY = 'osprey_ddtrace'
 
 # Matches path segments that are uint64s, which likely represent snowflakes.
 ENTITY_ID_IN_PATH_REGEX = re.compile(r'(?:(?<=^)|(?<=\/))\d{10,}(?=$|\/)')
@@ -29,6 +33,13 @@ def _redact_entity_ids_in_path(path: str) -> str:
     Returns the URL or path with numeric segments replaced with a single `?`.
     """
     return ENTITY_ID_IN_PATH_REGEX.sub('?', path)
+
+
+@dataclass
+class _TraceSettings:
+    tracer: Tracer
+    service: str
+    use_distributed_tracing: bool
 
 
 class TraceMiddleware:
@@ -49,9 +60,9 @@ class TraceMiddleware:
         # case, `ddtrace-run` instruments the application, but then users code is unable
         # to update settings such as `distributed_tracing` flag. This step can be removed
         # when the `Config` object is used
-        self.app._tracer = tracer
-        self.app._service = service
-        self.app._use_distributed_tracing = distributed_tracing
+        self.app.extensions[_SETTINGS_EXTENSION_KEY] = _TraceSettings(
+            tracer=tracer, service=service, use_distributed_tracing=distributed_tracing
+        )
         self.use_signals = use_signals
         self.redact_entity_ids_in_urls = redact_entity_ids_in_urls
 
@@ -68,9 +79,7 @@ class TraceMiddleware:
         # Add exception handling signals. This will annotate exceptions that
         # are caught and handled in custom user code.
         # See https://github.com/DataDog/dd-trace-py/issues/390
-        if use_signals and not signals.signals_available:
-            log.debug(_blinker_not_installed_msg)
-        self.use_signals = use_signals and signals.signals_available
+        self.use_signals = use_signals
         timing_signals = {
             'got_request_exception': self._request_exception,
         }
@@ -96,6 +105,10 @@ class TraceMiddleware:
             self._receivers.append(handler)
         return connected
 
+    @property
+    def _settings(self) -> _TraceSettings:
+        return self.app.extensions[_SETTINGS_EXTENSION_KEY]
+
     def _before_request(self) -> None:
         """Starts tracing the current request and stores it in the global
         request object.
@@ -110,7 +123,7 @@ class TraceMiddleware:
             log.debug('flask: error tracing response', exc_info=True)
         return response
 
-    def _teardown_request(self, exception: Exception | None) -> None:
+    def _teardown_request(self, exception: BaseException | None) -> None:
         """Runs at the end of a request. If there's an unhandled exception, it
         will be passed in.
         """
@@ -126,7 +139,7 @@ class TraceMiddleware:
             log.debug('flask: error finishing span', exc_info=True)
 
     def _start_span(self) -> None:
-        if self.app._use_distributed_tracing:
+        if self._settings.use_distributed_tracing:
             propagator = HTTPPropagator()
 
             # Only need to activate the new context if something was propagated
@@ -134,9 +147,9 @@ class TraceMiddleware:
             # all the expected methods
             context = propagator.extract(request.headers)
             if context.trace_id:
-                self.app._tracer.context_provider.activate(context)
+                self._settings.tracer.context_provider.activate(context)
         try:
-            span = self.app._tracer.trace(SPAN_NAME, service=self.app._service, span_type=SpanTypes.WEB)
+            span = self._settings.tracer.trace(SPAN_NAME, service=self._settings.service, span_type=SpanTypes.WEB)
 
             baggage = baggage_propagator.extract(request.headers)  # type: ignore[arg-type]
             baggage_manager.store_baggage_items(span, baggage, False)
@@ -144,7 +157,7 @@ class TraceMiddleware:
             local_baggage = {}
             dd_service: str | None = request.environ.get('DD_SERVICE')
             role: str | None = request.environ.get('role')
-            service: str | None = self.app._service or dd_service or role
+            service: str | None = self._settings.service or dd_service or role
 
             if span.name:
                 local_baggage[SpanAttributes.OPERATION] = span.name
@@ -159,8 +172,9 @@ class TraceMiddleware:
                     span.set_tag('api.version', api_version)
                     local_baggage[SpanAttributes.API_VERSION] = api_version
 
-                if request.endpoint:
-                    local_baggage[SpanAttributes.RESOURCE] = compat.to_unicode(request.endpoint).lower()
+                endpoint = canonical_endpoint(request.endpoint)
+                if endpoint:
+                    local_baggage[SpanAttributes.RESOURCE] = compat.to_unicode(endpoint).lower()
 
                 if request.method:
                     local_baggage[SpanAttributes.METHOD] = request.method
@@ -228,7 +242,7 @@ class TraceMiddleware:
         if span and exception:
             _set_error_on_span(span, exception)
 
-    def _finish_span(self, span: Span, exception: Exception | None = None) -> None:
+    def _finish_span(self, span: Span, exception: BaseException | None = None) -> None:
         if not span or not span.sampled:
             return
 
@@ -253,7 +267,7 @@ class TraceMiddleware:
         url = ''
         if request:
             method = request.method
-            endpoint = request.endpoint or str(code)
+            endpoint = canonical_endpoint(request.endpoint) or str(code)
             url = request.base_url or ''
 
         if url:
@@ -274,7 +288,7 @@ class TraceMiddleware:
         span.finish()
 
 
-def _set_error_on_span(span: Span, exception: Exception) -> None:
+def _set_error_on_span(span: Span, exception: BaseException) -> None:
     # The 3 next lines might not be strictly required, since `set_traceback`
     # also get the exception from the sys.exc_info (and fill the error meta).
     # Since we aren't sure it always work/for insuring no BC break, keep
@@ -291,7 +305,7 @@ def _patch_render(tracer: Tracer) -> None:
     # fall back to patching  global method
     _render = flask.templating._render  # type: ignore[attr-defined]
 
-    def _traced_render(template: Any, context: Any, app: Flask) -> Any:
+    def _traced_render(app: Flask, template: Any, context: Any) -> Any:
         # python-upgrade-compat: span_type has a different type in the later version of ddtrace
         if sys.version_info < (3, 11):
             span_type = SpanTypes.TEMPLATE.value
@@ -299,7 +313,7 @@ def _patch_render(tracer: Tracer) -> None:
             span_type = SpanTypes.TEMPLATE
         with tracer.trace('flask.template', span_type=span_type) as span:
             span.set_tag('flask.template', template.name or 'string')
-            return _render(template, context, app)
+            return _render(app, template, context)
 
     flask.templating._render = _traced_render  # type: ignore[attr-defined]
 
@@ -307,6 +321,3 @@ def _patch_render(tracer: Tracer) -> None:
 def _signals_exist(names: dict[str, Callable[[Any, Any], None]]) -> bool:
     """Return true if all of the given signals exist in this version of flask."""
     return all(getattr(signals, n, False) for n in names)
-
-
-_blinker_not_installed_msg = 'please install blinker to use flask signals. http://flask.pocoo.org/docs/0.11/signals/'

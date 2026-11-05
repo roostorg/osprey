@@ -17,7 +17,7 @@ from flask_cors import CORS
 from osprey.engine.ast_validator.validation_context import ValidationFailed
 from osprey.worker.lib import ddtrace_utils
 from osprey.worker.lib.osprey_shared.logging import get_logger
-from osprey.worker.lib.utils.flask_utils import OspreyFlask
+from osprey.worker.lib.utils.flask_utils import API_BLUEPRINT_NAME_PREFIX, OspreyFlask
 from sentry_sdk.integrations.flask import FlaskIntegration
 
 
@@ -37,7 +37,7 @@ def _handle_exception(e: HTTPException) -> Response:
 
 def _register_with_prefix(app, blueprint):
     app.register_blueprint(blueprint)
-    app.register_blueprint(blueprint, url_prefix='/api')
+    app.register_blueprint(blueprint, url_prefix='/api', name=f'{API_BLUEPRINT_NAME_PREFIX}{blueprint.name}')
 
 
 def health() -> str | tuple[str, int]:

@@ -8,9 +8,23 @@ from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
+    from osprey.worker.lib.storage.bulk_action_files import BulkActionFileManager
+
+# Blueprints served under both `/` and `/api` are registered a second time under this name prefix, since Flask
+# doesn't allow two registrations with the same name.
+API_BLUEPRINT_NAME_PREFIX = 'api_'
+
+
+def canonical_endpoint(endpoint: str | None) -> str | None:
+    """Returns the endpoint name with the `/api` blueprint prefix removed, so both copies of a route share a name."""
+    if endpoint and endpoint.startswith(API_BLUEPRINT_NAME_PREFIX) and '.' in endpoint:
+        return endpoint[len(API_BLUEPRINT_NAME_PREFIX) :]
+    return endpoint
 
 
 class OspreyFlask(Flask):
+    bulk_action_file_manager: 'BulkActionFileManager'
+
     def make_response(self, rv: Any) -> Any:
         """
         Creates a response from a given view return value. Overrides the default flask behavior to be
