@@ -45,6 +45,8 @@ docker compose up -d
 # Same stack inside the devcontainer GitHub Codespaces uses (.devcontainer/; Docker-in-Docker,
 # adds .devcontainer/docker-compose.codespaces.yaml and the test-data producer)
 npx @devcontainers/cli up --workspace-folder .
+# Development devcontainer: toolchains and deps installed, nothing started (.devcontainer/dev/)
+npx @devcontainers/cli up --workspace-folder . --config .devcontainer/dev/devcontainer.json
 
 # UI dev server (Corepack auto-resolves pnpm from osprey_ui/package.json's packageManager field)
 cd osprey_ui && corepack enable && pnpm install --frozen-lockfile && pnpm start
