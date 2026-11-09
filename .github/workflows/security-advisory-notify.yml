@@ -1,0 +1,42 @@
+# Posts each new repository security advisory in triage or draft state to the
+# private security Discord channel with roostorg/discord-bot: GHSA ID, state,
+# severity and link only. GitHub Actions has no advisory event, so this polls
+# the REST API.
+#
+# Secrets of the security-advisory-notify environment, which only main can
+# deploy to (the action skips silently when either is missing):
+#   SECURITY_DISCORD_WEBHOOK  webhook URL of the private security channel
+#   ADVISORY_READ_TOKEN       fine-grained token, this repository only,
+#                             "Repository security advisories: Read-only"
+#
+# Logs and caches on this repository are readable by anyone; the action
+# prints nothing about an advisory and caches only keyed hashes of GHSA IDs.
+
+name: Security advisory notifications
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: security-advisory-notify
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    name: Post new advisories to Discord
+    # The environment's branch policy keeps its secrets on main; the if skips
+    # other branches quietly instead of failing on that policy.
+    if: github.ref == 'refs/heads/main'
+    environment: security-advisory-notify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Post new advisories
+        uses: roostorg/discord-bot/security-advisories@4c2f2b883b2f42e633c63836618d8f462ac64db8  # roostorg/discord-bot#20 head; repin to main after merge
+        with:
+          webhook-url: ${{ secrets.SECURITY_DISCORD_WEBHOOK }}
+          advisory-read-token: ${{ secrets.ADVISORY_READ_TOKEN }}
