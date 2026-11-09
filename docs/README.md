@@ -16,7 +16,7 @@ The docs are versioned; other versions are available at the [documentation site 
 
 [![The Query page with an SML filter for post-creation events and its history of past queries, beside a timeseries chart showing matching event volume in fifteen-minute buckets](images/query-and-charts.png)](images/query-and-charts.png)
 
-The fastest way to get a feel for Osprey is the one-command demo in [Getting Started](development/), which brings up the full stack on live sample data in a few minutes.
+The fastest way to get a feel for Osprey is the one-command demo in [Getting Started](development/), which brings up the full stack on live sample data in a few minutes. To skip installing anything, [open it in GitHub Codespaces](development/codespaces.md) instead.
 
 ## Contributing
 
