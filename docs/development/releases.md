@@ -29,7 +29,7 @@ Release milestones should not have any open issues or unmerged PRs attached once
 Before cutting a release, ensure:
 
 - [ ] **CI is passing** for the `main` branch
-- [ ] **The [E2E Smoke Test workflow](https://github.com/roostorg/osprey/actions/workflows/e2e.yml) is green on the release commit** (run it via **Run workflow** if it hasn't run on that commit; required for major and minor releases)
+- [ ] **The [E2E Smoke Test workflow](https://github.com/roostorg/osprey/actions/workflows/e2e.yml) is green on the release commit** (it runs on every push to `main` and `release/**`; if that run is missing or flaked, use **Run workflow** on the branch; required for every release, including patch and security releases)
 - [ ] **You understand the correct version** according to SemVer
 - [ ] **The milestone is up-to-date** with no remaining open issues or unmerged PRs
 - [ ] **[CHANGELOG.md](https://github.com/roostorg/osprey/blob/main/CHANGELOG.md) is up-to-date** with notable changes under `[Unreleased]`

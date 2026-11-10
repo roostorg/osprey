@@ -5,8 +5,30 @@ name: E2E Smoke Test
 # ./e2e-smoke.sh (see AGENTS.md). Required green on the release commit; see
 # docs/development/releases.md.
 on:
+  # Any base branch, so stacked PRs (based on another PR's branch) get the check too.
+  # PRs only run it when something that can affect the running app changed.
   pull_request:
-    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'osprey_worker/**'
+      - 'osprey_rpc/**'
+      - 'osprey_async_worker/**'
+      - 'example_plugins/**'
+      - 'proto/**'
+      - 'example_rules/**'
+      - 'example_data/**'
+      - 'druid/**'
+      - 'docker-compose.yaml'
+      - 'entrypoint.sh'
+      - 'init-minio-bucket.sh'
+      - 'e2e-smoke.sh'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/e2e.yml'
+  # Every commit on main and release branches, unfiltered, so any release commit
+  # (including one that only touches CHANGELOG.md) already has a run to check.
+  push:
+    branches: [main, 'release/**']
   release:
     types: [published]
   workflow_dispatch:
@@ -19,40 +41,7 @@ permissions:
   contents: read
 
 jobs:
-  # Only run the (heavy) E2E job on PRs when something that can affect the running
-  # app changed. Releases and manual runs always run it.
-  changes:
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-      pull-requests: read
-    outputs:
-      run: ${{ github.event_name != 'pull_request' || steps.filter.outputs.app == 'true' }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d  # v4.0.3
-        id: filter
-        if: ${{ github.event_name == 'pull_request' }}
-        with:
-          filters: |
-            app:
-              - 'osprey_worker/**'
-              - 'osprey_rpc/**'
-              - 'proto/**'
-              - 'example_rules/**'
-              - 'example_data/**'
-              - 'druid/**'
-              - 'docker-compose.yaml'
-              - 'e2e-smoke.sh'
-              - 'pyproject.toml'
-              - 'uv.lock'
-              - '.github/workflows/e2e.yml'
-
   e2e:
-    needs: [changes]
-    if: ${{ needs.changes.outputs.run == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:

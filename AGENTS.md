@@ -185,6 +185,9 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 
 # integration-tests.yml
 ./run-tests.sh
+
+# e2e.yml (PRs touching app code; every push to main and release/**; releases; manual)
+./e2e-smoke.sh
 ```
 
 `mdbook.yml`, `publish-coordinator-image.yml`, and `release-osprey-rpc.yml` are release/deploy workflows — do not modify without human approval (see "Human-approval-required actions" below).
