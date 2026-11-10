@@ -83,6 +83,7 @@ If `main` has unreleased changes, choose one of the options below. **Pending dec
 - Fixes land on `main` first, then are cherry-picked to `release/x.y` with `git cherry-pick -x`, one PR per cherry-picked commit. The exception is a private-fork fix, which merges into `release/x.y` directly and is forward-ported to `main` in step 8.
 - The `Code Quality Checks` and `Integration Tests` workflows only run on PRs against `main`, so they don't run on PRs against `release/x.y`: run the [CI checks](https://github.com/roostorg/osprey/blob/main/AGENTS.md#ci) locally. `main`'s branch protection rules don't cover the branch either.
 - A release runs the workflow files on the release branch, not on `main`. Cherry-pick any workflow fixes the release needs, e.g. [#545](https://github.com/roostorg/osprey/pull/545) for `release-osprey-rpc.yml` on `release/1.2`.
+- A `release/x.y` branch cut before [#551](https://github.com/roostorg/osprey/pull/551) merged has no `.github/workflows/e2e.yml` (or `e2e-smoke.sh`), so the smoke test won't run on it until they are cherry-picked.
 
 ### Cherry-picking deterministically
 
@@ -122,7 +123,9 @@ On option B, create the release from the branch:
 gh release create x.y.z --target release/x.y --title "Osprey x.y.z" --notes-file notes.md
 ```
 
-CI must be green on the release commit (on option B, the local runs from step 2). Once the release end-to-end smoke test ([#551](https://github.com/roostorg/osprey/pull/551)) has merged, it is also a gate: confirm it is green on the release commit.
+CI must be green on the release commit (on option B, the local runs from step 2). Once the release end-to-end smoke test ([#551](https://github.com/roostorg/osprey/pull/551)) has merged, it gates every release, including patch and security releases: confirm the **E2E Smoke Test** run is green on the release commit. It runs on every push to `main` and `release/**`. If the run is missing or flaked, use **Run workflow** on the branch.
+
+Actions does not run in temporary private forks, so on the private fork path the smoke test first runs on the public merge commit that **Merge pull request** pushes to `main` or `release/x.y`. Wait for that run to go green before publishing the release. If it fails, the fix is already public, so fix forward quickly.
 
 Publishing the release triggers, from the workflow files at the tag:
 
@@ -278,7 +281,7 @@ On option B, open a PR to `main` that brings over the release:
 - [ ] Release base agreed (`main` or `release/x.y`) before any private-fork merge
 - [ ] Fix merged (private fork or normal PR), with a regression test where possible; cherry-picks change only the fixed packages in `uv.lock` / `pnpm-lock.yaml`
 - [ ] Changelog `### Security` entries and version bump merged
-- [ ] CI (and the E2E smoke test, once merged) green on the release commit
+- [ ] CI and the E2E smoke test (once #551 merges) green on the release commit; on the private fork path, on the public merge commit
 - [ ] Release `x.y.z` published from the agreed base, with a no-`v` SemVer tag
 - [ ] `osprey-rpc` sdist attached, coordinator image and docs snapshot confirmed published
 - [ ] Advisories published after the pre-publish checks
