@@ -10,7 +10,9 @@
 #   ./e2e-smoke.sh              # start the stack, run the test
 #   E2E_SKIP_UP=1 ./e2e-smoke.sh  # stack is already running
 #
-# Requires: docker compose v2, curl, jq. Tear down with `docker compose down -v`.
+# Requires: docker compose v2, curl, jq. Uses the dev compose project and ports, so stop
+# any running dev stack first. Tear down with `docker compose down` (add `-v` only if you
+# also want to delete the dev stack's data volumes).
 set -euo pipefail
 
 features=$(mktemp)
@@ -45,7 +47,9 @@ druid_ingesting() {
   curl -sf "$DRUID_COORDINATOR/druid/indexer/v1/supervisor/osprey.execution_results/status" \
     | jq -e '.payload.activeTasks | length > 0'
 }
-worker_consuming() { docker compose logs osprey-worker | grep -q 'Updated partition assignment'; }
+# No grep -q: exiting on the first match would SIGPIPE `docker compose logs` on a long log,
+# which pipefail turns into a failed check.
+worker_consuming() { docker compose logs osprey-worker | grep 'Updated partition assignment' >/dev/null; }
 
 if [ -z "${E2E_SKIP_UP:-}" ]; then
   docker compose up -d --build "${SERVICES[@]}"
@@ -58,7 +62,8 @@ wait_for "Druid ingestion task running" "$READY_TIMEOUT" druid_ingesting
 
 # One event from the example_data template that the example `ContainsHello` rule matches.
 user_id="e2e_$(date +%s)"
-timestamp=$(date -u +"%Y-%m-%dT%H:%M:%S.%NZ")
+# jq rather than GNU-only date flags, so the script also runs on macOS.
+timestamp=$(jq -nr 'now | todate')
 sed -e 's/\$text/hello e2e smoke./' \
     -e "s/\\\$timestamp/$timestamp/" \
     -e "s/\\\$user_id/$user_id/" \
@@ -72,8 +77,8 @@ echo "produced event for $user_id"
 # Query the result through the UI API (HTTP). Druid ingestion is asynchronous, so poll.
 query_event() {
   local start end
-  start=$(date -u -d '-1 hour' +%Y-%m-%dT%H:%M:%SZ)
-  end=$(date -u -d '+1 hour' +%Y-%m-%dT%H:%M:%SZ)
+  start=$(jq -nr 'now - 3600 | todate')
+  end=$(jq -nr 'now + 3600 | todate')
   curl -sf -X POST "$UI_API/events/scan" -H 'Content-Type: application/json' \
     -d "{\"start\":\"$start\",\"end\":\"$end\",\"query_filter\":\"UserId == '$user_id'\",\"entity\":null,\"limit\":10}" \
     | jq -e '.events[0].extracted_features' > "$features"

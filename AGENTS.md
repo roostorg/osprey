@@ -92,7 +92,7 @@ stack first. It starts the stack itself, and leaves it up afterward:
 ```bash
 ./e2e-smoke.sh
 E2E_SKIP_UP=1 ./e2e-smoke.sh   # reuse an already-running stack
-docker compose down -v         # tear down (the dev project, which the script started)
+docker compose down            # tear down (the dev project, which the script started; -v also deletes its data)
 ```
 
 Python lint / format / type-check (no Docker needed):
