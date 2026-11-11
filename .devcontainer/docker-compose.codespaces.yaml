@@ -2,12 +2,12 @@
 # devcontainer.json sets COMPOSE_FILE so plain `docker compose` picks this up.
 
 services:
-  # Pass the Zentropi API key (a Codespaces secret) through to the worker so the
-  # CopePolicyScore UDF can call CoPE-B-S1. Compose substitutes ${ZENTROPI_API_KEY}
-  # from the codespace environment.
+  # Pass the Parasail API key (a Codespaces secret) through to the worker so the
+  # CopePolicyScore UDF can call CoPE-B-S1 (System One). Compose substitutes
+  # ${PARASAIL_API_KEY} from the codespace environment.
   osprey-worker:
     environment:
-      - ZENTROPI_API_KEY=${ZENTROPI_API_KEY:-}
+      - PARASAIL_API_KEY=${PARASAIL_API_KEY:-}
 
   osprey-ui-api:
     healthcheck:
