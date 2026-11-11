@@ -3,3 +3,7 @@ labels:
     valid_for: [User]
     connotation: positive
     description: testing label
+  scam:
+    valid_for: [User]
+    connotation: negative
+    description: Authored a post CoPE-B-S1 flagged as a scam
