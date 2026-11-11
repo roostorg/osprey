@@ -12,7 +12,7 @@ from pydantic import BaseModel
 class EntityMarshaller(FlaskRequestMarshaller):
     @classmethod
     def marshal(cls: Type[T], flask_request: Request) -> T:
-        body = flask_request.get_json()
+        body = flask_request.get_json() if flask_request.is_json else None
         entity = {'entity': {'id': flask_request.args['entity_id'], 'type': flask_request.args['entity_type']}}
         if not body:
             return cls.parse_obj(entity)
