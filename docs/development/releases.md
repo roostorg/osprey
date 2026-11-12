@@ -32,6 +32,7 @@ Before cutting a release, ensure:
 - [ ] **You understand the correct version** according to SemVer
 - [ ] **The milestone is up-to-date** with no remaining open issues or unmerged PRs
 - [ ] **[CHANGELOG.md](https://github.com/roostorg/osprey/blob/main/CHANGELOG.md) is up-to-date** with notable changes under `[Unreleased]`
+- [ ] **The coordinator's base images are current**: merge any open Dependabot PR that updates the pinned `rust` or `debian` digests in `osprey_coordinator/Dockerfile`, so the release image includes the latest Debian security fixes
 
 Then open a release-prep pull request to:
 
