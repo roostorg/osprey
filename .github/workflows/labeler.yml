@@ -1,0 +1,20 @@
+name: Labeler
+
+on:
+  # Needed so the workflow has a write token on fork PRs.
+  # Safe as long as no code from the pull request is checked out or executed:
+  # this job has no checkout step, and actions/labeler only reads the list of
+  # changed files via the API and the config from the base branch.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
+    types: [opened, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # read .github/labeler.yml from the base branch
+      pull-requests: write # add labels
+    steps:
+      - uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7.0.0
