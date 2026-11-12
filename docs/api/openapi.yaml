@@ -1,0 +1,1548 @@
+openapi: 3.1.0
+info:
+  title: Osprey UI API
+  version: 0.1.0
+  summary: HTTP API served by the Osprey UI API (Flask) for the Osprey web UI.
+  description: |
+    The UI API is the Flask service (`osprey-ui-api`, port 5004) that backs the Osprey web UI. It is
+    derived from the code under `osprey_worker/src/osprey/worker/ui_api/osprey/`. The gRPC services
+    are described by the `.proto` files under `proto/osprey/rpc/`, not here.
+
+    **Path prefix.** Every blueprint is registered twice, once at the root and once under `/api`, so
+    `GET /config` and `GET /api/config` are the same operation. The `basePath` server variable selects
+    which. `/_health` and `/_debug_sentry` exist at the root only.
+
+    **Authentication.** There is no real authentication. Each request is assigned an identity from the
+    `X-Test-Email` header, falling back to the `OSPREY_DEV_USER_EMAIL` environment variable of the
+    server, then `local-dev@localhost`. The header is trusted as sent. Authorization is enforced
+    through "abilities" looked up for that email in the ACL config; a missing ability is answered
+    with `401`. Put the API behind an authenticating proxy before exposing it.
+
+    **Errors.** Errors are not uniform; see the `Error*` responses in `components/responses`. Every
+    response is sent with `Content-Type: application/json` regardless of what the body actually is.
+
+    **Audit.** Every successful request except `/_health` and `/config` is written to the access audit log.
+
+    **Large integers.** Pydantic-model responses are serialised with `bigint_as_string`, so integers
+    outside the JS safe range come out as strings (this affects event and query ids).
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: http://localhost:5004{basePath}
+    description: Local development stack (docker compose binds 127.0.0.1:5004).
+    variables:
+      basePath:
+        default: ''
+        enum: ['', /api]
+        description: Every route is served both at the root and under `/api`.
+security:
+  - DevIdentity: []
+tags:
+  - name: Health
+    description: 'Liveness and diagnostics.'
+  - name: Config
+    description: 'UI configuration.'
+  - name: Docs
+    description: 'Documentation of UDFs and feature locations.'
+  - name: Events
+    description: 'Querying events stored in Druid and the execution result store.'
+  - name: Entities
+    description: 'Entity labels and per-entity event counts.'
+  - name: Queries
+    description: 'History of executed queries.'
+  - name: Saved queries
+    description: 'Named, versioned queries.'
+  - name: Rules
+    description: 'Catalogs of rules and features extracted from the SML sources.'
+  - name: Rules visualizer
+    description: 'Rules graph rendering.'
+  - name: Abilities
+    description: "The caller's abilities and temporary ability tokens."
+  - name: Bulk labelling
+    description: 'Bulk label tasks.'
+  - name: Bulk actions
+    description: 'Bulk action jobs (mostly unimplemented).'
+
+paths:
+  /_health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Liveness check.
+      description: Root path only (no `/api` variant). Not authenticated and not audited. Always answers `OK` today (the code has a TODO for real health reporting).
+      security: []
+      responses:
+        '200':
+          description: Service is up.
+          content:
+            application/json:
+              schema: {type: string, examples: [OK]}
+        '503':
+          description: Reserved for an unhealthy state; the current implementation never returns it.
+          content:
+            application/json:
+              schema: {type: string, examples: [UNHEALTHY]}
+
+  /_debug_sentry:
+    get:
+      tags: [Health]
+      operationId: debugSentry
+      summary: Deliberately raise an error to test Sentry reporting.
+      description: Root path only. Divides by zero, so it always fails with an unhandled error.
+      responses:
+        '500':
+          description: Unhandled `ZeroDivisionError`.
+
+  /config:
+    get:
+      tags: [Config]
+      operationId: getConfig
+      summary: UI configuration and engine metadata.
+      description: Not audited. Requires no ability.
+      responses:
+        '200':
+          description: The merged UI config.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/UIConfig'}
+
+  /docs/udfs:
+    get:
+      tags: [Docs]
+      operationId: getUdfDocs
+      summary: Documentation for every registered UDF, grouped by category.
+      description: "Requires ability `CAN_VIEW_DOCS`."
+      responses:
+        '200':
+          description: UDF categories, sorted by name, with the uncategorised group last.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [udf_categories]
+                properties:
+                  udf_categories:
+                    type: array
+                    items:
+                      type: object
+                      required: [name, udfs]
+                      properties:
+                        name: {type: [string, 'null']}
+                        udfs:
+                          type: array
+                          items: {$ref: '#/components/schemas/MethodSpec'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /docs/feature-locations:
+    get:
+      tags: [Docs]
+      operationId: getFeatureLocations
+      summary: Source locations of every known feature.
+      description: "Requires ability `CAN_VIEW_DOCS`."
+      responses:
+        '200':
+          description: Known feature locations.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [locations]
+                properties:
+                  locations:
+                    type: array
+                    items: {$ref: '#/components/schemas/FeatureLocation'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /features:
+    get:
+      tags: [Rules]
+      operationId: listFeatures
+      summary: Catalog of extracted features with reference counts.
+      description: "Requires ability `CAN_VIEW_DOCS`."
+      responses:
+        '200':
+          description: Feature catalog.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [features, total, categories, extraction_fns]
+                properties:
+                  features:
+                    type: array
+                    items: {$ref: '#/components/schemas/Feature'}
+                  total: {type: integer}
+                  categories:
+                    type: object
+                    description: Number of features per category.
+                    additionalProperties: {type: integer}
+                  extraction_fns:
+                    type: object
+                    description: Number of features per extraction function.
+                    additionalProperties: {type: integer}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /rules:
+    get:
+      tags: [Rules]
+      operationId: listRules
+      summary: Catalog of `Rule(...)` definitions.
+      description: "Requires ability `CAN_VIEW_DOCS`."
+      responses:
+        '200':
+          description: Rule catalog.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rules, total, when_rules_total, unused_total]
+                properties:
+                  rules:
+                    type: array
+                    items: {$ref: '#/components/schemas/RuleInfo'}
+                  total: {type: integer}
+                  when_rules_total:
+                    type: integer
+                    description: Number of `WhenRules(...)` calls across all sources.
+                  unused_total:
+                    type: integer
+                    description: Rules not referenced by any `WhenRules`.
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /rules_visualizer/actions_view/:
+    post:
+      tags: [Rules visualizer]
+      operationId: renderRulesGraphByActions
+      summary: Render the rules graph for a set of action names.
+      description: Note the trailing slash, which is part of the route. Requires no ability. Publishes an analytics event.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action_names]
+              properties:
+                action_names:
+                  type: array
+                  items: {type: string}
+      responses:
+        '200': {$ref: '#/components/responses/RulesGraph'}
+        '400': {$ref: '#/components/responses/ValidationError'}
+
+  /rules_visualizer/labels_view/:
+    post:
+      tags: [Rules visualizer]
+      operationId: renderRulesGraphByLabels
+      summary: Render the rules graph around a set of labels.
+      description: Note the trailing slash, which is part of the route. Requires no ability. Publishes an analytics event.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [label_names]
+              properties:
+                label_names:
+                  type: array
+                  items: {type: string}
+                show_upstream: {type: boolean, default: false}
+                show_downstream: {type: boolean, default: true}
+      responses:
+        '200': {$ref: '#/components/responses/RulesGraph'}
+        '400': {$ref: '#/components/responses/ValidationError'}
+
+  /events/topn:
+    post:
+      tags: [Events]
+      operationId: queryTopN
+      summary: Top-N values of a dimension over a time range.
+      description: |
+        Requires abilities `CAN_VIEW_EVENTS_BY_ENTITY` and `CAN_VIEW_EVENTS_BY_ACTION` (checked against
+        the request). The user's action filter is injected into the Druid query.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TopNQuery'}
+      responses:
+        '200':
+          description: Top-N result, with period-over-period comparison when requested.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TopNResponse'}
+        '400':
+          description: The request failed validation, or the query could not be executed (body is the error string).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/PydanticErrors'}
+                  - {type: string}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /events/topn/csv:
+    post:
+      tags: [Events]
+      operationId: queryTopNCsv
+      summary: Top-N result as a CSV download.
+      description: |
+        Requires ability `CAN_VIEW_EVENTS_BY_ENTITY`. `limit` is capped at 100,000 rows. Unlike
+        `/events/topn`, the user's action filter is NOT applied (see PR notes).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TopNQuery'}
+      responses:
+        '200':
+          description: |
+            CSV with columns `<dimension>`, `current_count` and, for period-over-period queries,
+            `previous_count`, `difference`, `percent_diff`. Sent with `Content-Disposition: attachment`.
+            The server's blanket JSON mimetype override applies here too, so the actual `Content-Type`
+            header may be `application/json`.
+          content:
+            text/csv:
+              schema: {type: string}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /events/topn/bulk_label:
+    post:
+      tags: [Bulk labelling]
+      operationId: bulkLabelTopN
+      summary: Label all entities in a top-N result (not implemented).
+      description: |
+        Requires `CAN_BULK_LABEL`, and `CAN_BULK_LABEL_WITH_NO_LIMIT` when `no_limit` is true. After
+        those checks the handler always answers 501; the implementation is commented out pending a
+        pluggable labels service.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - {$ref: '#/components/schemas/TopNQuery'}
+                - type: object
+                  required: [expected_entities, no_limit, label_name, label_status, label_reason]
+                  properties:
+                    excluded_entities:
+                      type: array
+                      items: {type: string}
+                      default: []
+                    expected_entities: {type: integer}
+                    no_limit: {type: boolean}
+                    label_name: {type: string}
+                    label_status: {type: string}
+                    label_reason: {type: string}
+                    label_expiry: {type: [string, 'null'], format: date-time}
+      responses:
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '501': {$ref: '#/components/responses/NotImplemented'}
+
+  /events/groupby/approximate-count:
+    post:
+      tags: [Events]
+      operationId: queryApproximateCount
+      summary: Approximate number of distinct values of a dimension.
+      description: Requires abilities `CAN_VIEW_EVENTS_BY_ENTITY` and `CAN_VIEW_EVENTS_BY_ACTION` (checked against the request).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - {$ref: '#/components/schemas/BaseEventsQuery'}
+                - type: object
+                  required: [dimension]
+                  properties:
+                    dimension: {type: string}
+      responses:
+        '200':
+          description: Cardinality estimate. `-1` when Druid returned no cardinality.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count]
+                properties:
+                  count: {type: integer}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /events/timeseries:
+    post:
+      tags: [Events]
+      operationId: queryTimeseries
+      summary: Event counts over time.
+      description: Requires ability `CAN_VIEW_EVENTS_BY_ENTITY`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TimeseriesQuery'}
+      responses:
+        '200':
+          description: The raw Druid timeseries result.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {type: object, additionalProperties: true}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /events/scan:
+    post:
+      tags: [Events]
+      operationId: scanEvents
+      summary: Paginated scan of events matching a query.
+      description: |
+        Requires abilities `CAN_VIEW_EVENTS_BY_ENTITY` and `CAN_VIEW_EVENTS_BY_ACTION`. Results are
+        redacted according to the user's `CAN_VIEW_ACTION_DATA` and `CAN_VIEW_FEATURE_DATA` abilities.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - {$ref: '#/components/schemas/BaseEventsQuery'}
+                - type: object
+                  properties:
+                    limit: {type: integer, default: 100}
+                    next_page:
+                      type: [string, 'null']
+                      description: Opaque cursor from a previous response.
+                    order:
+                      type: string
+                      enum: [ASCENDING, DESCENDING]
+                      default: DESCENDING
+      responses:
+        '200':
+          description: One page of events.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [events, next_page]
+                properties:
+                  events:
+                    type: array
+                    items:
+                      type: object
+                      description: Subset of a stored execution result.
+                      required: [id, extracted_features, timestamp]
+                      properties:
+                        id: {type: string, description: 'Event id (bigint, serialised as a string).'}
+                        extracted_features: {type: object, additionalProperties: true}
+                        timestamp: {type: string, format: date-time}
+                  next_page: {type: [string, 'null']}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /events/event/{event_id}:
+    get:
+      tags: [Events]
+      operationId: getEvent
+      summary: One stored event with its action data.
+      description: Requires ability `CAN_VIEW_EVENTS_BY_ENTITY`. Redacted per `CAN_VIEW_ACTION_DATA` and `CAN_VIEW_FEATURE_DATA`.
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema: {type: integer, format: int64}
+      responses:
+        '200':
+          description: The stored execution result.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StoredExecutionResult'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404':
+          description: No event with that id. The body is the plain string `Unknown action id`.
+          content:
+            application/json:
+              schema: {type: string}
+
+  /entities/labels:
+    get:
+      tags: [Entities]
+      operationId: getEntityLabels
+      summary: Current labels of an entity.
+      description: |
+        Requires `CAN_VIEW_LABELS` and, against the request, `CAN_VIEW_LABELS_FOR_ENTITY`. Labels the
+        user may not see are omitted. Returns an empty label set when no labels provider is configured.
+      parameters:
+        - {$ref: '#/components/parameters/EntityId'}
+        - {$ref: '#/components/parameters/EntityType'}
+      responses:
+        '200':
+          description: Labels by name.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [labels]
+                properties:
+                  labels:
+                    type: object
+                    additionalProperties: {$ref: '#/components/schemas/LabelState'}
+                  expires_at:
+                    type: 'null'
+                    deprecated: true
+                    description: Deprecated; only present (as null) when no labels provider is configured.
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+    post:
+      tags: [Entities]
+      operationId: mutateEntityLabels
+      summary: Manually add or remove labels on an entity.
+      description: |
+        Requires, against the request, `CAN_MUTATE_ENTITIES` and `CAN_MUTATE_LABELS`. Mutations for
+        labels the user may not mutate are silently skipped. The entity is given as query parameters;
+        the body carries the mutations.
+      parameters:
+        - {$ref: '#/components/parameters/EntityId'}
+        - {$ref: '#/components/parameters/EntityType'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mutations]
+              properties:
+                mutations:
+                  type: array
+                  items:
+                    type: object
+                    required: [label_name, status, reason]
+                    properties:
+                      label_name: {type: string}
+                      status: {$ref: '#/components/schemas/LabelStatus'}
+                      reason: {type: string}
+                      expires_at: {type: [string, 'null'], format: date-time}
+      responses:
+        '200':
+          description: The outcome of the mutation as serialised by the labels provider.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EntityLabelMutationsResult'}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '501':
+          description: No labels provider is configured (`Labels Provider Not Found`).
+          content:
+            application/json:
+              schema: {type: string}
+
+  /entities/event-count-by-feature:
+    post:
+      tags: [Entities]
+      operationId: getEntityEventCountsByFeature
+      summary: Event counts for an entity, broken down by feature.
+      description: |
+        Requires ability `CAN_VIEW_EVENTS_BY_ENTITY`. The entity is given as query parameters. The body
+        is a timeseries query whose `aggregation_dimensions` select the features to count.
+      parameters:
+        - {$ref: '#/components/parameters/EntityId'}
+        - {$ref: '#/components/parameters/EntityType'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TimeseriesQuery'}
+      responses:
+        '200':
+          description: The `result` object of the first Druid timeseries bucket (counts keyed by dimension).
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /queries/query:
+    post:
+      tags: [Queries]
+      operationId: createQueryRecord
+      summary: Record that a query was executed.
+      description: Requires no ability. Missing body keys are not validated and surface as a 500.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query_filter, date_range, top_n]
+              properties:
+                query_filter: {type: string}
+                date_range: {$ref: '#/components/schemas/DateRange'}
+                top_n:
+                  type: array
+                  items: {type: string}
+                sort_order: {$ref: '#/components/schemas/SortOrder'}
+      responses:
+        '200':
+          description: The stored query.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Query'}
+
+  /queries:
+    get:
+      tags: [Queries]
+      operationId: listQueries
+      summary: Recently executed queries, newest first.
+      description: Requires no ability. Returns at most 100.
+      parameters:
+        - {$ref: '#/components/parameters/Before'}
+        - {$ref: '#/components/parameters/UserEmail'}
+      responses:
+        '200':
+          description: Queries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Query'}
+
+  /queries/validate:
+    post:
+      tags: [Queries]
+      operationId: validateQuery
+      summary: Check that a query filter parses.
+      description: Requires no ability.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query_filter]
+              properties:
+                query_filter: {type: string}
+      responses:
+        '200':
+          description: The filter is valid. The body is the filter string echoed back, as plain text (not a JSON document).
+          content:
+            application/json:
+              schema: {type: string}
+        '400': {$ref: '#/components/responses/ValidationError'}
+
+  /queries/user-emails:
+    get:
+      tags: [Queries]
+      operationId: listQueryUserEmails
+      summary: Emails of users who have executed queries.
+      description: Requires no ability.
+      responses:
+        '200': {$ref: '#/components/responses/EmailList'}
+
+  /saved-queries:
+    get:
+      tags: [Saved queries]
+      operationId: listSavedQueries
+      summary: Saved queries, newest first.
+      description: "Requires ability `CAN_VIEW_SAVED_QUERIES`."
+      parameters:
+        - {$ref: '#/components/parameters/Before'}
+        - {$ref: '#/components/parameters/UserEmail'}
+      responses:
+        '200':
+          description: Saved queries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/SavedQuery'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+    post:
+      tags: [Saved queries]
+      operationId: createSavedQuery
+      summary: Save a previously recorded query under a name.
+      description: "Requires ability `CAN_CREATE_AND_EDIT_SAVED_QUERIES`."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query_id, name]
+              properties:
+                query_id:
+                  type: string
+                  description: Id of a query returned by `/queries/query`.
+                name: {type: string}
+      responses:
+        '200':
+          description: The saved query.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SavedQuery'}
+        '400':
+          description: '`Cannot find query to save`.'
+          content:
+            application/json:
+              schema: {type: string}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /saved-queries/user-emails:
+    get:
+      tags: [Saved queries]
+      operationId: listSavedQueryUserEmails
+      summary: Emails of users who have saved queries.
+      description: Requires no ability.
+      responses:
+        '200': {$ref: '#/components/responses/EmailList'}
+
+  /saved-queries/{saved_query_id}:
+    parameters:
+      - {$ref: '#/components/parameters/SavedQueryId'}
+    get:
+      tags: [Saved queries]
+      operationId: getSavedQuery
+      summary: One saved query.
+      description: |
+        Requires ability `CAN_VIEW_SAVED_QUERIES`. An unknown id is not handled in the code and
+        results in a 500.
+      responses:
+        '200':
+          description: The saved query.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SavedQuery'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+    patch:
+      tags: [Saved queries]
+      operationId: updateSavedQuery
+      summary: Rename a saved query and optionally replace its query.
+      description: |
+        Requires ability `CAN_CREATE_AND_EDIT_SAVED_QUERIES`. When `query` is given a new query
+        revision is created whose parent is the previous one (see `/saved-queries/{id}/history`). An
+        unknown id results in a 500.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: {type: string}
+                query:
+                  type: object
+                  required: [query_filter, date_range, top_n]
+                  properties:
+                    query_filter: {type: string}
+                    date_range: {$ref: '#/components/schemas/DateRange'}
+                    top_n:
+                      type: array
+                      items: {type: string}
+                    sort_order: {$ref: '#/components/schemas/SortOrder'}
+      responses:
+        '200':
+          description: The updated saved query.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SavedQuery'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+    delete:
+      tags: [Saved queries]
+      operationId: deleteSavedQuery
+      summary: Delete a saved query.
+      description: |
+        Requires ability `CAN_CREATE_AND_EDIT_SAVED_QUERIES`.
+      responses:
+        '204':
+          description: Deleted. The body is the plain string `Saved query deleted` despite the 204 status.
+        '400':
+          description: '`Saved query not found`.'
+          content:
+            application/json:
+              schema: {type: string}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /saved-queries/{saved_query_id}/history:
+    get:
+      tags: [Saved queries]
+      operationId: getSavedQueryHistory
+      summary: Revisions of a saved query's underlying query.
+      description: |
+        Requires ability `CAN_VIEW_SAVED_QUERIES`. An unknown id results in a 500.
+      parameters:
+        - {$ref: '#/components/parameters/SavedQueryId'}
+      responses:
+        '200':
+          description: Query revisions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Query'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /my_abilities:
+    get:
+      tags: [Abilities]
+      operationId: getMyAbilities
+      summary: The calling user's abilities.
+      description: Requires no ability.
+      responses:
+        '200':
+          description: Abilities keyed by ability name, with each user's grants merged.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [abilities]
+                properties:
+                  abilities:
+                    type: object
+                    additionalProperties: {$ref: '#/components/schemas/Ability'}
+
+  /ability_tokens/{ability_token}:
+    get:
+      tags: [Abilities]
+      operationId: consumeAbilityToken
+      summary: Redeem a temporary ability token and redirect.
+      description: |
+        Grants the calling user the abilities attached to the token, then redirects to `redirect`.
+        Requires no ability. Redirects to an arbitrary caller-supplied URL (open redirect).
+      parameters:
+        - name: ability_token
+          in: path
+          required: true
+          schema: {type: string}
+        - name: redirect
+          in: query
+          required: true
+          description: Where to send the browser on success.
+          schema: {type: string}
+      responses:
+        '302':
+          description: Token consumed; redirect to `redirect`.
+          headers:
+            Location: {schema: {type: string}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401':
+          description: |
+            The token could not be consumed. The body is the failure name: `TOKEN_NOT_FOUND`,
+            `TOKEN_ALREADY_USED` or `TOKEN_EXPIRED`.
+          content:
+            application/json:
+              schema:
+                type: string
+                enum: [TOKEN_NOT_FOUND, TOKEN_ALREADY_USED, TOKEN_EXPIRED]
+
+  /bulk_history:
+    get:
+      tags: [Bulk labelling]
+      operationId: listBulkLabelTasks
+      summary: The 10 most recent bulk-label tasks.
+      description: "Requires ability `CAN_BULK_LABEL`."
+      responses:
+        '200':
+          description: Tasks, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/BulkLabelTask'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404':
+          description: There are no tasks at all (`No tasks found`).
+          content:
+            application/json:
+              schema: {type: string}
+
+  /bulk_history/{task_id}:
+    get:
+      tags: [Bulk labelling]
+      operationId: getBulkLabelTask
+      summary: One bulk-label task.
+      description: "Requires ability `CAN_BULK_LABEL`."
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema: {type: integer}
+      responses:
+        '200':
+          description: A single-element array holding the task.
+          content:
+            application/json:
+              schema:
+                type: array
+                minItems: 1
+                maxItems: 1
+                items: {$ref: '#/components/schemas/BulkLabelTask'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404':
+          description: '`Unknown task id`.'
+          content:
+            application/json:
+              schema: {type: string}
+
+  /bulk_action/start:
+    post:
+      tags: [Bulk actions]
+      operationId: startBulkAction
+      summary: Start a bulk action job (not implemented).
+      description: |
+        Requires ability `CAN_BULK_ACTION`. Always answers 501: the implementation is commented out
+        because it depends on cloud object storage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [job_name, job_description, workflow_name, file_name, entity_type]
+              properties:
+                job_name: {type: string}
+                job_description: {type: string}
+                workflow_name: {type: string}
+                file_name: {type: string}
+                entity_type: {type: string}
+      responses:
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '501': {$ref: '#/components/responses/NotImplemented'}
+
+  /bulk_action/upload_completed:
+    post:
+      tags: [Bulk actions]
+      operationId: completeBulkActionUpload
+      summary: Signal that a bulk action file upload finished (not implemented).
+      description: "Requires ability `CAN_BULK_ACTION`. Always answers 501."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [job_id]
+              properties:
+                job_id: {type: string}
+      responses:
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '501': {$ref: '#/components/responses/NotImplemented'}
+
+  /bulk_action/upload/{job_id}/{file_name}:
+    parameters:
+      - {name: job_id, in: path, required: true, schema: {type: string}}
+      - {name: file_name, in: path, required: true, schema: {type: string}}
+    put:
+      tags: [Bulk actions]
+      operationId: uploadBulkActionFilePut
+      summary: Upload the input file for a bulk action job (not implemented).
+      description: |
+        Requires ability `CAN_BULK_ACTION`. `Content-Type` must be `multipart/form-data`, checked before
+        the ability. Always answers 501 otherwise.
+      requestBody: {$ref: '#/components/requestBodies/BulkActionUpload'}
+      responses:
+        '400':
+          description: '`Content-Type must be multipart/form-data`.'
+          content:
+            application/json:
+              schema: {type: string}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '501': {$ref: '#/components/responses/NotImplemented'}
+    post:
+      tags: [Bulk actions]
+      operationId: uploadBulkActionFilePost
+      summary: Upload the input file for a bulk action job (not implemented).
+      description: Same handler as the `PUT` variant.
+      requestBody: {$ref: '#/components/requestBodies/BulkActionUpload'}
+      responses:
+        '400':
+          description: '`Content-Type must be multipart/form-data`.'
+          content:
+            application/json:
+              schema: {type: string}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '501': {$ref: '#/components/responses/NotImplemented'}
+
+  /bulk_action/jobs:
+    get:
+      tags: [Bulk actions]
+      operationId: listBulkActionJobs
+      summary: All bulk action jobs.
+      description: "Requires ability `CAN_BULK_ACTION`."
+      responses:
+        '200':
+          description: Jobs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [jobs]
+                properties:
+                  jobs:
+                    type: array
+                    items: {$ref: '#/components/schemas/BulkActionJob'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /bulk_action/jobs/{job_id}:
+    get:
+      tags: [Bulk actions]
+      operationId: getBulkActionJob
+      summary: One bulk action job.
+      description: "Requires ability `CAN_BULK_ACTION`. A non-numeric `job_id` is not handled and results in a 500."
+      parameters:
+        - {$ref: '#/components/parameters/JobId'}
+      responses:
+        '200':
+          description: The job.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BulkActionJob'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/JobNotFound'}
+
+  /bulk_action/jobs/{job_id}/cancel:
+    post:
+      tags: [Bulk actions]
+      operationId: cancelBulkActionJob
+      summary: Cancel a bulk action job.
+      description: "Requires ability `CAN_BULK_ACTION`. A non-numeric `job_id` is not handled and results in a 500."
+      parameters:
+        - {$ref: '#/components/parameters/JobId'}
+      responses:
+        '200':
+          description: Cancelled. Empty object.
+          content:
+            application/json:
+              schema: {type: object, additionalProperties: false}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/JobNotFound'}
+
+components:
+  securitySchemes:
+    DevIdentity:
+      type: apiKey
+      in: header
+      name: X-Test-Email
+      description: |
+        Not real authentication. The header asserts the caller's email and is trusted as sent; if
+        absent, the server falls back to `OSPREY_DEV_USER_EMAIL` or `local-dev@localhost`. Abilities
+        are looked up for that email.
+
+  parameters:
+    EntityId:
+      name: entity_id
+      in: query
+      required: true
+      schema: {type: string}
+    EntityType:
+      name: entity_type
+      in: query
+      required: true
+      schema: {type: string}
+    Before:
+      name: before
+      in: query
+      description: Pagination cursor; return only records with an id lower than this.
+      schema: {type: integer, format: int64}
+    UserEmail:
+      name: user_email
+      in: query
+      description: Only records created by this user.
+      schema: {type: string}
+    SavedQueryId:
+      name: saved_query_id
+      in: path
+      required: true
+      schema: {type: integer, format: int64}
+    JobId:
+      name: job_id
+      in: path
+      required: true
+      schema: {type: string, pattern: '^[0-9]+$'}
+
+  requestBodies:
+    BulkActionUpload:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            properties:
+              file: {type: string, format: binary}
+
+  responses:
+    Unauthorized:
+      description: |
+        The caller lacks the required ability, or the request is outside what the ability allows. The
+        body is a plain-text message naming the user and ability. (Note: `401`, not `403`.)
+      content:
+        application/json:
+          schema: {type: string}
+    ValidationError:
+      description: |
+        The request was invalid. Depending on where it failed the body is a JSON array of pydantic
+        errors, a rendered SML validation failure, or a plain string.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - {$ref: '#/components/schemas/PydanticErrors'}
+              - {type: string}
+    NotImplemented:
+      description: The endpoint is a stub; the body is `Not Implemented`.
+      content:
+        application/json:
+          schema: {type: string}
+    JobNotFound:
+      description: No such job.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: {type: string, examples: [Job not found]}
+    EmailList:
+      description: Distinct emails.
+      content:
+        application/json:
+          schema:
+            type: array
+            items: {type: string}
+    RulesGraph:
+      description: A rendered digraph.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/RulesGraph'}
+
+  schemas:
+    PydanticErrors:
+      type: array
+      description: The `errors()` list of a pydantic validation error.
+      items:
+        type: object
+        properties:
+          loc:
+            type: array
+            items: {type: [string, integer]}
+          msg: {type: string}
+          type: {type: string}
+        additionalProperties: true
+
+    RulesGraph:
+      type: object
+      required: [nodes, edges]
+      properties:
+        nodes:
+          type: array
+          items:
+            type: object
+            required: [id]
+            properties:
+              id: {type: string}
+            additionalProperties: true
+        edges:
+          type: array
+          items:
+            type: object
+            required: [source, target]
+            properties:
+              source: {type: string}
+              target: {type: string}
+            additionalProperties: true
+
+    DateRange:
+      type: object
+      required: [start, end]
+      properties:
+        start: {type: string, format: date-time}
+        end: {type: string, format: date-time}
+
+    SortOrder:
+      type: string
+      enum: [DESCENDING, ASCENDING]
+      default: DESCENDING
+
+    Query:
+      type: object
+      required: [id, parent_id, executed_by, executed_at, query_filter, date_range, top_n, sort_order]
+      properties:
+        id: {type: string}
+        parent_id:
+          type: string
+          description: Id of the previous revision, or the string `None` when there is none.
+        executed_by: {type: string}
+        executed_at: {type: number, description: Unix timestamp derived from the snowflake id.}
+        query_filter: {type: string}
+        date_range: {$ref: '#/components/schemas/DateRange'}
+        top_n:
+          type: array
+          items: {type: string}
+        sort_order: {$ref: '#/components/schemas/SortOrder'}
+
+    SavedQuery:
+      type: object
+      required: [id, name, query_id, saved_by, saved_at, query]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        query_id: {type: string}
+        saved_by: {type: string}
+        saved_at: {type: number, description: Unix timestamp derived from the snowflake id.}
+        query: {$ref: '#/components/schemas/Query'}
+
+    BaseEventsQuery:
+      type: object
+      required: [start, end, query_filter]
+      properties:
+        start: {type: string, format: date-time}
+        end: {type: string, format: date-time}
+        query_filter:
+          type: string
+          description: Query in the Osprey query language (SML-based); see the Query Syntax docs.
+        entity:
+          oneOf:
+            - $ref: '#/components/schemas/EntityFilter'
+            - type: 'null'
+
+    EntityFilter:
+      type: object
+      required: [id, type]
+      properties:
+        id: {type: string}
+        type: {type: string}
+        feature_filters:
+          type: [array, 'null']
+          items: {type: string}
+
+    TimeseriesQuery:
+      allOf:
+        - $ref: '#/components/schemas/BaseEventsQuery'
+        - type: object
+          required: [granularity]
+          properties:
+            granularity:
+              type: string
+              description: A Druid granularity such as `hour` or `day`.
+            aggregation_dimensions:
+              type: [array, 'null']
+              items: {type: string}
+
+    TopNQuery:
+      allOf:
+        - $ref: '#/components/schemas/BaseEventsQuery'
+        - type: object
+          required: [dimension]
+          properties:
+            dimension: {type: string}
+            limit: {type: integer, default: 100}
+            precision:
+              type: number
+              default: 0
+
+    TopNResponse:
+      type: object
+      required: [current_period]
+      properties:
+        current_period:
+          type: array
+          items: {$ref: '#/components/schemas/PeriodData'}
+        previous_period:
+          type: [array, 'null']
+          items: {$ref: '#/components/schemas/PeriodData'}
+        comparison:
+          type: [array, 'null']
+          items:
+            type: object
+            required: [differences]
+            properties:
+              differences:
+                type: array
+                items:
+                  type: object
+                  required: [current_count, previous_count, difference]
+                  properties:
+                    dimension_key: {type: [string, 'null']}
+                    current_count: {type: integer}
+                    previous_count: {type: integer}
+                    difference: {type: integer}
+                    percentage_change: {type: [number, 'null']}
+
+    PeriodData:
+      type: object
+      required: [timestamp, result]
+      properties:
+        timestamp: {type: string, format: date-time}
+        result:
+          type: array
+          items:
+            type: object
+            required: [count]
+            properties:
+              count: {type: integer}
+            additionalProperties:
+              description: The queried dimension, keyed by its name (for example `ActionName`).
+
+    StoredExecutionResult:
+      type: object
+      required: [id, extracted_features, error_traces, timestamp]
+      properties:
+        id: {type: string, description: 'Event id (bigint, serialised as a string).'}
+        extracted_features: {type: object, additionalProperties: true}
+        error_traces:
+          type: array
+          items: {type: object, additionalProperties: true}
+        timestamp: {type: string, format: date-time}
+        action_data:
+          type: [object, 'null']
+          additionalProperties: true
+
+    LabelStatus:
+      type: integer
+      description: '0 = REMOVED, 1 = ADDED, 2 = MANUALLY_REMOVED, 3 = MANUALLY_ADDED.'
+      enum: [0, 1, 2, 3]
+
+    LabelReason:
+      type: object
+      properties:
+        pending: {type: boolean}
+        description: {type: string}
+        features:
+          type: object
+          additionalProperties: true
+        created_at: {type: [string, 'null'], format: date-time}
+        expires_at: {type: [string, 'null'], format: date-time}
+
+    LabelStateInner:
+      type: object
+      required: [status, reasons]
+      properties:
+        status: {$ref: '#/components/schemas/LabelStatus'}
+        reasons:
+          type: object
+          additionalProperties: {$ref: '#/components/schemas/LabelReason'}
+
+    LabelState:
+      allOf:
+        - $ref: '#/components/schemas/LabelStateInner'
+        - type: object
+          required: [previous_states]
+          properties:
+            previous_states:
+              type: array
+              items: {$ref: '#/components/schemas/LabelStateInner'}
+
+    EntityLabelMutationsResult:
+      type: object
+      description: |
+        Shape is produced by the labels provider's `serialize()`; the fields below follow the
+        `EntityLabelMutationsResult` dataclass and are not pinned down by the route code.
+      properties:
+        new_entity_labels: {type: object, additionalProperties: true}
+        old_entity_labels: {type: object, additionalProperties: true}
+        labels_added: {type: array, items: {type: string}}
+        labels_removed: {type: array, items: {type: string}}
+        labels_updated: {type: array, items: {type: string}}
+        dropped_mutations:
+          type: array
+          items:
+            type: object
+            properties:
+              mutation: {type: object, additionalProperties: true}
+              reason: {type: string}
+      additionalProperties: true
+
+    Ability:
+      type: object
+      description: One ability grant. Exactly one of the three `allow_*` fields is set.
+      required: [name]
+      properties:
+        name: {type: string, examples: [CAN_VIEW_DOCS]}
+        allow_all: {type: [boolean, 'null'], const: true}
+        allow_specific:
+          type: [array, 'null']
+          items: {}
+        allow_all_except:
+          type: [array, 'null']
+          items: {}
+
+    MethodSpec:
+      type: object
+      required: [name, argument_specs, return_type]
+      properties:
+        name: {type: string}
+        doc: {type: [string, 'null']}
+        argument_specs:
+          type: array
+          items: {type: object, additionalProperties: true}
+        return_type: {type: string}
+        category: {type: [string, 'null']}
+
+    FeatureLocation:
+      type: object
+      required: [name, source_path, source_line, source_snippet]
+      properties:
+        name: {type: string}
+        source_path: {type: string}
+        source_line: {type: integer}
+        source_snippet: {type: string}
+
+    Feature:
+      type: object
+      required:
+        - name
+        - source_file
+        - source_line
+        - category
+        - type_annotation
+        - extraction_fn
+        - definition
+        - referenced_by_rules
+        - referenced_by_features
+        - referenced_by_whenrules
+        - total_references
+      properties:
+        name: {type: string}
+        source_file: {type: string}
+        source_line: {type: integer}
+        category: {type: string, description: 'Derived from the source directory, e.g. `models/actions`.'}
+        type_annotation: {type: [string, 'null']}
+        extraction_fn: {type: string}
+        definition: {type: string}
+        referenced_by_rules:
+          type: array
+          items: {type: string}
+        referenced_by_features:
+          type: array
+          items: {type: string}
+        referenced_by_whenrules: {type: integer}
+        total_references: {type: integer}
+
+    RuleInfo:
+      type: object
+      required: [name, source_file, description, when_all, referenced_features, referenced_by_whenrules]
+      properties:
+        name: {type: string}
+        source_file: {type: string}
+        description: {type: string}
+        when_all:
+          type: array
+          items: {type: string}
+        referenced_features:
+          type: array
+          items: {type: string}
+        referenced_by_whenrules: {type: integer}
+
+    UIConfig:
+      type: object
+      required:
+        - default_summary_features
+        - external_links
+        - feature_name_to_entity_type_mapping
+        - feature_name_to_value_type_mapping
+        - label_info_mapping
+        - known_feature_locations
+        - known_action_names
+        - current_user
+        - rule_info_mapping
+      properties:
+        default_summary_features:
+          type: array
+          items:
+            type: object
+            properties:
+              actions:
+                type: array
+                items: {type: string}
+              features:
+                type: array
+                items: {type: string}
+        external_links:
+          type: object
+          additionalProperties: {type: string}
+        feature_name_to_entity_type_mapping:
+          type: object
+          additionalProperties: {type: string}
+        feature_name_to_value_type_mapping:
+          type: object
+          description: |
+            Type strings the UI understands: `str`, `int`, `bool`, `float`, `list<T>` and `T?` for optional.
+          additionalProperties: {type: string}
+        label_info_mapping:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              valid_for:
+                type: array
+                items: {type: string}
+              connotation:
+                type: string
+                description: A `LabelConnotation` value (e.g. `neutral`); the set is defined in the labels config.
+              description: {type: string}
+        known_feature_locations:
+          type: array
+          items: {$ref: '#/components/schemas/FeatureLocation'}
+        known_action_names:
+          type: array
+          items: {type: string}
+        current_user:
+          type: object
+          required: [email]
+          properties:
+            email: {type: string}
+        rule_info_mapping:
+          type: object
+          additionalProperties: {type: string}
+
+    BulkLabelTask:
+      type: object
+      properties:
+        task_id: {type: integer}
+        dimension: {type: string}
+        entities_collected: {type: integer}
+        entities_labeled: {type: integer}
+        total_entities_to_label: {type: [integer, 'null']}
+        expected_total_entities_to_label: {type: [integer, 'null']}
+        task_status:
+          type: string
+          description: Name of the task status enum member.
+        attempts: {type: integer}
+        label_reason: {type: string}
+        initiated_by: {type: string}
+        created_at: {type: number, description: Unix timestamp.}
+        updated_at: {type: number, description: Unix timestamp.}
+        label_name: {type: string}
+        no_limit: {type: boolean}
+        label_status:
+          type: string
+          description: Name of the `LabelStatus` member.
+        query_filter: {type: [string, 'null']}
+        query_start: {type: number, description: POSIX timestamp.}
+        query_end: {type: number, description: POSIX timestamp.}
+
+    BulkActionJob:
+      type: object
+      properties:
+        id: {type: string}
+        status:
+          type: string
+          enum: [pending_upload, uploaded, parsing, processing, completed, failed, cancelled]
+        created_at: {type: string, description: Timestamp as serialised by the JSON encoder.}
+        updated_at: {type: string}
+        gcs_path: {type: string}
+        original_filename: {type: string}
+        total_rows: {type: integer}
+        processed_rows: {type: integer}
+        error: {type: [string, 'null']}
+        action_workflow_name: {type: string}
+        entity_type: {type: string}
+        user_id: {type: string}
+        description: {type: string}
+        name: {type: string}

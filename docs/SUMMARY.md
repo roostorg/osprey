@@ -38,6 +38,7 @@
   - [Examples](rules/examples.md)
   - [Ruleset Configuration](rules/configuration.md)
   - [Why a Bespoke Language?](rules/why-sml.md)
+- [UI API Reference](api/README.md)
 - [User Research & Personas](research-personas.md)
 
 ---
