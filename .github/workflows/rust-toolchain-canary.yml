@@ -3,6 +3,8 @@ name: Rust Toolchain Canary
 # Builds and tests osprey_coordinator on the latest stable and beta rustc,
 # ahead of the pinned toolchain, so a compiler change that breaks the
 # coordinator shows up here before the pin is bumped. Not a required check.
+# Cargo.lock isn't committed, so a new crate release can also turn this red;
+# if rust-quality on main is red too, it's probably not the compiler.
 
 on:
   schedule:
@@ -24,6 +26,7 @@ jobs:
   build:
     name: build (${{ matrix.toolchain }})
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -47,8 +50,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
 
-      - name: Show toolchain
-        run: rustc --version
+      # Fail if anything other than RUSTUP_TOOLCHAIN (e.g. the pin in
+      # rust-toolchain.toml) picks the compiler.
+      - name: Check toolchain
+        run: |
+          active=$(rustup show active-toolchain)
+          echo "$active"
+          rustc --version
+          case "$active" in
+            "$RUSTUP_TOOLCHAIN"-*"environment variable RUSTUP_TOOLCHAIN"*) ;;
+            *) echo "::error::expected the $RUSTUP_TOOLCHAIN toolchain from RUSTUP_TOOLCHAIN"; exit 1 ;;
+          esac
         working-directory: osprey_coordinator
 
       - name: Build
