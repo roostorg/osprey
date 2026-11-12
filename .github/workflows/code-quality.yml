@@ -128,7 +128,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             osprey_coordinator/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('osprey_coordinator/Cargo.lock', 'osprey_coordinator/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-${{ steps.rust-toolchain.outputs.channel }}-${{ hashFiles('osprey_coordinator/Cargo.lock', 'osprey_coordinator/Cargo.toml') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
