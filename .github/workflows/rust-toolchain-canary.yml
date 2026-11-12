@@ -1,0 +1,60 @@
+name: Rust Toolchain Canary
+
+# Builds and tests osprey_coordinator on the latest stable and beta rustc,
+# ahead of the pinned toolchain, so a compiler change that breaks the
+# coordinator shows up here before the pin is bumped. Not a required check.
+
+on:
+  schedule:
+    - cron: "17 6 * * *"  # daily, 06:17 UTC
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/rust-toolchain-canary.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build (${{ matrix.toolchain }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [stable, beta]
+    env:
+      # Takes precedence over osprey_coordinator/rust-toolchain.toml.
+      RUSTUP_TOOLCHAIN: ${{ matrix.toolchain }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8  # master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Show toolchain
+        run: rustc --version
+        working-directory: osprey_coordinator
+
+      - name: Build
+        run: cargo build --verbose
+        working-directory: osprey_coordinator
+
+      - name: Test
+        run: cargo test --verbose
+        working-directory: osprey_coordinator
