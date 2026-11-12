@@ -1,7 +1,9 @@
 # Rust toolchain for osprey_coordinator. rustup uses it for local builds and
 # CI's rust-quality job reads `channel` from here, so both use the same
-# compiler. Bump it in its own PR, together with the `FROM rust:` version in
-# osprey_coordinator/Dockerfile.
+# compiler.
+#
+# Keep `channel` equal to the rust:<version> tag in osprey_coordinator/Dockerfile;
+# bump both together, in their own PR.
 [toolchain]
 channel = "1.99.1"
 components = ["rustfmt", "clippy"]
