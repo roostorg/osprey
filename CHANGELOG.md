@@ -8,12 +8,18 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Added
+
+- One-click demo in GitHub Codespaces, with sample data flowing ([#593](https://github.com/roostorg/osprey/pull/593) by [@reitblatt](https://github.com/reitblatt))
+
 ### Changed
 
 - Coordinator image now runs on `debian:trixie-slim` instead of the full Rust toolchain image ([#587](https://github.com/roostorg/osprey/pull/587) by [@reitblatt](https://github.com/reitblatt))
 
 ### Fixed
 
+- Timeseries chart now follows dark mode ([#366](https://github.com/roostorg/osprey/issues/366), [#549](https://github.com/roostorg/osprey/pull/549) by [@26wv](https://github.com/26wv))
+- `osprey-cli` no longer crashes at import with gevent's "cannot release un-acquired lock" ([#574](https://github.com/roostorg/osprey/pull/574) by [@reitblatt](https://github.com/reitblatt))
 - UI query filters now escape every apostrophe and backslash in string feature values, not just the first apostrophe ([#472](https://github.com/roostorg/osprey/pull/472) by [@cassidyjames](https://github.com/cassidyjames))
 - Fix postgres worker crash on first boot by wrapping schema creation behind advisory lock ([#436](https://github.com/roostorg/osprey/pull/436) by [@vedarolap](https://github.com/vedarolap), closes [#432](https://github.com/roostorg/osprey/issues/432))
 
