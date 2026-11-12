@@ -1,4 +1,5 @@
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 from datadog.dogstatsd.base import DogStatsd
@@ -57,8 +58,9 @@ def test_public_metric_methods_reach_report(emit: Callable[[], None], mocker: Mo
     emit()
     metrics.flush_aggregated_metrics()
 
-    assert len(reported) == 1
-    assert reported[0][1] == ['a:b']
+    # Filter by name: the client's background flush thread or other code may report unrelated metrics meanwhile.
+    ours = [tags for metric, tags in reported if metric.startswith('test.')]
+    assert ours == [['a:b']]
 
 
 @pytest.mark.parametrize('method', ('gauge', 'increment', 'distribution', 'timing'))
