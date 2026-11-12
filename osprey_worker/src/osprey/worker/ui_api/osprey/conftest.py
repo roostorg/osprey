@@ -67,9 +67,6 @@ def app_with_rules_sources(request: 'FixtureRequest') -> Iterator[Flask]:
         CONFIG.instance().unconfigure_for_tests()
 
 
-postgres_database_config = test_utils.make_postgres_database_config_fixture()
-
-
 def pytest_configure(config: 'Config') -> None:
     test_utils.add_use_rules_sources(config)
 
