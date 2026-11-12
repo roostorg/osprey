@@ -10,7 +10,7 @@ Originally developed internally at [Discord](https://discord.com/) to combat spa
 
 ![The Query page with an SML filter for post-creation events and its history of past queries, beside a timeseries chart showing matching event volume in fifteen-minute buckets](docs/images/query-and-charts.png)
 
-Rules are written in SML, Osprey's structured rule language, and extended with user-defined functions (UDFs). Osprey tracks state across events by labeling entities when you provide a labels service backend; see [labels_service.py](./example_plugins/src/services/labels_service.py) for a Postgres-backed example.
+Rules are written in “Some Madeup Language” (SML), Osprey's own unique structured rule language, and extended with user-defined functions (UDFs). Osprey tracks state across events by labeling entities when you provide a labels service backend; see [labels_service.py](./example_plugins/src/services/labels_service.py) for a Postgres-backed example.
 
 Osprey is built for engineers and Trust & Safety teams who want to explore, test, and integrate it into their platform for incident response and investigations. [Read more about user research and personas](https://roostorg.github.io/osprey/latest/research-personas).
 
@@ -22,13 +22,17 @@ If you have [Docker Compose](https://docs.docker.com/compose/install), get a dem
 curl -sSL https://raw.githubusercontent.com/roostorg/osprey/main/demo.sh | bash
 ```
 
+Or try it in your browser with nothing to install: open the demo in GitHub Codespaces, wait a few minutes, and the Osprey UI opens with sample data flowing. [Step-by-step guide](https://roostorg.github.io/osprey/latest/development/codespaces.html).
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/roostorg/osprey?quickstart=1)
+
 See the [Getting Started guide](https://roostorg.github.io/osprey/latest/development/) for more, including what to try in the UI. See the [full documentation](https://roostorg.github.io/osprey/latest/) for a user guide, development setup, basic concepts, integration information, and more.
 
 ## Adopters
 
 Osprey is used by:
 
-[![Bluesky](docs/images/adopters/bluesky.png)](https://bsky.social) | [![Discord](docs/images/adopters/discord.png)](https://discord.com) | [![Matrix.org](docs/images/adopters/matrix.png)](https://matrix.org)
+[![Bluesky](docs/images/adopters/bluesky.svg)](https://bsky.social) | [![Discord](docs/images/adopters/discord.svg)](https://discord.com) | [![Matrix.org](docs/images/adopters/matrix.svg)](https://matrix.org)
 --- | --- | ---
 
 Using Osprey and want to add your project/organization to this list? [Open a pull request!](https://github.com/roostorg/osprey/edit/main/README.md)

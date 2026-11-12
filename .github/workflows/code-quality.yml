@@ -29,7 +29,7 @@ jobs:
           python-version-file: ".python-version"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
         with:
           version: "latest"
           enable-cache: true
@@ -66,7 +66,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: "22.22"
 
@@ -89,6 +89,10 @@ jobs:
         run: corepack pnpm run typecheck
         working-directory: osprey_ui
 
+      - name: Run tests
+        run: corepack pnpm run test
+        working-directory: osprey_ui
+
       - name: Build
         run: corepack pnpm run build
         working-directory: osprey_ui
@@ -102,7 +106,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772  # master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8  # master
         with:
           toolchain: stable
           components: rustfmt, clippy
