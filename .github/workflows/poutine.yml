@@ -6,11 +6,13 @@ on:
     paths:
       - '.github/workflows/**'
       - '.github/actions/**'
+      - '.github/poutine.yml'
+  # Any base branch, so stacked PRs (based on another PR's branch) get CI too.
   pull_request:
-    branches: ['**']
     paths:
       - '.github/workflows/**'
       - '.github/actions/**'
+      - '.github/poutine.yml'
   schedule:
     # Weekly drift check: new poutine rules / advisories can flag workflows
     # that were clean when they were last touched.
@@ -104,7 +106,7 @@ jobs:
 
       - name: Upload poutine reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: poutine-reports
           path: |
