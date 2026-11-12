@@ -1,0 +1,13 @@
+# poutine configuration, used by .github/workflows/poutine.yml.
+# https://github.com/boostsecurityio/poutine#acknowledging-findings
+
+skip:
+  # Flags every action whose owner isn't a GitHub-verified creator, including
+  # ROOST's own. Every action here is pinned to a commit SHA (checked by
+  # zizmor), and new actions are reviewed in their PRs.
+  - rule: github_action_from_unverified_creator_used
+
+  # poutine treats `permissions: {}` the same as no permissions block, so it
+  # flags this workflow even though it drops all GITHUB_TOKEN permissions.
+  - rule: default_permissions_on_risky_events
+    path: .github/workflows/discord-bot.yml
