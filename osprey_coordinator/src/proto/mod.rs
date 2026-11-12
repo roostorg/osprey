@@ -1,4 +1,8 @@
+// Everything in this module is prost/tonic-generated code, which we can't edit.
 #![allow(unused_imports)]
+#![allow(dead_code)]
+#![allow(clippy::large_enum_variant)]
+#![allow(clippy::doc_overindented_list_items)]
 
 pub mod osprey {
     pub mod rpc {

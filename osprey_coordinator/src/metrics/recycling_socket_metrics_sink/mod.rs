@@ -59,7 +59,7 @@ impl Write for UdpMetricSink {
             self.socket = socket;
             self.last_socket_created = Instant::now();
         }
-        self.socket.send_to(buf, &self.addr)
+        self.socket.send_to(buf, self.addr)
     }
 
     fn flush(&mut self) -> io::Result<()> {

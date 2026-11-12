@@ -45,7 +45,7 @@ pub enum InternResult {
 impl DynamicTagValue for InternResult {
     fn as_static_str(&self) -> &'static str {
         match self {
-            InternResult::Interned(s) => *s,
+            InternResult::Interned(s) => s,
             InternResult::AtCapacity => "string_interner_at_capacity",
         }
     }

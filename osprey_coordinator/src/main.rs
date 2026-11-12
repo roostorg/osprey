@@ -1,15 +1,33 @@
+// `tonic::Status` (176 bytes) is the idiomatic error type across tonic/prost-generated code
+// and our gRPC handlers, so `Result<_, tonic::Status>` trips `result_large_err` everywhere,
+// including generated code we can't edit. Boxing it would change every signature for no
+// practical gain on these non-hot error paths.
+#![allow(clippy::result_large_err)]
+
+// The `allow(dead_code)` modules below are general-purpose client/library code
+// (etcd, gcloud, metrics, pigeon, ...) whose API surface is larger than what the
+// coordinator binary calls today. Keep the unused parts rather than trimming them.
 mod backoff_utils;
+#[allow(dead_code)]
 mod cached_futures;
 mod consumer;
 mod coordinator_metrics;
+#[allow(dead_code)]
 mod discovery;
+#[allow(dead_code)]
 mod etcd;
+#[allow(dead_code)]
 mod etcd_config;
+#[allow(dead_code)]
 mod etcd_watcherd;
+#[allow(dead_code)]
 mod future_utils;
+#[allow(dead_code)]
 mod gcloud;
+#[allow(dead_code)]
 mod metrics;
 mod osprey_bidirectional_stream;
+#[allow(dead_code)]
 mod pigeon;
 mod priority_queue;
 mod proto;
@@ -18,6 +36,7 @@ mod shutdown_handler;
 mod signals;
 mod snowflake_client;
 mod sync_action_rpc;
+#[allow(dead_code)]
 mod tokio_utils;
 #[cfg(test)]
 mod tonic_mock;
