@@ -12,6 +12,10 @@ For more information about each release including git tags and artifacts, see [R
 
 - One-click demo in GitHub Codespaces, with sample data flowing ([#593](https://github.com/roostorg/osprey/pull/593) by [@reitblatt](https://github.com/reitblatt))
 
+### Changed
+
+- Coordinator image now runs on `debian:trixie-slim` instead of the full Rust toolchain image ([#587](https://github.com/roostorg/osprey/pull/587) by [@reitblatt](https://github.com/reitblatt))
+
 ### Fixed
 
 - Timeseries chart now follows dark mode ([#366](https://github.com/roostorg/osprey/issues/366), [#549](https://github.com/roostorg/osprey/pull/549) by [@26wv](https://github.com/26wv))
