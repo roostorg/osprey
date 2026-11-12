@@ -52,6 +52,15 @@ def sanitize_metric_name(name: str) -> str:
     return re.sub(MULTIPLE_DOTS, '.', name)
 
 
+def _cardinality_kwargs(cardinality: str | None) -> dict[str, Any]:
+    """Only pass `cardinality` to DogStatsd when it's set.
+
+    datadog 0.52 added a `cardinality` argument to the metric methods; older releases reject it.
+    Leaving it out when it's None keeps the base class's default (the client-wide setting).
+    """
+    return {} if cardinality is None else {'cardinality': cardinality}
+
+
 class _DogStatsd(DogStatsd):
     def __init__(
         self,
@@ -106,11 +115,16 @@ class _DogStatsd(DogStatsd):
         self,
         metric: str,
         metric_type: str,
-        value: float,
+        value: Any,
         tags: dict[str, str] | list[str] | None,
         sample_rate: float | None,
-        timestamp: int | None = None,
+        timestamp: int = 0,
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
+        # The base class calls _report for every metric (including when flushing client-side
+        # aggregates), and newer datadog releases pass it extra arguments (`sampling`,
+        # `cardinality`). Forward everything we don't handle ourselves unchanged.
         if self.debug:
             return
         if self.prefix is not None:
@@ -119,7 +133,7 @@ class _DogStatsd(DogStatsd):
         if sample_rate is None:
             sample_rate = getattr(self, 'default_sample_rate', DEFAULT_SAMPLE_RATE)
 
-        super()._report(metric, metric_type, value, self._transform_tags(tags), sample_rate)
+        super()._report(metric, metric_type, value, self._transform_tags(tags), sample_rate, timestamp, *args, **kwargs)
 
     def gauge(
         self,
@@ -127,6 +141,7 @@ class _DogStatsd(DogStatsd):
         value: float = 1,
         tags: dict[str, str] | list[str] | None = None,
         sample_rate: float | None = None,
+        cardinality: str | None = None,
     ) -> None:
         """
         Update a gauge value.
@@ -136,7 +151,7 @@ class _DogStatsd(DogStatsd):
 
         # Unfortunately, gauge is already typed in the base class, so we must do the transformation
         # ahead of the call to _report in order to ensure our tags are of the proper type
-        super().gauge(metric, value, self._transform_tags(tags), sample_rate)
+        super().gauge(metric, value, self._transform_tags(tags), sample_rate, **_cardinality_kwargs(cardinality))
 
     def increment(
         self,
@@ -144,6 +159,7 @@ class _DogStatsd(DogStatsd):
         value: float = 1,
         tags: dict[str, str] | list[str] | None = None,
         sample_rate: float | None = None,
+        cardinality: str | None = None,
     ) -> None:
         """
         Increment a metric by the given amount.
@@ -152,7 +168,7 @@ class _DogStatsd(DogStatsd):
         """
         # Unfortunately, increments is already typed in the base class, so we must do the transformation
         # ahead of the call to _report in order to ensure our tags are of the proper type
-        super().increment(metric, value, self._transform_tags(tags), sample_rate)
+        super().increment(metric, value, self._transform_tags(tags), sample_rate, **_cardinality_kwargs(cardinality))
 
     def distribution(
         self,
@@ -160,6 +176,7 @@ class _DogStatsd(DogStatsd):
         value: float,
         tags: dict[str, str] | list[str] | None = None,
         sample_rate: float | None = None,
+        cardinality: str | None = None,
     ) -> None:
         """
         Distributions are a metric type that aggregate values sent from multiple hosts
@@ -170,7 +187,7 @@ class _DogStatsd(DogStatsd):
 
         NOTE: This is an expensive metric to compute, so consider using sample_rate.
         """
-        super().distribution(metric, value, self._transform_tags(tags), sample_rate)
+        super().distribution(metric, value, self._transform_tags(tags), sample_rate, **_cardinality_kwargs(cardinality))
 
     def timing(
         self,
@@ -178,8 +195,9 @@ class _DogStatsd(DogStatsd):
         value: float,
         tags: dict[str, str] | list[str] | None = None,
         sample_rate: float | None = None,
+        cardinality: str | None = None,
     ) -> None:
-        super().timing(metric, value, self._transform_tags(tags), sample_rate)
+        super().timing(metric, value, self._transform_tags(tags), sample_rate, **_cardinality_kwargs(cardinality))
 
     def event(
         self,
@@ -192,6 +210,7 @@ class _DogStatsd(DogStatsd):
         priority: Any = None,
         tags: list[str] | None = None,
         hostname: str | None = None,
+        cardinality: str | None = None,
     ) -> None:
         """
         Log an event that can be overlayed over Data Dog's graphs
@@ -206,6 +225,7 @@ class _DogStatsd(DogStatsd):
             priority=priority,
             tags=tags,
             hostname=hostname,
+            **_cardinality_kwargs(cardinality),
         )
 
     @staticmethod
