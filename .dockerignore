@@ -1,6 +1,9 @@
 # Rust build artifacts
 **/target/
 **/Cargo.lock
+# Keep the coordinator image on its Dockerfile's Rust version until that
+# is aligned with this pin.
+osprey_coordinator/rust-toolchain.toml
 
 # Python
 **/__pycache__/

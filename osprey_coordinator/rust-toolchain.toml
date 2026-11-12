@@ -1,0 +1,7 @@
+# Rust toolchain for osprey_coordinator. rustup uses it for local builds and
+# CI's rust-quality job reads `channel` from here, so both use the same
+# compiler. Bump it in its own PR.
+[toolchain]
+channel = "1.100.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

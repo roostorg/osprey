@@ -26,7 +26,7 @@ Reference files: `docs/development/local.md` (setup), `example_plugins/src/regis
 
 ## Build and run
 
-Prerequisites: Python (version in `.python-version`), [uv](https://docs.astral.sh/uv/), Docker + Docker Compose v2, Node.js (version in `.github/workflows/code-quality.yml`, UI only), Rust stable + `protoc` (coordinator only).
+Prerequisites: Python (version in `.python-version`), [uv](https://docs.astral.sh/uv/), Docker + Docker Compose v2, Node.js (version in `.github/workflows/code-quality.yml`, UI only), Rust (version in `osprey_coordinator/rust-toolchain.toml`; rustup installs it) + `protoc` (coordinator only).
 
 ```bash
 # Install Python deps (creates .venv, uses uv.lock)
@@ -197,7 +197,7 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 
 - Python: version in `.python-version`. Lint + format with `ruff`, type-check with `mypy` (versions and config in `pyproject.toml` under `[tool.ruff]` and `[tool.mypy]`).
 - TypeScript / React in `osprey_ui/` (versions in `osprey_ui/package.json`). Formatter is Prettier (`pnpm run format:check`); config in `osprey_ui/.prettierrc`. Node version in `.github/workflows/code-quality.yml`. pnpm version pinned via `packageManager` field in `osprey_ui/package.json`; resolved everywhere via Corepack.
-- Rust stable in `osprey_coordinator/` (edition and toolchain in `osprey_coordinator/Cargo.toml`). Formatter `cargo fmt`; linter `cargo clippy -- -D warnings`.
+- Rust in `osprey_coordinator/` (edition in `osprey_coordinator/Cargo.toml`, toolchain pinned in `osprey_coordinator/rust-toolchain.toml`). Formatter `cargo fmt`; linter `cargo clippy -- -D warnings`.
 - Protobuf generated files (`*_pb2*.py`, `*_pb2*.pyi`) are excluded from ruff and mypy — do not edit.
 
 ## Changelog
