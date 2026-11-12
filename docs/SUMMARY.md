@@ -16,6 +16,7 @@
 - [Development Guide](development/README.md)
   - [Local Development](development/local.md)
   - [Development Workflow](development/workflow.md)
+    - [Blocking a PR from Merging](development/blocking-merges.md)
   - [Development Tools](development/tools.md)
   - [CLI Reference](development/cli-reference.md)
   - [Troubleshooting](development/troubleshooting.md)
