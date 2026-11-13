@@ -10,10 +10,6 @@ services:
         condition: service_healthy
       osprey-kafka-topic-creator:
         condition: service_completed_successfully
-      bigtable:
-        condition: service_healthy
-      bigtable-initializer:
-        condition: service_completed_successfully
       minio:
         condition: service_healthy
       minio-bucket-init:

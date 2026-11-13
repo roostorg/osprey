@@ -14,6 +14,7 @@
 ---
 
 - [Development Guide](development/README.md)
+  - [Try Osprey in GitHub Codespaces](development/codespaces.md)
   - [Local Development](development/local.md)
   - [Development Workflow](development/workflow.md)
     - [Blocking a PR from Merging](development/blocking-merges.md)
