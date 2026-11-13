@@ -15,6 +15,7 @@ For more information about each release including git tags and artifacts, see [R
 ### Added
 
 - One-click demo in GitHub Codespaces, with sample data flowing ([#593](https://github.com/roostorg/osprey/pull/593) by [@reitblatt](https://github.com/reitblatt))
+- Rules Visualizer zoom controls, including zooming out past the whole-graph fit ([#509](https://github.com/roostorg/osprey/pull/509) by [@austin-ayers](https://github.com/austin-ayers))
 
 ### Fixed
 
