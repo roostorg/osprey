@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Security
+
+- Upgrade dnspython to 2.9.0 to fix excessive CPU use when parsing DNS replies. ([#617](https://github.com/roostorg/osprey/pull/617) by [@slanos](https://github.com/slanos))
+
 ### Added
 
 - One-click demo in GitHub Codespaces, with sample data flowing ([#593](https://github.com/roostorg/osprey/pull/593) by [@reitblatt](https://github.com/reitblatt))
