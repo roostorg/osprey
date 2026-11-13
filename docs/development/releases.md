@@ -39,7 +39,9 @@ Then open a release-prep pull request to:
 
 2. Update the compare links at the bottom of CHANGELOG.md: ensure the “Unreleased” link points to the comparison link between this release and main, and there's a new link for this release
 
-**Merge this PR _before_ creating the tag** so the tagged commit includes the release's changelog.
+3. Set `version` to the release version in every package, so they all match the tag: the `pyproject.toml` files of `osprey_worker`, `osprey_async_worker`, `osprey_rpc`, `example_plugins` and `example_atproto_plugins`, and the `Cargo.toml` files of `osprey_coordinator` and its `etcd_config_derive` and `metrics_derive` crates. Then run `uv lock` and commit the updated `uv.lock` (`Cargo.lock` isn't committed)
+
+**Merge this PR _before_ creating the tag** so the tagged commit includes the release's changelog and version.
 
 This is a good time to draft the release notes, starting from CHANGELOG.md. See [Writing release notes](https://community.roost.tools/software-development-practices/releases.html) from the ROOST community site for recommendations on how to structure them.
 
