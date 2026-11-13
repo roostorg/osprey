@@ -96,6 +96,8 @@ Dependency updates usually conflict in `uv.lock` (or `osprey_ui/pnpm-lock.yaml`)
 
 For `osprey_ui/pnpm-lock.yaml`, the same steps use `pnpm install` to update the fixed packages, then `pnpm install --frozen-lockfile`, and confirm that `pnpm install` leaves the lockfile unchanged (`git diff --exit-code pnpm-lock.yaml`).
 
+If a fix adds or bumps a dependency, the backport takes the same specifier and version as `main` as part of the fix, even when that dependency change is not itself a security update; approving the fix approves it, which is the human approval [`AGENTS.md`](https://github.com/roostorg/osprey/blob/main/AGENTS.md#dependencies) requires for new or upgraded packages. Check its license and known CVEs as usual, and name the dependency change in the backport PR. In the steps above, these count as packages being fixed.
+
 <!-- TODO(roostorg/coop#1520 item 5): reference an Osprey equivalent of the lockfile check script once it lands. -->
 
 ## 3. Bump the version and changelog
