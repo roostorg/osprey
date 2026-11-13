@@ -10,7 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Security
 
-- Upgrade dnspython to 2.9.0 to fix excessive CPU use when parsing DNS replies.
+- Upgrade dnspython to 2.9.0 to fix excessive CPU use when parsing DNS replies. ([#617](https://github.com/roostorg/osprey/pull/617) by [@slanos](https://github.com/slanos))
 
 ### Added
 
