@@ -8,6 +8,8 @@ There is currently no fixed release cadence; generally, releases are made when:
 - Meaningful changes have accumulated and CI is green, and/or
 - A [security advisory](https://github.com/roostorg/osprey/security/) is addressed
 
+For a release that fixes a vulnerability, follow [Security releases](security-releases.md) alongside this page.
+
 We do not currently backport changes to or release patches for versions other than the latest.
 
 ## Versioning
