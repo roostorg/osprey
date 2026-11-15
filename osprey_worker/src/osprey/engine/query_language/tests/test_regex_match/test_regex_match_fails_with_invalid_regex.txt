@@ -1,5 +1,0 @@
-error: failed to validate argument `pattern` for `RegexMatch(...)`
---> main.sml:1:29
-     |
-   1 | RegexMatch(target=A, pattern='[')
-     |                              ^ error: unterminated character set at position 0

@@ -1,7 +1,0 @@
-{
-    "filter": {
-        "dimension": "__entity_label_mutations",
-        "pattern": "%MyEntity/my_label/1%",
-        "type": "like"
-    }
-}

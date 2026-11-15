@@ -1,7 +1,0 @@
-{
-    "filter": {
-        "dimension": "A",
-        "type": "selector",
-        "value": -1
-    }
-}

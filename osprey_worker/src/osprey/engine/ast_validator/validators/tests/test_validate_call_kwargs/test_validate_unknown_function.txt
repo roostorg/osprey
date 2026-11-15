@@ -1,5 +1,0 @@
-error: unknown function: `Bar`
---> main.sml:1:6
-     |
-   1 | Foo = Bar()
-     |       ^ called here

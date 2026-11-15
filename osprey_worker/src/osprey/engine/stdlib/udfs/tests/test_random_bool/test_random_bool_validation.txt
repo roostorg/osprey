@@ -1,5 +1,0 @@
-error: invalid `percentage`
---> main.sml:1:26
-     |
-   1 | r = RandomBool(percentage=1.1)
-     |                           ^ this must be between 0.0 and 1.0

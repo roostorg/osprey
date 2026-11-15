@@ -1,5 +1,0 @@
-error: expected `Literal` or `FormatString`, got `BinaryOperation`
---> main.sml:4:27
-     |
-   4 | Foo: ExtractLiteral[int] = IntA + IntB
-     |                            ^ `ExtractLiteral` assignment expects an rvalue of type `Literal | FormatString`

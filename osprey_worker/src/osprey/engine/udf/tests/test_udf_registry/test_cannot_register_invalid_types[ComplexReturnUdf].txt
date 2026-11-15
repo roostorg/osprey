@@ -1,1 +1,0 @@
-cannot get type candidates for `tuple[str, ...]`, is an unknown generic

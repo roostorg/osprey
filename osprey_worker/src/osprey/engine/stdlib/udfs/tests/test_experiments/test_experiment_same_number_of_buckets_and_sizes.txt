@@ -1,5 +1,0 @@
-error: buckets and bucket_sizes must have the same number of elements
---> main.sml:3:70
-     |
-   3 | A = Experiment(entity=E1, buckets=['control', 'b', 'c'], bucket_sizes=[15, 20], version=1, revision=1)
-     |                                                                       ^

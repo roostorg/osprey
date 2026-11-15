@@ -1,5 +1,0 @@
-labels:
-  test-poster:
-    valid_for: [UserId]
-    connotation: neutral
-    description: ATProto user who posted a record containing the word 'test'
