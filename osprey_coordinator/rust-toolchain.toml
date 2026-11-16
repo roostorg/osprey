@@ -5,6 +5,6 @@
 # Keep `channel` equal to the rust:<version> tag in osprey_coordinator/Dockerfile;
 # bump both together, in their own PR.
 [toolchain]
-channel = "1.99.1"
+channel = "1.100.0"
 components = ["rustfmt", "clippy"]
 profile = "minimal"
