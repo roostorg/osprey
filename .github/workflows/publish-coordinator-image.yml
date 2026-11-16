@@ -101,8 +101,8 @@ jobs:
               || format('{0}/{1}@{2}', env.REGISTRY, env.IMAGE_NAME, steps.build.outputs.digest) }}
         # Results go only to the SARIF file, not the public job log.
         run: >-
-          "$RUNNER_TEMP/trivy-bin/trivy" image --quiet --scanners vuln --pkg-types os,library
-          --format sarif --output trivy-coordinator.sarif "$IMAGE_REF"
+          "$RUNNER_TEMP/trivy-bin/trivy" image --quiet --platform linux/amd64
+          --scanners vuln --pkg-types os,library --format sarif --output trivy-coordinator.sarif "$IMAGE_REF"
 
       # Code scanning alerts are visible only to people with write access. PR
       # runs skip the upload because PR alerts surface as public annotations.
@@ -157,7 +157,7 @@ jobs:
           TRIVY_USERNAME: ${{ github.actor }}
           TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          "$RUNNER_TEMP/trivy-bin/trivy" image --quiet --format cyclonedx \
+          "$RUNNER_TEMP/trivy-bin/trivy" image --quiet --platform linux/amd64 --format cyclonedx \
             --output "osprey-coordinator-${TAG}.cdx.json" "$IMAGE_REF"
           "$RUNNER_TEMP/trivy-bin/trivy" fs --quiet --format cyclonedx \
             --output "osprey-coordinator-crates-${TAG}.cdx.json" osprey_coordinator
