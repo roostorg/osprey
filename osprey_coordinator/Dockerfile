@@ -1,6 +1,6 @@
 # Base images are pinned by multi-arch index digest; Dependabot proposes new digests.
 # Keep the rust tag equal to the channel in osprey_coordinator/rust-toolchain.toml.
-FROM rust:1.99.1@sha256:8a4e90c7946b74626488b1446f712c0fe0ed1a596cbd3d871684bc9c5433ae07 AS build
+FROM rust:1.100.0@sha256:e19840879045c951c905d0eaa9887f3439c62000e429963371b376bac8d38c31 AS build
 
 RUN apt-get update && apt-get install -y protobuf-compiler
 
