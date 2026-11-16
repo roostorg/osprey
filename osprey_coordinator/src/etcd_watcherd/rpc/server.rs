@@ -54,6 +54,11 @@ impl proto::etcd_watcherd_service_server::EtcdWatcherdService for EtcdWatcherdSe
                 let response = proto::WatchKeyResponse { value };
                 yield response;
             }
+            // This loop never exits. async-stream 0.2 needs the stream body to evaluate to `()`,
+            // but since rustc 1.100 a body ending in a diverging `loop` has type `!` (E0271).
+            // The unreachable unit tail pins the body's type to `()`.
+            #[allow(unreachable_code)]
+            {}
         };
         Ok(Response::new(Box::pin(output) as Self::WatchKeyStream))
     }
@@ -109,6 +114,11 @@ impl proto::etcd_watcherd_service_server::EtcdWatcherdService for EtcdWatcherdSe
                 };
                 yield response;
             }
+            // This loop never exits. async-stream 0.2 needs the stream body to evaluate to `()`,
+            // but since rustc 1.100 a body ending in a diverging `loop` has type `!` (E0271).
+            // The unreachable unit tail pins the body's type to `()`.
+            #[allow(unreachable_code)]
+            {}
         };
 
         Ok(Response::new(
