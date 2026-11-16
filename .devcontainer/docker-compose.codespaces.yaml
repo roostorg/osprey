@@ -1,0 +1,35 @@
+# Overrides docker-compose.yaml for the Codespaces / devcontainer demo.
+# devcontainer.json sets COMPOSE_FILE so plain `docker compose` picks this up.
+
+services:
+  osprey-ui-api:
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5004/_health')",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+
+  osprey-ui:
+    # Call the API on the UI's own origin: the dev server proxies /api to the API
+    # container. In a codespace, port 5004 is a separate, login-protected origin
+    # that the browser can't call from the UI's page.
+    environment:
+      - REACT_APP_API_BASE_URL=/api
+      - OSPREY_UI_API_PROXY_TARGET=http://osprey-ui-api:5004
+    # Don't publish the UI port (which opens the browser tab) until the API answers.
+    depends_on:
+      osprey-ui-api:
+        condition: service_healthy
+
+  # The Druid web console isn't part of the demo; skip it to save memory.
+  # `docker compose --profile druid-console up -d druid-router` starts it.
+  druid-router:
+    profiles:
+      - druid-console

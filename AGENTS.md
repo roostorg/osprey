@@ -42,6 +42,10 @@ docker compose up -d
 # with coordinator:
 ./start.sh --with-coordinator
 
+# Same stack inside the devcontainer GitHub Codespaces uses (.devcontainer/; Docker-in-Docker,
+# adds .devcontainer/docker-compose.codespaces.yaml and the test-data producer)
+npx @devcontainers/cli up --workspace-folder .
+
 # UI dev server (Corepack auto-resolves pnpm from osprey_ui/package.json's packageManager field)
 cd osprey_ui && corepack enable && pnpm install --frozen-lockfile && pnpm start
 
@@ -50,6 +54,8 @@ cd osprey_ui && corepack enable && pnpm install --frozen-lockfile && pnpm start
 ```
 
 UI: http://localhost:5002 · UI API: http://localhost:5004 · Worker (port 5001)
+
+The UI dev server proxies `/api` to the UI API (`OSPREY_UI_API_PROXY_TARGET`, default `http://localhost:5004`); the devcontainer sets `REACT_APP_API_BASE_URL=/api` so the browser only talks to port 5002. If you change how the UI reaches the API, keep the Codespaces path in `.devcontainer/` and `docs/development/codespaces.md` working.
 
 ## Testing
 

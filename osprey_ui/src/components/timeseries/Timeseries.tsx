@@ -7,11 +7,13 @@ import shallow from 'zustand/shallow';
 
 import { getTimeseriesQueryResults } from '../../actions/EventActions';
 import useQueryStore from '../../stores/QueryStore';
+import useThemeStore from '../../stores/ThemeStore';
 import { TimeseriesResult } from '../../types/QueryTypes';
 import Text, { TextSizes } from '../../uikit/Text';
 import TimeseriesIcon from '../../uikit/icons/TimeseriesIcon';
 import Panel from '../common/Panel';
 
+import { getChartOptions } from './getChartOptions';
 import styles from './Timeseries.module.css';
 
 // prettier-ignore
@@ -145,6 +147,7 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
     shallow
   );
   const { start, end } = executedQuery;
+  const themeMode = useThemeStore((state) => state.mode);
 
   const [timeseriesData, setTimeseriesData] = React.useState<TimeseriesResult[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -222,60 +225,7 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
   const chartData = getChartData(timeseriesData);
   const axisDateFormat = getDateFormatForGranularity(granularity);
   const tooltipDateFormat = getDateFormatForGranularity('other');
-
-  // Only show ticks/labels at timestamps that actually have data, matching the
-  // previous Highcharts behaviour, while keeping a continuous time axis (so brush
-  // drag-to-select still maps directly to real timestamps).
-  const dataTimestamps = chartData.map(([timestamp]) => timestamp);
-
-  const chartOptions = {
-    grid: { left: '3%', right: '4%', bottom: 10, containLabel: true },
-    xAxis: {
-      type: 'time',
-      splitLine: { show: true, customValues: dataTimestamps },
-      axisTick: { customValues: dataTimestamps },
-      axisLabel: {
-        customValues: dataTimestamps,
-        // ECharts time axis provides millisecond timestamps; dayjs renders them
-        // in the browser's local timezone, matching the previous Highcharts behaviour.
-        formatter: (value: number) => dayjs(value).format(axisDateFormat),
-        rotate: 45,
-        align: 'right',
-      },
-    },
-    yAxis: {
-      type: 'value',
-      min: 0,
-      axisLabel: {
-        formatter: (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 0 }),
-      },
-    },
-    tooltip: {
-      trigger: 'axis',
-      formatter: (params: unknown) => {
-        const list = params as Array<{ data: [number, number] }>;
-        if (!Array.isArray(list) || !list.length || !list[0]?.data) return '';
-        const [timestamp, value] = list[0].data;
-        return `${dayjs(timestamp).format(tooltipDateFormat)}: ${Number(value).toLocaleString()}`;
-      },
-    },
-    series:
-      chartData.length > 0
-        ? [
-            {
-              type: 'bar',
-              data: chartData,
-              name: '# Events',
-              itemStyle: { color: '#8e5ea2' },
-              barMaxWidth: 40,
-            },
-          ]
-        : [],
-    // Register the brush component. The toolbox buttons are hidden; brush mode is
-    // activated programmatically in handleChartReady so drag-to-select works immediately.
-    brush: { toolbox: ['lineX'], xAxisIndex: 0 },
-    toolbox: { show: false },
-  };
+  const chartOptions = getChartOptions(chartData, axisDateFormat, tooltipDateFormat);
 
   return (
     <Panel
@@ -289,6 +239,7 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
           <EmptyOverlay show={chartData.length === 0}>
             <ReactECharts
               option={chartOptions}
+              theme={themeMode === 'dark' ? 'dark' : undefined}
               style={{ height: 400 }}
               onChartReady={handleChartReady}
               onEvents={{ brushEnd: handleBrushEnd }}
