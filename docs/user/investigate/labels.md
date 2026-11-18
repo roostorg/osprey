@@ -12,7 +12,7 @@ The UI requires a reason whenever you apply a label. (The UI API itself accepts 
 
 ## Entity Details
 
-Selecting an entity anywhere in the UI opens its label panel; choose **Go to Entity View** there to open the entity view (`/entity/<type>/<id>`), showing every label that has ever been applied to that entity, grouped by label name.
+Selecting an entity anywhere in the UI opens its label drawer; choose **Go to Entity View** there to open the entity view (`/entity/<type>/<id>`), showing every label that has ever been applied to that entity, grouped by label name.
 
 ![The entity view for a user, listing their negative labels—including identity_evasion with its description and an automatically added RapidHandleChange entry—beside the query page's charts and event stream](../../images/osprey-user-entity.png)
 

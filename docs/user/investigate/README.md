@@ -14,7 +14,7 @@ The left panel is where you write and run queries. Osprey uses SML syntax—the 
 
 ![The query input with an SML filter for post-creation events by one user, a Last 2 Weeks time range, and a Submit Query button](../../images/query-box.png)
 
-As you type, the input suggests feature and rule names. Hovering over a rule shows a tooltip with its description.
+As you type, the input suggests feature and rule names, and action names after `ActionName ==`. Hovering over the ⓘ icon next to a suggested rule shows its description.
 
 ![Autocomplete in the query input suggesting the ContainsHello rule after typing "Contains", with a tooltip describing it as "Post contains the word hello"](../../images/query-udf-hover.png)
 
@@ -63,7 +63,7 @@ The stream can be displayed in card format or list format. On first load, each e
 
 ![The Set Features modal for the event stream, with a toggle for Set Custom Features and a filterable checklist of features grouped by model and rule: Models Base, Models Post, and Rules Post Contains Hello](../../images/summary-features.png)
 
-Selecting an entity in the event stream (such as a user ID or IP address) opens its label panel, where you can add labels; choose **Go to Entity View** there for the full [Entity Details](labels.md#entity-details) page. To query on an entity's value instead, <kbd>Shift</kbd>-click it to add it to the current query, or <kbd>Ctrl</kbd>-click (<kbd>⌘ Cmd</kbd>-click on macOS) to open a new query for just that value in a new tab.
+Selecting an entity in the event stream (such as a user ID or IP address) opens its label drawer, where you can add labels; choose **Go to Entity View** there for the full [Entity Details](labels.md#entity-details) page. To query on a feature value instead, <kbd>Shift</kbd>-click it to add it to the current query; you can Shift-click several values, and they're added together when you release <kbd>Shift</kbd>. <kbd>Ctrl</kbd>-click (<kbd>⌘ Cmd</kbd>-click on macOS) a value to open a new query for just that value in a new tab.
 
 **See Details** on an event card opens a detail view at `/events/:eventId` in a new window, with **Overview**, **Input**, and **Output** tabs showing the event's extracted feature values, its input data, and its rule results and effects.
 
@@ -77,7 +77,7 @@ Hovering over a query in the sidebar shows the Top N dimensions that were active
 
 The full Query History page (accessible from the sidebar) shows a searchable list of all queries run across your team. You can filter by user email, view the original query text, and re-run any past query using the same time range it was originally run with.
 
-![The Query History page listing each query with its text and time range, a View Original Query button and a save (star) button on each, a filter-by-user dropdown, and a Saved Queries sidebar](../../images/query-history-page.png)
+![The Query History page listing each query with its text and time range, View Original Query, Query Last Day, and save (star) buttons on each, a filter-by-user dropdown, and a Saved Queries sidebar](../../images/query-history-page.png)
 
 ## Saved Queries
 
@@ -87,11 +87,11 @@ For queries you return to frequently, Osprey lets you save them by name.
 
 The Saved Queries page (accessible from the sidebar) lists all saved queries with the query text, the user who saved it, and when it was saved. You can filter by user email.
 
-![The Saved Queries page listing a saved query with its text and metadata, and an open menu of Run Original Query, Show Saved Query History, and Delete Saved Query options](../../images/saved-queries-page.png)
+![The Saved Queries page listing a saved query with its text and metadata, and an open menu of Run Original Query, Run Query Using Interval, Show Saved Query History, and Delete Saved Query options](../../images/saved-queries-page.png)
 
 From each saved query's menu, you can:
 - **Run Original Query** to re-run it over its original time range
-- **Run Query Using Interval** to run it over its saved interval (e.g. Last Day) relative to now; only for queries run with a relative interval, not a custom date range
+- **Run Query Using Interval** to run it over its saved interval (e.g. Last Day) relative to now; offered only when the saved time range matches one of the preset intervals
 - **Show Saved Query History** to see past runs of the query
 - **Delete Saved Query**, with a confirmation step
 

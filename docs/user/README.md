@@ -18,4 +18,4 @@ The sidebar groups Osprey's tools by task, and this guide follows the same secti
 
   [![The Bulk Edit Labels form for roughly 9,800 entities matching a query, with label name, status, reason, and expiration fields](../images/bulk-label.png)](../images/bulk-label.png)
 
-The sidebar can be collapsed to an icon-only strip with the toggle at the top, next to the Osprey logo, and its state persists between sessions. The interface follows your OS or browser color scheme preference, or you can select a light or dark style using the toggle in the navigation bar.
+The sidebar can be collapsed to an icon-only strip with the toggle at the top, next to the Osprey logo, and its state persists between sessions. The interface follows your OS or browser color scheme preference, or you can choose light, system, or dark with the switcher at the top right.

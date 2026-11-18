@@ -2,7 +2,7 @@
 
 Osprey uses SML (“Some Madeup Language,” a subset of Python with additional restrictions) for queries. Queries match against **features**—the named values your rules extract from each event—including **entities** and **labels**. If those terms are new, read [Concepts](../../concepts.md) first.
 
-A query can only use features your rules define, compared with values of the feature's type. The examples below use the features of the demo ruleset in `example_rules/`: `EventType`, `UserId` and `PostText` are strings, and the demo's users are labeled `meow`. Substitute your own deployment's features; the [Features Registry](../manage.md#features-registry) lists them with their types. A feature that doesn't exist is rejected with "does not exist in any rule files", and comparing a feature with a value of the wrong type (`UserId == 4454` for a string feature) with "incompatible types".
+A query can only use features your rules define, compared with values of the feature's type. The examples below use the features of the demo ruleset in `example_rules/`: `EventType`, `UserId` and `PostText` are strings, and the demo labels users `meow` when they post "hello". User IDs like `user_4454` are illustrative; the demo's IDs are random. Substitute your own deployment's features; the [Features Registry](../manage.md#features-registry) lists them with their types. A feature that doesn't exist is rejected with "does not exist in any rule files", and comparing a feature with a value of the wrong type (`UserId == 4454` for a string feature) with "incompatible types".
 
 ## Basic comparisons
 
@@ -22,7 +22,7 @@ EventType == "create_post" and UserId == "user_4454"
 (UserId == "user_4454") or (UserId == "user_8284")
 
 # in: match any value in a list
-EventType in ["create_post", "update_post"]
+EventType in ["create_post", "delete_post"]
 ```
 
 ## Query functions
@@ -35,7 +35,7 @@ Queries support a small, fixed set of built-in functions. Unlike the UDFs you us
 
 ```py
 # Regex match against a feature
-RegexMatch(target=PostText, pattern="(buy|sell|deal)")
+RegexMatch(target=PostText, pattern="(fox|dog)")
 ```
 
 > [!NOTE]
@@ -57,13 +57,13 @@ DidAddLabel(entity_type="User", label_name="meow")
 EventType == "create_post" and UserId == "user_4454"
 
 # Posts matching a pattern
-EventType == "create_post" and RegexMatch(target=PostText, pattern="urgent")
+EventType == "create_post" and RegexMatch(target=PostText, pattern="lazy")
 
 # Events where a user was labeled meow
 DidAddLabel(entity_type="User", label_name="meow")
 
 # Complex: posts matching a pattern that didn't label their author
 EventType == "create_post" and
-RegexMatch(target=PostText, pattern="(click|link|urgent)") and
+RegexMatch(target=PostText, pattern="(fox|dog)") and
 not DidAddLabel(entity_type="User", label_name="meow")
 ```

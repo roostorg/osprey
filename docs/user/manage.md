@@ -52,7 +52,7 @@ The Rules Registry lists every rule loaded in your Osprey deployment.
 The list is paginated (50 per page) and can be filtered and sorted:
 
 - **Search**: filter by name, source file, or description
-- **Unused only**: show only rules that no `WhenRules` block uses, so they have no effects
+- **Unused only**: show only rules that no `WhenRules` block uses directly
 - **Sort**: by name, most referenced, or least referenced
 
 Each row shows the rule's name, source file, and how many `WhenRules` blocks use it. Expand a row for its description, its conditions, and the features it references.
