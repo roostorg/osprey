@@ -1,6 +1,6 @@
 from osprey.worker.adaptor.plugin_manager import bootstrap_execution_result_store
 from osprey.worker.lib.singletons import CONFIG
-from osprey.worker.lib.storage import ExecutionResultStorageBackendType
+from osprey.worker.lib.storage import ExecutionResultStorageBackendType, ExecutionResultStoreNotRegisteredError
 from osprey.worker.lib.storage.stored_execution_result import (
     ExecutionResultStore,
     StoredExecutionResultBigTable,
@@ -37,7 +37,11 @@ def get_rules_execution_result_storage_backend(
     elif backend_type == ExecutionResultStorageBackendType.PLUGIN:
         store = bootstrap_execution_result_store(config=config)
         if store is None:
-            raise AssertionError('No execution result store registered')
+            raise ExecutionResultStoreNotRegisteredError(
+                'OSPREY_EXECUTION_RESULT_STORAGE_BACKEND is "plugin", but no plugin implements '
+                'register_execution_result_store (or every implementation returned None)'
+            )
+        return store
     elif backend_type == ExecutionResultStorageBackendType.NONE:
         return None
 
