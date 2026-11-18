@@ -19,7 +19,7 @@ configure_logging()
 from osprey.engine.ast.sources import Sources  # noqa: E402
 from osprey.engine.language_types.entities import EntityT  # noqa: E402
 from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation, LabelStatus  # noqa: E402
-from osprey.worker.lib.singletons import LABELS_PROVIDER  # noqa: E402
+from osprey.worker.lib.singletons import CONFIG, LABELS_PROVIDER  # noqa: E402
 from osprey.worker.lib.sources_publisher import (  # noqa: E402
     upload_dependencies_mapping,
     validate_and_push,
@@ -220,8 +220,9 @@ def get_lines_from_file_as_set(file_path: str) -> set[str]:
 )
 @click.option(
     '--expire-instantly',
+    is_flag=True,
     default=False,
-    help=('Boolean option to make the label expire instantly. Supplying False means the label does not expire.'),
+    help='Make the label expire a few seconds after it is applied. Without this flag the label does not expire.',
 )
 def apply_label(
     entity_type: str,
@@ -252,6 +253,9 @@ def apply_label(
             description=description or 'Manually changed from the command line for debugging.',
         )
 
+    # The labels provider's storage (e.g. Postgres) only connects once the config is bound, so bind it
+    # from the environment the same way the worker and UI API do before creating the provider.
+    CONFIG.instance().configure_from_env()
     provider = LABELS_PROVIDER.instance()
     assert provider is not None, (
         'this CLI cannot be used because no labels service / provider is supplied for this osprey instance'
