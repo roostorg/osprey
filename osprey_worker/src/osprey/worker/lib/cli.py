@@ -221,7 +221,6 @@ def get_lines_from_file_as_set(file_path: str) -> set[str]:
 @click.option(
     '--expire-instantly',
     is_flag=True,
-    default=False,
     help='Make the label expire a few seconds after it is applied. Without this flag the label does not expire.',
 )
 def apply_label(

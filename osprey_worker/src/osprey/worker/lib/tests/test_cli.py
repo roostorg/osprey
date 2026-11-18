@@ -1,3 +1,4 @@
+import datetime
 import subprocess
 import sys
 import uuid
@@ -64,7 +65,10 @@ def test_apply_label_expire_instantly_is_a_flag() -> None:
     assert result.returncode == 0, result.stderr
     labels = _stored_labels(f'User/{entity_id}')
     assert labels is not None, 'apply-label exited 0 but stored no labels'
-    assert labels.labels['cli_test_label'].reasons['CliLabelMutationWithoutEffects'].expires_at is not None
+    expires_at = labels.labels['cli_test_label'].reasons['CliLabelMutationWithoutEffects'].expires_at
+    assert expires_at is not None
+    # "Instantly" is a few seconds after the CLI ran, not hours or days.
+    assert expires_at - datetime.datetime.now(datetime.timezone.utc) < datetime.timedelta(minutes=1)
 
 
 def test_apply_label_expire_instantly_takes_no_value() -> None:
@@ -73,5 +77,5 @@ def test_apply_label_expire_instantly_takes_no_value() -> None:
         'apply-label', 'User', 'unused', 'cli_test_label', 'manually-added', '--expire-instantly', 'False'
     )
 
-    assert result.returncode != 0
-    assert 'unexpected extra argument (False)' in result.stderr
+    assert result.returncode == 2, result.stderr  # click's usage-error exit code
+    assert 'False' in result.stderr

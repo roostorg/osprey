@@ -17,10 +17,13 @@ For more information about each release including git tags and artifacts, see [R
 - One-click demo in GitHub Codespaces, with sample data flowing ([#593](https://github.com/roostorg/osprey/pull/593) by [@reitblatt](https://github.com/reitblatt))
 - Rules Visualizer zoom controls, including zooming out past the whole-graph fit ([#509](https://github.com/roostorg/osprey/pull/509) by [@austin-ayers](https://github.com/austin-ayers))
 
+### Changed
+
+- `osprey-cli apply-label --expire-instantly` is now a flag and no longer takes a value ([#637](https://github.com/roostorg/osprey/pull/637) by [@reitblatt](https://github.com/reitblatt))
+
 ### Fixed
 
 - `osprey-cli apply-label` no longer fails with "Database osprey_db has not yet been initialized!" ([#637](https://github.com/roostorg/osprey/pull/637) by [@reitblatt](https://github.com/reitblatt))
-- `osprey-cli apply-label --expire-instantly` is a flag and no longer treats every value, even `False`, as true ([#637](https://github.com/roostorg/osprey/pull/637) by [@reitblatt](https://github.com/reitblatt))
 - `ParseInt` UDF can be called from rules again ([#588](https://github.com/roostorg/osprey/pull/588) by [@NopeCharon](https://github.com/NopeCharon))
 - Timeseries chart now follows dark mode ([#366](https://github.com/roostorg/osprey/issues/366), [#549](https://github.com/roostorg/osprey/pull/549) by [@26wv](https://github.com/26wv))
 - `osprey-cli` no longer crashes at import with gevent's "cannot release un-acquired lock" ([#574](https://github.com/roostorg/osprey/pull/574) by [@reitblatt](https://github.com/reitblatt))
