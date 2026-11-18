@@ -4,6 +4,7 @@ import json
 import logging
 import math
 import re
+import urllib.error
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -34,24 +35,44 @@ _PYDRUID_ERROR_DETAIL = re.compile(r'Druid Error: (?P<detail>.*?)\s*\n Query is:
 
 
 class DruidQueryError(Exception):
-    """Druid failed to run a query. `str()` is a message that's safe to show to the user."""
+    """Druid failed to run a query. `str()` is a message that's safe to show to the user.
+
+    `status_code` is Druid's HTTP status, or None when there was no HTTP response (e.g. the broker is unreachable).
+    """
+
+    def __init__(self, message: str, status_code: int | None = None):
+        super().__init__(message)
+        self.status_code = status_code
 
     @classmethod
-    def from_pydruid_error(cls, error: OSError) -> 'DruidQueryError':
-        return cls(f'Druid query failed: {_get_druid_error_message(error)}')
+    def from_pydruid_error(cls, error: Exception) -> 'DruidQueryError':
+        http_error = _find_http_error(error)
+        status_code = http_error.code if http_error is not None else None
+        return cls(f'Druid query failed: {_get_druid_error_message(error, status_code)}', status_code)
 
 
-def _get_druid_error_message(error: OSError) -> str:
+def _find_http_error(error: BaseException) -> urllib.error.HTTPError | None:
+    """pydruid raises from inside its `except HTTPError` block, so the HTTPError is somewhere in the context chain."""
+    context = error.__context__
+    for _ in range(5):
+        if context is None or isinstance(context, urllib.error.HTTPError):
+            return context
+        context = context.__context__
+    return None
+
+
+def _get_druid_error_message(error: Exception, status_code: int | None) -> str:
+    http_status = f'HTTP Error {status_code}' if status_code is not None else str(error)
     match = _PYDRUID_ERROR_DETAIL.search(str(error))
     if match is None:
-        # Not an HTTP error from Druid, e.g. the broker is unreachable.
-        return str(error)
+        # Not a Druid error body: the broker is unreachable, or pydruid failed while reading the body.
+        return http_status
 
     raw_detail = match.group('detail').strip()
     try:
         detail = ast.literal_eval(raw_detail)
     except (ValueError, TypeError, SyntaxError, MemoryError, RecursionError):
-        return raw_detail
+        return raw_detail or http_status
 
     # pydruid parses the body of a 500 into a dict, but passes other statuses (e.g. a 400) through as raw bytes.
     if isinstance(detail, bytes):
@@ -60,11 +81,12 @@ def _get_druid_error_message(error: OSError) -> str:
         try:
             detail = json.loads(detail)
         except ValueError:
-            return detail
+            return detail.strip() or http_status
 
     if isinstance(detail, dict):
-        return str(detail.get('errorMessage') or detail.get('error') or detail)
-    return str(detail)
+        # Don't fall back to the whole dict: it names internal hosts.
+        return str(detail.get('errorMessage') or detail.get('error') or detail.get('errorClass') or http_status)
+    return str(detail) or http_status
 
 
 class DruidQueryTypes(str, Enum):
@@ -183,6 +205,12 @@ class BaseDruidQuery(BaseModel, JsonBodyMarshaller):
         try:
             result = druid.client._post(built_query)
         except OSError as e:
+            logger.exception('Druid query failed')
+            raise DruidQueryError.from_pydruid_error(e) from e
+        except TypeError as e:
+            # pydruid 0.6.9 raises TypeError while handling a 500 whose body isn't JSON (e.g. a proxy's HTML page).
+            if _find_http_error(e) is None:
+                raise
             logger.exception('Druid query failed')
             raise DruidQueryError.from_pydruid_error(e) from e
         assert result.result_json

@@ -19,7 +19,7 @@ from osprey.worker.sinks.sink.bulk_label_sink import (
     BulkLabelSink,
     UnretryableTaskException,
 )
-from osprey.worker.ui_api.osprey.lib.druid import TopNDruidQuery
+from osprey.worker.ui_api.osprey.lib.druid import DruidQueryError, TopNDruidQuery
 from pytest_mock import MockFixture
 
 from ..input_stream import StaticInputStream
@@ -184,6 +184,35 @@ def test_bulk_label_fails() -> None:
     )
     sink_and_mocks.release_mock.assert_called_once_with(status=TaskStatus.FAILED, result=repr(exc))
     sink_and_mocks.analytics_mock.assert_not_called()
+
+
+def test_bulk_label_retries_druid_500s(mocker: MockFixture) -> None:
+    sleep = mocker.patch('time.sleep')  # tenacity's backoff between attempts
+    execute = mocker.patch('osprey.worker.sinks.sink.bulk_label_sink.TopNDruidQuery.execute')
+    execute.side_effect = [
+        DruidQueryError('Druid query failed: Query timeout', status_code=500),
+        ({'result': [{'UserId': str(x)} for x in range(_TASK_TOTAL_VALID_ENTITIES)]},),
+    ]
+    sink_and_mocks = create_bulk_label_sink_with_single_task()
+
+    sink_and_mocks.sink.run()
+
+    assert execute.call_count == 2
+    sleep.assert_called()
+    sink_and_mocks.release_mock.assert_called_once_with(status=TaskStatus.COMPLETE)
+
+
+def test_bulk_label_does_not_retry_other_druid_errors(mocker: MockFixture) -> None:
+    sleep = mocker.patch('time.sleep')
+    execute = mocker.patch('osprey.worker.sinks.sink.bulk_label_sink.TopNDruidQuery.execute')
+    execute.side_effect = DruidQueryError("Druid query failed: Column 'x' not found", status_code=400)
+    sink_and_mocks = create_bulk_label_sink_with_single_task()
+
+    sink_and_mocks.sink.run()
+
+    assert execute.call_count == 1
+    sleep.assert_not_called()
+    assert sink_and_mocks.release_mock.call_args.kwargs['status'] == TaskStatus.FAILED
 
 
 def test_bulk_label_golden_path_exclude_ids() -> None:

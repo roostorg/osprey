@@ -5,7 +5,7 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Alert, Empty, List, Skeleton, Tooltip, Spin } from 'antd';
+import { Alert, Button, Empty, List, Skeleton, Tooltip, Spin } from 'antd';
 import classNames from 'classnames';
 import { AutoSizer, List as VList, ListRowProps } from 'react-virtualized';
 import shallow from 'zustand/shallow';
@@ -64,6 +64,8 @@ const EventStream: React.FC = () => {
 
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  // The page offset whose load failed, so the user can retry it.
+  const [failedOffset, setFailedOffset] = React.useState<string | null>(null);
   const [eventStream, setEventStream] = React.useState<OspreyEvent[]>([]);
   const [queryOffset, setQueryOffset] = React.useState<string | null>(null);
   const [isListView, setIsListView] = React.useState(false);
@@ -82,6 +84,7 @@ const EventStream: React.FC = () => {
       if (result instanceof Error) {
         applyIfQueryIsCurrent(executedQuery, () => {
           setError(result.message);
+          setFailedOffset(newQueryOffset ?? null);
           // Stop paginating so a failing page isn't requested again on every scroll.
           setQueryOffset(null);
           setIsLoading(false);
@@ -105,6 +108,7 @@ const EventStream: React.FC = () => {
     setEventStream([]);
     setQueryOffset(null);
     setError(null);
+    setFailedOffset(null);
 
     if (start !== '' && end !== '') {
       // This should only be called if the query has changed, so reset local state
@@ -122,6 +126,13 @@ const EventStream: React.FC = () => {
   React.useEffect(() => {
     vlistRef.current?.recomputeRowHeights();
   }, [customSummaryFeatures, isListView, vlistRef]);
+
+  const handleRetryPage = () => {
+    if (failedOffset == null || isLoading) return;
+    setError(null);
+    setFailedOffset(null);
+    handleScanQuery(eventStream, failedOffset);
+  };
 
   const handlePaginatedScanQuery = () => {
     if (eventStream.length === 0 || queryOffset == null || isLoading) return;
@@ -251,6 +262,21 @@ const EventStream: React.FC = () => {
       icon={<EventStreamIcon />}
     >
       <div className={styles.listWrapper}>
+        {error != null && eventStream.length > 0 ? (
+          <Alert
+            type="error"
+            showIcon
+            message="Couldn't load more events"
+            description={error}
+            action={
+              failedOffset != null ? (
+                <Button size="small" onClick={handleRetryPage}>
+                  Retry
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : null}
         <div className={styles.eventStreamList}>{renderVirtualizedList()}</div>
       </div>
     </Panel>

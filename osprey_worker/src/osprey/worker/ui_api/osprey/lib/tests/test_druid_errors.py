@@ -1,10 +1,11 @@
 import io
 import json
 import urllib.error
+from datetime import datetime
 from unittest import mock
 
 import pytest
-from osprey.worker.ui_api.osprey.lib.druid import DruidQueryError
+from osprey.worker.ui_api.osprey.lib.druid import DruidQueryError, TimeseriesDruidQuery
 from pydruid.client import PyDruid
 from pydruid.query import Query
 
@@ -59,6 +60,54 @@ def test_druid_query_error_message(urlopen_side_effect: Exception, expected_mess
     error = DruidQueryError.from_pydruid_error(pydruid_error(urlopen_side_effect))
 
     assert str(error) == expected_message
+
+
+@pytest.mark.parametrize(
+    'urlopen_side_effect, expected_message',
+    [
+        # An empty body, e.g. from a proxy in front of Druid.
+        (http_error(504, b''), 'Druid query failed: HTTP Error 504'),
+        # Don't show the whole error dict: it names internal hosts.
+        (
+            http_error(500, json.dumps({'errorClass': 'SomeException', 'host': '10.0.0.5:8100'}).encode()),
+            'Druid query failed: SomeException',
+        ),
+    ],
+)
+def test_druid_query_error_message_fallbacks(urlopen_side_effect: Exception, expected_message: str) -> None:
+    assert str(DruidQueryError.from_pydruid_error(pydruid_error(urlopen_side_effect))) == expected_message
+
+
+@pytest.mark.parametrize('status_code', [400, 500])
+def test_druid_query_error_keeps_the_status_code(status_code: int) -> None:
+    error = pydruid_error(http_error(status_code, json.dumps({'errorMessage': 'boom'}).encode()))
+
+    assert DruidQueryError.from_pydruid_error(error).status_code == status_code
+
+
+def test_druid_query_error_without_http_response_has_no_status_code() -> None:
+    error = pydruid_error(urllib.error.URLError(ConnectionRefusedError(111, 'Connection refused')))
+
+    assert DruidQueryError.from_pydruid_error(error).status_code is None
+
+
+def test_non_json_500_is_reported_as_a_druid_query_error() -> None:
+    # pydruid 0.6.9 raises TypeError, not OSError, for a 500 whose body isn't JSON.
+    druid = mock.MagicMock(datasource='osprey.execution_results')
+    druid.client = PyDruid('http://druid-broker:8082', 'druid/v2')
+    query = TimeseriesDruidQuery(
+        start=datetime(2026, 1, 1), end=datetime(2026, 1, 2), query_filter='', entity=None, granularity='day'
+    )
+    with (
+        mock.patch('osprey.worker.ui_api.osprey.lib.druid.DRUID') as druid_holder,
+        mock.patch('urllib.request.urlopen', side_effect=http_error(500, b'<html>Bad Gateway</html>')),
+    ):
+        druid_holder.instance.return_value = druid
+        with pytest.raises(DruidQueryError) as exc_info:
+            query.execute()
+
+    assert str(exc_info.value) == 'Druid query failed: HTTP Error 500'
+    assert exc_info.value.status_code == 500
 
 
 def test_druid_query_error_message_leaves_out_the_query() -> None:

@@ -18,7 +18,7 @@ from osprey.worker.lib.storage.bulk_label_task import BASE_DELAY_SECONDS, MAX_AT
 from osprey.worker.lib.storage.labels import LabelsProvider
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
 from osprey.worker.sinks.sink.output_sink_utils.models import OspreyBulkJobAnalyticsEvent
-from osprey.worker.ui_api.osprey.lib.druid import PeriodData, TopNDruidQuery, TopNPoPResponse
+from osprey.worker.ui_api.osprey.lib.druid import DruidQueryError, PeriodData, TopNDruidQuery, TopNPoPResponse
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from .base_sink import BaseSink
@@ -180,11 +180,9 @@ class BulkLabelSink(BaseSink):
                     return dict()
                 return current_period.get('result', [])
             except Exception as e:
-                # Unfortunately, PyDruid has some code that makes it difficult to see what error code is thrown...
-                # The stringified HTTPError is wrapped in an `OSError` object, so we can only grab the error code
-                # via this annoying string.startswith() logic. We only want to retry the queries if Druid is returning
-                # us 500s, otherwise we risk improperly handling errors.
-                if str(e).startswith('HTTP Error 500'):
+                # We only want to retry the queries if Druid is returning us 500s, otherwise we risk improperly
+                # handling errors.
+                if isinstance(e, DruidQueryError) and e.status_code == 500:
                     raise InternalDruidException(f'Druid query ({i} out of {total_num_queries}) failed: {str(e)}')
                 else:
                     raise UnretryableTaskException(

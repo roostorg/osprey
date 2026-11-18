@@ -134,7 +134,7 @@ export async function getTopNQueryResultCSV(query: BaseQueryRequest, dimension: 
     const fileBlob = new Blob([response.data], { type: 'text/csv' });
     saveAs(fileBlob, `osprey-${query.start}-${query.end}.csv`);
   } else {
-    throw new Error(response.error.message);
+    throw new Error(getErrorMessage(response.error));
   }
 }
 

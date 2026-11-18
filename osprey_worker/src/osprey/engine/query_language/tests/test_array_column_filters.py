@@ -64,6 +64,23 @@ def contains(column: str, value: str) -> dict[str, object]:
         ),
         ('DidDeclareVerdict(verdict="ban")', contains('__verdicts', 'ban')),
         ('not DidDeclareVerdict(verdict="ban")', {'type': 'not', 'field': contains('__verdicts', 'ban')}),
+        (
+            'DidAddLabel(entity_type="User", label_name="meow") or DidDeclareVerdict(verdict="ban")',
+            {
+                'type': 'or',
+                'fields': [contains('__entity_label_mutations', 'User/meow/1'), contains('__verdicts', 'ban')],
+            },
+        ),
+        (
+            'DidAddLabel(entity_type="User", label_name="meow") and not DidDeclareVerdict(verdict="ban")',
+            {
+                'type': 'and',
+                'fields': [
+                    contains('__entity_label_mutations', 'User/meow/1'),
+                    {'type': 'not', 'field': contains('__verdicts', 'ban')},
+                ],
+            },
+        ),
     ],
 )
 def test_label_and_verdict_queries_use_array_filters(
