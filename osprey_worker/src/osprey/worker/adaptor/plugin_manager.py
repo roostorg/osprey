@@ -175,5 +175,10 @@ def bootstrap_execution_result_store(config: Config) -> ExecutionResultStore | N
     Errors raised by a plugin's hook propagate, so a store that fails to start fails the worker."""
     load_all_osprey_plugins()
 
+    from osprey.worker.lib.storage.stored_execution_result import ExecutionResultStore
+
     # spec has firstresult=True set, so this is the first non-None store a plugin returns
-    return plugin_manager.hook.register_execution_result_store(config=config)
+    store = plugin_manager.hook.register_execution_result_store(config=config)
+    if store is not None and not isinstance(store, ExecutionResultStore):
+        raise TypeError(f'register_execution_result_store returned {type(store).__name__}, not an ExecutionResultStore')
+    return store

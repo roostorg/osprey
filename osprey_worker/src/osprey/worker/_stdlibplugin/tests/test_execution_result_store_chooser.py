@@ -1,6 +1,6 @@
 """Tests for choosing the execution result store when OSPREY_EXECUTION_RESULT_STORAGE_BACKEND=plugin."""
 
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from datetime import datetime
 from typing import Any
 
@@ -8,9 +8,6 @@ import pytest
 from osprey.engine.executor.execution_context import Action, ExecutionResult
 from osprey.worker._stdlibplugin.execution_result_store_chooser import get_rules_execution_result_storage_backend
 from osprey.worker._stdlibplugin.sink_register import register_output_sinks
-from osprey.worker._stdlibplugin.storage_register import (
-    register_execution_result_store as stdlib_register_execution_result_store,
-)
 from osprey.worker.adaptor.plugin_manager import hookimpl_osprey, plugin_manager
 from osprey.worker.lib.config import Config
 from osprey.worker.lib.singletons import CONFIG
@@ -68,19 +65,40 @@ class BrokenStorePlugin:
         raise ConnectionError('store unreachable')
 
 
+class WrongTypeStorePlugin:
+    @hookimpl_osprey
+    def register_execution_result_store(self, config: Config) -> object:
+        return 'not a store'
+
+
 @pytest.fixture
 def plugin_backend(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('OSPREY_EXECUTION_RESULT_STORAGE_BACKEND', 'plugin')
+    # Keep register_output_sinks from building sinks that need Kafka.
+    monkeypatch.setenv('OSPREY_KAFKA_OUTPUT_SINK', 'false')
+    monkeypatch.setenv('OSPREY_STDOUT_OUTPUT_SINK', 'false')
     CONFIG.instance().unconfigure_for_tests()
     CONFIG.instance().configure_from_env()
 
 
 @pytest.fixture
-def store_plugin(plugin_backend: None) -> Generator[StorePlugin, None, None]:
+def register_plugin(plugin_backend: None) -> Generator[Callable[[object], None], None, None]:
+    registered: list[object] = []
+
+    def register(plugin: object) -> None:
+        plugin_manager.register(plugin)
+        registered.append(plugin)
+
+    yield register
+    for plugin in registered:
+        plugin_manager.unregister(plugin)
+
+
+@pytest.fixture
+def store_plugin(register_plugin: Callable[[object], None]) -> StorePlugin:
     plugin = StorePlugin()
-    plugin_manager.register(plugin)
-    yield plugin
-    plugin_manager.unregister(plugin)
+    register_plugin(plugin)
+    return plugin
 
 
 def test_plugin_backend_returns_registered_store(store_plugin: StorePlugin) -> None:
@@ -105,15 +123,15 @@ def test_plugin_backend_without_registered_store_raises(plugin_backend: None) ->
         get_rules_execution_result_storage_backend(ExecutionResultStorageBackendType.PLUGIN)
 
 
-def test_plugin_backend_surfaces_store_plugin_errors(plugin_backend: None) -> None:
-    plugin = BrokenStorePlugin()
-    plugin_manager.register(plugin)
-    try:
-        with pytest.raises(ConnectionError, match='store unreachable'):
-            get_rules_execution_result_storage_backend(ExecutionResultStorageBackendType.PLUGIN)
-    finally:
-        plugin_manager.unregister(plugin)
+def test_plugin_backend_surfaces_store_plugin_errors(register_plugin: Callable[[object], None]) -> None:
+    register_plugin(BrokenStorePlugin())
+
+    with pytest.raises(ConnectionError, match='store unreachable'):
+        get_rules_execution_result_storage_backend(ExecutionResultStorageBackendType.PLUGIN)
 
 
-def test_stdlib_hook_defers_to_other_plugins_for_plugin_backend(plugin_backend: None) -> None:
-    assert stdlib_register_execution_result_store(config=CONFIG.instance()) is None
+def test_plugin_backend_rejects_non_store(register_plugin: Callable[[object], None]) -> None:
+    register_plugin(WrongTypeStorePlugin())
+
+    with pytest.raises(TypeError, match='not an ExecutionResultStore'):
+        get_rules_execution_result_storage_backend(ExecutionResultStorageBackendType.PLUGIN)

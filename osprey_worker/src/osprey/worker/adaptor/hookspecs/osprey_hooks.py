@@ -52,8 +52,12 @@ def register_input_stream(config: Config) -> BaseInputStream[BaseAckingContext[A
 
 
 @hookspec(firstresult=True)
-def register_execution_result_store(config: Config) -> ExecutionResultStore:
-    """Register an execution result storage backend instance."""
+def register_execution_result_store(config: Config) -> ExecutionResultStore | None:
+    """Register an execution result storage backend instance, used when OSPREY_EXECUTION_RESULT_STORAGE_BACKEND
+    is `plugin`. Return None to defer to another plugin.
+
+    Osprey may call this hook more than once per process, so return a cached store if creating one is expensive
+    (e.g. it opens a connection)."""
     raise NotImplementedError('register_execution_result_store must be implemented by the plugin')
 
 
