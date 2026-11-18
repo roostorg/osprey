@@ -188,7 +188,7 @@ pub async fn start_kafka_consumer(
                         .await
                     }
                     _ => {
-                        message_decoder::decode_msgpack_json_message(
+                        message_decoder::decode_json_message(
                             message.data(),
                             ack_id,
                             message.timestamp(),
