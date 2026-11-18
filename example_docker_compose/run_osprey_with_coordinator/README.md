@@ -74,7 +74,9 @@ Configure the coordinator via environment variables in `docker-compose.coordinat
 
 | Variable | Default | Override file | Description |
 |----------|---------|---------------|-------------|
-| `ETCD_PEERS` | none (**required**) | `http://etcd:2379` | etcd connection string. Without it the coordinator stops serving port 19950 after about 30 seconds, logging only a warning. |
+| `ETCD_PEERS` | none (**required**) | `http://etcd:2379` | etcd connection string. Without it the coordinator stops serving port 19950 after about 30 seconds and 19951 after about 60, logging only warnings. |
+| `POD_IP` | none (**required**) | `osprey-coordinator` | Address the coordinator registers in etcd for workers to connect to; the gRPC servers panic if it is unset. |
+| `OSPREY_COORDINATOR_SERVICE_NAME` | `osprey_coordinator` | not set | Service name the coordinator registers under; workers look it up with the same name. |
 | `OSPREY_COORDINATOR_BIDI_STREAM_PORT` | `19950` | `19950` | Port for bidirectional streaming |
 | `OSPREY_COORDINATOR_SYNC_ACTION_PORT` | `19951` | `19951` | Port for synchronous action API |
 | `SNOWFLAKE_API_ENDPOINT` | `http://localhost:19952` | `http://snowflake-id-worker:8088` | Snowflake ID service endpoint |

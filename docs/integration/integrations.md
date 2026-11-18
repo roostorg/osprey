@@ -21,7 +21,7 @@ my_osprey_plugins = "my_osprey_plugins.register_plugins"
 my_osprey_async_plugins = "my_osprey_plugins.register_async_plugins"
 ```
 
-Give each entry point a name no other installed plugin uses. The stock Osprey image already installs `example_plugins`, whose entry points are named `register_plugins` and `register_async_plugins`; a plugin that reuses one of those names is silently shadowed, and rules calling its UDFs fail with `unknown function`.
+Give each entry point a name no other installed plugin uses. The stock Osprey image already installs `example_plugins`, whose entry points are named `register_plugins` and `register_async_plugins`; when two plugins use the same name, one of them is silently skipped (which one depends on install order), and rules calling the skipped plugin's UDFs fail with `unknown function`.
 
 Each entry point resolves to a module that contains hook functions decorated with `@hookimpl_osprey` or `@hookimpl_osprey_async`. Osprey calls each hook at startup to collect your registrations; see [`example_plugins/src/register_plugins.py`](https://github.com/roostorg/osprey/blob/main/example_plugins/src/register_plugins.py) and [`register_async_plugins.py`](https://github.com/roostorg/osprey/blob/main/example_plugins/src/register_async_plugins.py) for more.
 
@@ -116,14 +116,14 @@ The worker (`entrypoint.sh osprey-worker`, which runs `run-rules-sink`) reads it
 Variable | Required | Default | What it does
 -------- | -------- | ------- | ------------
 `OSPREY_RULES_SINK_NUM_WORKERS` | Yes | none | Number of rules sinks the worker runs in its pool; the worker exits with a `KeyError` if it's unset. The compose stack uses `1`.
-`POSTGRES_HOSTS` | Yes | none | JSON object mapping database names to connection URLs, e.g. `{"osprey_db":"postgresql://user:pass@host:5432/osprey"}`.
+`POSTGRES_HOSTS` | With Postgres | none | JSON object mapping database names to connection URLs, e.g. `{"osprey_db":"postgresql://user:pass@host:5432/osprey"}`. Required in the stock image, whose example labels service uses Postgres, and by the `postgres` storage backend.
 `OSPREY_INPUT_STREAM_SOURCE` | No | `plugin` | Where events come from: `kafka`, `pubsub`, `osprey_coordinator`, `synthetic`, or `plugin`. See [Built-in sources](#built-in-sources).
 `OSPREY_RULES_PATH` | No | unset | Directory of SML rules to load at startup. Unset, the worker loads rules from etcd instead.
 `OSPREY_STDOUT_OUTPUT_SINK` | No | `False` | `True` logs every execution result to the worker's output.
 `OSPREY_KAFKA_OUTPUT_SINK` | No | `False` | `True` writes every execution result to Kafka; it then also needs `OSPREY_KAFKA_OUTPUT_TOPIC`, `OSPREY_KAFKA_BOOTSTRAP_SERVERS` and `OSPREY_KAFKA_OUTPUT_CLIENT_ID`.
 `OSPREY_KAFKA_OUTPUT_TOPIC` | With the Kafka sink | none | Topic for execution results; the compose stack uses `osprey.execution_results`, which Druid ingests.
-`OSPREY_KAFKA_BOOTSTRAP_SERVERS` | With Kafka | `["localhost"]` | JSON list of Kafka brokers, for both the Kafka input stream and the Kafka sink.
-`SNOWFLAKE_API_ENDPOINT` | When events lack an action ID | none | URL of the Snowflake ID service (`snowflake-id-worker` in the compose stack), used to generate an action ID for an event that arrives without one.
+`OSPREY_KAFKA_BOOTSTRAP_SERVERS` | With Kafka | `["localhost"]` for the input stream; none for the sink | JSON list of Kafka brokers, for both the Kafka input stream and the Kafka sink.
+`SNOWFLAKE_API_ENDPOINT` | When IDs are generated | none | URL of the Snowflake ID service (`snowflake-id-worker` in the compose stack). The worker uses it to give an action ID to an event that arrives without one; the stock image's Bluesky input stream uses it for every event.
 `OSPREY_EXECUTION_RESULT_STORAGE_BACKEND` | No | `none` | Where execution results are stored for the UI's event details: `bigtable`, `gcs`, `minio`, `postgres`, `plugin`, or `none`. The compose stack uses `minio`, with the `OSPREY_MINIO_*` variables.
 
 ## Configuring input sinks
@@ -150,7 +150,7 @@ If your event source isn't Kafka or Pub/Sub (e.g. it's a webhook receiver, a dif
 
 ```python
 from collections.abc import Iterator
-from datetime import datetime
+from datetime import datetime, timezone
 
 from osprey.engine.executor.execution_context import Action
 from osprey.worker.sinks.sink.input_stream import BaseInputStream
@@ -165,12 +165,15 @@ class MyInputStream(BaseInputStream[BaseAckingContext[Action]]):
     def _gen(self) -> Iterator[BaseAckingContext[Action]]:
         while True:
             raw_event = self._client.poll()  # block until the next event
+            # The timestamp must be a timezone-aware datetime, not a string
+            timestamp = datetime.fromisoformat(raw_event['timestamp'])
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=timezone.utc)
             action = Action(
                 action_id=int(raw_event['id']),
                 action_name=raw_event['type'],
                 data=raw_event['payload'],
-                # Must be a timezone-aware datetime, not a string
-                timestamp=datetime.fromisoformat(raw_event['timestamp']),
+                timestamp=timestamp,
             )
             yield NoopAckingContext(item=action)
 ```
@@ -333,7 +336,7 @@ Require(rule='ai_services/my_ai_service.sml', require_if=ActionName == 'register
 
 ## Packaging your plugin
 
-Put your hook modules in a package, not as top-level modules in `src/`: `packages.find` only finds packages (directories with an `__init__.py`), so a lone `src/register_plugins.py` builds an empty wheel. For example:
+Put your hook modules in a package, not as top-level modules in `src/`: `packages.find` only finds packages, not top-level modules, so a lone `src/register_plugins.py` builds an empty wheel. For example:
 
 ```text
 my-osprey-plugins/

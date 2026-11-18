@@ -20,7 +20,7 @@ At its core, Osprey is a pipeline: events come in, get evaluated against your SM
                 │
                 ▼
    Output sink(s) + execution result store
-   (stdout, Kafka, Postgres, GCS, MinIO, BigTable, or your own plugin)
+   (stdout, Kafka, Postgres, GCS, MinIO, Bigtable, or your own plugin)
                 │
                 ▼
         Druid + UI API → Osprey UI
@@ -32,9 +32,9 @@ For the worker's rule-evaluation architecture (how a single event is scored agai
 
 There are three ways to get an event into Osprey:
 
-### 1. Kafka (the default)
+### 1. Kafka (what the compose stack uses)
 
-By default, the worker consumes from the Kafka topic `osprey.actions_input` (`OSPREY_KAFKA_INPUT_STREAM_TOPIC` in `docker-compose.yaml`; see `KafkaInputStream` in `osprey_worker/src/osprey/worker/sinks/sink/input_stream.py`). Each message is a JSON blob shaped like:
+With `OSPREY_INPUT_STREAM_SOURCE=kafka` (as in `docker-compose.yaml`), the worker consumes from the Kafka topic `osprey.actions_input` (`OSPREY_KAFKA_INPUT_STREAM_TOPIC` in `docker-compose.yaml`; see `KafkaInputStream` in `osprey_worker/src/osprey/worker/sinks/sink/input_stream.py`). Each message is a JSON blob shaped like:
 
 ```json
 {
@@ -85,7 +85,7 @@ Separately, `ExecutionResultStore` backends persist full execution results for l
 
 | Value | Backend |
 | --- | --- |
-| `bigtable` | Google Cloud BigTable |
+| `bigtable` | Google Cloud Bigtable |
 | `gcs` | Google Cloud Storage |
 | `minio` | MinIO or another S3-compatible store, such as RustFS in `docker-compose.yaml` (`OSPREY_MINIO_ENDPOINT`, `OSPREY_MINIO_ACCESS_KEY`, `OSPREY_MINIO_SECRET_KEY`, `OSPREY_MINIO_EXECUTION_RESULTS_BUCKET`) |
 | `postgres` | Postgres |
@@ -94,4 +94,4 @@ Separately, `ExecutionResultStore` backends persist full execution results for l
 
 ### How results become queryable in the UI
 
-Druid consumes the worker's Kafka output and powers the UI API's real-time querying; this is what backs the [Investigate](../user/investigate/) query interface. (The [Rules](../user/manage.md#rules-registry) and [Features Registries](../user/manage.md#features-registry) read the loaded rules directly, not Druid.) If you're running without Kafka output enabled (`OSPREY_KAFKA_OUTPUT_SINK=true`), Druid has nothing to index and the query UI will be empty even though rules are still evaluating correctly.
+Druid consumes the worker's Kafka output and powers the UI API's real-time querying; this is what backs the [Investigate](../user/investigate/) query interface. (The [Rules](../user/manage.md#rules-registry) and [Features Registries](../user/manage.md#features-registry) read the loaded rules directly, not Druid.) If you're running without the Kafka output sink enabled (it needs `OSPREY_KAFKA_OUTPUT_SINK=true`), Druid has nothing to index and the query UI will be empty even though rules are still evaluating correctly.
