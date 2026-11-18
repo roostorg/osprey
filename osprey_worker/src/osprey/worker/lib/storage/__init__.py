@@ -40,3 +40,8 @@ class ExecutionResultStorageBackendType(StrEnum):
     """
     Disable execution results from being stored. This may cause certain elements of Osprey to break, such as the events stream and individual event details in the UI
     """
+
+
+class ExecutionResultStoreNotRegisteredError(RuntimeError):
+    """Raised when `OSPREY_EXECUTION_RESULT_STORAGE_BACKEND=plugin` but no plugin implements
+    `register_execution_result_store`."""

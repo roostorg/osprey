@@ -10,6 +10,9 @@ def register_execution_result_store(config: Config) -> ExecutionResultStore | No
     storage_backend_type = ExecutionResultStorageBackendType(
         config.get_str('OSPREY_EXECUTION_RESULT_STORAGE_BACKEND', 'none').lower()
     )
+    if storage_backend_type == ExecutionResultStorageBackendType.PLUGIN:
+        # Another plugin provides the store. Choosing it here would call this hook again.
+        return None
 
     storage_backend = get_rules_execution_result_storage_backend(backend_type=storage_backend_type)
 

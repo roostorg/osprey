@@ -21,6 +21,7 @@ from osprey.worker.sinks.utils.acking_contexts import BaseAckingContext
 if TYPE_CHECKING:
     from osprey.worker.lib.config import Config
     from osprey.worker.lib.data_exporters.validation_result_exporter import BaseValidationResultExporter
+    from osprey.worker.lib.storage.stored_execution_result import ExecutionResultStore
 
 hookimpl_osprey: pluggy.HookimplMarker = pluggy.HookimplMarker(OSPREY_ADAPTOR)
 
@@ -168,12 +169,11 @@ def bootstrap_input_stream(config: Config) -> BaseInputStream[BaseAckingContext[
         return None
 
 
-def bootstrap_execution_result_store(config: Config):
-    """Get the execution result storage backend from plugins."""
+def bootstrap_execution_result_store(config: Config) -> ExecutionResultStore | None:
+    """Get the execution result storage backend from plugins, or None if no plugin registers one.
+
+    Errors raised by a plugin's hook propagate, so a store that fails to start fails the worker."""
     load_all_osprey_plugins()
 
-    try:
-        store = plugin_manager.hook.register_execution_result_store(config=config)
-        return store
-    except Exception:
-        return None
+    # spec has firstresult=True set, so this is the first non-None store a plugin returns
+    return plugin_manager.hook.register_execution_result_store(config=config)
