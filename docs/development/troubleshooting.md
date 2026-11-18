@@ -11,7 +11,7 @@ curl -X POST http://localhost:8888/druid/indexer/v1/supervisor/osprey.execution_
 docker compose restart druid-spec-submitter
 ```
 
-To wipe all Druid and MinIO state and start fresh (Postgres data is preserved):
+To wipe all Druid and RustFS (object storage) state and start fresh (Postgres data is preserved):
 
 ```bash
 docker compose down
@@ -35,11 +35,11 @@ The UI defaults to querying the last 24 hours. If the selected time range is too
 
 ## Kafka topic disk growth
 
-Topics are created with a 48-hour/8 GB-per-partition retention limit. If you deployed before this was set, apply the config to your existing topics:
+Topics are created with a 48-hour/8 GB-per-partition retention limit. If you deployed before this was set, apply the config to your existing topics. `kafka-configs` ships in the Kafka container, so run it there:
 
 ```bash
 for topic in osprey.actions_input osprey.execution_results; do
-  kafka-configs --bootstrap-server localhost:9092 \
+  docker compose exec osprey-kafka kafka-configs --bootstrap-server localhost:9092 \
     --entity-type topics --entity-name $topic --alter \
     --add-config retention.ms=172800000,retention.bytes=8589934592,segment.bytes=1073741824
 done

@@ -10,8 +10,8 @@
 
 `osprey_ui` is the frontend repository for the Osprey application.
 For more information on the application as a whole, its features,
-and what it is used for, please refer to the [documentation](https://github.com/roostorg/osprey/tree/main/docs). This is a `create-react-app` project. It uses React/Typescript/Zustand,
-[Ant Design 4.0](https://ant.design/) as a UI framework, and CSS Modules.
+and what it is used for, please refer to the [documentation](https://github.com/roostorg/osprey/tree/main/docs). It is built with [rsbuild](https://rsbuild.rs/) and uses React/TypeScript/Zustand,
+[Ant Design 5](https://ant.design/) as a UI framework, ECharts for charts, and CSS Modules.
 
 ### Service Dependencies
 
@@ -41,7 +41,10 @@ pnpm install --frozen-lockfile
 
 3. **Start Development Server**
 
+The `docker compose` stack also runs a containerised UI on port 5002. Stop it first, or the development server moves to port 5003:
+
 ```bash
+docker compose stop osprey-ui
 pnpm start
 ```
 

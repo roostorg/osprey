@@ -35,7 +35,7 @@ uv sync --dev
 # Install git hooks
 uv run pre-commit install --install-hooks
 
-# Start full stack (Kafka, Postgres, Druid, MinIO, worker, UI, UI API)
+# Start full stack (Kafka, Postgres, Druid, RustFS object storage (service name `minio`), worker, UI, UI API)
 docker compose up -d
 # or
 ./start.sh
@@ -46,14 +46,18 @@ docker compose up -d
 # adds .devcontainer/docker-compose.codespaces.yaml and the test-data producer)
 npx @devcontainers/cli up --workspace-folder .
 
-# UI dev server (Corepack auto-resolves pnpm from osprey_ui/package.json's packageManager field)
+# UI dev server (Corepack auto-resolves pnpm from osprey_ui/package.json's packageManager field).
+# Stop the containerised UI first; it holds port 5002, and the dev server would move to 5003.
+docker compose stop osprey-ui
 cd osprey_ui && corepack enable && pnpm install --frozen-lockfile && pnpm start
+# If `corepack enable` fails with EACCES (Node installed system-wide), skip it and prefix
+# each pnpm command with `corepack` instead: `corepack pnpm install --frozen-lockfile`.
 
 # Regenerate protobuf bindings after editing proto/osprey/rpc/**/*.proto
 ./gen-protos.sh
 ```
 
-UI: http://localhost:5002 · UI API: http://localhost:5004 · Worker (port 5001)
+UI: http://localhost:5002 · UI API: http://localhost:5004 · the worker has no HTTP interface (`docker compose logs --follow osprey-worker`)
 
 The UI dev server proxies `/api` to the UI API (`OSPREY_UI_API_PROXY_TARGET`, default `http://localhost:5004`); the devcontainer sets `REACT_APP_API_BASE_URL=/api` so the browser only talks to port 5002. If you change how the UI reaches the API, keep the Codespaces path in `.devcontainer/` and `docs/development/codespaces.md` working.
 
@@ -139,7 +143,18 @@ System libs:
 
   `install-deps` only auto-supports recent Ubuntu / Debian. Fedora, Arch, Alpine, and NixOS need manual lib installation — Playwright's troubleshooting docs cover their package names.
 
-Before calling `browser_navigate("http://localhost:5002")`, **the operator** starts the dev server (`cd osprey_ui && pnpm start`, listens on `:5002`).
+  Playwright doesn't build Chromium for every distro release: on Ubuntu 26.04, `install-browser` fails with `Playwright does not support chromium on ubuntu26.04-x64`. There, **the operator** can run Playwright from Microsoft's container image instead, which bundles Chromium and its libraries; `--network host` lets it reach the dev server on `localhost:5002`:
+
+  ```bash
+  docker run --rm -it --network host -v "$PWD":/work -w /work \
+    mcr.microsoft.com/playwright/python:v1.52.0-noble bash
+  # inside the container
+  pip install playwright==1.52.0
+  ```
+
+  That gives a scripted Playwright (Python) rather than the MCP's `browser_*` tools.
+
+Before calling `browser_navigate("http://localhost:5002")`, **the operator** starts the dev server (`docker compose stop osprey-ui`, then `cd osprey_ui && pnpm start`, listens on `:5002`).
 
 If the MCP approval prompt doesn't fire on a fresh `claude` launch, **the operator** runs `claude mcp reset-project-choices` and re-launches.
 
@@ -151,17 +166,18 @@ CI runs entirely via GitHub Actions on `pull_request` and `push` to `main`. Each
 # code-quality.yml → python-quality
 uv sync --dev
 uv run pre-commit install --install-hooks
-SKIP=prettier-osprey-ui uv run pre-commit run --show-diff-on-failure --color=always --all-files
-uv tool run fawltydeps --check-unused --pyenv .venv
+SKIP=prettier-osprey-ui,eslint-osprey-ui uv run pre-commit run --show-diff-on-failure --color=always --all-files
+uv run pytest -q osprey_async_worker
+uv tool run fawltydeps --pyenv .venv
 
 # code-quality.yml → ui-quality (CI `working-directory: osprey_ui`)
 ( cd osprey_ui
-  pnpm install --frozen-lockfile
-  pnpm run format:check
-  pnpm run lint
-  pnpm run typecheck
-  pnpm run test
-  pnpm run build )
+  corepack pnpm install --frozen-lockfile
+  corepack pnpm run format:check
+  corepack pnpm run lint
+  corepack pnpm run typecheck
+  corepack pnpm run test
+  corepack pnpm run build )
 
 # code-quality.yml → rust-quality (CI `working-directory: osprey_coordinator`)
 # Note: in CI the `cargo clippy` and `cargo test` steps are marked `continue-on-error: true`,
@@ -184,12 +200,12 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 - Do not disable lint or type rules to silence errors. Fix the underlying issue, or use a narrowly-scoped `# noqa: <code>` / `# type: ignore[<code>]` with a comment explaining why.
 - Before adding a new dependency, check it for known CVEs and confirm the license is compatible with `LICENSE.md`.
 - Do not commit generated protobuf files from an untrusted toolchain; always regenerate via `./gen-protos.sh`.
-- Default Docker bindings are `127.0.0.1`; do not change bind addresses without explicit instruction (see `docs/development/local.md` §6).
+- Default Docker bindings are `127.0.0.1`; do not change bind addresses without explicit instruction (see `docs/development/local.md` §6). Known exception: the coordinator overlay (`example_docker_compose/run_osprey_with_coordinator/docker-compose.coordinator.yaml`) publishes the coordinator (`19950`, `19951`) and etcd (`2379`) on `0.0.0.0`.
 
 ## Code review
 
 - Keep diffs small and focused; split unrelated changes into separate PRs.
-- PR titles are descriptive and imperative ("Add X", "Fix Y").
+- PR titles follow [Conventional Commits](https://www.conventionalcommits.org/), like commit messages (see `docs/development/workflow.md`): `<type>(<scope>): <imperative summary>`, e.g. `fix(ui): show the event-stream timezone once`.
 - New behavior requires a test. Bug fixes require a regression test.
 - All CI checks (above) must pass before requesting review.
 

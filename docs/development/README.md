@@ -10,7 +10,7 @@ To run the demo:
    docker --version && docker compose version
    ```
 
-   The stack also needs a number of free ports; the script checks them up front and names any that are taken. The ones you'll actually visit are `5002` (Osprey UI) and `8888` (Druid console); the worker and UI API use `5001` and `5004`.
+   The stack also needs a number of free ports; the script checks them up front and names any that are taken. The ones you'll actually visit are `5002` (Osprey UI) and `8888` (Druid console); the UI API uses `5004`. The worker has no HTTP interface, though the stack still reserves port `5001` for it.
 
 2. **Run the script** from a clone of the repo:
 
@@ -24,9 +24,9 @@ To run the demo:
    curl -sSL https://raw.githubusercontent.com/roostorg/osprey/main/demo.sh | bash
    ```
 
-   The script starts the whole stack (Kafka, Druid, PostgreSQL, MinIO, and Osprey's own worker, API, and UI—more than a dozen containers in all) plus a test-data producer that sends one synthetic post event per second. If it finds services from a previous run, it asks before stopping them; volumes from earlier demo runs are removed either way, so each demo starts from clean state. Expect the first run to spend a few minutes pulling and building images.
+   The script starts the whole stack (Kafka, Druid, PostgreSQL, RustFS for S3-compatible storage, and Osprey's own worker, API, and UI—more than a dozen containers in all) plus a test-data producer that sends one synthetic post event per second. If it finds services from a previous run, it asks before stopping them; volumes from earlier demo runs are removed either way, so each demo starts from clean state. Expect the first run to spend a few minutes pulling and building images.
 
-3. **Wait for the "Demo Ready!" banner.** The script waits for every service to report healthy, then for the first events to flow through, so this takes a couple of minutes. When it's done, it opens the UI in your browser (or prints the URL to open yourself), pre-filled with a query for the last day of events.
+3. **Wait for the "Demo Ready!" banner.** The script waits for every service to report healthy, then for the first events to flow through, so this takes a couple of minutes. When it's done, it opens the UI in your browser (or prints the URL to open yourself), showing the last day of events, grouped by `UserId`.
 
 ## What to try
 
@@ -34,8 +34,8 @@ The demo ruleset has one rule, `ContainsHello`: any post containing the word "he
 
 - **Watch the event stream.** The right panel shows events as they're processed. Click one that matched `ContainsHello` and look at its extracted features and effects.
 - **Filter with a query.** Enter `ContainsHello == True` in the query bar to see only the posts that fired the rule; see [Query Syntax](../user/investigate/query-syntax.md) for what else you can express.
-- **Group with Top N.** The pre-filled query groups by `UserId`, showing which synthetic users have been banned the most.
-- **Open the Rules Visualizer** from the navigation bar to see the dependency graph between the demo's features and rule.
+- **Group with Top N.** The pre-filled query groups by `UserId`, showing which synthetic users posted most.
+- **Open the Rules Visualizer** from the left-hand menu, search for the `meow` label, and turn on **Show Upstream Nodes** to see the rule that applies it.
 
 The [User Guide](../user/) covers the full investigation workflow, and [Writing Rules](../rules/) explains the SML behind `ContainsHello` and how to write your own rules.
 

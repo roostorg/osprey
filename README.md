@@ -12,7 +12,7 @@ Originally developed internally at [Discord](https://discord.com/) to combat spa
 
 Rules are written in “Some Madeup Language” (SML), Osprey's own unique structured rule language, and extended with user-defined functions (UDFs). Osprey tracks state across events by labeling entities when you provide a labels service backend; see [labels_service.py](./example_plugins/src/services/labels_service.py) for a Postgres-backed example.
 
-Osprey is built for engineers and Trust & Safety teams who want to explore, test, and integrate it into their platform for incident response and investigations. [Read more about user research and personas](https://roostorg.github.io/osprey/latest/research-personas).
+Osprey is built for engineers and Trust & Safety teams who want to explore, test, and integrate it into their platform for incident response and investigations. [Read more about user research and personas](https://docs.roost.tools/osprey/latest/research-personas.html).
 
 ## Quick start
 
@@ -22,11 +22,11 @@ If you have [Docker Compose](https://docs.docker.com/compose/install), get a dem
 curl -sSL https://raw.githubusercontent.com/roostorg/osprey/main/demo.sh | bash
 ```
 
-Or try it in your browser with nothing to install: open the demo in GitHub Codespaces, wait a few minutes, and the Osprey UI opens with sample data flowing. [Step-by-step guide](https://roostorg.github.io/osprey/latest/development/codespaces.html).
+Or try it in your browser with nothing to install: open the demo in GitHub Codespaces, wait a few minutes, and the Osprey UI opens with sample data flowing. [Step-by-step guide](https://docs.roost.tools/osprey/latest/development/codespaces.html).
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/roostorg/osprey?quickstart=1)
 
-See the [Getting Started guide](https://roostorg.github.io/osprey/latest/development/) for more, including what to try in the UI. See the [full documentation](https://roostorg.github.io/osprey/latest/) for a user guide, development setup, basic concepts, integration information, and more.
+See the [Getting Started guide](https://docs.roost.tools/osprey/latest/development/) for more, including what to try in the UI. See the [full documentation](https://docs.roost.tools/osprey/latest/) for a user guide, development setup, basic concepts, integration information, and more.
 
 ## Adopters
 

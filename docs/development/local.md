@@ -7,8 +7,7 @@ Set up a full local development environment for Osprey. To just get up and runni
 - **Operating System**: macOS, Linux, or Windows (with WSL recommended)
 - **[Git](https://git-scm.com/)** for version control
 - **Docker** with **[Docker Compose](https://docs.docker.com/compose/) 2.24.4 or higher**
-- **[Python](https://www.python.org/) 3.11 or higher** (check with `python --version`)
-- **[uv](https://docs.astral.sh/uv/)** for Python package management
+- **[uv](https://docs.astral.sh/uv/)** for Python package management; it installs the Python version pinned in `.python-version` automatically, whatever version your system has
 - **[Node.js](https://nodejs.org/en/download/) 22+** for the UI (Corepack ships with Node and auto-resolves pnpm from `osprey_ui/package.json`'s `packageManager` field; no separate pnpm install needed)
 
 ## Project Setup
@@ -36,6 +35,14 @@ uv run pre-commit install
 ```
 
 This installs git hooks that automatically run code quality checks before each commit.
+
+The Prettier and ESLint hooks for `osprey_ui/` run through `npx`, and ESLint loads its plugins from the UI's own packages, so install those once before running the hooks (this needs Node.js):
+
+```bash
+cd osprey_ui && corepack pnpm install --frozen-lockfile && cd ..
+```
+
+If you only work on Python, skip the UI hooks instead, as CI's Python job does: `SKIP=prettier-osprey-ui,eslint-osprey-ui uv run pre-commit run --all-files`.
 
 ### 4. Verify Setup
 
@@ -79,7 +86,7 @@ This starts up many services, including:
 - **Kafka** (KRaft mode): Message streaming for user-generated events
 - **Postgres**: A database that the Worker, UI API, and Druid use for various reasons, such as the Postgres-backed Labels Service (in the example plugins)
 - **Druid**: A database that consumes Osprey Worker outputs to power the UI API for real-time querying
-- **MinIO**: S3-compatible object storage; the default execution result store in this stack (`OSPREY_EXECUTION_RESULT_STORAGE_BACKEND=minio`)
+- **RustFS**: S3-compatible object storage; the default execution result store in this stack. Its compose service is still named `minio`, and Osprey reaches it through the `minio` storage backend (`OSPREY_EXECUTION_RESULT_STORAGE_BACKEND=minio`)
 
 Alternatively, you can start Osprey with `osprey-coordinator`; see the [Coordinator README](https://github.com/roostorg/osprey/tree/main/example_docker_compose/run_osprey_with_coordinator) for more information.
 
@@ -97,7 +104,8 @@ The UI will automatically connect to the backend services running in Docker cont
 
 - Osprey UI: [localhost:5002](http://localhost:5002)
 - Backend API: [localhost:5004](http://localhost:5004)
-- Worker Service: [localhost:5001](http://localhost:5001)
+
+The worker has no HTTP interface; follow it with `docker compose logs --follow osprey-worker`.
 
 ## Plugins
 
