@@ -28,10 +28,11 @@ Each `ASTNode` has an associated `Span`, which points to its position within the
 
 ## Usage
 
-To parse a file, simple create a `Source` and then call `.parse()` on it!
+To parse a file, simply create a `Source` and then call `.parse()` on it!
 
 ```python
-from osprey.engine.ast import Source, OspreySyntaxError
+from osprey.engine.ast.errors import OspreySyntaxError
+from osprey.engine.ast.grammar import Source
 
 source = Source(path='README_EXAMPLE.py', contents='Foo = Bar')
 try:

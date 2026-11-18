@@ -27,7 +27,7 @@ Rules currently support the following concepts through the `Rule(...)` function 
 
   `when_all=[]`
 
-  The rule's logic is the list of signals in the `when_all` parameter; a signal can be a comparison over features, a label check, a UDF call, or another rule.
+  The rule's logic is the list of signals in the `when_all` parameter; a signal can be a comparison over features, a label check, a UDF call, or another rule. Every signal must be a `bool`, so compare another rule explicitly (`MyOtherRule == True`) or negate it (`not MyOtherRule`); listing a rule on its own fails validation with "has type `list[RuleT]`, expected `list[bool]`".
 
     If any signal in the list evaluates to `None`, the whole rule evaluates to `None`; see [None values](#none-values) below.
 
@@ -147,7 +147,7 @@ The [`JsonData` UDF](#user-defined-functions-udfs) lets us take the event's JSON
 We did not create features for values like `userId` or `handle` because they're present in *any* event; copying them into every event type's model would get tedious. Instead, let's define them once in a `base.sml` model. Inside of `models/base.sml`:
 
 ```python
-EventType = JsonData(
+EventType: str = JsonData(
 	path='$.eventType',
 )
 
@@ -205,6 +205,8 @@ WhenRules(
     ],
 )
 ```
+
+`apply_if` takes a rule, not a boolean expression: `NotVerified` above is itself a `Rule(...)`. Every label an effect or `HasLabel()` uses must be declared in the ruleset's `labels` configuration, or validation fails with "there is no `<label>` label in the config"; see [Ruleset Configuration](configuration.md).
 
 `WhenRules()` must appear after the rules it references. Effects scattered throughout a file are hard to trace, so keep them together toward the bottom.
 
@@ -265,7 +267,7 @@ A custom UDF can also create entities by declaring `EntityT` as its output type.
 
 ### None values
 
-A rule or variable in SML is `None` when it doesn't exist; a piece of data was missing, or a rule didn't run. Unlike in many programming languages, a rule with a `None` signal is skipped entirely (and so are rules downstream of it) unless the rule checks for `None` explicitly. For example:
+A rule or variable in SML is `None` when it doesn't exist; a piece of data was missing, or a rule didn't run. Unlike in many programming languages, a rule with a `None` signal is skipped entirely and evaluates to `None`, unless the rule checks for `None` explicitly. A rule that depends on a `None` rule through `== True` evaluates to `False`. For example:
 
 ```python
 Thing: int = JsonData(path='$.property_that_doesnt_exist')
@@ -286,10 +288,10 @@ MySecondRule = Rule(
     description=f'Thing is greater than 1',
 )
 
-# Skips evaluation and sets to None
+# MySecondRule is None, so MySecondRule == True is False: evaluates to False
 MyThirdRule = Rule(
     when_all=[
-        MySecondRule,
+        MySecondRule == True,
     ],
     description=f'MySecondRule matched',
 )

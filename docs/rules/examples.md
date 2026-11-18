@@ -124,7 +124,7 @@ From then on, _every_ event by that user carries the state, and other rules can 
 Should_Warn_User_Of_Spammer = Rule(
     when_all=[
         HasLabel(entity=UserId, label='likely_spammer'),
-        This_Is_A_New_DM,
+        This_Is_A_New_DM == True,
     ],
     description=f'Likely spammer {UserId} started a new DM',
 )
