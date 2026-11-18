@@ -106,9 +106,10 @@ impl JsonActionId {
     }
 }
 
-/// Decodes the standard Osprey JSON envelope. `send_time` becomes the action's timestamp
-/// when present; otherwise the message's own timestamp is used. A missing or zero
-/// `action_id` gets a snowflake ID, as with the other formats.
+/// Decodes the standard Osprey JSON envelope. `send_time` (RFC 3339; a timestamp without
+/// an offset is read as UTC) becomes the action's timestamp when present; otherwise the
+/// message's own timestamp is used. A missing or zero `action_id` gets a snowflake ID, as
+/// on the proto path.
 pub async fn decode_json_envelope_message(
     message_data: &[u8],
     ack_id: u64,
@@ -219,9 +220,31 @@ mod tests {
     use msgpack_simple::MsgPack;
     use serde_json::json;
 
-    // Nothing listens here, so a test that needed a snowflake ID would fail loudly.
+    // Nothing listens here: tests that don't expect a snowflake ID to be generated use it.
     fn snowflake() -> SnowflakeClient {
         SnowflakeClient::new("http://127.0.0.1:1".to_string())
+    }
+
+    /// A stub snowflake API that answers every request with ID 555.
+    async fn snowflake_returning_555() -> (SnowflakeClient, tokio::task::JoinHandle<()>) {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let handle = tokio::spawn(async move {
+            loop {
+                let (mut stream, _) = listener.accept().await.unwrap();
+                let mut request = [0; 1024];
+                let _ = stream.read(&mut request).await;
+                let body = "[555]";
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
+                    body.len(),
+                    body
+                );
+                stream.write_all(response.as_bytes()).await.unwrap();
+            }
+        });
+        (SnowflakeClient::new(format!("http://{address}")), handle)
     }
 
     fn kafka_timestamp() -> Timestamp {
@@ -337,9 +360,56 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn send_time_without_offset_is_utc() {
+        for send_time in ["2024-01-01T12:00:00", "2024-01-01 12:00:00"] {
+            let message = json!({
+                "send_time": send_time,
+                "data": {"action_id": 1, "action_name": "a", "data": {}}
+            })
+            .to_string();
+
+            let action = decode(message.as_bytes()).await.unwrap();
+
+            assert_eq!(
+                action.timestamp,
+                Some(Timestamp {
+                    seconds: 1_704_110_400,
+                    nanos: 0
+                }),
+                "for {send_time}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn envelope_without_action_id_gets_snowflake_id() {
+        let (snowflake, server) = snowflake_returning_555().await;
+        let messages = [
+            json!({"send_time": "2024-01-01T12:00:00Z", "data": {"action_name": "a", "data": {}}}),
+            json!({"send_time": "2024-01-01T12:00:00Z", "data": {"action_id": 0, "action_name": "a", "data": {}}}),
+            json!({"send_time": "2024-01-01T12:00:00Z", "data": {"action_id": "0", "action_name": "a", "data": {}}}),
+        ];
+        for message in messages {
+            let action = decode_json_message(
+                message.to_string().as_bytes(),
+                7,
+                kafka_timestamp(),
+                &snowflake,
+                &OspreyCoordinatorMetrics::new(),
+            )
+            .await
+            .unwrap();
+            assert_eq!(action.action_id, 555, "for {message}");
+        }
+        server.abort();
+    }
+
+    #[tokio::test]
     async fn rejects_malformed_envelopes() {
         let cases = [
             json!({"send_time": "yesterday", "data": {"action_id": 1, "action_name": "a", "data": {}}}),
+            json!({"send_time": 1704110400, "data": {"action_id": 1, "action_name": "a", "data": {}}}),
+            json!({"send_time": "2024-01-01T12:00:00Z", "data": {"action_id": 1.5, "action_name": "a", "data": {}}}),
             json!({"send_time": "2024-01-01T12:00:00Z", "data": {"action_id": "abc", "action_name": "a", "data": {}}}),
             json!({"send_time": "2024-01-01T12:00:00Z", "data": {"action_id": -1, "action_name": "a", "data": {}}}),
             json!({"send_time": "2024-01-01T12:00:00Z", "data": {"action_id": 1, "data": {}}}),
