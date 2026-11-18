@@ -5,7 +5,7 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Empty, List, Skeleton, Tooltip, Spin } from 'antd';
+import { Alert, Empty, List, Skeleton, Tooltip, Spin } from 'antd';
 import classNames from 'classnames';
 import { AutoSizer, List as VList, ListRowProps } from 'react-virtualized';
 import shallow from 'zustand/shallow';
@@ -63,6 +63,7 @@ const EventStream: React.FC = () => {
   const vlistRef = React.useRef<VList>(null);
 
   const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
   const [eventStream, setEventStream] = React.useState<OspreyEvent[]>([]);
   const [queryOffset, setQueryOffset] = React.useState<string | null>(null);
   const [isListView, setIsListView] = React.useState(false);
@@ -71,13 +72,24 @@ const EventStream: React.FC = () => {
   const handleScanQuery = React.useCallback(
     async (currentEvents: OspreyEvent[] = [], newQueryOffset?: string) => {
       setIsLoading(true);
-      const { events, offset } = await getScanQueryResults(
+      const result = await getScanQueryResults(
         { ...executedQuery, entityFeatureFilters },
         sortOrder,
         QUERY_ROW_LIMIT,
         newQueryOffset
-      );
+      ).catch((e: Error) => e);
 
+      if (result instanceof Error) {
+        applyIfQueryIsCurrent(executedQuery, () => {
+          setError(result.message);
+          // Stop paginating so a failing page isn't requested again on every scroll.
+          setQueryOffset(null);
+          setIsLoading(false);
+        });
+        return;
+      }
+
+      const { events, offset } = result;
       applyIfQueryIsCurrent(executedQuery, () => {
         setEventStream([...currentEvents, ...events]);
         setQueryOffset(offset);
@@ -92,6 +104,7 @@ const EventStream: React.FC = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset stream when query changes
     setEventStream([]);
     setQueryOffset(null);
+    setError(null);
 
     if (start !== '' && end !== '') {
       // This should only be called if the query has changed, so reset local state
@@ -169,11 +182,13 @@ const EventStream: React.FC = () => {
 
   const renderVirtualizedList = () => {
     if (eventStream.length === 0) {
-      return isLoading ? (
-        <Spin size="large" style={{ position: 'absolute', top: 40, left: 0, right: 0 }} />
-      ) : (
-        <Empty style={{ paddingTop: 40 }} />
-      );
+      if (isLoading) {
+        return <Spin size="large" style={{ position: 'absolute', top: 40, left: 0, right: 0 }} />;
+      }
+      if (error != null) {
+        return <Alert type="error" showIcon message="Query failed" description={error} style={{ margin: 16 }} />;
+      }
+      return <Empty style={{ paddingTop: 40 }} />;
     }
 
     return (

@@ -172,29 +172,33 @@ const TopNTable = ({
 
   return (
     <div className={styles.tableWrapper}>
-      {renderFromPromiseResult(topNResult, ({ topN, queryDimension }) => (
-        <>
-          <Table
-            showSorterTooltip={false}
-            columns={tableColumns}
-            dataSource={topN}
-            rowKey={queryDimension}
-            pagination={false}
-            size="small"
-            scroll={{ y: 400 }}
-          />
-          <TopNFooter
-            onTogglePoP={handleTogglePoP}
-            onRemoveTable={handleRemoveTable}
-            onPrecisionChange={handlePrecisionChange}
-            currentPrecision={precision}
-            showPrecision={showPrecision}
-            disabled={queryDimension === '' || topN.length === 0}
-            dimension={queryDimension}
-            isPoPEnabled={isPoPEnabled}
-          />
-        </>
-      ))}
+      {renderFromPromiseResult(
+        topNResult,
+        ({ topN, queryDimension }) => (
+          <>
+            <Table
+              showSorterTooltip={false}
+              columns={tableColumns}
+              dataSource={topN}
+              rowKey={queryDimension}
+              pagination={false}
+              size="small"
+              scroll={{ y: 400 }}
+            />
+            <TopNFooter
+              onTogglePoP={handleTogglePoP}
+              onRemoveTable={handleRemoveTable}
+              onPrecisionChange={handlePrecisionChange}
+              currentPrecision={precision}
+              showPrecision={showPrecision}
+              disabled={queryDimension === '' || topN.length === 0}
+              dimension={queryDimension}
+              isPoPEnabled={isPoPEnabled}
+            />
+          </>
+        ),
+        { showStackTrace: false }
+      )}
     </div>
   );
 };

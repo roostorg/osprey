@@ -1,7 +1,20 @@
 {
     "filter": {
-        "dimension": "__entity_label_mutations",
-        "pattern": "%MyEntity/my_label/1%",
-        "type": "like"
+        "fields": [
+            {
+                "column": "__entity_label_mutations",
+                "elementMatchValue": "MyEntity/my_label/1",
+                "elementMatchValueType": "STRING",
+                "type": "arrayContainsElement"
+            },
+            {
+                "field": {
+                    "column": "__entity_label_mutations",
+                    "type": "null"
+                },
+                "type": "not"
+            }
+        ],
+        "type": "and"
     }
 }

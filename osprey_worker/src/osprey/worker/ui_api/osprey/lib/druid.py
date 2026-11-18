@@ -1,7 +1,9 @@
+import ast
 import base64
 import json
 import logging
 import math
+import re
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -25,6 +27,44 @@ logger = logging.getLogger(__name__)
 
 # Query timeout in miiliseconds
 DEFAULT_DRUID_QUERY_TIMEOUT = 300000
+
+
+# pydruid reports Druid failures as an OSError whose message embeds Druid's error body.
+_PYDRUID_ERROR_DETAIL = re.compile(r'Druid Error: (?P<detail>.*?)\s*\n Query is:', re.DOTALL)
+
+
+class DruidQueryError(Exception):
+    """Druid failed to run a query. `str()` is a message that's safe to show to the user."""
+
+    @classmethod
+    def from_pydruid_error(cls, error: OSError) -> 'DruidQueryError':
+        return cls(f'Druid query failed: {_get_druid_error_message(error)}')
+
+
+def _get_druid_error_message(error: OSError) -> str:
+    match = _PYDRUID_ERROR_DETAIL.search(str(error))
+    if match is None:
+        # Not an HTTP error from Druid, e.g. the broker is unreachable.
+        return str(error)
+
+    raw_detail = match.group('detail').strip()
+    try:
+        detail = ast.literal_eval(raw_detail)
+    except (ValueError, TypeError, SyntaxError, MemoryError, RecursionError):
+        return raw_detail
+
+    # pydruid parses the body of a 500 into a dict, but passes other statuses (e.g. a 400) through as raw bytes.
+    if isinstance(detail, bytes):
+        detail = detail.decode('utf-8', errors='replace')
+    if isinstance(detail, str):
+        try:
+            detail = json.loads(detail)
+        except ValueError:
+            return detail
+
+    if isinstance(detail, dict):
+        return str(detail.get('errorMessage') or detail.get('error') or detail)
+    return str(detail)
 
 
 class DruidQueryTypes(str, Enum):
@@ -140,7 +180,11 @@ class BaseDruidQuery(BaseModel, JsonBodyMarshaller):
                 else:
                     built_query.query_dict['filter'] = combined_ability_filter
 
-        result = druid.client._post(built_query)
+        try:
+            result = druid.client._post(built_query)
+        except OSError as e:
+            logger.exception('Druid query failed')
+            raise DruidQueryError.from_pydruid_error(e) from e
         assert result.result_json
         return json.loads(result.result_json)
 

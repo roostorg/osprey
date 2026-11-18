@@ -1,6 +1,7 @@
 from osprey.engine import shared_constants
 from osprey.engine.ast_validator.validation_context import ValidationContext
 from osprey.engine.language_types.labels import LabelStatus
+from osprey.engine.query_language.udfs.array_filters import array_contains_filter
 from osprey.engine.query_language.udfs.registry import register
 from osprey.engine.udf.arguments import ArgumentsBase, ConstExpr
 from osprey.engine.udf.base import QueryUdfBase
@@ -17,6 +18,12 @@ class DidMutateLabel(QueryUdfBase[Arguments, bool]):
         self.label_name = arguments.label_name.value
         self.entity_type = arguments.entity_type.value
 
+    def _label_mutation_filter(self, status: LabelStatus) -> dict[str, object]:
+        return array_contains_filter(
+            shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_NAME,
+            shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_VALUE(self.entity_type, self.label_name, status),
+        )
+
 
 @register
 class DidAddLabel(DidMutateLabel):
@@ -32,15 +39,7 @@ class DidAddLabel(DidMutateLabel):
     """
 
     def to_druid_query(self) -> dict[str, object]:
-        return {
-            'type': 'like',
-            'dimension': shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_NAME,
-            'pattern': '%'
-            + shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_VALUE(
-                self.entity_type, self.label_name, LabelStatus.ADDED
-            )
-            + '%',
-        }
+        return self._label_mutation_filter(LabelStatus.ADDED)
 
 
 @register
@@ -57,12 +56,4 @@ class DidRemoveLabel(DidMutateLabel):
     """
 
     def to_druid_query(self) -> dict[str, object]:
-        return {
-            'type': 'like',
-            'dimension': shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_NAME,
-            'pattern': '%'
-            + shared_constants.ENTITY_LABEL_MUTATION_DIMENSION_VALUE(
-                self.entity_type, self.label_name, LabelStatus.REMOVED
-            )
-            + '%',
-        }
+        return self._label_mutation_filter(LabelStatus.REMOVED)
