@@ -51,7 +51,7 @@ By default, the worker consumes from the Kafka topic `osprey.actions_input` (`OS
 
 ### 2. Google Cloud PubSub
 
-An alternate input source, selected via `InputStreamSource.PUBSUB` (`osprey_worker/src/osprey/worker/sinks/input_stream_chooser.py`). Configured with `PUBSUB_OSPREY_PROJECT_ID` and `PUBSUB_OSPREY_RULES_SINK_SUBSCRIPTION`.
+An alternate input source, selected with the worker environment variable `OSPREY_INPUT_STREAM_SOURCE=pubsub` (`osprey_worker/src/osprey/worker/sinks/input_stream_chooser.py`). Configured with `PUBSUB_OSPREY_PROJECT_ID` and `PUBSUB_OSPREY_RULES_SINK_SUBSCRIPTION`.
 
 ### 3. The Coordinator's synchronous gRPC API
 
@@ -73,8 +73,8 @@ Once a rule evaluates, the result flows out through two, largely independent mec
 ### Output sinks
 
 An `ExecutionResult` is handed to every registered `BaseOutputSink` (`register_output_sinks`). Stdlib ships:
-- `StdoutOutputSink`: prints to stdout (the default if nothing else is configured; useful for local dev)
-- `KafkaOutputSink`: writes to `osprey.execution_results` by default (`OSPREY_KAFKA_OUTPUT_TOPIC`)
+- `StdoutOutputSink`: logs each result to the worker's output; enabled with `OSPREY_STDOUT_OUTPUT_SINK=true` (off by default; useful for local dev)
+- `KafkaOutputSink`: enabled with `OSPREY_KAFKA_OUTPUT_SINK=true` (off by default); writes to `OSPREY_KAFKA_OUTPUT_TOPIC` (`osprey.execution_results` in `docker-compose.yaml`)
 - `StoredExecutionResultOutputSink`: persists via whichever `ExecutionResultStore` is configured (see below)
 
 You can register your own via the same hook; it's the extension point for pushing results into a review queue, a webhook, or any other external system.
@@ -87,11 +87,11 @@ Separately, `ExecutionResultStore` backends persist full execution results for l
 | --- | --- |
 | `bigtable` | Google Cloud BigTable |
 | `gcs` | Google Cloud Storage |
-| `minio` | MinIO (S3-compatible; `OSPREY_MINIO_ENDPOINT`, `OSPREY_MINIO_ACCESS_KEY`, `OSPREY_MINIO_SECRET_KEY`, `OSPREY_MINIO_EXECUTION_RESULTS_BUCKET`) |
+| `minio` | MinIO or another S3-compatible store, such as RustFS in `docker-compose.yaml` (`OSPREY_MINIO_ENDPOINT`, `OSPREY_MINIO_ACCESS_KEY`, `OSPREY_MINIO_SECRET_KEY`, `OSPREY_MINIO_EXECUTION_RESULTS_BUCKET`) |
 | `postgres` | Postgres |
 | `plugin` | Your own `register_execution_result_store` implementation |
 | `none` (default) | No persistence |
 
 ### How results become queryable in the UI
 
-Druid consumes the worker's Kafka output and powers the UI API's real-time querying; this is what backs the [Investigate](../user/investigate/) query interface and the [Rules](../user/manage.md#rules-registry)/[Features Registries](../user/manage.md#features-registry). If you're running without Kafka output enabled, Druid has nothing to index and the query UI will be empty even though rules are still evaluating correctly.
+Druid consumes the worker's Kafka output and powers the UI API's real-time querying; this is what backs the [Investigate](../user/investigate/) query interface. (The [Rules](../user/manage.md#rules-registry) and [Features Registries](../user/manage.md#features-registry) read the loaded rules directly, not Druid.) If you're running without Kafka output enabled (`OSPREY_KAFKA_OUTPUT_SINK=true`), Druid has nothing to index and the query UI will be empty even though rules are still evaluating correctly.

@@ -1,5 +1,5 @@
 # Docker Compose override for running Osprey with Coordinator
-# Use with: docker compose -f docker-compose.yaml -f docker-compose.coordinator.yaml up
+# Use with: docker compose -f docker-compose.yaml -f example_docker_compose/run_osprey_with_coordinator/docker-compose.coordinator.yaml up
 # Or use the helper script: ./start.sh --with-coordinator
 
 services:
