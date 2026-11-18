@@ -144,11 +144,22 @@ Implement any subset of these in your plugin's `register_plugins.py`:
 
 ## Rules
 
-Rules are written in SML; examples with YAML config are provided in `example_rules/`. Rules are mounted into the worker processes when the containers start, controlled via environment variables; for example:
+Rules are written in SML; examples with YAML config are provided in `example_rules/`. Rules are mounted into the worker processes when the containers start, controlled via environment variables (see the [worker environment variables](../integration/integrations.md#worker-environment-variables)).
+
+To run the worker on your machine instead, against the `docker compose` stack's Kafka and Postgres, stop the containerised worker and pass the variables it needs:
 
 ```bash
-OSPREY_RULES_PATH=./example_rules uv run python osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink
+docker compose stop osprey-worker
+POSTGRES_HOSTS='{"osprey_db":"postgresql://osprey:FoolishPassword@localhost:5432/osprey"}' \
+OSPREY_RULES_SINK_NUM_WORKERS=1 \
+OSPREY_INPUT_STREAM_SOURCE=kafka \
+OSPREY_KAFKA_BOOTSTRAP_SERVERS='["localhost:9092"]' \
+OSPREY_STDOUT_OUTPUT_SINK=true \
+OSPREY_RULES_PATH=./example_rules \
+uv run python osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink
 ```
+
+This logs each execution result to your terminal. To feed the UI as well, add the Kafka output sink settings from the `osprey-worker` service in `docker-compose.yaml`.
 
 For more about rules, see [Writing Rules](../rules/).
 
