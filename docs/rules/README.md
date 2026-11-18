@@ -27,7 +27,7 @@ Rules currently support the following concepts through the `Rule(...)` function 
 
   `when_all=[]`
 
-  The rule's logic is the list of signals in the `when_all` parameter; a signal can be a comparison over features, a label check, a UDF call, or another rule. Every signal must be a `bool`, so compare another rule explicitly (`MyOtherRule == True`) or negate it (`not MyOtherRule`); listing a rule on its own fails validation with "has type `list[RuleT]`, expected `list[bool]`".
+  The rule's logic is the list of signals in the `when_all` parameter; a signal can be a comparison over features, a label check, a UDF call, or another rule. Every signal must be a `bool`, so compare another rule explicitly (`MyOtherRule == True`) or negate it (`not MyOtherRule`). The two treat a `None` rule differently: `MyOtherRule == True` is `False`, while `not MyOtherRule` stays `None`. Listing a rule on its own fails validation with "has type `list[RuleT]`, expected `list[bool]`".
 
     If any signal in the list evaluates to `None`, the whole rule evaluates to `None`; see [None values](#none-values) below.
 
@@ -206,7 +206,7 @@ WhenRules(
 )
 ```
 
-`apply_if` takes a rule, not a boolean expression: `NotVerified` above is itself a `Rule(...)`. Every label an effect or `HasLabel()` uses must be declared in the ruleset's `labels` configuration, or validation fails with "there is no `<label>` label in the config"; see [Ruleset Configuration](configuration.md).
+`apply_if` takes a rule, not a boolean expression: `NotVerified` above is itself a `Rule(...)`. Every label an effect or `HasLabel()` uses must be declared in the ruleset's `labels` configuration, or validation fails with an unknown-label error; see [Ruleset Configuration](configuration.md).
 
 `WhenRules()` must appear after the rules it references. Effects scattered throughout a file are hard to trace, so keep them together toward the bottom.
 

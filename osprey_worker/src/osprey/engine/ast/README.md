@@ -8,7 +8,7 @@ This package holds the AST nodes and grammars of the language, and bootstraps th
 
 Osprey's `osprey_ast` defines a very simple language that is python-like, however, much more slimmed down. For example, there are no classes, function definitions, if statements, etc...
 
-At it's core, we're looking at something quite simple:
+At its core, we're looking at something quite simple:
 
 ```python
 Foo = 1 + 1
@@ -28,7 +28,7 @@ Each `ASTNode` has an associated `Span`, which points to its position within the
 
 ## Usage
 
-To parse a file, simply create a `Source` and then call `.parse()` on it!
+To parse a file, create a `Source` and read its `.ast_root` property:
 
 ```python
 from osprey.engine.ast.errors import OspreySyntaxError

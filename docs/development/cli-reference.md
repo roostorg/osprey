@@ -110,7 +110,7 @@ The input file (for `run` and `benchmark`) has one action per line, in this shap
 {"id": 1, "name": "create_post", "data": {"event_type": "create_post", "user_id": "user_1", "post": {"text": "hello world"}}}
 ```
 
-`id` is the action ID, `name` the action name, and `data` the event your rules' `JsonData` paths read from. Missing keys don't cause an error: they default to `0`, `"unknown"`, and `{}`, so a line in another shape still runs, with every feature `None`. The action's timestamp is the time it's read.
+`id` is the action ID, `name` the action name, and `data` the event your rules' `JsonData` paths read from. Missing keys don't cause an error: they default to `0`, `"unknown"`, and `{}`, so a line in another shape still runs, with every `JsonData` and `EntityJson` feature `None`. The action's timestamp is the time it's read.
 
 ### osprey-async-cli benchmark
 

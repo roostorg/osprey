@@ -6,7 +6,7 @@ Configuration doesn't create SML variables and can't replace rule logic. Engine 
 
 ## File layout
 
-Configuration is optional: a ruleset with no YAML at all validates and runs, with every section at its defaults. When you do add configuration, put it in `config.yaml` at the ruleset root or in files with a lowercase `.yaml` extension directly inside a directory named `config`. Osprey scans every directory named `config` in the ruleset tree and loads the `.yaml` files immediately inside it. Keep exactly one `config/` directory at the root to make file discovery predictable.
+Configuration is optional unless your rules use labels, which must be declared in a `labels` section: a ruleset with no YAML at all validates and runs, with every section at its defaults. When you do add configuration, put it in `config.yaml` at the ruleset root or in files with a lowercase `.yaml` extension directly inside a directory named `config`. Osprey scans every directory named `config` in the ruleset tree and loads the `.yaml` files immediately inside it. Keep exactly one `config/` directory at the root to make file discovery predictable.
 
 ```text
 my-rules/
@@ -68,7 +68,7 @@ Both keys are optional. [`example_atproto_rules/config/ui_config.yaml`](https://
 
 ### `actions`
 
-Per action name, a `sample_rate` from 0 to 100 that tells the worker to drop some events of that action before running rules. The default, `100`, processes every event; `0` drops every event of that action.
+Per action name, a `sample_rate` from 0 to 100 that tells the worker to drop some events of that action before running rules. The default, `100`, processes every event, and `0` drops every event of that action. Any other value is the percentage of events dropped: `sample_rate: 10` drops about 10% and processes about 90%.
 
 ```yaml
 actions:
