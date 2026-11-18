@@ -36,7 +36,7 @@ uv run pre-commit install
 
 This installs git hooks that automatically run code quality checks before each commit.
 
-The Prettier and ESLint hooks for `osprey_ui/` run through `npx`, and ESLint loads its plugins from the UI's own packages, so install those once before running the hooks (this needs Node.js):
+The Prettier and ESLint hooks for `osprey_ui/` run through `npx`, and ESLint loads its plugins from the UI's own packages. They run on commits that touch `osprey_ui/` and with `--all-files` (step 4), so install the UI packages once before that (this needs Node.js):
 
 ```bash
 cd osprey_ui && corepack pnpm install --frozen-lockfile && cd ..
@@ -159,7 +159,7 @@ OSPREY_RULES_PATH=./example_rules \
 uv run python osprey_worker/src/osprey/worker/cli/sinks.py run-rules-sink
 ```
 
-This logs each execution result to your terminal. To feed the UI as well, add the Kafka output sink settings from the `osprey-worker` service in `docker-compose.yaml`.
+This logs each execution result to your terminal. To feed the UI as well, add the Kafka output sink settings (`OSPREY_KAFKA_OUTPUT_SINK`, `OSPREY_KAFKA_OUTPUT_TOPIC`, `OSPREY_KAFKA_OUTPUT_CLIENT_ID`) for the query views, and the execution result storage settings (`OSPREY_EXECUTION_RESULT_STORAGE_BACKEND=minio` and the `OSPREY_MINIO_*` variables, with `OSPREY_MINIO_ENDPOINT=localhost:9000`) for event details, copying the values from the `osprey-worker` service in `docker-compose.yaml`.
 
 For more about rules, see [Writing Rules](../rules/).
 

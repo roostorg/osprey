@@ -35,7 +35,8 @@ uv sync --dev
 # Install git hooks
 uv run pre-commit install --install-hooks
 
-# Start full stack (Kafka, Postgres, Druid, RustFS object storage (service name `minio`), worker, UI, UI API)
+# Start full stack (Kafka, Postgres, Druid, RustFS object storage, worker, UI, UI API).
+# The RustFS service is still named `minio`.
 docker compose up -d
 # or
 ./start.sh
@@ -146,13 +147,13 @@ System libs:
   Playwright doesn't build Chromium for every distro release: on Ubuntu 26.04, `install-browser` fails with `Playwright does not support chromium on ubuntu26.04-x64`. There, **the operator** can run Playwright from Microsoft's container image instead, which bundles Chromium and its libraries; `--network host` lets it reach the dev server on `localhost:5002`:
 
   ```bash
-  docker run --rm -it --network host -v "$PWD":/work -w /work \
+  docker run --rm -it --network host --ipc=host -v "$PWD":/work -w /work \
     mcr.microsoft.com/playwright/python:v1.52.0-noble bash
   # inside the container
   pip install playwright==1.52.0
   ```
 
-  That gives a scripted Playwright (Python) rather than the MCP's `browser_*` tools.
+  That gives a scripted Playwright (Python) rather than the MCP's `browser_*` tools. Keep the `pip` version equal to the image tag so the bundled browser matches; v1.52.0 is the version this fallback was tested with.
 
 Before calling `browser_navigate("http://localhost:5002")`, **the operator** starts the dev server (`docker compose stop osprey-ui`, then `cd osprey_ui && pnpm start`, listens on `:5002`).
 
@@ -171,6 +172,7 @@ uv run pytest -q osprey_async_worker
 uv tool run fawltydeps --pyenv .venv
 
 # code-quality.yml → ui-quality (CI `working-directory: osprey_ui`)
+npm install -g corepack@0.33.0 && corepack enable   # CI's "Enable Corepack" step; Node 22 already bundles Corepack
 ( cd osprey_ui
   corepack pnpm install --frozen-lockfile
   corepack pnpm run format:check

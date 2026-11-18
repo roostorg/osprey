@@ -57,7 +57,7 @@ Once the release-prep pull request is merged (and CI is confirmed to still be pa
 
 Publishing a release triggers automations:
 
-- **osprey-rpc**: builds and attaches sdist (and zip) to the release. Releases 1.0 to 1.2.1 have no attached files: the workflow failed for them until [#545](https://github.com/roostorg/osprey/pull/545) fixed it.
+- **osprey-rpc**: builds and attaches sdist (and zip) to the release. Releases up to 1.2.1, except 0.2, have no attached files: the workflow failed for them until [#545](https://github.com/roostorg/osprey/pull/545) fixed it.
 - **Osprey Coordinator**: builds and pushes Docker image to GHCR with version tags
 - **Docs**: adds a folder for the release to the [index](https://docs.roost.tools/osprey/) with a snapshot of the docs
 
