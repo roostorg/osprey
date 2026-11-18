@@ -101,7 +101,7 @@ async fn create_action_from_pubsub_message(
             .await
         }
         _ => {
-            message_decoder::decode_msgpack_json_message(
+            message_decoder::decode_json_message(
                 message_data,
                 ack_id,
                 message_timestamp,
