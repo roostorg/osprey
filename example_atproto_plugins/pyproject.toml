@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Example Osprey plugin that consumes Bluesky's ATProto JetStream firehose"
 requires-python = ">=3.11"
 dependencies = [
-    "pluggy==1.5.0",
+    "pluggy==1.7.0",
     "websocket-client==1.9.2",
 ]
 
