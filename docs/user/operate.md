@@ -2,6 +2,9 @@
 
 The Operate section contains tools for running bulk labeling jobs and reviewing their results. These operations can affect a large number of entities at once, so Osprey includes safeguards to help prevent unintended impact.
 
+> [!WARNING]
+> **Implementation in Progress** Bulk Actions and Bulk Labels are not yet fully hooked up from the UI. In order to use this feature, you can use the CLI bulk label or one-off labeling from the Query page.
+
 ## Bulk Actions
 
 Bulk Actions let you apply a label to every entity matching the current query; useful when you've identified a clear pattern and want to act on many entities at once.
