@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-6ed77c1a.js";
+            window.path_to_searchindex_js = "../searchindex-e480a1d0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-af5de20b.js"></script>
@@ -429,7 +429,7 @@ class MySpamClassifier(UDFBase[Arguments, float]):
 name = "my-osprey-plugins"
 version = "0.1.0"
 requires-python = "&gt;=3.11"
-dependencies = ["pluggy==1.5.0"]
+dependencies = ["pluggy&gt;=1.5,&lt;2"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
