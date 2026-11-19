@@ -63,7 +63,7 @@ common = [
     "six==1.16.0",
     "sqlalchemy==1.4.54",
     "sqlalchemy-utils==0.41.1",
-    "tenacity==9.1.4",
+    "tenacity==9.2.1",
     "tink==1.15.0",
     "tld==0.12.7",
     "traitlets==5.14.3",
