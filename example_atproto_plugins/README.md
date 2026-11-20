@@ -16,7 +16,13 @@ From the repo root:
 ./run-atproto.sh
 ```
 
-This brings up the full Osprey local stack (Druid, Postgres, MinIO, Kafka) along with a JetStream websocket override, and swaps the worker's input source from Kafka to the JetStream plugin, pointing it at `example_atproto_rules` instead of `example_rules`. First-run startup takes a few minutes.
+This brings up the full Osprey local stack (Druid, Postgres, RustFS object storage, Kafka) along with a JetStream websocket override, and swaps the worker's input source from Kafka to the JetStream plugin, pointing it at `example_atproto_rules` instead of `example_rules`. First-run startup takes a few minutes.
+
+The script runs `docker compose … up` in the foreground, so the logs stream to your terminal and Ctrl-C stops the stack. Arguments replace `up`, so to run it in the background instead:
+
+```sh
+./run-atproto.sh up -d
+```
 
 ## Configuration
 
