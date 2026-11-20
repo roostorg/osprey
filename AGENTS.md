@@ -26,7 +26,7 @@ Reference files: `docs/development/local.md` (setup), `example_plugins/src/regis
 
 ## Build and run
 
-Prerequisites: Python (version in `.python-version`), [uv](https://docs.astral.sh/uv/), Docker + Docker Compose v2, Node.js (version in `.github/workflows/code-quality.yml`, UI only), Rust stable + `protoc` (coordinator only).
+Prerequisites: Python (version in `.python-version`), [uv](https://docs.astral.sh/uv/), Docker + Docker Compose v2, Node.js (version in `.github/workflows/code-quality.yml`, UI only), Rust (version in `osprey_coordinator/rust-toolchain.toml`; rustup installs it) + `protoc` (coordinator only).
 
 ```bash
 # Install Python deps (creates .venv, uses uv.lock)
@@ -197,7 +197,7 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 
 - Python: version in `.python-version`. Lint + format with `ruff`, type-check with `mypy` (versions and config in `pyproject.toml` under `[tool.ruff]` and `[tool.mypy]`).
 - TypeScript / React in `osprey_ui/` (versions in `osprey_ui/package.json`). Formatter is Prettier (`pnpm run format:check`); config in `osprey_ui/.prettierrc`. Node version in `.github/workflows/code-quality.yml`. pnpm version pinned via `packageManager` field in `osprey_ui/package.json`; resolved everywhere via Corepack.
-- Rust stable in `osprey_coordinator/` (edition and toolchain in `osprey_coordinator/Cargo.toml`). Formatter `cargo fmt`; linter `cargo clippy -- -D warnings`.
+- Rust in `osprey_coordinator/` (edition in `osprey_coordinator/Cargo.toml`, toolchain pinned in `osprey_coordinator/rust-toolchain.toml`). Formatter `cargo fmt`; linter `cargo clippy -- -D warnings`.
 - Protobuf generated files (`*_pb2*.py`, `*_pb2*.pyi`) are excluded from ruff and mypy — do not edit.
 
 ## Changelog
@@ -225,7 +225,7 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 
 - Python deps are pinned in `pyproject.toml` and locked in `uv.lock`. Add with `uv add <pkg>` (runtime) or `uv add --dev <pkg>` (dev); commit the updated `uv.lock`.
 - Node deps live in `osprey_ui/package.json`; add with `pnpm add <pkg>` and commit the updated `osprey_ui/pnpm-lock.yaml`. The lockfile is the parity contract — `pnpm add` will re-resolve transitives, so review the `pnpm-lock.yaml` diff for unintended version bumps before committing.
-- Rust deps live in `osprey_coordinator/Cargo.toml`. Note: `Cargo.lock` is currently in `.gitignore` — do not commit it without first un-ignoring it.
+- Rust deps live in `osprey_coordinator/Cargo.toml` and are locked in `osprey_coordinator/Cargo.lock`, which is committed (the coordinator is a binary crate). Update it with `cargo update -p <crate>` (or `cargo build`, which adds new entries) in `osprey_coordinator/` and commit the diff; avoid a bare `cargo update`, which bumps everything.
 - Every new or upgraded package including transitive dependencies requires human approval. Confirm the license is compatible with `LICENSE.md` and that there are no known CVEs.
 - `fawltydeps` enforces that every declared Python dep is used; add intentional exceptions to `[tool.fawltydeps].ignore_unused` in `pyproject.toml` with a comment.
 
