@@ -2247,7 +2247,7 @@ dependencies = [
 
 [[package]]
 name = "osprey_coordinator"
-version = "0.1.0"
+version = "1.2.1"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2324,7 +2324,7 @@ dependencies = [
 
 [[package]]
 name = "osprey_coordinator_etcd_config_derive"
-version = "0.1.0"
+version = "1.2.1"
 dependencies = [
  "convert_case",
  "darling",
@@ -2335,7 +2335,7 @@ dependencies = [
 
 [[package]]
 name = "osprey_coordinator_metrics_derive"
-version = "0.1.0"
+version = "1.2.1"
 dependencies = [
  "darling",
  "proc-macro2",
