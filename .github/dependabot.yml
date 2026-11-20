@@ -18,6 +18,8 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+    # Version-update PRs only; security updates have their own fixed limit.
+    open-pull-requests-limit: 10
     labels:
       - "dependencies"
       - "dependabot"
