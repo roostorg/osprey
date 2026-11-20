@@ -37,6 +37,8 @@ pub struct Client {
     config: Config,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl Client {
     /// Create a new client from an environment variable with comma-separated addresses.
     fn from_environment(key: &str) -> Result<Self> {

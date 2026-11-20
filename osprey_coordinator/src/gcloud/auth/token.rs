@@ -29,6 +29,8 @@ impl std::fmt::Display for Token {
     }
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl Token {
     pub fn new(
         access_token: String,
@@ -102,6 +104,9 @@ mod tests {
 
         assert!(!token.is_expired());
         let ttl = token.ttl_secs();
-        assert!(ttl >= 20 && ttl <= 29, "time remaining should be < expires");
+        assert!(
+            (20..=29).contains(&ttl),
+            "time remaining should be < expires"
+        );
     }
 }

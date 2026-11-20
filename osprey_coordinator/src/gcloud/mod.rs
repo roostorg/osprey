@@ -8,6 +8,8 @@ mod root_ca_certificate;
 pub mod kms;
 pub mod pubsub;
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 /// Common options for creating authenticated connections to Google Cloud APIs
 pub struct ConnectionOptions {
     /// Request timeout
@@ -26,6 +28,8 @@ impl Default for ConnectionOptions {
     }
 }
 
+// These modules contain generated prost and tonic code.
+#[allow(clippy::all, dead_code)]
 pub mod google {
     pub mod api {
         tonic::include_proto!("google.api");

@@ -1,3 +1,5 @@
+// This module contains generated prost and tonic code.
+#![allow(clippy::all, dead_code)]
 #![allow(unused_imports)]
 
 pub mod osprey {

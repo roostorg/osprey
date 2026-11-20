@@ -191,6 +191,8 @@ where
     /// Performs the given request as a background task, retrying up to 10 times, with exponential backoff.
     ///
     /// Background task processing will block the streaming pull manager's graceful stop cycle.
+    // Tonic requires Status as the RPC error type.
+    #[allow(clippy::result_large_err)]
     fn perform_request_in_background_with_retries<
         RequestExecutor,
         ResponseResultOk,
@@ -336,7 +338,7 @@ where
             self.message_latency_histogram.value_at_percentile(99.0);
 
         // Round up to nearest second.
-        if p99_message_latency_millis % 1000 != 0 {
+        if !p99_message_latency_millis.is_multiple_of(1000) {
             p99_message_latency_millis += 1000 - (p99_message_latency_millis % 1000);
         }
 
@@ -379,7 +381,7 @@ where
     ///  - `flow_control` see [`FlowControl`].
     ///  - `message_handler` see [`MessageHandler`],
     ///  - `metrics_client_builder` see [`MetricsClientBuilder`]
-    pub fn new(
+    pub fn start(
         client: TonicSubscriberClient<I>,
         subscription: PubSubSubscription,
         flow_control: FlowControl,
@@ -785,7 +787,7 @@ where
         // Create the mod-ack requests we need in order to release our lease on the messages we had on hold.
         for chunk in ack_or_nacks.chunks(ACK_IDS_MAX_BATCH_SIZE) {
             let chunk = chunk
-                .into_iter()
+                .iter()
                 .filter_map(|ack_id| self.state.message_ack_queue.remove_ack_id(ack_id))
                 .collect();
 
@@ -998,7 +1000,7 @@ pub enum StreamingPullChannel {
     },
     /// The channel is connected.
     Connected {
-        stream: tonic::Streaming<StreamingPullResponse>,
+        stream: Box<tonic::Streaming<StreamingPullResponse>>,
         #[allow(unused)]
         heartbeater: AbortOnDrop,
     },
@@ -1055,6 +1057,8 @@ impl StreamingPullChannel {
     /// never resolve and be pending perpetually.
     ///
     /// NOTE: This method is cancel-safe. Cancelling this future will not cause messages to be lost.
+    // Tonic requires Status as the RPC error type.
+    #[allow(clippy::result_large_err)]
     async fn next_message(&mut self) -> Result<Option<StreamingPullResponse>, tonic::Status> {
         loop {
             match self {
@@ -1069,7 +1073,7 @@ impl StreamingPullChannel {
                                 .take()
                                 .expect("invariant: heartbeater should exist");
                             *self = StreamingPullChannel::Connected {
-                                stream,
+                                stream: Box::new(stream),
                                 heartbeater,
                             };
                         }

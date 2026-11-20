@@ -79,6 +79,8 @@ async fn create_osprey_coordinator_action(
 }
 
 impl SyncActionServer {
+    // Tonic requires Status as the RPC error type.
+    #[allow(clippy::result_large_err)]
     async fn try_process_action(
         &self,
         ack_id: u64,

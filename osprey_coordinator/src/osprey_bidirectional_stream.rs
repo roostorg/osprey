@@ -29,10 +29,7 @@ fn match_for_io_error(err_status: &tonic::Status) -> Option<&std::io::Error> {
             }
         }
 
-        err = match err.source() {
-            Some(err) => err,
-            None => return None,
-        };
+        err = err.source()?;
     }
 }
 
@@ -398,7 +395,7 @@ mod tests {
         let mut result = Vec::new();
         let mut messages = res.into_inner();
         while let Some(v) = messages.next().await {
-            println!("got message: {:?}", &v);
+            println!("got message: {:?}", v);
             result.push(v.expect("error from stream"))
         }
 

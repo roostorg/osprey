@@ -6,14 +6,14 @@ use std::{
 
 use tokio::task::{JoinError, JoinHandle};
 
-mod unbounded_receiver_chunker;
-
 /// A helper struct that will invoke [`JoinHandle::abort`] when dropped.
 #[derive(Debug)]
 pub struct AbortOnDrop<T = ()> {
     join_handle: Option<JoinHandle<T>>,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl<T> AbortOnDrop<T> {
     pub fn new(join_handle: JoinHandle<T>) -> Self {
         Self {

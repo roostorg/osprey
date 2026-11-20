@@ -1,5 +1,4 @@
 /// Handler for `StaticCounter(...), StaticGauge(...) or StaticHistogram(...)`.
-
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __static_metric_generate_struct_and_impls {

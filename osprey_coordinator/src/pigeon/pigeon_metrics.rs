@@ -181,6 +181,8 @@ pub struct MetricsLayer {
     request_counter: Option<Arc<AtomicUsize>>,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl MetricsLayer {
     /// Creates a new server layer with the given metrics prefix.
     /// This is typically the name of the running service (e.g. `"osprey_foo"`).
@@ -198,7 +200,7 @@ impl MetricsLayer {
 
     /// Creates a new client layer
     /// with the name of the running service (e.g. `"osprey_foo"`).
-    pub fn client<'a>(peer_service: impl Into<&'static str>) -> Self {
+    pub fn client(peer_service: impl Into<&'static str>) -> Self {
         MetricsLayer {
             v1_enabled: true,
             metrics: METRICS.clone(),
@@ -471,9 +473,9 @@ enum MetricsServiceRole {
     Server {
         legacy_metrics: Arc<LegacyPigeonMetrics>,
     },
-    Client {
-        peer_service: &'static str,
-    },
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
+    Client { peer_service: &'static str },
 }
 
 #[derive(Debug)]

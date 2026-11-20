@@ -45,7 +45,7 @@ pub enum InternResult {
 impl DynamicTagValue for InternResult {
     fn as_static_str(&self) -> &'static str {
         match self {
-            InternResult::Interned(s) => *s,
+            InternResult::Interned(s) => s,
             InternResult::AtCapacity => "string_interner_at_capacity",
         }
     }
@@ -61,6 +61,8 @@ pub trait InternerImpl {
     /// How many strings is this interner currently interning.
     fn len(&self) -> usize;
     /// Is this interner currently interning zero strings?
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -187,6 +189,8 @@ where
     }
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 /// Cache of strings for types that have a [`ToString`] implementation.
 #[derive(Debug)]
 pub struct ToStringInterner<T> {
@@ -194,6 +198,8 @@ pub struct ToStringInterner<T> {
     max_capacity: usize,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl<T: Hash + Eq + ToString> ToStringInterner<T> {
     /// Create a new interner with the given capacity.
     pub fn new(max_capacity: usize) -> Self {

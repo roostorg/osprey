@@ -1,11 +1,8 @@
 mod backoff_utils;
-mod cached_futures;
 mod consumer;
 mod coordinator_metrics;
 mod discovery;
 mod etcd;
-mod etcd_config;
-mod etcd_watcherd;
 mod future_utils;
 mod gcloud;
 mod metrics;

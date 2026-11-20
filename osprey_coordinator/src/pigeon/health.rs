@@ -30,6 +30,8 @@ impl<T: HealthChecker> HealthChecker for Arc<T> {
     }
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 /// A server readiness check that always returns healthy.
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Default)]
 pub struct AlwaysHealthy {}
@@ -40,9 +42,10 @@ impl HealthChecker for AlwaysHealthy {
     }
 }
 
+type HealthCallbacks = HashMap<Cow<'static, str>, Vec<Box<dyn HealthChecker>>>;
 #[derive(Clone)]
 pub(crate) struct HealthServer {
-    callbacks: Arc<HashMap<Cow<'static, str>, Vec<Box<dyn HealthChecker>>>>,
+    callbacks: Arc<HealthCallbacks>,
     shutting_down: tokio::sync::watch::Receiver<bool>,
 }
 

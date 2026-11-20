@@ -106,6 +106,8 @@ impl PriorityQueueSender {
         self.sync_sender.close();
         self.async_sender.close();
     }
+    // The channel error preserves the unsent action without an allocation.
+    #[allow(clippy::result_large_err)]
     pub async fn send_sync(
         &self,
         ackable_action: AckableAction,
@@ -113,6 +115,8 @@ impl PriorityQueueSender {
         self.send(ackable_action, Priority::Sync).await
     }
 
+    // The channel error preserves the unsent action without an allocation.
+    #[allow(clippy::result_large_err)]
     pub async fn send_async(
         &self,
         ackable_action: AckableAction,
@@ -120,6 +124,8 @@ impl PriorityQueueSender {
         self.send(ackable_action, Priority::Async).await
     }
 
+    // The channel error preserves the unsent action without an allocation.
+    #[allow(clippy::result_large_err)]
     async fn send(
         &self,
         ackable_action: AckableAction,

@@ -15,6 +15,8 @@ pub struct Counter<K> {
     storage: RwLock<FxHashMap<K, AtomicI64>>,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl<K: TagKey> Counter<K> {
     #[inline]
     pub fn new() -> Self {

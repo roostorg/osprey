@@ -26,6 +26,8 @@ pub struct DurationHistogram<K> {
     inner: Histogram<K>,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl<K: TagKey> DurationHistogram<K> {
     /// Returns a new histogram with the given resolution.
     pub fn new(resolution: DurationResolution) -> Self {
