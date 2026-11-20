@@ -1,0 +1,91 @@
+name: nocommit
+
+# Blocks merging while a PR carries a do-not-merge marker: an added line, the
+# title or the description matching MARKER, or the do-not-merge label.
+# Convention: docs/development/blocking-merges.md
+#
+# The code scan skips two files that have to contain the marker: this workflow
+# and docs/development/blocking-merges.md, the page that documents the
+# convention.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nocommit-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  nocommit:
+    name: nocommit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check for do-not-merge markers
+        shell: bash
+        env:
+          MARKER: 'nocommit|do-not-merge'
+          BASE_REF: ${{ github.base_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'do-not-merge') }}
+        run: |
+          set -euo pipefail
+          failed=0
+
+          if [[ "$HAS_LABEL" == 'true' ]]; then
+            echo '::error title=nocommit (label)::The PR has the do-not-merge label.'
+            failed=1
+          fi
+          if grep -qiE -- "$MARKER" <<< "$PR_TITLE"; then
+            echo '::error title=nocommit (title)::The PR title contains a do-not-merge marker.'
+            failed=1
+          fi
+          if grep -qiE -- "$MARKER" <<< "$PR_BODY"; then
+            echo '::error title=nocommit (description)::The PR description contains a do-not-merge marker.'
+            failed=1
+          fi
+
+          # Only added lines count.
+          hits=$(
+            git -c core.quotePath=false diff --no-color --no-ext-diff -U0 "origin/${BASE_REF}...HEAD" -- . \
+              ':(exclude,top).github/workflows/nocommit.yml' \
+              ':(exclude,top)docs/development/blocking-merges.md' |
+              awk -v re="$MARKER" '
+                /^diff --git / { in_header = 1; next }
+                in_header && /^\+\+\+ / { file = substr($0, 7); next }
+                /^@@ / {
+                  in_header = 0
+                  match($0, /\+[0-9]+/)
+                  line = substr($0, RSTART + 1, RLENGTH - 1) + 0
+                  next
+                }
+                in_header { next }
+                /^\+/ {
+                  if (tolower(substr($0, 2)) ~ re) print file "\t" line
+                  line++
+                }
+              '
+          )
+          while IFS=$'\t' read -r file line; do
+            [[ -n "$file" ]] || continue
+            prop=${file//%/%25}
+            prop=${prop//:/%3A}
+            prop=${prop//,/%2C}
+            echo "::error file=${prop},line=${line},title=nocommit (code)::${file//%/%25}:${line} adds a do-not-merge marker."
+            failed=1
+          done <<< "$hits"
+
+          if [[ "$failed" -eq 0 ]]; then
+            echo 'No do-not-merge markers found.'
+          fi
+          exit "$failed"
