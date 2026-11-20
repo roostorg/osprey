@@ -40,7 +40,7 @@ common = [
     { name = "google-api-core", specifier = "==2.38.0" },
     { name = "google-auth", specifier = "==2.40.3" },
     { name = "google-cloud-bigquery", specifier = "==3.27.0" },
-    { name = "google-cloud-bigtable", specifier = "==2.10.0" },
+    { name = "google-cloud-bigtable", specifier = "==2.50.2" },
     { name = "google-cloud-core", specifier = "==2.6.0" },
     { name = "google-cloud-kms", specifier = "==3.15.0" },
     { name = "google-cloud-pubsub", specifier = "==2.41.0" },
@@ -718,17 +718,24 @@ wheels = [
 
 [[package]]
 name = "google-cloud-bigtable"
-version = "2.10.0"
+version = "2.50.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "google-api-core", extra = ["grpc"] },
+    { name = "google-auth" },
     { name = "google-cloud-core" },
+    { name = "google-cloud-monitoring" },
+    { name = "google-crc32c" },
     { name = "grpc-google-iam-v1" },
+    { name = "grpcio" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-sdk" },
     { name = "proto-plus" },
+    { name = "protobuf" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/89/03/fd96882fb203c91ec65c41e817c767a873ec277657c8a37b7516689d7af1/google-cloud-bigtable-2.10.0.tar.gz", hash = "sha256:9e2714a4468f843066594da33ff474d5de78c6ef6d80d5316550f8819180c80c", size = 284784, upload-time = "2022-05-30T18:02:49.809Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4d/68/00c668a976e9836f428010bdbb76814f56df053ea223485463fb22471052/google_cloud_bigtable-2.50.2.tar.gz", hash = "sha256:9ec98036e2b05eeee99a750f3b822e8aa1429b888f864bb087f9e857a3f1b51d", size = 858287, upload-time = "2026-10-22T23:01:49.32Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/18/456cadee7a85862237c92de0154341fcabcef6ceaa8adfdff32a45482a8d/google_cloud_bigtable-2.10.0-py2.py3-none-any.whl", hash = "sha256:9f4b658dcc37d43f3c5338ebc4961ceba6be3269930453b6edc03dedc25abc08", size = 237603, upload-time = "2022-05-30T18:02:47.89Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/4d/0820720bb6c8041cd0dc54b7d3e1a94c54734fc5720d35f5d07de58fa46b/google_cloud_bigtable-2.50.2-py3-none-any.whl", hash = "sha256:995256a38202171c402606ff63bbe2e40633bfc268247f00def9cd6fbb87f115", size = 577360, upload-time = "2026-10-22T23:01:47.568Z" },
 ]
 
 [[package]]
@@ -759,6 +766,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/74/f1/98966f4c29d156685f1ffe7a385efa29cc32b6d6359892ee4d5b375f5ea4/google_cloud_kms-3.15.0.tar.gz", hash = "sha256:5ca22f243c271d15351a3e9a36f8ace31c49b614c704d9b59b8f2b92ac6bb263", size = 439925, upload-time = "2026-07-08T17:03:50.796Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/13/bb/dc8af343b2c352e1ac778a4bb88e2e8bdbc137d4203d6a4795179e53146b/google_cloud_kms-3.15.0-py3-none-any.whl", hash = "sha256:e31197570e8909e3741e857d9f414eb4120e59be6e9fa727177b0abe30ef3eac", size = 354499, upload-time = "2026-07-08T17:03:21.397Z" },
+]
+
+[[package]]
+name = "google-cloud-monitoring"
+version = "2.32.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "google-api-core", extra = ["grpc"] },
+    { name = "google-auth" },
+    { name = "grpcio" },
+    { name = "proto-plus" },
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c8/94/68b1d25f99f8e61c8d4d4403caab3746c9e4aa629e1a8aef22f7f099c95c/google_cloud_monitoring-2.32.0.tar.gz", hash = "sha256:507501ce1c39161c071754f7ed14cd527788b4ea44a1d052bd815c115a70ea48", size = 388895, upload-time = "2026-10-01T18:17:17.249Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/89/97/86870c4f046bba0dcd5ca2099f30413653b84d0fbef611e5f39f8a94e3a8/google_cloud_monitoring-2.32.0-py3-none-any.whl", hash = "sha256:b6c026a5780330aa26c6151279194daa241369b324c96fd6c52c703137bc6b5b", size = 384477, upload-time = "2026-10-01T18:11:09.382Z" },
 ]
 
 [[package]]
