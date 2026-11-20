@@ -1,0 +1,136 @@
+name: Docker Image Builds
+
+# Build-only check (nothing is pushed) that each Dockerfile still builds.
+#
+# Overlap with other workflows, so nothing is built twice for no reason:
+#   - integration-tests.yml builds osprey_worker and osprey_ui through
+#     docker compose, but only for PRs into main.
+#   - publish-coordinator-image.yml builds the coordinator, but only for PRs
+#     into main that touch its paths.
+#   - osprey_async_worker/Dockerfile is built nowhere else.
+# This workflow has no `branches` filter, so stacked PRs are covered too.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Select images to build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+          # Full history so the merge base with the PR's base branch exists.
+          fetch-depth: 0
+
+      - name: Select images whose inputs changed
+        id: select
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
+          echo "Changed files:"
+          echo "$changed"
+
+          # Paths each Dockerfile copies in (see its ADD/COPY lines; add to
+          # these patterns when one gains a new path), plus .dockerignore and
+          # this workflow. Each Dockerfile lives in a directory matched here.
+          common='^(\.dockerignore|\.github/workflows/docker-build\.yml)$'
+          python='^(uv\.lock|pyproject\.toml|README\.md|LICENSE\.md|entrypoint\.sh|osprey_worker/|osprey_async_worker/|osprey_rpc/|example_plugins/|example_atproto_plugins/|example_rules/|example_atproto_rules/)'
+          ui='^osprey_ui/'
+          coordinator='^(osprey_coordinator/|proto/)'
+
+          touches() { grep -Eq "$common|$1" <<<"$changed"; }
+
+          # `smoke` marks images that are also started once after the build.
+          images='[]'
+          add() { images="$(jq -c --arg n "$1" --arg f "$2" --argjson s "$3" '. + [{name: $n, dockerfile: $f, smoke: $s}]' <<<"$images")"; }
+
+          touches "$python"      && add osprey_worker       osprey_worker/Dockerfile       false
+          touches "$python"      && add osprey_async_worker osprey_async_worker/Dockerfile true
+          touches "$ui"          && add osprey_ui           osprey_ui/Dockerfile           false
+          touches "$coordinator" && add osprey_coordinator  osprey_coordinator/Dockerfile  false
+
+          echo "matrix=$images" >> "$GITHUB_OUTPUT"
+          echo "Selected: $images"
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: changes
+    if: needs.changes.outputs.matrix != '[]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.changes.outputs.matrix) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
+
+      - name: Build image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
+        with:
+          context: .
+          file: ./${{ matrix.dockerfile }}
+          push: false
+          load: ${{ matrix.smoke }}
+          tags: ${{ matrix.name }}:ci
+          platforms: linux/amd64
+          cache-from: type=gha,scope=docker-build-${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=docker-build-${{ matrix.name }},ignore-error=true
+
+      - name: Smoke-start image
+        if: matrix.smoke
+        timeout-minutes: 5
+        env:
+          IMAGE: ${{ matrix.name }}:ci
+        run: |
+          # The async worker reads a JSONL file, evaluates the sample rules and
+          # writes to stdout, then exits: no Kafka or Postgres needed. This
+          # catches what a build can't, like a broken import or a missing
+          # entrypoint. Same settings as docker-compose.async-worker.yaml.
+          docker run --rm \
+            -e DD_DOGSTATSD_DISABLE=True \
+            -e DD_TRACE_ENABLED=False \
+            -e PYTHONPATH=/osprey \
+            -e OSPREY_INPUT_FILE=/osprey/osprey_async_worker/example_rules/sample_actions.jsonl \
+            -e OSPREY_RULES_PATH=/osprey/osprey_async_worker/example_rules \
+            "$IMAGE"
+
+  # One stable check name for branch protection: the matrix jobs above are
+  # skipped or renamed depending on which files changed.
+  docker-builds:
+    name: Docker builds
+    needs: [changes, build]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Fail if any build failed
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "$RESULTS"
+          # Anything but success or skipped (no image needed building) fails.
+          if jq -e 'all(. == "success" or . == "skipped") | not' <<<"$RESULTS" >/dev/null; then
+            exit 1
+          fi
