@@ -38,6 +38,8 @@ pub struct MetricsClientBuilder {
     tags: Vec<(String, String)>,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl MetricsClientBuilder {
     pub fn new(prefix: impl Into<String>) -> Self {
         Self {
@@ -93,6 +95,8 @@ pub struct WrappedStatsdClient {
     wrapped: StatsdClient,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl WrappedStatsdClient {
     pub fn new(wrapped: StatsdClient) -> Self {
         Self {

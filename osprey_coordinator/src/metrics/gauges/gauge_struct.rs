@@ -27,6 +27,8 @@ impl Default for GaugeInner {
     }
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl GaugeInner {
     // Get the current value of a gauge
     pub fn current(&self) -> u64 {
@@ -147,9 +149,15 @@ impl GaugeSnapshot {
         }
     }
 }
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 pub struct One;
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 pub struct Many(pub u64);
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 pub trait StoredValue: Send {
     fn get(&self) -> u64;
 }
@@ -166,6 +174,8 @@ impl StoredValue for Many {
     }
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 pub struct GaugeHandleOwned<Value: StoredValue = One> {
     pub(crate) value: Value,
     pub(crate) inner: Arc<GaugeInner>,

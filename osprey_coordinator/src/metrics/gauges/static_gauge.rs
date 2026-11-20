@@ -10,6 +10,8 @@ pub trait StaticGauge: BaseMetric {
     #[doc(hidden)]
     fn inner(&self) -> &GaugeInner;
 
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     #[doc(hidden)]
     fn inner_arc(&self) -> Arc<GaugeInner>;
 
@@ -23,6 +25,8 @@ pub trait StaticGauge: BaseMetric {
     /// or [`StaticGauge::acquire_many_owned`] is recommended,
     /// which automatically decrements the gauge for you when the returned [`GaugeHandle`] falls out of scope.
     #[inline(always)]
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     unsafe fn incr_by(&self, value: u64) {
         self.inner().incr_by(value);
     }
@@ -34,6 +38,8 @@ pub trait StaticGauge: BaseMetric {
     ///
     /// See [`StaticGauge::incr_by`] for more information.
     #[inline(always)]
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     unsafe fn decr_by(&self, value: u64) {
         self.inner().decr_by(value);
     }
@@ -46,6 +52,8 @@ pub trait StaticGauge: BaseMetric {
     ///
     /// See [`StaticGauge::incr_by`] for more information.
     #[inline(always)]
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     unsafe fn incr(&self) {
         self.incr_by(1);
     }
@@ -57,6 +65,8 @@ pub trait StaticGauge: BaseMetric {
     ///
     /// See [`StaticGauge::incr_by`] for more information.
     #[inline(always)]
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     unsafe fn decr(&self) {
         self.decr_by(1);
     }
@@ -64,6 +74,8 @@ pub trait StaticGauge: BaseMetric {
     /// Increments the gauge by a given value and returns a [`GaugeHandleOwned`] which will automatically decrement
     /// the gauge by that value when dropped.
     #[inline(always)]
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     fn acquire_many_owned(&self, value: u64) -> GaugeHandleOwned<Many> {
         unsafe { self.incr_by(value) };
 
@@ -76,6 +88,8 @@ pub trait StaticGauge: BaseMetric {
     /// Increments the gauge by 1 and returns a [`GaugeHandleOwned`] which will automatically decrement
     /// the gauge when dropped.
     #[inline(always)]
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     fn acquire_owned(&self) -> GaugeHandleOwned<One> {
         unsafe { self.incr() };
 

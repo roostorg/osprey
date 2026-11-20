@@ -30,6 +30,7 @@ impl std::fmt::Display for Token {
 }
 
 impl Token {
+    #[allow(dead_code)]
     pub fn new(
         access_token: String,
         expires_in_secs: u64,
@@ -44,6 +45,7 @@ impl Token {
         }
     }
 
+    #[allow(dead_code)]
     pub fn from_goauth(token: goauth::auth::Token, created_at: Instant) -> Self {
         Self {
             access_token: token.access_token().to_string(),
@@ -53,6 +55,7 @@ impl Token {
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_expired(&self) -> bool {
         let secs_since_created = self.created_at.elapsed().as_secs();
         secs_since_created > self.expires_in_secs
@@ -102,6 +105,9 @@ mod tests {
 
         assert!(!token.is_expired());
         let ttl = token.ttl_secs();
-        assert!(ttl >= 20 && ttl <= 29, "time remaining should be < expires");
+        assert!(
+            (20..=29).contains(&ttl),
+            "time remaining should be < expires"
+        );
     }
 }

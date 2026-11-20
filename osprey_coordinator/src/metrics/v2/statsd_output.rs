@@ -43,7 +43,7 @@ impl fmt::Debug for StatsdOutput {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let mut entries: Vec<(&[u8], u64)> =
             self.0.iter().map(|(k, v)| (k.as_slice(), *v)).collect();
-        entries.sort_by(|a, b| a.cmp(b));
+        entries.sort();
         f.debug_map()
             .entries(
                 entries

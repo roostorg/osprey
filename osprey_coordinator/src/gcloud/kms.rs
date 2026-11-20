@@ -66,10 +66,7 @@ impl AesGcmEnvelope {
             None
         };
 
-        let ciphertext = ciphertext_decoded
-            .as_ref()
-            .map(Vec::as_slice)
-            .unwrap_or(ciphertext);
+        let ciphertext = ciphertext_decoded.as_deref().unwrap_or(ciphertext);
 
         let enc_dek_len = u32::from_be_bytes(ciphertext[..4].try_into()?) as usize;
         let ciphertext = &ciphertext[4..];
@@ -91,8 +88,8 @@ impl AesGcmEnvelope {
         let aes_gcm = AesGcm::new(&data_encryption_key.key_value)
             .map_err(|e| anyhow!("failed initializing AesGcm key object: {:#?}", e))?;
 
-        Ok(aes_gcm
+        aes_gcm
             .decrypt(payload, &self.associated_data)
-            .map_err(|e| anyhow!("failed decrypting payload: {:#?}", e))?)
+            .map_err(|e| anyhow!("failed decrypting payload: {:#?}", e))
     }
 }

@@ -16,6 +16,8 @@ pub trait StaticCounter: BaseMetric {
         self.value().fetch_add(value, Ordering::Relaxed);
     }
 
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     #[inline(always)]
     fn decr_by(&self, value: i64) {
         self.incr_by(-value);
@@ -27,6 +29,8 @@ pub trait StaticCounter: BaseMetric {
     }
 
     #[inline(always)]
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     fn decr(&self) {
         self.decr_by(1);
     }

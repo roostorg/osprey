@@ -4,7 +4,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum EtcdError {
     #[error("API error. index={} error={}", index, error)]
-    API { index: u64, error: etcd::Error },
+    Api { index: u64, error: etcd::Error },
     #[error("Key not found. index={} error={}", index, error)]
     KeyNotFound { index: u64, error: etcd::Error },
     #[error("Key already exists. index={} error={}", index, error)]
@@ -13,6 +13,8 @@ pub enum EtcdError {
     Watch { error: kv::WatchError },
     #[error("Serialization error. error={}", error)]
     Serialize { error: anyhow::Error },
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     #[error("The response had no index.")]
     NoIndex,
     #[error("IoError. error={}", error)]
@@ -24,10 +26,12 @@ pub enum EtcdError {
     Unknown { error: etcd::Error },
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl EtcdError {
     pub fn index(&self) -> u64 {
         match self {
-            EtcdError::API { index, .. } => *index,
+            EtcdError::Api { index, .. } => *index,
             _ => 0,
         }
     }
@@ -53,7 +57,7 @@ impl From<Vec<etcd::Error>> for EtcdError {
                         error: etcd::Error::Api(error),
                     }
                 } else {
-                    EtcdError::API {
+                    EtcdError::Api {
                         index: error.index,
                         error: etcd::Error::Api(error),
                     }

@@ -32,7 +32,12 @@ static SENDER_RUNNING: AtomicBool = AtomicBool::new(false);
 pub fn register_emitter(
     emitter: Arc<dyn MetricsEmitter + Send + Sync + 'static>,
 ) -> RegisteredEmitter {
-    let id = unsafe { std::mem::transmute(Arc::as_ptr(&emitter)) };
+    // SAFETY: a `dyn` pointer is a (data, vtable) pair of two usizes, so it fits u128 on 64-bit targets; the id only keys EMITTERS.
+    let id = unsafe {
+        std::mem::transmute::<*const (dyn MetricsEmitter + Send + Sync), u128>(Arc::as_ptr(
+            &emitter,
+        ))
+    };
     tracing::debug!("registered {id} as emitter");
     match EMITTERS.write().entry(id) {
         Entry::Occupied(_) => panic!("This emitter has already been registered."),
@@ -86,6 +91,8 @@ pub struct MetricsSenderBuilder {
     exclude_standard_tags: bool,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl MetricsSenderBuilder {
     /// Returns a new builder.
     #[inline]

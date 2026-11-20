@@ -10,7 +10,7 @@ use tokio::sync::{mpsc::UnboundedSender, oneshot};
 
 use crate::pub_sub_streaming_pull::StreamingPullManagerMessage;
 
-/// Returned by [`crate::StreamingPullManager::new`]. Can be used to stop the manager.
+/// Returned by [`crate::StreamingPullManager::start`]. Can be used to stop the manager.
 ///
 /// If this manager handle is dropped, the streaming pull manager is immediately hard stopped.
 #[must_use]
@@ -75,10 +75,14 @@ impl StreamingPullManagerHandle {
         }
     }
 
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     pub fn client_id(&self) -> uuid::Uuid {
         self.client_id
     }
 
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     pub fn subscription(&self) -> &PubSubSubscription {
         &self.subscription
     }
@@ -163,6 +167,8 @@ impl StreamingPullManagerHandle {
     ///    2. Initiate a graceful stop of the manager.
     ///    3. Wait till either `graceful_stop_timeout` has elapsed, or ctrl-c is hit again.
     ///    4. Hard stop the manager.
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     pub async fn gracefully_stop_on_ctrl_c(
         mut self,
         graceful_stop_timeout: Duration,
@@ -351,6 +357,8 @@ pub struct StreamingPullManagerGracefullyStopped {
     /// [`StreamingPullManagerHandle::graceful_stop`] was called.
     pub duration: Duration,
     /// The instant in which the graceful stop had completed.
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     pub instant: Instant,
 }
 
@@ -372,6 +380,8 @@ pub struct StreamingPullManagerHardStopped {
     /// How long between when we tried to `abort` the StreamingPullManager, and when it fully stopped.
     pub abort_duration: Duration,
     /// The instant in which the hard stop had completed.
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     pub instant: Instant,
 }
 
@@ -396,10 +406,14 @@ impl From<StreamingPullManagerHardStopped> for StreamingPullManagerStopped {
 }
 
 impl StreamingPullManagerStoppingHandle {
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     pub fn client_id(&self) -> uuid::Uuid {
         self.client_id
     }
 
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     pub fn subscription(&self) -> &PubSubSubscription {
         &self.subscription
     }

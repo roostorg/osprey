@@ -198,7 +198,8 @@ impl MetricsLayer {
 
     /// Creates a new client layer
     /// with the name of the running service (e.g. `"osprey_foo"`).
-    pub fn client<'a>(peer_service: impl Into<&'static str>) -> Self {
+    #[allow(dead_code)]
+    pub fn client(peer_service: impl Into<&'static str>) -> Self {
         MetricsLayer {
             v1_enabled: true,
             metrics: METRICS.clone(),
@@ -210,6 +211,7 @@ impl MetricsLayer {
     }
 
     /// Stop emitting v1 prefixed metrics.
+    #[allow(dead_code)]
     pub fn disable_metrics_v1(mut self) -> Self {
         self.v1_enabled = false;
         self
@@ -471,9 +473,9 @@ enum MetricsServiceRole {
     Server {
         legacy_metrics: Arc<LegacyPigeonMetrics>,
     },
-    Client {
-        peer_service: &'static str,
-    },
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
+    Client { peer_service: &'static str },
 }
 
 #[derive(Debug)]

@@ -117,6 +117,8 @@ impl std::ops::Deref for Message {
     }
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl Message {
     pub(crate) fn new(inner_message: DetachedMessage, guard: MessageAckGuard) -> Self {
         Self {
@@ -160,11 +162,15 @@ pub struct DetachedMessage {
     pub ordering_key: Option<Arc<str>>,
     pub attributes: HashMap<String, String>,
     pub message_id: String,
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     delivery_attempt: u32,
     publish_time: Timestamp,
     size: usize,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl DetachedMessage {
     pub(crate) fn new(m: PubsubMessage, delivery_attempt: u32) -> Self {
         let size = m.data.len()

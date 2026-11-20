@@ -53,6 +53,8 @@ impl<T: MetricsEmitter> MetricsEmitter for Arc<T> {
     }
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 #[doc(hidden)]
 pub struct NopMetricsEmitter;
@@ -67,6 +69,8 @@ impl MetricsEmitter for NopMetricsEmitter {
     }
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 /// Wraps a [`MetricsEmitter`] or [`BaseMetric`] with base tags.
 #[derive(Clone, Debug)]
 pub struct TagWrapper<T> {
@@ -74,6 +78,8 @@ pub struct TagWrapper<T> {
     inner: T,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl<T> TagWrapper<T> {
     /// Wraps the given [`MetricsEmitter`] or [`BaseMetric`] with base tags.
     ///
@@ -112,8 +118,10 @@ impl<T: MetricsEmitter> MetricsEmitter for TagWrapper<T> {
         client: &StatsdClient,
         base_tags: &mut dyn Iterator<Item = (&str, &str)>,
     ) -> Result<(), MetricError> {
+        // The identity map shortens the iterator item lifetimes to this borrow.
+        #[allow(clippy::map_identity)]
         let mut base_tags = base_tags
-            .map(|t| t) // to unify the lifetimes
+            .map(|t| t)
             .chain(self.tags.iter().map(|(k, v)| (k.deref(), v.deref())));
         self.inner.emit_metrics(client, &mut base_tags)
     }
@@ -126,8 +134,10 @@ impl<T: BaseMetric> BaseMetric for TagWrapper<T> {
         name: &str,
         base_tags: &mut dyn Iterator<Item = (&str, &str)>,
     ) -> Result<(), MetricError> {
+        // The identity map shortens the iterator item lifetimes to this borrow.
+        #[allow(clippy::map_identity)]
         let mut base_tags = base_tags
-            .map(|t| t) // to unify the lifetimes
+            .map(|t| t)
             .chain(self.tags.iter().map(|(k, v)| (k.deref(), v.deref())));
         self.inner.send_metric(client, name, &mut base_tags)
     }
@@ -179,6 +189,8 @@ pub trait TagKey: Hash + Eq {
     fn tags<'a>(&'a self) -> Self::TagIterator<'a>;
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 /// Helper trait to convert tag values to static strings.
 /// This is implemented for types that can be used as tag values.
 pub trait TagValue {

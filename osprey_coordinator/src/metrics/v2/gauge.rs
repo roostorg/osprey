@@ -93,6 +93,8 @@ pub struct Gauge<K, V> {
     storage: RwLock<FxHashMap<K, Mutex<GaugeSnapshot<V>>>>,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl<K: TagKey, V: GaugeValue + Add<Output = V> + Sub<Output = V>> Gauge<K, V> {
     #[inline]
     pub fn new() -> Self {

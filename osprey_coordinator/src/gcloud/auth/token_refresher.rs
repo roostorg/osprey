@@ -27,6 +27,8 @@ pub struct TokenRefresher<T> {
     refresher: T,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 /// A token refresher for using the gcloud command line to retrieve authentication credentials.
 /// This shouldn't be used in production, but is very useful for testing things in development
 pub(crate) struct GCloudAuth;
@@ -53,6 +55,8 @@ impl TokenRefreshFn for GCloudAuth {
     }
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl TokenRefresher<GCloudAuth> {
     pub async fn with_gcloud_auth() -> Result<Self> {
         let initial = GCloudAuth.get_token().await?;
@@ -60,6 +64,8 @@ impl TokenRefresher<GCloudAuth> {
     }
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 pub(crate) struct ApplicationCredentials {
     credentials: Credentials,
     scope: Scope,
@@ -90,6 +96,8 @@ impl TokenRefreshFn for ApplicationCredentials {
     }
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl TokenRefresher<ApplicationCredentials> {
     fn load_credentials() -> Result<Credentials> {
         let credentials_file = std::env::var("GOOGLE_APPLICATION_CREDENTIALS")

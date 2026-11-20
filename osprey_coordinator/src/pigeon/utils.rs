@@ -7,14 +7,8 @@ pub(crate) type Error = Box<dyn std::error::Error + Send + Sync>;
 ///
 /// [gRPC spec]: https://github.com/grpc/grpc/blob/99a7f2995e66f9d6f5c3403dc7178238251fb2b5/doc/PROTOCOL-HTTP2.md#requests
 pub(crate) fn parse_path(path: &str) -> Option<(&str, &str)> {
-    let tail = match path.strip_prefix('/') {
-        Some(tail) => tail,
-        None => return None,
-    };
-    let (service, method) = match tail.split_once('/') {
-        Some(split) => split,
-        None => return None,
-    };
+    let tail = path.strip_prefix('/')?;
+    let (service, method) = tail.split_once('/')?;
     if service.is_empty() || method.is_empty() {
         None
     } else {
@@ -29,6 +23,8 @@ macro_rules! round_robin {
     };
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 pub trait ChunkedRequest {
     type Key: Clone + ToString;
 
@@ -37,12 +33,16 @@ pub trait ChunkedRequest {
     fn with_keys(&self, keys: Vec<Self::Key>) -> Self;
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 #[tonic::async_trait]
 pub trait Connector: Sized + Send {
     async fn connect(dst: Endpoint) -> Result<Self, TonicError>;
     fn connect_lazy(dst: Endpoint) -> Self;
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 pub trait ScalarRequest {
     type Key: Clone + ToString;
     fn get_key(&self) -> &Self::Key;

@@ -66,7 +66,7 @@ async fn decrypt_pubsub_message(
     kms_envelope
         .decrypt(message_data)
         .await
-        .map_err(|err| anyhow!("message decryption failed: {}", err.to_string()))
+        .map_err(|err| anyhow!("message decryption failed: {}", err))
 }
 
 async fn create_action_from_pubsub_message(
@@ -205,7 +205,7 @@ pub async fn start_pubsub_subscriber(
         .set_max_processing_messages(max_processing_messages)
         .set_max_bytes(1024 * 1024 * 1024)
         .set_duration_per_lease_extension(min_lease_extension_secs, max_lease_extension_secs);
-    StreamingPullManager::new(
+    StreamingPullManager::start(
         subscriber_client,
         subscription_name,
         flow_control,

@@ -33,6 +33,8 @@ pub struct Builder {
     config: Config,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl Builder {
     fn new(registration: ServiceRegistration, client: Arc<Client>) -> Self {
         Builder {
@@ -92,12 +94,16 @@ pub struct ServiceAnnouncer {
 struct State {
     /// Channel for sending a stop message to the announcer.
     stop_tx: oneshot::Sender<()>,
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     /// Channel for sending a drain message to the announcer.
     drain_tx: Option<oneshot::Sender<()>>,
 
     join_handle: JoinHandle<()>,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl ServiceAnnouncer {
     #[inline]
     pub fn builder<C: Into<Arc<Client>>>(registration: ServiceRegistration, client: C) -> Builder {

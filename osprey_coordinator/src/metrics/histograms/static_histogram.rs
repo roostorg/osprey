@@ -13,6 +13,8 @@ pub trait StaticHistogram: BaseMetric {
         self.value().record(duration);
     }
 
+    // Utility API copied whole; only part is used.
+    #[allow(dead_code)]
     fn record_value(&self, value: u64) {
         self.value().record_value(value);
     }

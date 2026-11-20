@@ -8,8 +8,12 @@ use super::gauge_struct::{GaugeHandleOwned, GaugeInner, Many, One};
 use crate::metrics::base_metric::{BaseMetric, DynamicTagKey, EmitMetrics};
 use crate::metrics::SharedMetrics;
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 pub type DynamicGaugeStorage<Key> = RwLock<FxHashMap<Key, Arc<GaugeInner>>>;
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 /// A dynamic gauge holds gauges for a key/value pair for a singular metric.
 pub trait DynamicGauge: BaseMetric {
     type Key: DynamicTagKey;
@@ -69,6 +73,8 @@ pub trait DynamicGauge: BaseMetric {
     }
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 #[inline(always)]
 fn get_gauge_inner_for_key<T: DynamicGauge>(
     dynamic_gauge: &T,
@@ -91,6 +97,8 @@ fn get_gauge_inner_for_key<T: DynamicGauge>(
         Entry::Vacant(ent) => Arc::clone(ent.insert(Arc::new(GaugeInner::default()))),
     }
 }
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 /// A wrapper that disambiguates between static and dynamic gauges for the purpose
 /// of the EmitMetrics auto trait impl.
 #[derive(Default)]

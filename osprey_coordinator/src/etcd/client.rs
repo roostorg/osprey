@@ -53,11 +53,13 @@ impl Client {
     }
 
     /// Create a new client from the ETCD_LOCK environment variable
+    #[allow(dead_code)]
     pub fn from_etcd_lock() -> Result<Self> {
         Self::from_environment("ETCD_LOCK")
     }
 
     /// Create a new client from the ETCD_SECURE_PEERS environment variable
+    #[allow(dead_code)]
     pub fn from_etcd_secure_peers() -> Result<Self> {
         let builder = base_client_builder("ETCD_SECURE_PEERS")?;
         let username =
@@ -74,6 +76,7 @@ impl Client {
     /// # Arguments
     ///
     /// * `endpoints` - list of etcd endpoints. Called in order until one succeeds.
+    #[allow(dead_code)]
     pub fn new<T: AsRef<str>>(endpoints: &[T]) -> Result<Self> {
         let config = Config::default();
         Ok(Self {
@@ -88,6 +91,7 @@ impl Client {
     ///
     /// * `endpoints` - list of etcd endpoints. Called in order until one succeeds.
     /// * `config` - configuration options
+    #[allow(dead_code)]
     pub fn new_with_config(endpoints: &[&str], config: Config) -> Result<Self> {
         Ok(Self {
             inner: etcd::Client::new(endpoints),
@@ -97,6 +101,7 @@ impl Client {
 
     /// Create the value of a key.
     /// Fails if the key already exists.
+    #[allow(dead_code)]
     pub async fn create<'a, K: Into<&'a str>, O: Serialize + 'a>(
         &'a self,
         key: K,
@@ -123,6 +128,7 @@ impl Client {
     }
 
     /// Get the value of a key.
+    #[allow(dead_code)]
     pub async fn get_recursive<'a, K: Into<&'a str>>(
         &'a self,
         key: K,
@@ -169,6 +175,7 @@ impl Client {
     }
 
     /// Deletes a node only if the given current value and/or current modified index match.
+    #[allow(dead_code)]
     pub async fn compare_and_delete<'a, K: Into<&'a str>>(
         &'a self,
         key: K,
@@ -196,6 +203,7 @@ impl Client {
     ///
     /// * `key` - key to watch
     /// * `after_index` - return events only after `after_index`
+    #[allow(dead_code)]
     pub async fn watch_recursive<'a>(
         &'a self,
         key: &'a str,
@@ -217,6 +225,7 @@ impl Client {
     ///
     /// * `key` - key to watch
     /// * `after_index` - return events only after `after_index`
+    #[allow(dead_code)]
     pub async fn watch<'a>(
         &'a self,
         key: &'a str,
@@ -239,6 +248,7 @@ impl Client {
     /// * `after_index` - return events only after `after_index`
     /// * `recursive` - whether the watch should be recursive
     /// * `timeout` - when the watch should time out.
+    #[allow(dead_code)]
     pub async fn watch_opt(
         &self,
         key: impl AsRef<str>,

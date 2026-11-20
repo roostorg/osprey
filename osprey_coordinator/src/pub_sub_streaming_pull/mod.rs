@@ -1,4 +1,4 @@
-//! To get started, check out [`StreamingPullManager::new`].
+//! To get started, check out [`StreamingPullManager::start`].
 //!
 //! # Example Usage
 //!

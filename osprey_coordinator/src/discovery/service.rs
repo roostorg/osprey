@@ -38,6 +38,8 @@ impl ServiceRegistration {
     }
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl ServiceRegistration {
     pub fn id(&self) -> String {
         if let Some(id_override) = self.id_override.as_ref() {
@@ -73,6 +75,8 @@ pub struct Builder {
     draining: bool,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl Builder {
     /// Overrides the default id that will be used in the service key.
     ///
@@ -275,7 +279,7 @@ mod test {
             }
         "#;
         let deserialized_service: ServiceRegistration =
-            serde_json::from_str(&serialized_string).unwrap();
+            serde_json::from_str(serialized_string).unwrap();
         assert_eq!(deserialized_service.name, "test_service");
         assert_eq!(deserialized_service.address, "test_address");
         assert_eq!(deserialized_service.port, 18000);

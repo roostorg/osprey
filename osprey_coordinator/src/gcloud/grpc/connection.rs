@@ -37,6 +37,8 @@ pub struct Connection {
     pub(crate) channel: tonic::transport::Channel,
 }
 
+// Utility API copied whole; only part is used.
+#[allow(dead_code)]
 impl Connection {
     fn create_google_endpoint(domain: &str) -> Result<tonic::transport::Endpoint> {
         let endpoint = tonic::transport::Channel::from_shared(format!("https://{domain}"))?;
