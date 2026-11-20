@@ -14,7 +14,7 @@ import {
   BaseQueryRequest,
   FeatureLocations,
 } from '../types/QueryTypes';
-import HTTPUtils, { HTTPResponse } from '../utils/HTTPUtils';
+import HTTPUtils, { HTTPResponse, getErrorMessage } from '../utils/HTTPUtils';
 
 import { BULK_LABEL_DEFAULT_LIMIT, Routes } from '../Constants';
 
@@ -58,13 +58,14 @@ export async function getTopNQueryResults(
     return { comparison: [], current_period: [], previous_period: [] };
   }
 
-  const response = await HTTPUtils.post('events/topn', {
+  const response: HTTPResponse = await HTTPUtils.post('events/topn', {
     ...getBaseRequest(query),
     dimension,
     limit,
     precision,
   });
 
+  if (!response.ok) throw new Error(getErrorMessage(response.error));
   if (response.data.length > 0) {
     return response.data[0].result;
   }
@@ -105,7 +106,7 @@ export async function getScanQueryResults(
 
   const response: HTTPResponse = await HTTPUtils.post('events/scan', requestData);
 
-  if (!response.ok) return { events: [], offset: null, queryStart: null };
+  if (!response.ok) throw new Error(getErrorMessage(response.error));
   return {
     events: response.data.events,
     offset: response.data.next_page,
@@ -133,7 +134,7 @@ export async function getTopNQueryResultCSV(query: BaseQueryRequest, dimension: 
     const fileBlob = new Blob([response.data], { type: 'text/csv' });
     saveAs(fileBlob, `osprey-${query.start}-${query.end}.csv`);
   } else {
-    throw new Error(response.error.message);
+    throw new Error(getErrorMessage(response.error));
   }
 }
 
@@ -146,7 +147,7 @@ export async function getTimeseriesQueryResults(
     granularity,
   });
 
-  if (!response.ok) return [];
+  if (!response.ok) throw new Error(getErrorMessage(response.error));
   return response.data;
 }
 

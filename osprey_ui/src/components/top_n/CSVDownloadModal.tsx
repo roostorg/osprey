@@ -50,7 +50,8 @@ const CSVDownloadModal = ({ disabled, dimension }: CSVDownloadModalProps) => {
 
     setIsCSVDownloading(true);
     setIsModalOpen(false);
-    await getTopNQueryResultCSV({ ...executedQuery, entityFeatureFilters }, dimension, limit);
+    // On failure the error is shown under the query box (HTTPUtils records it); just stop the spinner.
+    await getTopNQueryResultCSV({ ...executedQuery, entityFeatureFilters }, dimension, limit).catch(() => undefined);
     setIsCSVDownloading(false);
 
     form.resetFields();

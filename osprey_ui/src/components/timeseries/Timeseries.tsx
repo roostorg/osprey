@@ -100,12 +100,29 @@ function getChartData(timeseriesData: TimeseriesResult[]): [number, number][] {
   return timeseriesData.map((point: TimeseriesResult) => [Date.parse(point.timestamp), point.result.count]);
 }
 
-const EmptyOverlay = ({ show, children }: { show: boolean; children: React.ReactNode }) => {
-  const overlay = show ? (
-    <Text size={TextSizes.LARGE} className={styles.emptyChartOverlay}>
-      No data available
-    </Text>
-  ) : null;
+const EmptyOverlay = ({
+  show,
+  error,
+  children,
+}: {
+  show: boolean;
+  error: string | null;
+  children: React.ReactNode;
+}) => {
+  let overlay = null;
+  if (error != null) {
+    overlay = (
+      <Text size={TextSizes.LARGE} className={styles.emptyChartOverlay}>
+        {error}
+      </Text>
+    );
+  } else if (show) {
+    overlay = (
+      <Text size={TextSizes.LARGE} className={styles.emptyChartOverlay}>
+        No data available
+      </Text>
+    );
+  }
   return (
     <div className={styles.emptyChartOverlayContainer}>
       {children}
@@ -151,6 +168,7 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
 
   const [timeseriesData, setTimeseriesData] = React.useState<TimeseriesResult[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
   const defaultGranularity = React.useMemo(() => getDefaultGranularityForTimeSpan(start, end), [start, end]);
   const [granularity, setGranularity] = React.useState(defaultGranularity);
 
@@ -166,16 +184,26 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
           .filter((q) => q !== undefined && q !== '')
           .map((q) => `(${q})`)
           .join(' and ');
-        const results = await getTimeseriesQueryResults({ ...query, entityFeatureFilters }, granularity);
+        const { results, queryError } = await getTimeseriesQueryResults(
+          { ...query, entityFeatureFilters },
+          granularity
+        ).then(
+          (data): { results: TimeseriesResult[]; queryError: string | null } => ({ results: data, queryError: null }),
+          (e: Error) => ({ results: [], queryError: e.message })
+        );
         // don't apply results if we triggered a new fetch
         if (!shouldApply) return;
-        applyIfQueryIsCurrent(executedQuery, () => setTimeseriesData(results));
+        applyIfQueryIsCurrent(executedQuery, () => {
+          setTimeseriesData(results);
+          setError(queryError);
+        });
       }
 
       setIsLoading(false);
     }
 
     setTimeseriesData([]);
+    setError(null);
     getTimeseriesResults();
 
     return () => {
@@ -236,7 +264,7 @@ const Timeseries: React.FC<TimeseriesProps> = ({ extraQuery }: TimeseriesProps) 
     >
       <Spin spinning={isLoading}>
         <div className={styles.chartContainer}>
-          <EmptyOverlay show={chartData.length === 0}>
+          <EmptyOverlay show={chartData.length === 0} error={error}>
             <ReactECharts
               option={chartOptions}
               theme={themeMode === 'dark' ? 'dark' : undefined}
