@@ -6,5 +6,5 @@
 
 - [ ] Tests pass locally
 - [ ] `uv run ruff check .` passes (no unused imports or other lint errors)
-- [ ] `uv tool run fawltydeps --check-unused --pyenv .venv` passes (no unused dependencies)
+- [ ] `uv tool run fawltydeps --pyenv .venv` passes (no unused or undeclared dependencies)
 - [ ] Updated `CHANGELOG.md` with my changes, if notable (refer to [Keep a Changelog](https://keepachangelog.com/en/2.0.0/) conventions)

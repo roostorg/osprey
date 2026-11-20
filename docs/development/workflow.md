@@ -10,7 +10,7 @@ Hooks stop at the first failure, and several fix files in place—if a hook modi
 
 ## Checking your work before you push
 
-CI runs the same hooks against the whole repo, so you can catch failures ahead of time with:
+CI runs the same hooks against the whole repo, except Prettier and ESLint: its Python job skips those, and a separate UI job runs the UI checks (see `osprey_ui/README.md`). You can catch failures ahead of time with:
 
 ```bash
 uv run pre-commit run --all-files
