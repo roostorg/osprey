@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "example_plugins"
 version = "0.1.0"
@@ -9,9 +13,12 @@ dependencies = [
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+# The entry points name these top-level modules, which package discovery skips.
+py-modules = ["register_plugins", "register_async_plugins"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+exclude = ["tests", "tests.*"]
 
 [project.entry-points.osprey_plugin]
 register_plugins = "register_plugins"
