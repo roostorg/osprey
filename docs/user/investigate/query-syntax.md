@@ -2,25 +2,27 @@
 
 Osprey uses SML (“Some Madeup Language,” a subset of Python with additional restrictions) for queries. Queries match against **features**—the named values your rules extract from each event—including **entities** and **labels**. If those terms are new, read [Concepts](../../concepts.md) first.
 
+A query can only use features your rules define, compared with values of the feature's type. The examples below use the features of the demo ruleset in `example_rules/`: `EventType`, `UserId` and `PostText` are strings, and the demo labels users `meow` when they post "hello". User IDs like `user_4454` are illustrative; the demo's IDs are random. Substitute your own deployment's features; the [Features Registry](../manage.md#features-registry) lists them with their types. A feature that doesn't exist is rejected with "does not exist in any rule files", and comparing a feature with a value of the wrong type (`UserId == 4454` for a string feature) with "incompatible types".
+
 ## Basic comparisons
 
 ```py
 EventType == "create_post"
-UserId == 12345
-MessageText != None
+UserId == "user_4454"
+PostText != None
 ```
 
 ## Combining conditions
 
 ```py
 # AND: all conditions must match
-EventType == "user_login" and LoginAttempts >= 3
+EventType == "create_post" and UserId == "user_4454"
 
 # OR: any condition may match
-(UserId == 123) or (UserId == 456)
+(UserId == "user_4454") or (UserId == "user_8284")
 
 # in: match any value in a list
-EventType in ["create_post", "send_message"]
+EventType in ["create_post", "delete_post"]
 ```
 
 ## Query functions
@@ -33,11 +35,11 @@ Queries support a small, fixed set of built-in functions. Unlike the UDFs you us
 
 ```py
 # Regex match against a feature
-RegexMatch(target=MessageText, pattern="(buy|sell|deal)")
+RegexMatch(target=PostText, pattern="(fox|dog)")
 ```
 
 > [!NOTE]
-> These are the only functions that work in queries. The [UDF Registry](../manage.md#udf-registry) lists every UDF, but most are rules-only and will fail with a silent 500 error if you use them in a query.
+> These are the only functions that work in queries. The [UDF Registry](../manage.md#udf-registry) lists every UDF, but most are rules-only: using one in a query is rejected with an `unknown function` error, shown under the query box.
 
 ## Label queries
 
@@ -45,24 +47,23 @@ The query UI searches across events, not entity state, so `HasLabel()` won't wor
 
 ```py
 # Find events that added a specific label
-DidAddLabel(entity_type="User", label_name="likely_spammer")
-DidAddLabel(entity_type="IpAddress", label_name="suspicious")
+DidAddLabel(entity_type="User", label_name="meow")
 ```
 
 ## Example queries
 
 ```py
-# Suspicious login attempts
-EventType == "user_login" and LoginAttempts >= 5
+# One user's posts
+EventType == "create_post" and UserId == "user_4454"
 
 # Posts matching a pattern
-EventType == "create_post" and RegexMatch(target=PostContent, pattern="urgent")
+EventType == "create_post" and RegexMatch(target=PostText, pattern="lazy")
 
-# Users who were flagged
-DidAddLabel(entity_type="User", label_name="flagged")
+# Events where a user was labeled meow
+DidAddLabel(entity_type="User", label_name="meow")
 
-# Complex: messages matching a pattern, from users without a verified label
-EventType == "send_message" and
-RegexMatch(target=MessageText, pattern="(click|link|urgent)") and
-not DidAddLabel(entity_type="User", label_name="verified")
+# Complex: posts matching a pattern that didn't label their author
+EventType == "create_post" and
+RegexMatch(target=PostText, pattern="(fox|dog)") and
+not DidAddLabel(entity_type="User", label_name="meow")
 ```
