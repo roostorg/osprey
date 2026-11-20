@@ -32,6 +32,7 @@ static SENDER_RUNNING: AtomicBool = AtomicBool::new(false);
 pub fn register_emitter(
     emitter: Arc<dyn MetricsEmitter + Send + Sync + 'static>,
 ) -> RegisteredEmitter {
+    // SAFETY: a `dyn` pointer is a (data, vtable) pair of two usizes, so it fits u128 on 64-bit targets; the id only keys EMITTERS.
     let id = unsafe {
         std::mem::transmute::<*const (dyn MetricsEmitter + Send + Sync), u128>(Arc::as_ptr(
             &emitter,

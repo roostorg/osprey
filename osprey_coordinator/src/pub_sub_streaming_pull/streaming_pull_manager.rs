@@ -125,7 +125,7 @@ pub struct StreamingPullManager<T, M> {
 /// Holds the stateful bits of the streaming pull manager.
 ///
 /// This is a separate struct because the state is used to construct the channel, and thus we must have a state,
-/// and channel before we can make the [`StreamingPullManager`]. See the `new` method's implementation.
+/// and channel before we can make the [`StreamingPullManager`]. See the `start` method's implementation.
 struct StreamingPullManagerState<I> {
     /// The GRPC client that is used to communicate with pub-sub.
     client: TonicSubscriberClient<I>,
@@ -449,7 +449,7 @@ where
         )
     }
 
-    /// Runs the main loop of the streaming pull manager. This runs inside a tokio task and is spawned by `new`.
+    /// Runs the main loop of the streaming pull manager. This runs inside a tokio task and is spawned by `start`.
     async fn main_loop(mut self) -> Instant {
         tracing::info!(
             {subscription = %self.state.subscription, client_id = %self.state.client_id},

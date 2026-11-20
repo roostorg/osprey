@@ -29,9 +29,8 @@ impl std::fmt::Display for Token {
     }
 }
 
-// Utility API copied whole; only part is used.
-#[allow(dead_code)]
 impl Token {
+    #[allow(dead_code)]
     pub fn new(
         access_token: String,
         expires_in_secs: u64,
@@ -46,6 +45,7 @@ impl Token {
         }
     }
 
+    #[allow(dead_code)]
     pub fn from_goauth(token: goauth::auth::Token, created_at: Instant) -> Self {
         Self {
             access_token: token.access_token().to_string(),
@@ -55,6 +55,7 @@ impl Token {
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_expired(&self) -> bool {
         let secs_since_created = self.created_at.elapsed().as_secs();
         secs_since_created > self.expires_in_secs

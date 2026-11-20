@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 pub mod auth;
 pub mod gcp_metadata;
 pub mod grpc;
@@ -7,26 +5,6 @@ mod root_ca_certificate;
 
 pub mod kms;
 pub mod pubsub;
-
-// Utility API copied whole; only part is used.
-#[allow(dead_code)]
-/// Common options for creating authenticated connections to Google Cloud APIs
-pub struct ConnectionOptions {
-    /// Request timeout
-    pub timeout: Duration,
-
-    /// Duration to wait before refreshing the access token used for talking to cloud APIs
-    pub token_refresh_period: Duration,
-}
-
-impl Default for ConnectionOptions {
-    fn default() -> ConnectionOptions {
-        Self {
-            timeout: Duration::from_secs(5),
-            token_refresh_period: Duration::from_secs(240000), // 4 Hours
-        }
-    }
-}
 
 // These modules contain generated prost and tonic code.
 #[allow(clippy::all, dead_code)]

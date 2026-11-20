@@ -10,7 +10,7 @@ use tokio::sync::{mpsc::UnboundedSender, oneshot};
 
 use crate::pub_sub_streaming_pull::StreamingPullManagerMessage;
 
-/// Returned by [`crate::StreamingPullManager::new`]. Can be used to stop the manager.
+/// Returned by [`crate::StreamingPullManager::start`]. Can be used to stop the manager.
 ///
 /// If this manager handle is dropped, the streaming pull manager is immediately hard stopped.
 #[must_use]
