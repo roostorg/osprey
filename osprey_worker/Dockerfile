@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.11-slim
+FROM python:3.15-slim
 ARG TARGETPLATFORM
 
 WORKDIR /osprey
