@@ -40,7 +40,7 @@ MAX_CSV_ROWS = 100_000
 
 @blueprint.route('/events/topn', methods=['POST'])
 @marshal_with(TopNDruidQuery)
-def topn_query(request_model: TopNDruidQuery) -> TopNPoPResponse:
+def topn_query(request_model: TopNDruidQuery) -> Response:
     require_ability_with_request(request_model, CanViewEventsByEntity)
     require_ability_with_request(request_model, CanViewEventsByAction)
     query_filter_ability = get_current_user().get_ability(CanViewEventsByAction)
