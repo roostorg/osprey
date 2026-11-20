@@ -10,7 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Security
 
-- Upgrade UI npm dependencies (follow-redirects, moment and others) to fix known vulnerabilities ([#664](https://github.com/roostorg/osprey/pull/664) by [@reitblatt](https://github.com/reitblatt))
+- Upgrade UI npm dependencies to patched versions for known vulnerabilities ([#664](https://github.com/roostorg/osprey/pull/664) by [@reitblatt](https://github.com/reitblatt))
 - Upgrade dnspython to 2.9.0 to fix excessive CPU use when parsing DNS replies. ([#617](https://github.com/roostorg/osprey/pull/617) by [@slanos](https://github.com/slanos))
 
 ### Added
