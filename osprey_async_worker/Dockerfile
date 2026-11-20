@@ -8,7 +8,7 @@
 # to try the asyncio engine. The stable gevent worker lives in
 # osprey_worker/Dockerfile and is unaffected by this image.
 #
-FROM python:3.11-slim
+FROM python:3.15-slim
 ARG TARGETPLATFORM
 
 WORKDIR /osprey
