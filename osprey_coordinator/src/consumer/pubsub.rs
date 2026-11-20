@@ -66,7 +66,7 @@ async fn decrypt_pubsub_message(
     kms_envelope
         .decrypt(message_data)
         .await
-        .map_err(|err| anyhow!("message decryption failed: {}", err.to_string()))
+        .map_err(|err| anyhow!("message decryption failed: {}", err))
 }
 
 async fn create_action_from_pubsub_message(

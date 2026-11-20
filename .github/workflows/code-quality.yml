@@ -124,6 +124,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
       - name: Check Rust formatting
         run: cargo fmt --check
         working-directory: osprey_coordinator
@@ -131,16 +136,11 @@ jobs:
       - name: Run Clippy linting
         run: cargo clippy -- -D warnings
         working-directory: osprey_coordinator
-        continue-on-error: true
 
       - name: Build Rust project
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-          cargo build --verbose
+        run: cargo build --verbose
         working-directory: osprey_coordinator
 
       - name: Run Rust tests
         run: cargo test --verbose
         working-directory: osprey_coordinator
-        continue-on-error: true

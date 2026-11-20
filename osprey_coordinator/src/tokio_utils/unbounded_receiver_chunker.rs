@@ -50,7 +50,7 @@ impl<T> UnboundedReceiverChunker<T> {
         let cloned_chunk_timeout = self.chunk_timeout.clone();
 
         let join_handle = tokio::spawn(async move {
-            while let Ok(_) = update_rx.recv().await {
+            while update_rx.recv().await.is_ok() {
                 let chunk_timeout_secs = disconfig.chunk_timeout_secs();
                 if chunk_timeout_secs != 0 {
                     *cloned_chunk_timeout.write().unwrap() =
