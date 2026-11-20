@@ -33,7 +33,7 @@ common = [
     { name = "datadog", specifier = "==0.51.0" },
     { name = "ddtrace", specifier = "==2.21.11" },
     { name = "deepmerge", specifier = "==0.3.0" },
-    { name = "dnspython", specifier = "==2.6.1" },
+    { name = "dnspython", specifier = "==2.9.0" },
     { name = "faker", specifier = "==4.18.0" },
     { name = "flask", specifier = "==1.1.4" },
     { name = "gevent", specifier = "==24.2.1" },
@@ -64,7 +64,7 @@ common = [
     { name = "mmh3", specifier = "==3.0.0" },
     { name = "msgpack", specifier = "==1.2.1" },
     { name = "phone-iso3166", specifier = "==0.3.8" },
-    { name = "pluggy", specifier = "==1.5.0" },
+    { name = "pluggy", specifier = "==1.7.0" },
     { name = "protobuf", specifier = "==7.36.2" },
     { name = "psycogreen", specifier = "==1.0.2" },
     { name = "psycopg2-binary", specifier = "==2.9.10" },
@@ -80,12 +80,12 @@ common = [
     { name = "rapidfuzz", specifier = "==3.14.5" },
     { name = "requests", specifier = "==2.33.0" },
     { name = "result", specifier = "==0.5.0" },
-    { name = "sentry-sdk", specifier = "==2.61.1" },
+    { name = "sentry-sdk", specifier = "==2.73.0" },
     { name = "simplejson", specifier = "==3.20.2" },
     { name = "six", specifier = "==1.16.0" },
     { name = "sqlalchemy", specifier = "==1.4.54" },
     { name = "sqlalchemy-utils", specifier = "==0.41.1" },
-    { name = "tenacity", specifier = "==9.1.4" },
+    { name = "tenacity", specifier = "==9.2.1" },
     { name = "tink", specifier = "==1.15.0" },
     { name = "tld", specifier = "==0.12.7" },
     { name = "traitlets", specifier = "==5.14.3" },
@@ -100,8 +100,8 @@ common = [
     { name = "types-psycopg2", specifier = ">=2.9.21.20250809" },
     { name = "types-python-dateutil", specifier = "==2.9.0.20260807" },
     { name = "types-pytz", specifier = "==2025.2.0.20250516" },
-    { name = "types-pyyaml", specifier = "==6.0.12.20250516" },
-    { name = "types-requests", specifier = "==2.27.7" },
+    { name = "types-pyyaml", specifier = "==6.0.12.20260906" },
+    { name = "types-requests", specifier = "==2.33.0.20261030" },
     { name = "types-simplejson", specifier = "==3.20.0.20250326" },
     { name = "types-six", specifier = "==1.17.0.20250515" },
     { name = "types-urllib3", specifier = "==1.26.25.14" },
@@ -528,11 +528,11 @@ wheels = [
 
 [[package]]
 name = "dnspython"
-version = "2.6.1"
+version = "2.9.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/37/7d/c871f55054e403fdfd6b8f65fd6d1c4e147ed100d3e9f9ba1fe695403939/dnspython-2.6.1.tar.gz", hash = "sha256:e8f0f9c23a7b7cb99ded64e6c3a6f3e701d78f50c55e002b839dea7225cff7cc", size = 332727, upload-time = "2024-02-18T18:48:48.952Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ef/4a/50822184bd67cc6493f0fb6a880749158fcd31ab3fa07409acfd91f9fc85/dnspython-2.9.0.tar.gz", hash = "sha256:b44dc6b18f07a8b1c56676a19fbfdb5209415b046a9cece286baafa87ff3f7f1", size = 423560, upload-time = "2026-10-09T00:07:24.352Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/87/a1/8c5287991ddb8d3e4662f71356d9656d91ab3a36618c3dd11b280df0d255/dnspython-2.6.1-py3-none-any.whl", hash = "sha256:5ef3b9680161f6fa89daf8ad451b5f1a33b18ae8a1c6778cdf4b43f08c0a6e50", size = 307696, upload-time = "2024-02-18T18:48:46.786Z" },
+    { url = "https://files.pythonhosted.org/packages/10/02/cdcc9b7c051786a103c3b09e1003a82fa0c66bcb91ffbdabcfbf7b4163b9/dnspython-2.9.0-py3-none-any.whl", hash = "sha256:9a4aedb833c3c1b49214d04d44d3032ab7a9135f7c1d29a549b4ff78fd82fda9", size = 354822, upload-time = "2026-10-09T00:07:22.622Z" },
 ]
 
 [[package]]
@@ -546,7 +546,7 @@ wheels = [
 
 [[package]]
 name = "example-atproto-plugins"
-version = "0.1.0"
+version = "1.2.1"
 source = { editable = "example_atproto_plugins" }
 dependencies = [
     { name = "pluggy" },
@@ -555,20 +555,20 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "pluggy", specifier = "==1.5.0" },
+    { name = "pluggy", specifier = "==1.7.0" },
     { name = "websocket-client", specifier = "==1.9.2" },
 ]
 
 [[package]]
 name = "example-plugins"
-version = "0.1.0"
+version = "1.2.1"
 source = { editable = "example_plugins" }
 dependencies = [
     { name = "pluggy" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pluggy", specifier = "==1.5.0" }]
+requires-dist = [{ name = "pluggy", specifier = "==1.7.0" }]
 
 [[package]]
 name = "executing"
@@ -1581,7 +1581,7 @@ wheels = [
 
 [[package]]
 name = "osprey-async-worker"
-version = "0.1.0"
+version = "1.2.1"
 source = { editable = "osprey_async_worker" }
 dependencies = [
     { name = "aiodns" },
@@ -1600,7 +1600,7 @@ requires-dist = [
 
 [[package]]
 name = "osprey-rpc"
-version = "0.1.0"
+version = "1.2.1"
 source = { editable = "osprey_rpc" }
 dependencies = [
     { name = "grpcio" },
@@ -1615,7 +1615,7 @@ requires-dist = [
 
 [[package]]
 name = "osprey-worker"
-version = "0.1.0"
+version = "1.2.1"
 source = { editable = "osprey_worker" }
 dependencies = [
     { name = "flask-cors" },
@@ -1684,11 +1684,11 @@ wheels = [
 
 [[package]]
 name = "pluggy"
-version = "1.5.0"
+version = "1.7.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/96/2d/02d4312c973c6050a18b314a5ad0b3210edb65a906f868e31c111dede4a6/pluggy-1.5.0.tar.gz", hash = "sha256:2cffa88e94fdc978c4c574f15f9e59b7f4201d439195c3715ca9e2486f1d0cf1", size = 67955, upload-time = "2024-04-20T21:34:42.531Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/db/7fc19e6f2dc92a966727031389fc2e08b558f0f25eb7403c1119ad4713cd/pluggy-1.7.0.tar.gz", hash = "sha256:d1eaa46ebb595891b860ab086b4d09c8588af65ebd4361b8e8f4bb8920b90ba8", size = 123304, upload-time = "2026-10-15T09:50:58.343Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/88/5f/e351af9a41f866ac3f1fac4ca0613908d9a41741cfcf2228f4ad853b697d/pluggy-1.5.0-py3-none-any.whl", hash = "sha256:44e1ad92c8ca002de6377e165f3e0f1be63266ab4d554740532335b9d75ea669", size = 20556, upload-time = "2024-04-20T21:34:40.434Z" },
+    { url = "https://files.pythonhosted.org/packages/40/9e/2b38731e0fc536806f16490e1a12d7f0dc2a1235aa8cc07bcc75416a7daa/pluggy-1.7.0-py3-none-any.whl", hash = "sha256:7dd7b0d8832ba3cb632c306926ded123429211b83641b35dc5c41ad2d34f9bec", size = 27082, upload-time = "2026-10-15T09:50:56.808Z" },
 ]
 
 [[package]]
@@ -2291,15 +2291,15 @@ wheels = [
 
 [[package]]
 name = "sentry-sdk"
-version = "2.61.1"
+version = "2.73.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/63/3b/4bc6b348bbd331daa14d4babe9f2b99bc854f4da41560eefb9488d78481d/sentry_sdk-2.61.1.tar.gz", hash = "sha256:9c6adccb3feefa9ba032c8d295ca477575c2f11896046a2b0ad686c47c4af555", size = 459429, upload-time = "2026-06-01T07:24:18.875Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c5/3b/1e47acf2456781c26e12007379ecc154bf310b8f64d40390d78b791d55c3/sentry_sdk-2.73.0.tar.gz", hash = "sha256:4a2ab97b16e4693c325ab361c7bbbb346dbc7d0bc0150922d795a25bac8d5280", size = 1079078, upload-time = "2026-10-22T09:08:49.63Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/54/c9218db183846e08efaf68534889ef42e499dde432778881104a42f7071b/sentry_sdk-2.61.1-py3-none-any.whl", hash = "sha256:fa36eaf4b8ad708f718500d4bdcc1532637526a22beb874d88cbc0a46458b5ae", size = 483735, upload-time = "2026-06-01T07:24:17.027Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/88/cabf98d017d7b940720e514e5f8ee02e3e6f7495caf93c30735a38387ec4/sentry_sdk-2.73.0-py3-none-any.whl", hash = "sha256:0bcfa6928ea5adbb89591858b514d27adac27c7a3cccc31b20ed10e0b09eda9e", size = 549011, upload-time = "2026-10-22T09:08:47.88Z" },
 ]
 
 [[package]]
@@ -2435,11 +2435,11 @@ wheels = [
 
 [[package]]
 name = "tenacity"
-version = "9.1.4"
+version = "9.2.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/47/c6/ee486fd809e357697ee8a44d3d69222b344920433d3b6666ccd9b374630c/tenacity-9.1.4.tar.gz", hash = "sha256:adb31d4c263f2bd041081ab33b498309a57c77f9acf2db65aadf0898179cf93a", size = 49413, upload-time = "2026-02-07T10:45:33.841Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/82/9e/497c1c8ebe5a5b5d1d4a7511aea22c0bb1a97e3170d98abdef0e1b34265a/tenacity-9.2.1.tar.gz", hash = "sha256:a606b5c808d0cded4a359d5b9932d867ff2a6a6b64d37350260fd01bbdf83839", size = 58261, upload-time = "2026-10-07T12:13:01.633Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d7/c1/eb8f9debc45d3b7918a32ab756658a0904732f75e555402972246b0b8e71/tenacity-9.1.4-py3-none-any.whl", hash = "sha256:6095a360c919085f28c6527de529e76a06ad89b23659fa881ae0649b867a9d55", size = 28926, upload-time = "2026-02-07T10:45:32.24Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/26/1ff2b0721ac66a3ec5b1402b333110b352ab0a8724052ac279a7b82d40c4/tenacity-9.2.1-py3-none-any.whl", hash = "sha256:9e56f17539296baab7beabb08b92f6ee3d7be92d8be72d763360677c2ad6580e", size = 32310, upload-time = "2026-10-07T12:13:00.102Z" },
 ]
 
 [[package]]
@@ -2642,23 +2642,23 @@ wheels = [
 
 [[package]]
 name = "types-pyyaml"
-version = "6.0.12.20250516"
+version = "6.0.12.20260906"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/4e/22/59e2aeb48ceeee1f7cd4537db9568df80d62bdb44a7f9e743502ea8aab9c/types_pyyaml-6.0.12.20250516.tar.gz", hash = "sha256:9f21a70216fc0fa1b216a8176db5f9e0af6eb35d2f2932acb87689d03a5bf6ba", size = 17378, upload-time = "2025-05-16T03:08:04.897Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/90/6e/abec85b9013db5b934b0280a6dd104904d84f7bcbaab2e2f3def87ac7463/types_pyyaml-6.0.12.20260906.tar.gz", hash = "sha256:f59c1cc05010b833d2d72287bbaa72610106b28d42d89a907313117faba85212", size = 18649, upload-time = "2026-09-06T06:35:35.362Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/99/5f/e0af6f7f6a260d9af67e1db4f54d732abad514252a7a378a6c4d17dd1036/types_pyyaml-6.0.12.20250516-py3-none-any.whl", hash = "sha256:8478208feaeb53a34cb5d970c56a7cd76b72659442e733e268a94dc72b2d0530", size = 20312, upload-time = "2025-05-16T03:08:04.019Z" },
+    { url = "https://files.pythonhosted.org/packages/15/c0/fc0644b7ddcfb969e95845837143cb5173ddd6e06ee4ba5fc493cd9329b7/types_pyyaml-6.0.12.20260906-py3-none-any.whl", hash = "sha256:bca893ff0d51df5c9053137d5d0e6ccd36e939a196356f1d5c16372422f5137b", size = 21282, upload-time = "2026-09-06T06:35:34.372Z" },
 ]
 
 [[package]]
 name = "types-requests"
-version = "2.27.7"
+version = "2.33.0.20261030"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "types-urllib3" },
+    { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/52/ed/76de4c42bf515069c8d47306539a57f8d46cbed6d0c714b70fe7ec28a10d/types-requests-2.27.7.tar.gz", hash = "sha256:f38bd488528cdcbce5b01dc953972f3cead0d060cfd9ee35b363066c25bab13c", size = 9654, upload-time = "2022-01-13T21:15:51.34Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a6/15/63ec82f647272ae3df5124def156344ab8856d29d8c4931947f1f15c003b/types_requests-2.33.0.20261030.tar.gz", hash = "sha256:42d75eb02ed0f8220904c8fc08d3129742e7fce42fd5cf706395c8bb4c0ad990", size = 25538, upload-time = "2026-10-30T07:50:39.413Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/45/58/2b348b3b4eaba4cc80ee8365458bbccdf8f911d196fed0f5cfefc38cf678/types_requests-2.27.7-py3-none-any.whl", hash = "sha256:2e0e100dd489f83870d4f61949d3a7eae4821e7bfbf46c57e463c38f92d473d4", size = 11847, upload-time = "2022-01-13T21:15:49.956Z" },
+    { url = "https://files.pythonhosted.org/packages/95/35/77ed86be430bd179d34905d62cdb5ba6747c635737092088fcf03c753c61/types_requests-2.33.0.20261030-py3-none-any.whl", hash = "sha256:06cfc2e92399bf46eda78a65cd0e2203d29ebbeede78b4ab0a5922f749ce1492", size = 21450, upload-time = "2026-10-30T07:50:38.247Z" },
 ]
 
 [[package]]

@@ -26,7 +26,7 @@ Reference files: `docs/development/local.md` (setup), `example_plugins/src/regis
 
 ## Build and run
 
-Prerequisites: Python (version in `.python-version`), [uv](https://docs.astral.sh/uv/), Docker + Docker Compose v2, Node.js (version in `.github/workflows/code-quality.yml`, UI only), Rust stable + `protoc` (coordinator only).
+Prerequisites: Python (version in `.python-version`), [uv](https://docs.astral.sh/uv/), Docker + Docker Compose v2, Node.js (version in `.github/workflows/code-quality.yml`, UI only), Rust (version in `osprey_coordinator/rust-toolchain.toml`; rustup installs it) + `protoc` (coordinator only).
 
 ```bash
 # Install Python deps (creates .venv, uses uv.lock)
@@ -42,6 +42,10 @@ docker compose up -d
 # with coordinator:
 ./start.sh --with-coordinator
 
+# Same stack inside the devcontainer GitHub Codespaces uses (.devcontainer/; Docker-in-Docker,
+# adds .devcontainer/docker-compose.codespaces.yaml and the test-data producer)
+npx @devcontainers/cli up --workspace-folder .
+
 # UI dev server (Corepack auto-resolves pnpm from osprey_ui/package.json's packageManager field)
 cd osprey_ui && corepack enable && pnpm install --frozen-lockfile && pnpm start
 
@@ -50,6 +54,8 @@ cd osprey_ui && corepack enable && pnpm install --frozen-lockfile && pnpm start
 ```
 
 UI: http://localhost:5002 · UI API: http://localhost:5004 · Worker (port 5001)
+
+The UI dev server proxies `/api` to the UI API (`OSPREY_UI_API_PROXY_TARGET`, default `http://localhost:5004`); the devcontainer sets `REACT_APP_API_BASE_URL=/api` so the browser only talks to port 5002. If you change how the UI reaches the API, keep the Codespaces path in `.devcontainer/` and `docs/development/codespaces.md` working.
 
 ## Testing
 
@@ -191,15 +197,22 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 
 - Python: version in `.python-version`. Lint + format with `ruff`, type-check with `mypy` (versions and config in `pyproject.toml` under `[tool.ruff]` and `[tool.mypy]`).
 - TypeScript / React in `osprey_ui/` (versions in `osprey_ui/package.json`). Formatter is Prettier (`pnpm run format:check`); config in `osprey_ui/.prettierrc`. Node version in `.github/workflows/code-quality.yml`. pnpm version pinned via `packageManager` field in `osprey_ui/package.json`; resolved everywhere via Corepack.
-- Rust stable in `osprey_coordinator/` (edition and toolchain in `osprey_coordinator/Cargo.toml`). Formatter `cargo fmt`; linter `cargo clippy -- -D warnings`.
+- Rust in `osprey_coordinator/` (edition in `osprey_coordinator/Cargo.toml`, toolchain pinned in `osprey_coordinator/rust-toolchain.toml`). Formatter `cargo fmt`; linter `cargo clippy -- -D warnings`.
 - Protobuf generated files (`*_pb2*.py`, `*_pb2*.pyi`) are excluded from ruff and mypy — do not edit.
 
 ## Changelog
 
-- `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/2.0.0/): _notable_ changes only, one line each, written for humans. Most PRs need no entry — skip dependency bumps, CI-only changes, internal refactors, tests, and docs.
-- Add entries under `## [Unreleased]`. Never add to a published version's section; those are a record of what actually shipped in that tag.
-- Match the existing categories (Added, Changed, Fixed, Removed) and line format: `- <change> ([#123](https://github.com/roostorg/osprey/pull/123) by [@user](https://github.com/user))`.
-- Keep the line to what changed; details belong in the linked PR.
+`CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/2.0.0/); Osprey versions follow [SemVer](https://semver.org/). Release process: [`docs/development/releases.md`](docs/development/releases.md).
+
+- Update `## [Unreleased]` in the same PR as the change, not in a later cleanup PR.
+- Only **notable** changes get an entry: what someone deploying Osprey needs to know. Internal refactors, test and CI plumbing, lint fixes, docs, repo hygiene, and dependency bumps that don't affect deployment do not.
+- Use only the six Keep a Changelog headings — `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, `### Security` — adding the heading under `## [Unreleased]` if it's missing. Don't invent others.
+- `Fixed` is for behavior that was wrong and is now correct; `Changed` is for intentionally altering behavior that was already correct.
+- Keep each entry to a single concise line, essentially a title: no reasoning, mechanism, or caveats. Anyone who needs the detail follows the PR link.
+- Format: `- Description ([#123](https://github.com/roostorg/osprey/pull/123) by [@user](https://github.com/user))`.
+- Omit related issue links (e.g. `closes [#456](...)`); this information is accessible at the PR link.
+- Removing or renaming an environment variable always earns an entry.
+- Never edit a released version's section; it's a historical record. Corrections go under `## [Unreleased]`.
 
 ## CD
 

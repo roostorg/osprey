@@ -24,12 +24,12 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version-file: ".python-version"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
           version: "latest"
           enable-cache: true
@@ -105,10 +105,18 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Read pinned Rust toolchain
+        id: rust-toolchain
+        run: |
+          channel=$(sed -n 's/^channel = "\(.*\)"$/\1/p' rust-toolchain.toml)
+          test -n "$channel"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+        working-directory: osprey_coordinator
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8  # master
         with:
-          toolchain: stable
+          toolchain: ${{ steps.rust-toolchain.outputs.channel }}
           components: rustfmt, clippy
 
       - name: Cache Rust dependencies
@@ -120,7 +128,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             osprey_coordinator/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('osprey_coordinator/Cargo.lock', 'osprey_coordinator/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-${{ steps.rust-toolchain.outputs.channel }}-${{ hashFiles('osprey_coordinator/Cargo.lock', 'osprey_coordinator/Cargo.toml') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 

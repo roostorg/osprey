@@ -125,7 +125,7 @@ jobs:
           fi
 
           # Regenerate the root version index
-          (cd _gh-pages && tree -d -L 1 -H . -T "Osprey Documentation" -o index.html --noreport)
+          (cd _gh-pages && tree -d -L 1 -H ./ -T "Osprey Documentation" -o index.html --noreport)
 
           # Commit and push
           git -C _gh-pages config user.name "github-actions[bot]"

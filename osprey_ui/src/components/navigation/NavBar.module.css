@@ -1,7 +1,7 @@
 .appWrapper {
   display: flex;
   flex-direction: row;
-  min-height: 100vh;
+  height: 100vh; /* hard cap, not a floor — pages scroll internally */
   width: 100%;
 }
 
@@ -12,7 +12,8 @@
   background-color: var(--background-primary);
   border-right: 1px solid var(--divider);
   transition: width 0.2s ease;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebarExpanded {
@@ -96,6 +97,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0; /* allow children to shrink past intrinsic content width */
+  min-height: 0; /* same, for height */
 }
 
 .topBar {
@@ -119,6 +121,7 @@
 .contentWrapper {
   flex: 1 1 auto;
   min-height: 0;
+  overflow-y: auto; /* backstop for pages without their own scroll container */
 }
 
 /* Suppress browser extend-selection on antd link buttons while shift-click

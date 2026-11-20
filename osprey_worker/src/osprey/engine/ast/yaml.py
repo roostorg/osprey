@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Hashable, Iterator
+from collections.abc import Generator, Hashable
 from typing import TYPE_CHECKING, Any, ClassVar, Type, TypeVar
 
 import yaml
@@ -68,12 +68,12 @@ class SafeLineLoader(yaml.SafeLoader):
 
         return SourcedSafeLineLoader
 
-    def construct_yaml_seq(self, node: yaml.SequenceNode) -> Iterator[_ListWithLineAndCol]:
+    def construct_yaml_seq(self, node: yaml.SequenceNode) -> Generator[_ListWithLineAndCol, None, None]:
         data = _ListWithLineAndCol.from_node([], node, source=self._source)
         yield data
         data.extend(self.construct_sequence(node))
 
-    def construct_yaml_map(self, node: yaml.MappingNode) -> Iterator[_DictWithLineAndCol]:
+    def construct_yaml_map(self, node: yaml.MappingNode) -> Generator[_DictWithLineAndCol, None, None]:
         data = _DictWithLineAndCol.from_node({}, node, source=self._source)
         yield data
         value = self.construct_mapping(node)

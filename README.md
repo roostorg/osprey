@@ -22,13 +22,17 @@ If you have [Docker Compose](https://docs.docker.com/compose/install), get a dem
 curl -sSL https://raw.githubusercontent.com/roostorg/osprey/main/demo.sh | bash
 ```
 
+Or try it in your browser with nothing to install: open the demo in GitHub Codespaces, wait a few minutes, and the Osprey UI opens with sample data flowing. [Step-by-step guide](https://roostorg.github.io/osprey/latest/development/codespaces.html).
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/roostorg/osprey?quickstart=1)
+
 See the [Getting Started guide](https://roostorg.github.io/osprey/latest/development/) for more, including what to try in the UI. See the [full documentation](https://roostorg.github.io/osprey/latest/) for a user guide, development setup, basic concepts, integration information, and more.
 
 ## Adopters
 
 Osprey is used by:
 
-[![Bluesky](docs/images/adopters/bluesky.png)](https://bsky.social) | [![Discord](docs/images/adopters/discord.png)](https://discord.com) | [![Matrix.org](docs/images/adopters/matrix.png)](https://matrix.org)
+[![Bluesky](docs/images/adopters/bluesky.svg)](https://bsky.social) | [![Discord](docs/images/adopters/discord.svg)](https://discord.com) | [![Matrix.org](docs/images/adopters/matrix.svg)](https://matrix.org)
 --- | --- | ---
 
 Using Osprey and want to add your project/organization to this list? [Open a pull request!](https://github.com/roostorg/osprey/edit/main/README.md)

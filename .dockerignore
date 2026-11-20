@@ -1,6 +1,5 @@
 # Rust build artifacts
 **/target/
-**/Cargo.lock
 
 # Python
 **/__pycache__/
@@ -37,3 +36,7 @@ Thumbs.db
 # Misc
 *.log
 .env
+
+# Rust toolchain pin: keep the coordinator image on its Dockerfile's Rust
+# version until the Dockerfile is aligned with the pin.
+osprey_coordinator/rust-toolchain.toml

@@ -1,17 +1,13 @@
 # mypy: ignore-errors
-import sys
-from pathlib import Path  # noqa: E402
-
-from osprey.engine.language_types.entities import EntityT
-from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation, LabelStatus
-from osprey.worker.lib.patcher import patch_all
-from osprey.worker.lib.singletons import LABELS_PROVIDER  # noqa: E402
+from osprey.worker.lib.patcher import patch_all  # isort: skip
 
 patch_all()  # please ensure this occurs before *any* other imports !
 
 
 import datetime  # noqa: E402
 import os  # noqa: E402
+import sys  # noqa: E402
+from pathlib import Path  # noqa: E402
 from typing import Any  # noqa: E402
 
 import click  # noqa: E402
@@ -21,6 +17,9 @@ configure_logging()
 
 # Import safety record and common protos
 from osprey.engine.ast.sources import Sources  # noqa: E402
+from osprey.engine.language_types.entities import EntityT  # noqa: E402
+from osprey.worker.lib.osprey_shared.labels import EntityLabelMutation, LabelStatus  # noqa: E402
+from osprey.worker.lib.singletons import LABELS_PROVIDER  # noqa: E402
 from osprey.worker.lib.sources_publisher import (  # noqa: E402
     upload_dependencies_mapping,
     validate_and_push,
