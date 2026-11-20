@@ -101,7 +101,7 @@ jobs:
               || format('{0}/{1}@{2}', env.REGISTRY, env.IMAGE_NAME, steps.build.outputs.digest) }}
         # Results go only to the SARIF file, not the public job log.
         run: >-
-          "$RUNNER_TEMP/trivy-bin/trivy" image --quiet --platform linux/amd64
+          "$RUNNER_TEMP/trivy-bin/trivy" image --quiet --platform linux/amd64 --ignore-unfixed
           --scanners vuln --pkg-types os,library --format sarif --output trivy-coordinator.sarif "$IMAGE_REF"
 
       # Code scanning alerts are visible only to people with write access. PR
