@@ -51,8 +51,8 @@ importers:
         specifier: 0.4.1
         version: 0.4.1
       highlight.js:
-        specifier: 10.6.0
-        version: 10.6.0
+        specifier: 10.7.3
+        version: 10.7.3
       history:
         specifier: 4.7.2
         version: 4.7.2
@@ -130,8 +130,8 @@ importers:
         specifier: 0.4.4
         version: 0.4.4
       '@types/highlight.js':
-        specifier: 9.12.4
-        version: 9.12.4
+        specifier: 10.1.0
+        version: 10.1.0
       '@types/invariant':
         specifier: 2.2.34
         version: 2.2.34
@@ -824,8 +824,9 @@ packages:
   '@types/glob-to-regexp@0.4.4':
     resolution: {integrity: sha512-nDKoaKJYbnn1MZxUY0cA1bPmmgZbg0cTq7Rh13d0KWYNOiKbqoR+2d89SnRPszGh7ROzSwZ/GOjZ4jPbmmZ6Eg==}
 
-  '@types/highlight.js@9.12.4':
-    resolution: {integrity: sha512-t2szdkwmg2JJyuCM20e8kR2X59WCE5Zkl4bzm1u1Oukjm79zpbiAv+QjnwLnuuV0WHEcX2NgUItu0pAMKuOPww==}
+  '@types/highlight.js@10.1.0':
+    resolution: {integrity: sha512-77hF2dGBsOgnvZll1vymYiNUtqJ8cJfXPD6GG/2M0aLRc29PkvB7Au6sIDjIEFcSICBhCh2+Pyq6WSRS7LUm6A==}
+    deprecated: This is a stub types definition. highlight.js provides its own type definitions, so you do not need this installed.
 
   '@types/history@4.7.11':
     resolution: {integrity: sha512-qjDJRrmvBMiTx+jyLxvLfJU7UznFuokDv4f3WRuriHKERccVpFU+8XMQUAbDzoiJCsmexxRExQeMwwCdamSKDA==}
@@ -1578,8 +1579,8 @@ packages:
   hermes-parser@0.25.1:
     resolution: {integrity: sha512-6pEjquH3rqaI6cYAXYPcz9MS4rY6R4ngRgrgfDshRptUZIc3lw0MCIJIGDj9++mfySOuPTHB4nrSW99BCvOPIA==}
 
-  highlight.js@10.6.0:
-    resolution: {integrity: sha512-8mlRcn5vk/r4+QcqerapwBYTe+iPL5ih6xrNylxrnBdHQiijDETfXX7VIxC3UiCRiINBJfANBAsPzAvRQj8RpQ==}
+  highlight.js@10.7.3:
+    resolution: {integrity: sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==}
 
   history@4.10.1:
     resolution: {integrity: sha512-36nwAD620w12kuzPAsyINPWJqlNbij+hpK1k9XRloDtym8mxzGYl2c17LnV6IAGB2Dmg4tEa7G7DlawS0+qjew==}
@@ -3488,7 +3489,9 @@ snapshots:
 
   '@types/glob-to-regexp@0.4.4': {}
 
-  '@types/highlight.js@9.12.4': {}
+  '@types/highlight.js@10.1.0':
+    dependencies:
+      highlight.js: 10.7.3
 
   '@types/history@4.7.11': {}
 
@@ -4461,7 +4464,7 @@ snapshots:
     dependencies:
       hermes-estree: 0.25.1
 
-  highlight.js@10.6.0: {}
+  highlight.js@10.7.3: {}
 
   history@4.10.1:
     dependencies:
