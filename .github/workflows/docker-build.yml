@@ -45,14 +45,15 @@ jobs:
           echo "Changed files:"
           echo "$changed"
 
-          # Paths each Dockerfile copies in (see its ADD/COPY lines), plus the
-          # Dockerfile, .dockerignore and this workflow.
+          # Paths each Dockerfile copies in (see its ADD/COPY lines; add to
+          # these patterns when one gains a new path), plus .dockerignore and
+          # this workflow. Each Dockerfile lives in a directory matched here.
           common='^(\.dockerignore|\.github/workflows/docker-build\.yml)$'
           python='^(uv\.lock|pyproject\.toml|README\.md|LICENSE\.md|entrypoint\.sh|osprey_worker/|osprey_async_worker/|osprey_rpc/|example_plugins/|example_atproto_plugins/|example_rules/|example_atproto_rules/)'
           ui='^osprey_ui/'
           coordinator='^(osprey_coordinator/|proto/)'
 
-          touches() { echo "$changed" | grep -Eq "$common|$1"; }
+          touches() { grep -Eq "$common|$1" <<<"$changed"; }
 
           # `smoke` marks images that are also started once after the build.
           images='[]'
@@ -99,6 +100,7 @@ jobs:
 
       - name: Smoke-start image
         if: matrix.smoke
+        timeout-minutes: 5
         env:
           IMAGE: ${{ matrix.name }}:ci
         run: |
@@ -128,6 +130,7 @@ jobs:
           RESULTS: ${{ toJSON(needs.*.result) }}
         run: |
           echo "$RESULTS"
-          if echo "$RESULTS" | grep -Eq 'failure|cancelled'; then
+          # Anything but success or skipped (no image needed building) fails.
+          if jq -e 'all(. == "success" or . == "skipped") | not' <<<"$RESULTS" >/dev/null; then
             exit 1
           fi
