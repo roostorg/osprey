@@ -84,15 +84,16 @@ Don't reach for `docker compose down` directly: without `-p osprey-test` compose
 the project name from the directory, which is the *dev* stack, and tears that down
 instead.
 
-Focused tests that don't touch Postgres also run on the host without any services. When
-`POSTGRES_HOSTS` is unset, tests that use Postgres fail at first use and pytest prints a
-warning that says so:
+Focused tests that need no services (no Postgres, etcd, Kafka, or MinIO) also run on the
+host. When `POSTGRES_HOSTS` is unset, tests that use Postgres fail at first use and pytest
+prints a warning that says so:
 
 ```bash
 uv run pytest osprey_worker/src/osprey/worker/lib/storage/tests/test_labels.py
 ```
 
-Host runs are not gevent-patched the way `./run-tests.sh` runs pytest, so `./run-tests.sh` stays the authoritative gate.
+Host runs are not gevent-patched the way `./run-tests.sh` runs pytest, so `./run-tests.sh`
+stays the authoritative gate.
 
 To run tests that need Postgres and the other services on the host, against a running
 dev stack (`docker compose up -d`), use `./run-tests-local.sh` (it points

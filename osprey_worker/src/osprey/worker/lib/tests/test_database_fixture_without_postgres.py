@@ -55,6 +55,7 @@ def test_only_tests_that_use_postgres_fail_without_postgres_hosts(tmp_path: Path
 
     assert 'PASSED test_inner.py::test_without_database' in output, output
     assert 'FAILED test_inner.py::test_with_database' in output, output
+    assert 'Database osprey_db has not yet been initialized!' in output, output
     assert 'POSTGRES_HOSTS is not set' in output, output
 
 
