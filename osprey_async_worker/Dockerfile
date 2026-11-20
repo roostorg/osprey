@@ -40,21 +40,19 @@ ADD pyproject.toml /osprey/pyproject.toml
 ADD README.md /osprey/README.md
 ADD LICENSE.md /osprey/LICENSE.md
 
-# Create workspace structure with pyproject.toml files for uv sync to work
+# Workspace member manifests, so uv sync can validate the lockfile
 ADD osprey_rpc/pyproject.toml /osprey/osprey_rpc/pyproject.toml
 ADD osprey_worker/pyproject.toml /osprey/osprey_worker/pyproject.toml
 ADD osprey_async_worker/pyproject.toml /osprey/osprey_async_worker/pyproject.toml
 ADD example_plugins/pyproject.toml /osprey/example_plugins/pyproject.toml
 COPY example_atproto_plugins/pyproject.toml /osprey/example_atproto_plugins/pyproject.toml
 
-# Create minimal package structure required by uv
-RUN mkdir -p /osprey/osprey_worker /osprey/osprey_async_worker /osprey/osprey_rpc /osprey/example_plugins/src /osprey/example_atproto_plugins/src/atproto_plugin && \
-    touch /osprey/osprey_worker/__init__.py /osprey/osprey_async_worker/__init__.py /osprey/osprey_rpc/__init__.py /osprey/example_plugins/src/__init__.py /osprey/example_atproto_plugins/src/atproto_plugin/__init__.py
-
-# Install the full workspace, including osprey_async_worker (this is the one image
-# that does). This layer is cached when only source code changes.
+# Install third-party dependencies only. This layer is cached when only source code
+# changes. The workspace members are installed after their sources are copied, because
+# an editable install built against an empty tree maps no packages and `import osprey`
+# then fails.
 RUN pip install --upgrade pip uv && \
-    uv sync --locked --python=$(which python3.11) && \
+    uv sync --locked --no-install-workspace --python=$(which python3.11) && \
     pip cache purge && uv cache clean
 
 # https://tld.readthedocs.io/en/latest/#update-the-list-of-tld-names
@@ -67,6 +65,17 @@ ADD osprey_async_worker /osprey/osprey_async_worker
 ADD osprey_rpc /osprey/osprey_rpc
 ADD example_plugins /osprey/example_plugins
 COPY example_atproto_plugins /osprey/example_atproto_plugins
+
+# Install the full workspace, including osprey_async_worker (this is the one image
+# that does).
+RUN uv sync --locked --python=$(which python3.11) && \
+    uv cache clean
+
+# The editable builds write src/*.egg-info, which uv then reads as a source change, so
+# without this every `uv run` rebuilds the workspace and needs PyPI at container start.
+# A changed member pyproject.toml (dependencies, scripts, entry points) needs an image
+# rebuild, also under the source bind mounts in docker-compose.async-worker.yaml.
+ENV UV_NO_SYNC=1
 
 COPY entrypoint.sh /osprey/entrypoint.sh
 
