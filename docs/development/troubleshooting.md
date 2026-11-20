@@ -25,6 +25,22 @@ To wipe everything including Postgres:
 docker compose down -v && docker compose up -d
 ```
 
+## New dependency or plugin not picked up
+
+The worker images install the Python workspace when they are built, and `uv run` does not sync it again at container start. After a change to a `pyproject.toml` (a new dependency, script, or plugin entry point), rebuild the images:
+
+```bash
+docker compose up -d --build
+```
+
+`./run-tests.sh` builds its image only when it is missing, so rebuild that one too:
+
+```bash
+docker compose -p osprey-test -f docker-compose.yaml -f docker-compose.test.yaml --profile test build test_runner
+```
+
+If you start the stack with an overlay, rebuild with the same files, for example `docker compose -f docker-compose.yaml -f docker-compose.atproto.yaml up -d --build`. Without a rebuild, a new dependency fails with `ModuleNotFoundError`, and a new plugin entry point is not loaded.
+
 ## Test data not appearing in the UI
 
 The UI defaults to querying the last 24 hours. If the selected time range is too large (weeks or months), Druid scans across many segments and results can be slow or appear empty.

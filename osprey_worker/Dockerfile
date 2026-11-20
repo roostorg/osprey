@@ -42,16 +42,11 @@ ADD osprey_async_worker/pyproject.toml /osprey/osprey_async_worker/pyproject.tom
 ADD example_plugins/pyproject.toml /osprey/example_plugins/pyproject.toml
 ADD example_atproto_plugins/pyproject.toml /osprey/example_atproto_plugins/pyproject.toml
 
-# Create minimal package structure required by uv
-RUN mkdir -p /osprey/osprey_worker /osprey/osprey_rpc /osprey/example_plugins/src /osprey/example_atproto_plugins/src/atproto_plugin && \
-    touch /osprey/osprey_worker/__init__.py /osprey/osprey_rpc/__init__.py /osprey/example_plugins/src/__init__.py /osprey/example_atproto_plugins/src/atproto_plugin/__init__.py
-
-# Install dependencies first (this layer will be cached when only source code changes).
-# Exclude osprey_async_worker: the asyncio worker is experimental and lives in its own
-# image, so the gevent worker stays free of it (osprey.async_worker is not importable
-# here, so execution_context's optional async import cleanly falls back to None).
+# Install third-party dependencies only (this layer will be cached when only source code
+# changes). The workspace members are installed after their sources are copied, because an
+# editable install built against an empty tree maps no packages and `import osprey` then fails.
 RUN pip install --upgrade pip uv && \
-    uv sync --frozen --no-install-package osprey-async-worker --python=$(which python3.11) && \
+    uv sync --frozen --no-install-workspace --python=$(which python3.11) && \
     pip cache purge && uv cache clean
 
 # https://tld.readthedocs.io/en/latest/#update-the-list-of-tld-names
@@ -59,12 +54,27 @@ RUN . .venv/bin/activate && update-tld-names
 
 # Add source code after dependencies are installed (osprey_async_worker is
 # intentionally omitted — it is not installed in this image).
-ADD example_rules /osprey/example_rules
-ADD example_atproto_rules /osprey/example_atproto_rules
 ADD osprey_worker /osprey/osprey_worker
 ADD osprey_rpc /osprey/osprey_rpc
 ADD example_plugins /osprey/example_plugins
 ADD example_atproto_plugins /osprey/example_atproto_plugins
+
+# Install the workspace members. Exclude osprey_async_worker: the asyncio worker is
+# experimental and lives in its own image, so the gevent worker stays free of it
+# (osprey.async_worker is not importable here, so execution_context's optional async
+# import cleanly falls back to None).
+RUN uv sync --frozen --no-install-package osprey-async-worker --python=$(which python3.11) && \
+    uv cache clean
+
+# The editable builds write src/*.egg-info, which uv then reads as a source change, so
+# without this every `uv run` rebuilds the workspace and needs PyPI at container start.
+# A changed member pyproject.toml (dependencies, scripts, entry points) needs an image
+# rebuild, also under the source bind mounts in docker-compose.yaml.
+ENV UV_NO_SYNC=1
+
+# Rules come after the workspace install, so a rules-only change does not rerun it.
+ADD example_rules /osprey/example_rules
+ADD example_atproto_rules /osprey/example_atproto_rules
 
 COPY entrypoint.sh /osprey/entrypoint.sh
 
