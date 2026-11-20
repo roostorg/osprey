@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-f05ef7c0.js";
+            window.path_to_searchindex_js = "../searchindex-bc600f70.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-d6781edd.js"></script>
@@ -225,8 +225,11 @@
 <li>
 <p>Update the compare links at the bottom of CHANGELOG.md: ensure the “Unreleased” link points to the comparison link between this release and main, and there’s a new link for this release</p>
 </li>
+<li>
+<p>Set <code>version</code> to the release version in every package, so they all match the tag: the <code>pyproject.toml</code> files of <code>osprey_worker</code>, <code>osprey_async_worker</code>, <code>osprey_rpc</code>, <code>example_plugins</code> and <code>example_atproto_plugins</code>, the <code>Cargo.toml</code> files of <code>osprey_coordinator</code> and its <code>etcd_config_derive</code> and <code>metrics_derive</code> crates, and <code>osprey_ui/package.json</code>. Then run <code>uv lock</code> and commit the updated <code>uv.lock</code> (<code>Cargo.lock</code> isn’t committed)</p>
+</li>
 </ol>
-<p><strong>Merge this PR <em>before</em> creating the tag</strong> so the tagged commit includes the release’s changelog.</p>
+<p><strong>Merge this PR <em>before</em> creating the tag</strong> so the tagged commit includes the release’s changelog and version.</p>
 <p>This is a good time to draft the release notes, starting from CHANGELOG.md. See <a href="https://community.roost.tools/software-development-practices/releases.html">Writing release notes</a> from the ROOST community site for recommendations on how to structure them.</p>
 <h2 id="creating-a-release"><a class="header" href="#creating-a-release">Creating a release</a></h2>
 <p>Once the release-prep pull request is merged (and CI is confirmed to still be passing), head to the GitHub repo:</p>
