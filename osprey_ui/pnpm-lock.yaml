@@ -127,8 +127,8 @@ importers:
         specifier: 2.0.1
         version: 2.0.1
       '@types/glob-to-regexp':
-        specifier: 0.4.0
-        version: 0.4.0
+        specifier: 0.4.4
+        version: 0.4.4
       '@types/highlight.js':
         specifier: 9.12.4
         version: 9.12.4
@@ -821,8 +821,8 @@ packages:
   '@types/file-saver@2.0.1':
     resolution: {integrity: sha512-g1QUuhYVVAamfCifK7oB7G3aIl4BbOyzDOqVyUfEr4tfBKrXfeH+M+Tg7HKCXSrbzxYdhyCP7z9WbKo0R2hBCw==}
 
-  '@types/glob-to-regexp@0.4.0':
-    resolution: {integrity: sha512-unszpTzAknG612PxqtoNUkLM0T3rIAXT8oE9Dyhhbl4eew91jLqcgJZOu5j7GztHg09R8LWCMocRU1ohDFY7Pw==}
+  '@types/glob-to-regexp@0.4.4':
+    resolution: {integrity: sha512-nDKoaKJYbnn1MZxUY0cA1bPmmgZbg0cTq7Rh13d0KWYNOiKbqoR+2d89SnRPszGh7ROzSwZ/GOjZ4jPbmmZ6Eg==}
 
   '@types/highlight.js@9.12.4':
     resolution: {integrity: sha512-t2szdkwmg2JJyuCM20e8kR2X59WCE5Zkl4bzm1u1Oukjm79zpbiAv+QjnwLnuuV0WHEcX2NgUItu0pAMKuOPww==}
@@ -3486,7 +3486,7 @@ snapshots:
 
   '@types/file-saver@2.0.1': {}
 
-  '@types/glob-to-regexp@0.4.0': {}
+  '@types/glob-to-regexp@0.4.4': {}
 
   '@types/highlight.js@9.12.4': {}
 
