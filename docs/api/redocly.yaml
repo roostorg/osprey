@@ -1,0 +1,14 @@
+# Lint config for docs/api/openapi.yaml. Run from the repo root:
+#   npx @redocly/cli@2.71.0 lint --config docs/api/redocly.yaml docs/api/openapi.yaml
+extends:
+  - recommended
+
+rules:
+  # The routes genuinely end in a slash (`/rules_visualizer/actions_view/`); the spec documents the API as it is.
+  no-path-trailing-slash: off
+  # Several operations legitimately have no 4xx (e.g. /config), and the bulk-action stubs have no 2xx
+  # (they always answer 501).
+  operation-4xx-response: off
+  operation-2xx-response: off
+  # The documented server is the local dev stack.
+  no-server-example.com: off
