@@ -343,7 +343,8 @@ mod tests {
                 serde_json::from_slice::<Value>(&bytes).unwrap(),
                 json!({"email": "a@example.com"})
             ),
-            other => panic!("expected JSON secret data, got {other:?}"),
+            // Don't print the value: it is secret data.
+            _ => panic!("expected JSON secret data"),
         }
     }
 
