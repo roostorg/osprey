@@ -12,7 +12,9 @@ General-purpose worker administration including pushing rules, opening a debug s
 osprey-cli push-rules RULES_PATH [--dry-run/--no-dry-run] [--suppress-warnings]
 ```
 
-Validates the rules at `RULES_PATH` and pushes them. Use `--dry-run` to validate without pushing. Exits non-zero if validation fails.
+Validates the rules at `RULES_PATH` and publishes them to etcd. Exits non-zero if validation fails.
+
+Use `--dry-run` to validate a ruleset locally: it prints any validation errors, or `OK! Rules validated.`, and needs no other services. A real push needs a reachable etcd; the default `docker compose` stack doesn't run one (the [coordinator overlay](https://github.com/roostorg/osprey/tree/main/example_docker_compose/run_osprey_with_coordinator) does), so without it the push fails with `Connection refused`.
 
 ### osprey-cli compute-and-upload-dependencies-mapping
 
@@ -20,7 +22,7 @@ Validates the rules at `RULES_PATH` and pushes them. Use `--dry-run` to validate
 osprey-cli compute-and-upload-dependencies-mapping RULES_PATH [--suppress-warnings]
 ```
 
-Computes the dependency graph for the rules at `RULES_PATH` and uploads it; this is what powers the [Rules Visualizer](../user/manage.md#rules-visualizer).
+Computes the dependency graph for the rules at `RULES_PATH` and uploads it to a BigQuery table. The BigQuery project and tables are hardcoded, so it needs Google Cloud credentials ([Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials)) with access to them; without credentials it fails with `DefaultCredentialsError`. The [Rules Visualizer](../user/manage.md#rules-visualizer) doesn't use this upload; it reads the rules the UI API has loaded.
 
 ### osprey-cli shell
 
@@ -34,10 +36,12 @@ Opens an interactive shell (IPython if installed, otherwise a fallback `code.Int
 
 ```bash
 osprey-cli apply-label ENTITY_TYPE ENTITY_ID LABEL_NAME LABEL_STATUS \
-  [--reason REASON] [--description DESCRIPTION] [--expire-instantly]
+  [--reason REASON] [--description DESCRIPTION] [--expire-instantly true]
 ```
 
-Manually applies a label to a single entity. Mainly intended for debugging or importing individual labels from an external source. `--reason` defaults to `CliLabelMutationWithoutEffects`; `--description` defaults to `"Manually changed from the command line for debugging."`. `--expire-instantly` makes the label expire almost immediately rather than persisting.
+Manually applies a label to a single entity. Mainly intended for debugging or importing individual labels from an external source. `LABEL_STATUS` is one of `added`, `removed`, `manually-added`, or `manually-removed`. `--reason` defaults to `CliLabelMutationWithoutEffects`; `--description` defaults to `"Manually changed from the command line for debugging."`.
+
+`--expire-instantly` takes a value and makes the label expire almost immediately rather than persisting. Any value turns it on, including `False`; leave the option out for a label that doesn't expire.
 
 This requires a labels provider to be configured for the Osprey instance; it fails with an assertion error otherwise.
 
@@ -45,7 +49,7 @@ This requires a labels provider to be configured for the Osprey instance; it fai
 
 ```bash
 osprey-cli bulk-apply-label ENTITY_TYPE ENTITY_IDS_FILE_PATH LABEL_NAME LABEL_STATUS \
-  [--reason REASON] [--description DESCRIPTION] [--expire-instantly]
+  [--reason REASON] [--description DESCRIPTION] [--expire-instantly true]
 ```
 
 Same as `apply-label`, but reads entity IDs (one per line) from `ENTITY_IDS_FILE_PATH` and applies the label to all of them, printing progress as it goes. This is the CLI path for importing bulk label lists from external sources; see also the UI-driven [Bulk Actions](../user/operate.md#bulk-actions) workflow.
@@ -94,9 +98,19 @@ osprey-async-cli run --rules-path PATH [--input-file PATH] [--max-concurrent 12]
 
 Runs the async worker against a static rules directory (`--rules-path`, required). By default it uses stdlib UDFs only and prints results to stdout; `--with-plugins` loads the full async plugin system (UDFs, validators, and output sinks registered via the `osprey_async_plugin` entry-point group), which requires external services to be available.
 
+Plugin UDFs need `--with-plugins`: without it, a ruleset that calls one fails validation with `unknown function: <YourUdf>`.
+
 Input source is controlled by `--input-source`:
 - `file` (default): reads JSONL actions from `--input-file`, or runs with no input if omitted (useful for just validating the worker boots)
 - `kafka`: consumes from `--kafka-topic` (default `osprey.actions_input`) via `--kafka-bootstrap-servers` (default `localhost:9092`)
+
+The input file (for `run` and `benchmark`) has one action per line, in this shape rather than the Kafka envelope the main worker reads:
+
+```json
+{"id": 1, "name": "create_post", "data": {"event_type": "create_post", "user_id": "user_1", "post": {"text": "hello world"}}}
+```
+
+`id` is the action ID, `name` the action name, and `data` the event your rules' `JsonData` paths read from. Missing keys don't cause an error: they default to `0`, `"unknown"`, and `{}`, so a line in another shape still runs, with every `JsonData` and `EntityJson` feature `None`. The action's timestamp is the time it's read.
 
 ### osprey-async-cli benchmark
 

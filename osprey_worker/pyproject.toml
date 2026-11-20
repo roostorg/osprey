@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "osprey-worker"
 version = "0.1.0"
-description = "Add your description here"
+description = "Osprey rules engine, worker and UI API"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

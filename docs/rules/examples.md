@@ -124,11 +124,13 @@ From then on, _every_ event by that user carries the state, and other rules can 
 Should_Warn_User_Of_Spammer = Rule(
     when_all=[
         HasLabel(entity=UserId, label='likely_spammer'),
-        This_Is_A_New_DM,
+        This_Is_A_New_DM == True,
     ],
     description=f'Likely spammer {UserId} started a new DM',
 )
 ```
+
+As with `meow` above, `likely_spammer` must be declared in the ruleset's `labels` configuration (for example `config/labels.yaml`), or both snippets fail validation with an unknown-label error.
 
 Labels also show on the entity in the UI, where they can be added and removed by hand. One asymmetry to know about: `HasLabel()` works in rules but not in the query bar, because queries search events rather than current entity state. To find events where a label was applied, query `DidAddLabel(entity_type="User", label_name="likely_spammer")` instead; see [Query Syntax](../user/investigate/query-syntax.md) for details.
 
