@@ -86,13 +86,23 @@ def make_postgres_database_config_fixture() -> object:
         config = CONFIG.instance()
         config.configure_from_env()
 
+        if 'POSTGRES_HOSTS' not in os.environ:
+            # Most tests never touch Postgres; the ones that do fail at first use.
+            warnings.warn(
+                'POSTGRES_HOSTS is not set, so tests that use Postgres will fail. '
+                'Run them with ./run-tests.sh, or ./run-tests-local.sh against a running dev stack.',
+            )
+            config.unconfigure_for_tests()
+            yield
+            return
+
         try:
             url = config['POSTGRES_HOSTS']['osprey_db']
         except KeyError:
             url = None
 
         if url is None:
-            pytest.fail('POSTGRES_HOSTS not configured')
+            pytest.fail('POSTGRES_HOSTS has no osprey_db URL')
 
         try:
             create_database(url)
