@@ -17,6 +17,10 @@ For more information about each release including git tags and artifacts, see [R
 - One-click demo in GitHub Codespaces, with sample data flowing ([#593](https://github.com/roostorg/osprey/pull/593) by [@reitblatt](https://github.com/reitblatt))
 - Rules Visualizer zoom controls, including zooming out past the whole-graph fit ([#509](https://github.com/roostorg/osprey/pull/509) by [@austin-ayers](https://github.com/austin-ayers))
 
+### Changed
+
+- Coordinator image now runs on `debian:trixie-slim` instead of the full Rust toolchain image ([#587](https://github.com/roostorg/osprey/pull/587) by [@reitblatt](https://github.com/reitblatt))
+
 ### Fixed
 
 - `ParseInt` UDF can be called from rules again ([#588](https://github.com/roostorg/osprey/pull/588) by [@NopeCharon](https://github.com/NopeCharon))

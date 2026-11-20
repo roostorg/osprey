@@ -64,6 +64,13 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+    groups:
+      # The coordinator's build and runtime base images are pinned by digest and
+      # rebuilt upstream every few weeks; move both in one PR.
+      coordinator-base-images:
+        patterns:
+          - "rust"
+          - "debian"
     # No security-updates group: Dependabot doesn't support security updates for
     # Docker, so base images only move through the weekly version updates.
 
