@@ -224,6 +224,7 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 ## Dependencies
 
 - Python deps are pinned in `pyproject.toml` and locked in `uv.lock`. Add with `uv add <pkg>` (runtime) or `uv add --dev <pkg>` (dev); commit the updated `uv.lock`.
+- Every uv workspace member is a setuptools package with an explicit `[build-system]` table, so `uv build --all-packages` builds an sdist and a wheel for each. Give a new member the same table, and check that its wheel contains every module its entry points name (setuptools package discovery skips top-level modules, so list them in `py-modules`). Only `osprey-rpc` is published (`.github/workflows/release-osprey-rpc.yml`); the example plugins are built only to install them into the workspace.
 - Node deps live in `osprey_ui/package.json`; add with `pnpm add <pkg>` and commit the updated `osprey_ui/pnpm-lock.yaml`. The lockfile is the parity contract — `pnpm add` will re-resolve transitives, so review the `pnpm-lock.yaml` diff for unintended version bumps before committing.
 - Rust deps live in `osprey_coordinator/Cargo.toml` and are locked in `osprey_coordinator/Cargo.lock`, which is committed (the coordinator is a binary crate). Update it with `cargo update -p <crate>` (or `cargo build`, which adds new entries) in `osprey_coordinator/` and commit the diff; avoid a bare `cargo update`, which bumps everything.
 - Every new or upgraded package including transitive dependencies requires human approval. Confirm the license is compatible with `LICENSE.md` and that there are no known CVEs.
