@@ -6,8 +6,7 @@ pointed at, and the compose files pointed the tests and the dev stack at the sam
 `osprey` database -- so running the suite deleted the local development database, and it
 surfaced later and elsewhere as `osprey-ui-api` refusing to start.
 
-The function is pure, so these need no database. They still pay for one: the session
-fixture in the root conftest is autouse for the whole repository.
+The function is pure, so the tests that check it need no database.
 """
 
 import pytest
