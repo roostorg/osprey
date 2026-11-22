@@ -1,5 +1,6 @@
 import json
 
+import pytest
 from faker import Faker
 from flask import Flask, Response, url_for
 from flask.testing import FlaskClient
@@ -28,8 +29,30 @@ def test_create_query_record(app: Flask, client: 'FlaskClient[Response]') -> Non
     assert res.json['executed_at'] == Snowflake(int(res.json['id'])).to_timestamp()
 
 
-def test_get_queries(app: Flask, client: 'FlaskClient[Response]') -> None:
-    res = client.get(url_for('queries.get_queries'), content_type='application/json')
+@pytest.fixture
+def one_query_record(client: 'FlaskClient[Response]') -> None:
+    """Create exactly one query record, so a test can assert on a known table."""
+    res = client.post(
+        url_for('queries.create_query_record'),
+        data=json.dumps(
+            {
+                'query_filter': fake.pystr(),
+                'date_range': [fake.past_datetime().isoformat(), fake.future_datetime().isoformat()],
+                'top_n': [],
+                'sort_order': 'DESCENDING',
+            }
+        ),
+        content_type='application/json',
+    )
+    assert res.status_code == 200
 
-    # NOTE(caidanw): the number of queries may vary based on other tests that have run, we might need to rethink this test
-    assert len(res.json) == 21
+
+def test_get_queries(app: Flask, client: 'FlaskClient[Response]', one_query_record: None) -> None:
+    """Lists the query records that exist, which is the one the fixture created.
+
+    The count is exact rather than a lower bound because `_clear_tables` empties the
+    table before each test, so nothing else can be in it.
+    """
+    res = client.get(url_for('queries.get_queries'), content_type='application/json')
+    assert res.status_code == 200
+    assert len(res.json) == 1
