@@ -19,6 +19,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
+- Coordinator accepts the standard JSON event envelope from Kafka and PubSub, including the bundled test-data producer's events ([#633](https://github.com/roostorg/osprey/pull/633) by [@reitblatt](https://github.com/reitblatt))
 - `ParseInt` UDF can be called from rules again ([#588](https://github.com/roostorg/osprey/pull/588) by [@NopeCharon](https://github.com/NopeCharon))
 - Timeseries chart now follows dark mode ([#366](https://github.com/roostorg/osprey/issues/366), [#549](https://github.com/roostorg/osprey/pull/549) by [@26wv](https://github.com/26wv))
 - `osprey-cli` no longer crashes at import with gevent's "cannot release un-acquired lock" ([#574](https://github.com/roostorg/osprey/pull/574) by [@reitblatt](https://github.com/reitblatt))
