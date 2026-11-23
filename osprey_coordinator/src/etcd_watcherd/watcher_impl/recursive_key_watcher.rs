@@ -225,7 +225,7 @@ impl RecursiveKeyWatcher {
         watch_state: &WatchState<Value>,
     ) -> (Vec<RecursiveKeyWatchEvents>, Value) {
         // The root key we were watching has been deleted, so we'll emit a full sync.
-        if &key == self.key() {
+        if key == self.key() {
             // Current value was also empty, so we can just re-use it, and emit no events.
             if watch_state.current_value.is_empty() {
                 (vec![], watch_state.current_value.clone())

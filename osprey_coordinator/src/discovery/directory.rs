@@ -30,12 +30,10 @@ pub async fn wait_for_free_key(
                         return;
                     }
                 }
-                Err(err) => match err {
-                    EtcdError::KeyNotFound { index: _, error: _ } => {
-                        return;
-                    }
-                    _ => {}
-                },
+                Err(EtcdError::KeyNotFound { index: _, error: _ }) => {
+                    return;
+                }
+                Err(_) => {}
             }
             tokio::time::sleep(WAIT_FOR_FREE_KEY_RETRY_INTERVAL).await;
         }
@@ -50,7 +48,7 @@ pub async fn wait_for_free_key(
 /// * `client` - the etcd client to use
 /// * `service` - the service to register
 /// * `ttl` - the `Duration` for the service to stay in discovery until it automatically falls
-///           falls out.
+///   falls out.
 pub async fn register(client: &Client, service: &ServiceRegistration, ttl: Duration) -> Result<()> {
     trace!("Registering {:?}", service);
     let key = service.key();
@@ -67,7 +65,7 @@ pub async fn register(client: &Client, service: &ServiceRegistration, ttl: Durat
 /// * `client` - the etcd client to use
 /// * `service` - the service to register
 /// * `ttl` - the `Duration` for the service to stay in discovery until it automatically falls
-///           falls out.
+///   falls out.
 pub async fn refresh(client: &Client, service: &ServiceRegistration, ttl: Duration) -> Result<()> {
     trace!("Refreshing {:?}", service);
     let key = service.key();

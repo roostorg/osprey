@@ -27,19 +27,15 @@ pub struct HistogramSnapshot {
 
 impl HistogramSnapshot {
     fn from_histogram<T: Counter>(h: &HdrHistogram<T>) -> Option<Self> {
-        if let Some(sample_count) = NonZeroU64::new(h.len()) {
-            Some(HistogramSnapshot {
-                sample_count,
-                min: h.min(),
-                max: h.max(),
-                mean: h.mean(),
-                median: h.value_at_quantile(0.5),
-                p95: h.value_at_quantile(0.95),
-                p99: h.value_at_quantile(0.99),
-            })
-        } else {
-            None
-        }
+        NonZeroU64::new(h.len()).map(|sample_count| HistogramSnapshot {
+            sample_count,
+            min: h.min(),
+            max: h.max(),
+            mean: h.mean(),
+            median: h.value_at_quantile(0.5),
+            p95: h.value_at_quantile(0.95),
+            p99: h.value_at_quantile(0.99),
+        })
     }
 
     /// Returns the number of values recorded
@@ -215,7 +211,7 @@ impl<K: TagKey> BaseMetric for Histogram<K> {
                 None => continue,
             };
             let sample_count =
-                i64::try_from(u64::from(snapshot.sample_count())).unwrap_or(i64::max_value());
+                i64::try_from(u64::from(snapshot.sample_count())).unwrap_or(i64::MAX);
             send_submetric(
                 client.count_with_tags(&format!("{}.count", name), sample_count),
                 base_tags.iter().copied(),
@@ -271,7 +267,7 @@ impl HistogramBuilder {
         // https://docs.rs/hdrhistogram/7.5.2/hdrhistogram/struct.Histogram.html#method.new_with_bounds
         HistogramBuilder {
             low: NonZeroU64::new(1).expect("constant"),
-            high: NonZeroU64::new(u64::max_value()).expect("constant"),
+            high: NonZeroU64::new(u64::MAX).expect("constant"),
             sigfig: 2,
         }
     }
