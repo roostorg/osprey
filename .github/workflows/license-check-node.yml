@@ -1,7 +1,7 @@
 name: License Check (Node)
 on:
+  # Any base branch, so stacked PRs (based on another PR's branch) get CI too.
   pull_request:
-    branches: [main]
     paths:
       - 'osprey_ui/package.json'
       - 'osprey_ui/pnpm-lock.yaml'

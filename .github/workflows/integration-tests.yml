@@ -1,8 +1,8 @@
 name: Integration Tests
 
 on:
+  # Any base branch, so stacked PRs (based on another PR's branch) get CI too.
   pull_request:
-    branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
