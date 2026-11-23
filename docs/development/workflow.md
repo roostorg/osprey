@@ -35,3 +35,7 @@ Follow the [Conventional Commits](https://www.conventionalcommits.org/) format. 
 fix(ui): show the event-stream timezone once, not twice
 build(deps): remove unused Discord-era Python dependencies
 ```
+
+## Blocking a PR from merging
+
+To keep a PR from being merged until a follow-up is done, mark it as described in [Blocking a PR from merging](blocking-merges.md).
