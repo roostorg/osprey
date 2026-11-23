@@ -35,6 +35,11 @@ def _handle_exception(e: HTTPException) -> Response:
     return Response(status=e.code, response=e.description, mimetype='application/json')
 
 
+def _handle_druid_query_error(err: Exception) -> Response:
+    # Druid is the upstream service that failed; send its error so the UI can show it instead of "No data".
+    return Response(status=HTTPStatus.BAD_GATEWAY, response=str(err))
+
+
 def _register_with_prefix(app, blueprint):
     app.register_blueprint(blueprint)
     app.register_blueprint(blueprint, url_prefix='/api')
@@ -58,6 +63,7 @@ def create_app() -> Flask:
     from osprey.worker.ui_api.osprey.lib import auth
 
     from .lib.audit import audit_request
+    from .lib.druid import DruidQueryError
     from .views import (
         abilities,
         bulk_actions,
@@ -92,6 +98,7 @@ def create_app() -> Flask:
     app.after_request(_after_request)
     app.register_error_handler(ValidationFailed, _handle_validation_failed)
     app.register_error_handler(HTTPException, _handle_exception)
+    app.register_error_handler(DruidQueryError, _handle_druid_query_error)
 
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)

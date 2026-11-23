@@ -12,11 +12,18 @@ const axiosInstance = axios.create({
 
 export type HTTPResponse = (AxiosResponse & { ok: true }) | { ok: false; error: AxiosError<unknown> };
 
+// The UI API sends errors as a plain-text body; fall back to axios's own message (e.g. "Network Error") when the
+// request failed without a usable body, so a failed query is never shown as an empty result.
+export function getErrorMessage(error: AxiosError<unknown>): string {
+  const data = error.response?.data;
+  if (typeof data === 'string' && data.trim() !== '') return data;
+  if (data != null && typeof data === 'object') return JSON.stringify(data);
+  return error.message;
+}
+
 const errorHandler = (error: AxiosError<unknown>): HTTPResponse => {
-  if (error.response != null) {
-    const { errors } = useErrorStore.getState();
-    useErrorStore.setState({ errors: new Set([...errors, String(error.response.data)]) });
-  }
+  const { errors } = useErrorStore.getState();
+  useErrorStore.setState({ errors: new Set([...errors, getErrorMessage(error)]) });
 
   return { ok: false, error };
 };

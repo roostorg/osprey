@@ -142,3 +142,32 @@ def test_events_scan_request(
         {'type': 'selector', 'dimension': 'ActionName', 'value': 'some_allowance_name'},
     ]
     assert res.status_code == 200
+
+
+@pytest.mark.parametrize(
+    'model,url',
+    [
+        (TimeseriesDruidQuery(granularity='day', **_base_druid_query.dict()), 'events.timeseries_query'),
+        (TopNDruidQuery(dimension='UserId', **_base_druid_query.dict()), 'events.topn_query'),
+        (PaginatedScanDruidQuery(**_base_druid_query.dict()), 'events.scan_query'),
+    ],
+)
+@pytest.mark.use_rules_sources(config_b)
+def test_events_druid_failure_returns_error_message(
+    app: Flask,
+    client: 'FlaskClient[Response]',
+    mock_druid_client: Any,
+    fake_druid: Any,
+    model: BaseDruidQuery,
+    url: str,
+) -> None:
+    # The way pydruid reports a failed query; before, this escaped the view and the client got no response at all.
+    fake_druid.client._post.side_effect = OSError(
+        "HTTP Error 500: Server Error \n Druid Error: {'error': 'Unsupported operation', "
+        "'errorMessage': 'Predicate does not support ARRAY types'} \n Query is: {}"
+    )
+
+    res = client.post(url_for(url), content_type='application/json', data=model.json())
+
+    assert res.status_code == 502
+    assert res.data.decode('utf-8') == 'Druid query failed: Predicate does not support ARRAY types'
