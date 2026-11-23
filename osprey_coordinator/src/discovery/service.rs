@@ -1,11 +1,6 @@
-use crate::discovery::error::DiscoveryError;
-
-use anyhow::Result;
 use log::warn;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::net::SocketAddr;
-use trust_dns_resolver::TokioAsyncResolver;
 
 /// An advertisement of a network service.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -48,18 +43,6 @@ impl ServiceRegistration {
 
     pub(crate) fn key(&self) -> String {
         format!("/discovery/{}/instances/{}", self.name, self.id())
-    }
-
-    pub async fn socket_address(&self, resolver: TokioAsyncResolver) -> Result<SocketAddr> {
-        let response = resolver.lookup_ip(self.address.as_str()).await?;
-        let ip_addr =
-            response
-                .iter()
-                .next()
-                .ok_or_else(|| DiscoveryError::FailedToResolveHostname {
-                    hostname: self.address.clone(),
-                })?;
-        Ok(SocketAddr::new(ip_addr, self.port))
     }
 }
 
@@ -186,6 +169,7 @@ fn append_hostname_suffix(hostname: String) -> String {
 #[cfg(test)]
 mod test {
     use super::*;
+    use anyhow::Result;
     use std::collections::HashMap;
 
     #[test]

@@ -315,7 +315,7 @@ Your plugin package needs a `pyproject.toml` that declares the entry points; for
 name = "my-osprey-plugins"
 version = "0.1.0"
 requires-python = ">=3.11"
-dependencies = ["pluggy==1.5.0"]
+dependencies = ["pluggy>=1.5,<2"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

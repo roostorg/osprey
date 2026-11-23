@@ -105,10 +105,18 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Read pinned Rust toolchain
+        id: rust-toolchain
+        run: |
+          channel=$(sed -n 's/^channel = "\(.*\)"$/\1/p' rust-toolchain.toml)
+          test -n "$channel"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+        working-directory: osprey_coordinator
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8  # master
         with:
-          toolchain: stable
+          toolchain: ${{ steps.rust-toolchain.outputs.channel }}
           components: rustfmt, clippy
 
       - name: Cache Rust dependencies
@@ -120,7 +128,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             osprey_coordinator/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('osprey_coordinator/Cargo.lock', 'osprey_coordinator/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-${{ steps.rust-toolchain.outputs.channel }}-${{ hashFiles('osprey_coordinator/Cargo.lock', 'osprey_coordinator/Cargo.toml') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
