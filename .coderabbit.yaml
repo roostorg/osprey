@@ -8,6 +8,9 @@ reviews:
   profile: chill
   request_changes_workflow: false
   high_level_summary: true
+  # Post the summary in the walkthrough comment, not the PR description, so the
+  # description stays author-written and bot text can't trip description checks.
+  high_level_summary_in_walkthrough: true
   poem: false
   review_status: true
   collapse_walkthrough: true
