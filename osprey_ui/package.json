@@ -34,7 +34,7 @@
     "zustand": "3.5.2"
   },
   "devDependencies": {
-    "@eslint/js": "9.39.4",
+    "@eslint/js": "9.39.5",
     "@rsbuild/core": "2.0.1",
     "@rsbuild/plugin-react": "1.4.6",
     "@rsbuild/plugin-sass": "1.5.1",
