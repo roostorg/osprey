@@ -19,7 +19,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Removed
 
-- Unused `PUBSUB_OSPREY_WEBHOOKS_PROJECT_ID` and `PUBSUB_OSPREY_WEBHOOKS_TOPIC_ID` environment variables ([#602](https://github.com/roostorg/osprey/issues/602) by [@momolly1024](https://github.com/momolly1024))
+- Unused `PUBSUB_OSPREY_WEBHOOKS_PROJECT_ID` and `PUBSUB_OSPREY_WEBHOOKS_TOPIC_ID` environment variables ([#670](https://github.com/roostorg/osprey/pull/670) by [@momolly1024](https://github.com/momolly1024))
 
 ### Fixed
 
