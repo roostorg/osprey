@@ -84,6 +84,17 @@ Don't reach for `docker compose down` directly: without `-p osprey-test` compose
 the project name from the directory, which is the *dev* stack, and tears that down
 instead.
 
+End-to-end smoke test (`.github/workflows/e2e.yml`; required green on the release commit): brings up the demo stack,
+pushes an `example_data` event through Kafka, and asserts over HTTP that the `example_rules` `ContainsHello` rule fired
+and its verdict and label are queryable from the UI API. Needs `jq`; uses the dev stack's ports, so stop any running dev
+stack first. It starts the stack itself, and leaves it up afterward:
+
+```bash
+./e2e-smoke.sh
+E2E_SKIP_UP=1 ./e2e-smoke.sh   # reuse an already-running stack
+docker compose down            # tear down (the dev project, which the script started; -v also deletes its data)
+```
+
 Python lint / format / type-check (no Docker needed):
 
 ```bash
@@ -174,6 +185,9 @@ uv tool run fawltydeps --check-unused --pyenv .venv
 
 # integration-tests.yml
 ./run-tests.sh
+
+# e2e.yml (PRs touching app code; every push to main and release/**; releases; manual)
+./e2e-smoke.sh
 ```
 
 `mdbook.yml`, `publish-coordinator-image.yml`, and `release-osprey-rpc.yml` are release/deploy workflows — do not modify without human approval (see "Human-approval-required actions" below).
