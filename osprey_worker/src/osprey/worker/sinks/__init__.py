@@ -29,7 +29,7 @@ class OutputSinkDestination(StrEnum):
 
     OSPREY = auto()
     """Processes the output by sending the classification results to kafka for indexing in druid, scylla for execution
-    result storage, and the labels service / webhook consumers for event effects."""
+    result storage, and the labels service for event effects."""
 
     STDOUT = auto()
     """Prints the output to standard out. Good for local development or debugging."""

@@ -386,7 +386,6 @@ class BulkLabelSink(BaseSink):
         cls,
         engine: OspreyEngine,
         analytics_publisher: BasePublisher,
-        webhooks_publisher: BasePublisher,
         task: BulkLabelTask,
         include_ids: set[str] | None = None,
     ) -> None:
