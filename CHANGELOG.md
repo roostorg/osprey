@@ -17,6 +17,10 @@ For more information about each release including git tags and artifacts, see [R
 - One-click demo in GitHub Codespaces, with sample data flowing ([#593](https://github.com/roostorg/osprey/pull/593) by [@reitblatt](https://github.com/reitblatt))
 - Rules Visualizer zoom controls, including zooming out past the whole-graph fit ([#509](https://github.com/roostorg/osprey/pull/509) by [@austin-ayers](https://github.com/austin-ayers))
 
+### Removed
+
+- Unused `PUBSUB_OSPREY_WEBHOOKS_PROJECT_ID` and `PUBSUB_OSPREY_WEBHOOKS_TOPIC_ID` environment variables ([#670](https://github.com/roostorg/osprey/pull/670) by [@momolly1024](https://github.com/momolly1024))
+
 ### Fixed
 
 - `ParseInt` UDF can be called from rules again ([#588](https://github.com/roostorg/osprey/pull/588) by [@NopeCharon](https://github.com/NopeCharon))

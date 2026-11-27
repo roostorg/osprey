@@ -266,7 +266,7 @@ def run_bulk_label_sink(pooled: bool) -> None:
     analytics_publisher = make_publisher(analytics_pubsub_project_id, analytics_pubsub_topic_id)
 
     def factory() -> BulkLabelSink:
-        # NOTE: It's very important the input stream is created per-webhook sink
+        # NOTE: It's very important the input stream is created per bulk label sink
         postgres_source = PostgresInputStream(BulkLabelTask, tags=['sink:bulklabelsink'])
         labels_provider = LABELS_PROVIDER.instance()
         if not labels_provider:
@@ -306,10 +306,6 @@ def rollback_bulk_label_effects(ctx: click.Context, task_id: int, include_ids_fr
     analytics_pubsub_topic_id = config.get_str('PUBSUB_ANALYTICS_EVENT_TOPIC_ID', 'osprey-analytics')
     analytics_publisher = make_publisher(analytics_pubsub_project_id, analytics_pubsub_topic_id)
 
-    osprey_webhook_pubsub_project = config.get_str('PUBSUB_OSPREY_WEBHOOKS_PROJECT_ID', 'osprey-dev')
-    osprey_webhook_pubsub_topic = config.get_str('PUBSUB_OSPREY_WEBHOOKS_TOPIC_ID', 'osprey-webhooks')
-    webhooks_publisher = make_publisher(osprey_webhook_pubsub_project, osprey_webhook_pubsub_topic)
-
     task = BulkLabelTask.get_one(task_id)
     if task is None:
         click.echo(f'Task with id {task_id} not found.')
@@ -329,10 +325,9 @@ def rollback_bulk_label_effects(ctx: click.Context, task_id: int, include_ids_fr
         include_ids.discard('')
 
     try:
-        BulkLabelSink.rollback_task_effects(engine, analytics_publisher, webhooks_publisher, task, include_ids)
+        BulkLabelSink.rollback_task_effects(engine, analytics_publisher, task, include_ids)
     finally:
         analytics_publisher.stop()
-        webhooks_publisher.stop()
 
 
 def _bootstrap_pubsub() -> None:
