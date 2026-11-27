@@ -70,20 +70,23 @@ The coordinator is configured via the `docker-compose.coordinator.yaml` override
 
 ### Environment Variables
 
-Configure the coordinator via environment variables in `docker-compose.yaml`:
+Configure the coordinator via environment variables in `docker-compose.coordinator.yaml`. The Default column is the coordinator's built-in default; the override file sets most of them to values for the compose stack:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `OSPREY_COORDINATOR_BIDI_STREAM_PORT` | `19950` | Port for bidirectional streaming |
-| `OSPREY_COORDINATOR_SYNC_ACTION_PORT` | `19951` | Port for synchronous action API |
-| `SNOWFLAKE_API_ENDPOINT` | `http://snowflake-id-worker:8088` | Snowflake ID service endpoint |
-| `ETCD_PEERS` | `http://etcd:2379` | etcd connection string |
-| `OSPREY_KAFKA_BOOTSTRAP_SERVERS` | `kafka:29092` | Kafka broker addresses |
-| `OSPREY_KAFKA_INPUT_STREAM_TOPIC` | `osprey.actions_input` | Kafka topic to consume |
-| `OSPREY_KAFKA_GROUP_ID` | `osprey_coordinator_group` | Kafka consumer group ID |
-| `OSPREY_COORDINATOR_CONSUMER_TYPE` | `kafka` | Consumer type: `kafka` or `pubsub` |
-| `MAX_TIME_TO_SEND_TO_ASYNC_QUEUE_MS` | `500` | Max time to wait before queuing async actions |
-| `MAX_ACKING_RECEIVER_WAIT_TIME_MS` | `60000` | Max time to wait for worker ack/nack |
+| Variable | Default | Override file | Description |
+|----------|---------|---------------|-------------|
+| `ETCD_PEERS` | none (**required**) | `http://etcd:2379` | etcd connection string. Without it the coordinator stops serving port 19950 after about 30 seconds and 19951 after about 60, logging only warnings. |
+| `POD_IP` | none (**required**) | `osprey-coordinator` | Address the coordinator registers in etcd for workers to connect to; the gRPC servers panic if it is unset. |
+| `OSPREY_COORDINATOR_SERVICE_NAME` | `osprey_coordinator` | not set | Service name the coordinator registers under; workers look it up with the same name. |
+| `OSPREY_COORDINATOR_BIDI_STREAM_PORT` | `19950` | `19950` | Port for bidirectional streaming |
+| `OSPREY_COORDINATOR_SYNC_ACTION_PORT` | `19951` | `19951` | Port for synchronous action API |
+| `SNOWFLAKE_API_ENDPOINT` | `http://localhost:19952` | `http://snowflake-id-worker:8088` | Snowflake ID service endpoint |
+| `OSPREY_COORDINATOR_CONSUMER_TYPE` | `kafka` | `kafka` | Consumer type: `kafka` or `pubsub` |
+| `OSPREY_KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | `osprey-kafka:29092` | Kafka broker addresses |
+| `OSPREY_KAFKA_INPUT_STREAM_TOPIC` | `osprey.actions_input` | `osprey.actions_input` | Kafka topic to consume |
+| `OSPREY_KAFKA_GROUP_ID` | `osprey_coordinator_group` | `osprey_coordinator_group` | Kafka consumer group ID |
+| `MAX_TIME_TO_SEND_TO_ASYNC_QUEUE_MS` | `500` | `500` | Max time to wait before queuing async actions |
+| `MAX_ACKING_RECEIVER_WAIT_TIME_MS` | `60000` | `60000` | Max time to wait for worker ack/nack |
+| `MAX_PQ_RECEIVE_AWAIT_TIME_MS` | `5000` | not set | How long a worker's stream waits for an action before the coordinator disconnects it |
 
 ### Example Configuration
 
@@ -123,7 +126,8 @@ osprey-worker:
 3. Coordinator sends actions to worker via the bidirectional stream
 4. Worker processes actions through rules
 5. Worker sends ack/nack with optional verdicts back to coordinator
-6. Connection automatically reconnects every 60-120 seconds for load balancing
+6. The worker reconnects every 60-120 seconds for load balancing
+7. When there are no actions, the coordinator disconnects a waiting worker after 5 seconds (`MAX_PQ_RECEIVE_AWAIT_TIME_MS`), logging `Took too long to get action from priority queue, disconnecting` at ERROR level, and the worker reconnects. On an idle stack these errors are expected.
 
 
 ### Direct Action Submission (Sync API)
@@ -165,7 +169,7 @@ Configure the appropriate environment variables for your chosen consumer in `exa
     # Consumer selection (kafka or pubsub)
     - OSPREY_COORDINATOR_CONSUMER_TYPE=kafka
     # Kafka configuration (when using kafka)
-    - OSPREY_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    - OSPREY_KAFKA_BOOTSTRAP_SERVERS=osprey-kafka:29092
     - OSPREY_KAFKA_INPUT_STREAM_TOPIC=osprey.actions_input
     - OSPREY_KAFKA_GROUP_ID=osprey_coordinator_group
 
@@ -174,13 +178,13 @@ Configure the appropriate environment variables for your chosen consumer in `exa
     - PUBSUB_SUBSCRIPTION_PROJECT_ID
     - PUBSUB_SUBSCRIPTION_ID
     - PUBSUB_ENCRYPTION_KEY_URI
-    # Optionally
-    - PUBSUB_MAX_MESSAGES = 5000 # default
-    - PUBSUB_MAX_PROCESSING_MESSAGES = 5000 # default
+    # Optional; these are the defaults
+    - PUBSUB_MAX_MESSAGES=5000
+    - PUBSUB_MAX_PROCESSING_MESSAGES=5000
 
-    # shared by both Kafka and Pubsub, optional
-    - MAX_TIME_TO_SEND_TO_ASYNC_QUEUE_MS = 500 # default
-    - MAX_ACKING_RECEIVER_WAIT_TIME_MS = 6000 # default
+    # Shared by both Kafka and Pubsub, optional; these are the defaults
+    - MAX_TIME_TO_SEND_TO_ASYNC_QUEUE_MS=500
+    - MAX_ACKING_RECEIVER_WAIT_TIME_MS=60000
 ```
 
 
@@ -190,6 +194,6 @@ Use the test data producer:
 
 ```bash
 # Start the Kafka test data producer
-./start.sh --with-coordinator --profile test_data up kafka-test-data-producer -d
+./start.sh --with-coordinator --profile test_data up -d osprey-kafka-test-data-producer
 ```
 
