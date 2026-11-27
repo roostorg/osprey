@@ -374,7 +374,7 @@ class PostgresInputStream(BaseInputStream[_ModelT]):
         super().__init__()
         self._model = model
         self._cooldown = cooldown
-        self._tags = tags
+        self._tags = list(tags)
 
     def _gen(self) -> Iterator[_ModelT]:
         def _before_sleep(retry_state: RetryCallState) -> None:
