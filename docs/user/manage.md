@@ -29,7 +29,7 @@ UDFs are organized by category and are searchable. Each entry shows:
 - Parameter names, types, and descriptions
 - Return type
 
-Use this page as your reference when writing rules, to confirm a function's exact name and parameter order. Note that most UDFs are for rules only: the query box supports just four functions (`RegexMatch`, `DidAddLabel`, `DidRemoveLabel`, `DidDeclareVerdict`), so using any other UDF in a query currently fails with a silent 500 error.
+Use this page as your reference when writing rules, to confirm a function's exact name and parameter order. Note that most UDFs are for rules only: the query box supports just four functions (`RegexMatch`, `DidAddLabel`, `DidRemoveLabel`, `DidDeclareVerdict`), so using any other UDF in a query is rejected with an `unknown function` error under the query box.
 
 ## Features Registry
 
@@ -37,13 +37,13 @@ The Features Registry lists every feature defined in your Osprey deployment. Fea
 
 The list is paginated (50 per page) and can be filtered and sorted:
 
-- **Search**: filter by name, category, or description
-- **Category filter**: narrow to a specific feature category
+- **Search**: filter by name
+- **Category filter**: narrow to one or more feature categories
 - **Extraction function filter**: narrow to features using a specific extraction function
-- **Unused only**: show only features not referenced by any rule
+- **Unused only**: show only features nothing references
 - **Sort**: by name, most referenced, or least referenced
 
-Each row shows the feature's name, category, extraction function(s), reference count (how many rules use it), description, owner, and last modified date.
+Each row shows the feature's name, type, extraction function, source file, and how many rules, features, and WhenRules blocks reference it. Expand a row for its category, its full definition, and the rules and features that use it.
 
 ## Rules Registry
 
@@ -52,7 +52,7 @@ The Rules Registry lists every rule loaded in your Osprey deployment.
 The list is paginated (50 per page) and can be filtered and sorted:
 
 - **Search**: filter by name, source file, or description
-- **Unused only**: hide rules that are referenced by other (when-)rules, showing only "leaf" rules
+- **Unused only**: show only rules that no `WhenRules` block uses directly
 - **Sort**: by name, most referenced, or least referenced
 
-Each row shows the rule's name, source file, description, reference count, and line number within the source file.
+Each row shows the rule's name, source file, and how many `WhenRules` blocks use it. Expand a row for its description, its conditions, and the features it references.
