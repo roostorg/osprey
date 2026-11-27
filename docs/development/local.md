@@ -1,6 +1,6 @@
 # Local Development
 
-Set up a full local development environment for Osprey. To just get up and running quickly with sample data, see [Getting Started](./) instead.
+Set up a full local development environment for Osprey. To just get up and running quickly with sample data, see [Getting Started](./) instead. To skip installing these tools, open the [development devcontainer](codespaces.md#for-engineers) in GitHub Codespaces or VS Code; it has everything below set up.
 
 ## Prerequisites
 

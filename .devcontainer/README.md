@@ -60,5 +60,29 @@ How [devcontainer.json](devcontainer.json) is put together:
   over [docker-compose.yaml](../docker-compose.yaml): the UI calls the API through its own
   dev server at `/api`, and the Druid web console is off (`docker compose --profile
   druid-console up -d druid-router` turns it on, at port 8888).
-- The container doesn't include Python, uv or Node; it's built for running the demo.
-  See [Local Development](../docs/development/local.md) for a full development setup.
+- The demo container doesn't include Python, uv, Node or Rust; it's built for running the
+  demo. For development, use the other configuration below.
+
+## Development configuration
+
+[dev/devcontainer.json](dev/devcontainer.json) is a second configuration for working on
+Osprey's code. It has the toolchains and installed dependencies, but starts nothing, so it's
+ready sooner and stays light until you need the stack.
+
+- **Open it**: in Codespaces, choose **New with options…** and pick **Osprey development**
+  under *Dev container configuration*, or use
+  <https://codespaces.new/roostorg/osprey?devcontainer_path=.devcontainer/dev/devcontainer.json>.
+  VS Code's Dev Containers extension asks which configuration to open; with the CLI, run
+  `npx @devcontainers/cli up --workspace-folder . --config .devcontainer/dev/devcontainer.json`.
+- **Tools**: Python (from `.python-version`, installed by uv), uv, Node 22.22 with Corepack
+  and pnpm, Rust stable with `protoc`, and Docker. [install-tools.sh](dev/install-tools.sh)
+  installs what the devcontainer features don't.
+- **Dependencies**: [install-deps.sh](dev/install-deps.sh) runs `uv sync --dev`,
+  `pnpm install --frozen-lockfile` and `pre-commit install`, at creation, in prebuilds and when
+  the codespace's content updates.
+- **Running things**: `bash .devcontainer/scripts/start.sh` starts the same stack as the demo,
+  with test data, and the UI on port 5002; UI code is mounted into its container, so edits
+  reload in the browser. `./run-tests.sh` runs the integration tests. `cd osprey_ui && pnpm
+  start` also works, once the demo's `osprey-ui` container is stopped (`docker compose stop
+  osprey-ui`), because both use port 5002; the container sets `REACT_APP_API_BASE_URL=/api` so
+  it works through Codespaces' forwarded port.
